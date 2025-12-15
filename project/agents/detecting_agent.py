@@ -1,5 +1,6 @@
 import subprocess
 import pandas as pd
+import json
 from pathlib import Path
 from collections import defaultdict
 
@@ -33,6 +34,7 @@ class DetectingAgent:
     # Normalize DataFrame column names by stripping whitespace,
     # removing BOM characters, converting to lowercase, and replacing spaces with underscores.
     ##
+    @staticmethod
     def normalize_columns(df):
         old_cols = df.columns
         new_cols = []
@@ -50,8 +52,10 @@ class DetectingAgent:
     ##
     # Parse class metrics from a DataFrame row into a dictionary.
     ##
+    @staticmethod
     def parse_class_metrics(row):
         return {
+            "package_name": row["package_name"],
             "class_name": row["type_name"],
             "file_path": row.get("file_path"),
             "line_no": int(row.get("line_no", -1)),
@@ -75,6 +79,7 @@ class DetectingAgent:
     ##
     # Parse method metrics from a DataFrame row into a dictionary.
     ##
+    @staticmethod
     def parse_method_metrics(row):
         return {
             "method_name": row["method_name"],
@@ -92,6 +97,10 @@ class DetectingAgent:
             "dependencies": []
         }
 
+    ##
+    # Group classes by their package and aggregate metrics.
+    ##
+    @staticmethod
     def group_classes_by_package(class_rows):
         packages_dict = defaultdict(list)
 
@@ -104,21 +113,76 @@ class DetectingAgent:
             pkg_metrics = {
                 "num_classes": len(classes),
                 "loc": sum(c["metrics"]["loc"] for c in classes),
-                "wmc": sum(c["metrics"]["wmc"] for c in classes),
-                "fanin": sum(c["metrics"]["fanin"] for c in classes),
-                "fanout": sum(c["metrics"]["fanout"] for c in classes),
             }
 
             packages_list.append({
                 "package_name": pkg_name,
                 "metrics": pkg_metrics,
-                "classes": classes
+                "classes": classes,
+                "dependencies": []
             })
 
         return packages_list
+
+    ##
+    # Attach methods to their corresponding classes within packages.
+    ##
+    @staticmethod
+    def attach_methods_to_classes(packages, method_rows):
+        class_index = {}
+        for pkg in packages:
+            for cls in pkg["classes"]:
+                key = (pkg["package_name"], cls["class_name"])
+                class_index[key] = cls
+
+        for row in method_rows:
+            pkg_name = row["package_name"]
+            cls_name = row["type_name"]
+            key = (pkg_name, cls_name)
+
+            if key in class_index:
+                cls_obj = class_index[key]
+                method_obj = DetectingAgent.parse_method_metrics(row)
+
+                cls_obj["methods"].append(method_obj)
+            else:
+                print(f"Warning: Class {cls_name} in package {pkg_name} not found for method {row.get('method_name')}")
+
+        return packages
     
     def collect_metrics(self):
-        self.run_designite()
+        #self.run_designite()
+
+        class_csv = Path(self.output_path) / "TypeMetrics.csv"
+        method_csv = Path(self.output_path) / "MethodMetrics.csv"
+
+        class_df = pd.read_csv(class_csv)
+        method_df = pd.read_csv(method_csv)
+
+        class_df, _ = self.normalize_columns(class_df)
+        method_df, _ = self.normalize_columns(method_df)
+
+        class_dicts = [self.parse_class_metrics(row) for _, row in class_df.iterrows()]
+        packages = self.group_classes_by_package(class_dicts)
+
+        method_rows = method_df.to_dict(orient="records") ## convert df to list of dicts
+        packages = self.attach_methods_to_classes(packages, method_rows)
+
+        final_json = {
+            "project": Path(self.project_path).name,
+            "summary": {
+                "total_packages": len(packages),
+                "total_classes": sum(len(p["classes"]) for p in packages)
+            },
+            "packages": packages
+        }
+
+        output_file = Path(self.output_path) / "project_metrics.json"
+        with open(output_file, "w") as f:
+            json.dump(final_json, f, indent=4)
+
+        print(f"Metrics collected and saved to {output_file}")
+        return final_json
 
     def run(self):
         self.collect_metrics()
