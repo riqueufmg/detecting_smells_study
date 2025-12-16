@@ -3,16 +3,18 @@ import pandas as pd
 import json
 from pathlib import Path
 from collections import defaultdict
+import xml.etree.ElementTree as ET
 
 class DetectingAgent:
 
     ##
     # Initialize the DetectingAgent with project path, output path, and classes path.
     ##
-    def __init__(self, project_path, output_path, classes_path):
+    def __init__(self, project_path, output_path, classes_path, jar_path):
         self.project_path = project_path
         self.output_path = output_path
         self.classes_path = classes_path
+        self.jar_path = jar_path
 
     ##
     # Run DesigniteJava tool to analyze the Java project.
@@ -22,25 +24,26 @@ class DetectingAgent:
         Path(self.output_path).mkdir(parents=True, exist_ok=True)
         
         cmd = [
-            "java", "-jar", "tools/DesigniteJava.jar",
+            "java", "-jar", "tools/DesigniteJava2.8.0.jar",
             "-i", self.project_path,
             "-o", self.output_path,
-            "-c", self.classes_path
+            #"-c", self.classes_path,
+            "-g",
         ]
         
         result = subprocess.run(cmd, capture_output=True, text=True)
-
-        print(result.stdout)
-        print(result.stderr)
     
-    def collect_package_dependencies(self):
+    '''def collect_package_dependencies(self):
         cmd = [
             "jdeps",
+            #"-recursive",
+            "--multi-release", "17",
             "-verbose:package",
-            str(self.project_path)
+            str(self.jar_path)
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True)
+
         dependencies = defaultdict(list)
 
         if result.returncode != 0:
@@ -54,13 +57,33 @@ class DetectingAgent:
                 source = source.strip()
                 target = target.split()[0].strip()
 
-                if source.startswith(("java.", "javax.")) or target.startswith(("java.", "javax.")):
+                if source.startswith(("java.", "javax.")) or source.endswith((".jar")) or target.startswith(("java.", "javax.")):
                     continue
 
                 if target not in dependencies[source]:
                     dependencies[source].append(target)
 
-        return dict(dependencies)
+        return dict(dependencies)'''
+
+    '''@staticmethod
+    def attach_package_dependencies(packages, package_dependencies):
+        package_index = {
+            pkg["package"]: pkg
+            for pkg in packages
+        }
+
+        for source_pkg, targets in package_dependencies.items():
+            if source_pkg in package_index:
+                deps = set(package_index[source_pkg]["dependencies"])
+                deps.update(targets)
+
+                package_index[source_pkg]["dependencies"] = list(deps)
+                package_index[source_pkg]["metrics"]["efferent_coupling"] = len(deps)
+            else:
+                # Opcional: pode logar para debug
+                print(f"Warning: Package {source_pkg} not found in project structure")
+
+        return packages'''
     
     ##
     # Normalize DataFrame column names by stripping whitespace,
@@ -87,8 +110,8 @@ class DetectingAgent:
     @staticmethod
     def parse_class_metrics(row):
         return {
-            "package_name": row["package_name"],
-            "class_name": row["type_name"],
+            "package": row["package"],
+            "class": row["class"],
             "file_path": row.get("file_path"),
             "line_no": int(row.get("line_no", -1)),
             "metrics": {
@@ -114,9 +137,9 @@ class DetectingAgent:
     @staticmethod
     def parse_method_metrics(row):
         return {
-            "method_name": row["method_name"],
+            "method": row["method"],
             "line_no": int(row.get("line_no", -1)),
-            "is_test": bool(int(row.get("is_test", 0))) if "is_test" in row else False,
+            "is_test": bool(int(row["is_test"])) if "is_test" in row and pd.notna(row["is_test"]) else False,
             "main_prod_class_tested": row.get("main_prod_class_tested"),
             "production_classes_tested": row.get("production_classes_tested"),
             "metrics": {
@@ -126,7 +149,7 @@ class DetectingAgent:
                 "fanin": int(row.get("fanin", 0)) if "fanin" in row else None,
                 "fanout": int(row.get("fanout", 0)) if "fanout" in row else None,
             },
-            "dependencies": []
+            #"dependencies": []
         }
 
     ##
@@ -137,18 +160,20 @@ class DetectingAgent:
         packages_dict = defaultdict(list)
 
         for cls in class_rows:
-            package_name = cls.get("package_name", "default_package")
-            packages_dict[package_name].append(cls)
+            package = cls.get("package", "default_package")
+            packages_dict[package].append(cls)
 
         packages_list = []
         for pkg_name, classes in packages_dict.items():
             pkg_metrics = {
                 "num_classes": len(classes),
                 "loc": sum(c["metrics"]["loc"] for c in classes),
+                "efferent_coupling": 0,
+                "afferent_coupling": 0,
             }
 
             packages_list.append({
-                "package_name": pkg_name,
+                "package": pkg_name,
                 "metrics": pkg_metrics,
                 "classes": classes,
                 "dependencies": []
@@ -164,12 +189,12 @@ class DetectingAgent:
         class_index = {}
         for pkg in packages:
             for cls in pkg["classes"]:
-                key = (pkg["package_name"], cls["class_name"])
+                key = (pkg["package"], cls["class"])
                 class_index[key] = cls
 
         for row in method_rows:
-            pkg_name = row["package_name"]
-            cls_name = row["type_name"]
+            pkg_name = row["package"]
+            cls_name = row["class"]
             key = (pkg_name, cls_name)
 
             if key in class_index:
@@ -178,23 +203,79 @@ class DetectingAgent:
 
                 cls_obj["methods"].append(method_obj)
             else:
-                print(f"Warning: Class {cls_name} in package {pkg_name} not found for method {row.get('method_name')}")
+                print(f"Warning: Class {cls_name} in package {pkg_name} not found for method {row.get('method')}")
 
         return packages
     
+    ##
+    # Convert a fully qualified class name to its package name.
+    ##
     @staticmethod
-    def attach_package_dependencies(packages, package_dependencies):
-        package_index = {
-            pkg["package_name"]: pkg
-            for pkg in packages
-        }
+    def classname_to_package(class_name):
+        string_set = class_name.split(".")
+
+        for i in string_set[::-1]:
+            if i and i[0].isupper():
+                string_set.remove(i)
+            else:
+                break
+        
+        return ".".join(string_set)
+    
+    ##
+    # Parse dependencies from the GraphML file generated by Designite.
+    ##
+    @staticmethod
+    def parser_dependencies(graph_path):
+        tree = ET.parse(graph_path)
+        root = tree.getroot()
+
+        ns = {"g": "http://graphml.graphdrawing.org/xmlns"}
+
+        package_dependencies = defaultdict(set)
+        class_dependencies = defaultdict(set)
+
+        for edge in root.findall(".//g:edge", ns):
+            source_pkg = DetectingAgent.classname_to_package(edge.attrib["source"])
+            target_pkg = DetectingAgent.classname_to_package(edge.attrib["target"])
+
+            if source_pkg != target_pkg:
+                package_dependencies[source_pkg].add(target_pkg)
+            
+            source_class = edge.attrib["source"]
+            target_class = edge.attrib["target"]
+
+            if source_class != target_class:
+                class_dependencies[source_class].add(target_class)
+        
+        package_dependencies = {k: list(v) for k, v in package_dependencies.items()}
+        class_dependencies = {k: list(v) for k, v in class_dependencies.items()}
+        
+        return package_dependencies, class_dependencies
+    
+    @staticmethod
+    def attach_dependencies(packages, package_dependencies, class_dependencies):
+        package_index = {pkg["package"]: pkg for pkg in packages}
 
         for source_pkg, targets in package_dependencies.items():
             if source_pkg in package_index:
-                package_index[source_pkg]["dependencies"].extend(targets)
+                deps = set(package_index[source_pkg]["dependencies"])
+                deps.update(targets)
+
+                package_index[source_pkg]["dependencies"] = list(deps)
+                package_index[source_pkg]["metrics"]["efferent_coupling"] = len(deps)
             else:
-                # Opcional: pode logar para debug
                 print(f"Warning: Package {source_pkg} not found in project structure")
+
+        for pkg in packages:
+            for cls_obj in pkg["classes"]:
+                class_name = f'{pkg["package"]}.{cls_obj["class"]}'
+
+                if class_name in class_dependencies:
+                    cls_obj["dependencies"] = class_dependencies[class_name]
+                else:
+                    cls_obj["dependencies"] = []
+
 
         return packages
     
@@ -206,6 +287,7 @@ class DetectingAgent:
 
         class_csv = Path(self.output_path) / "TypeMetrics.csv"
         method_csv = Path(self.output_path) / "MethodMetrics.csv"
+        graph_path = Path(self.output_path) / "DependencyGraph.graphml"
 
         class_df = pd.read_csv(class_csv)
         method_df = pd.read_csv(method_csv)
@@ -219,8 +301,12 @@ class DetectingAgent:
         method_rows = method_df.to_dict(orient="records") ## convert df to list of dicts
         packages = self.attach_methods_to_classes(packages, method_rows)
 
-        package_dependencies = self.collect_package_dependencies()
-        packages = self.attach_package_dependencies(packages, package_dependencies)
+        package_dependencies, class_dependencies = self.parser_dependencies(graph_path)
+        
+        #package_dependencies = self.collect_package_dependencies()
+        #packages = self.attach_package_dependencies(packages, package_dependencies)
+
+        packages = self.attach_dependencies(packages, package_dependencies, class_dependencies)
 
         final_json = {
             "project": Path(self.project_path).name,
@@ -242,6 +328,5 @@ class DetectingAgent:
     # Main run method to execute the agent's functionality.
     ##
     def run(self):
-        #self.collect_metrics()
-        self.collect_package_dependencies()
+        self.collect_metrics()
         print("DetectingAgent run method executed.")
