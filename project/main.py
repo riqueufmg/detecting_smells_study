@@ -14,7 +14,12 @@ def main():
     #metrics_json = detector.collect_metrics()
     print("Metrics collected!")
 
-    print(GodComponentDetector(Path(processed_path,"project_metrics.json")).detect())
+    smell = {
+        "name": "God Component",
+        "definition": "when a component is **excessively** large either in terms of Lines Of Code or the number of classes."
+    }
+
+    GodComponentDetector(Path(processed_path,"project_metrics.json")).detect(smell)
 
 if __name__ == "__main__":
     main()
