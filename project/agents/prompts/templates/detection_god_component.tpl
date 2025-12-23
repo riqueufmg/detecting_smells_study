@@ -12,6 +12,7 @@ Definition: {SMELL_DEFINITION}
 - The **justification** field must summarize the key elements that support the detection result.
 - Only perform the analysis if you deem the information in the **#Input** section sufficient. Otherwise, follow the guidelines in the **#Unsuccessful Output** section.
 - All fields in the **#Successful Output** are mandatory.
+- Do not rely on fixed metric thresholds; use contextual judgment based on the provided data.
 
 # Input
 
@@ -43,4 +44,3 @@ If the available data are insufficient to detect this smell, return:
     "message": "It is impossible to detect {SMELL_NAME} with the available data."
 }
 ```
-

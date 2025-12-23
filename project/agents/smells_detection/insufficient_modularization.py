@@ -5,7 +5,7 @@ import os
 from agents.llm_inference.llm_engine import LLMInferenceEngine
 from agents.llm_inference.gpt_engine import GPTEngine
 
-class GodComponentDetector:
+class InsufficientModularizationDetector:
 
     def __init__(self, project_name):
         self.project_name = project_name
@@ -24,7 +24,7 @@ class GodComponentDetector:
     def generate_prompts(self, smell):
         packages = self.load_packages()
 
-        with open(Path(self.prompts_path, "templates", "detection_god_component.tpl"), "r") as file:
+        with open(Path(self.prompts_path, "templates", "detection_insufficient_modularization.tpl"), "r") as file:
             template_content = file.read()
         
         list_of_prompt_files = []
@@ -63,7 +63,7 @@ class GodComponentDetector:
         llm_config = {
             "model_name": "gpt-5-mini",
             "max_input_tokens": 10240,
-            "max_completion_tokens": 1024
+            "max_completion_tokens": 2048
         }
 
         llm_engine = GPTEngine(**llm_config)
@@ -79,7 +79,6 @@ class GodComponentDetector:
             output_file.parent.mkdir(parents=True, exist_ok=True)
             with open(output_file, "w") as out_f:
                 out_f.write(response)
-            break
         
     def detect_hf(self, list_of_prompt_files):
 
