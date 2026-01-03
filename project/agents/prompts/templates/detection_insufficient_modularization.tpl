@@ -1,62 +1,30 @@
 # Task
 
-You are a software engineering expert in software refactoring.
-
-Your task is to detect the smell: Insufficient Modularization.
+You are a software engineering expert in software refactoring. Your task is to detect the smell: Insufficient Modularization.
 
 Definition:
-Insufficient Modularization arises when a class represents an abstraction that has not been
-adequately decomposed, resulting in excessive size, complexity, or a bloated interface.
-Such classes are difficult to understand, maintain, and evolve, and often concentrate
-responsibilities that could be separated into smaller, more cohesive abstractions.
+Insufficient Modularization arises when a class exists that has not been completely decomposed, and a further decomposition could reduce its size, implementation complexity, or both.
 
 # Constraints
-
-- Perform the analysis at the **class level**, even though the input is provided at the package level.
-- Use the package data only as contextual information to support class-level judgments.
-- Do not rely on fixed metric thresholds; use contextual judgment based on the provided data.
+- I give as input software metrics and dependencies.
+- The analysis must consider the class in isolation. Do not assume the existence of other classes, packages, or system-level context beyond the provided data.
 - Give the answer exactly in the structure defined in the **#Successful Output** section.
 - Do not include comments, explanations, or text outside the defined output format.
-- All fields in the **#Successful Output** are mandatory.
-- Only perform the analysis if the provided data are sufficient; otherwise, follow the **#Unsuccessful Output** format.
 
 # Input
-
-The following metrics and dependencies are available at package and class levels:
 
 ```json
 {INPUT_DATA}
 ```
 
-# Successful Output
+# Output
 
 Provide the output in this structure:
 
 ```json
 {
-  "smell": "Insufficient Modularization",
-  "package": "[package name]",
-  "detections": [
-    {
-      "class": "[class name]",
-      "detection": true,
-      "justification": "[Key elements that justify why this class suffers from insufficient modularization]"
-    },
-    {
-      "class": "[class name]",
-      "detection": false,
-      "justification": "[Key elements that justify why this class does not suffer from insufficient modularization]"
-    }
-  ]
-}
-```
-
-# Unsucessfull Output
-
-If the available data are insufficient to detect this smell, return:
-
-```json
-{
-    "message": "It is impossible to detect {SMELL_NAME} with the available data."
+    "class": [package name].[class name],
+    "detection": [true/false],
+    "justification": [Reasons for the detection result, citing the elements that justify the decision]
 }
 ```

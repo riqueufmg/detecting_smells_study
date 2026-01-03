@@ -7,10 +7,10 @@ class InsufficientModularizationComparison:
         self.project_name = project_name
         self.base_path = Path(base_path)
 
-    def consolidate_llm_outputs(self, project_name: str):
-        project_path = self.base_path / "llm_outputs" / project_name / "insufficient_modularization"
+    def consolidate_llm_outputs(self):
+        project_path = self.base_path / "llm_outputs" / self.project_name / "insufficient_modularization"
 
-        output_dir = self.base_path / "consolidated_detection" / project_name / "insufficient_modularization"
+        output_dir = self.base_path / "consolidated_detection" / self.project_name / "insufficient_modularization"
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / "insufficient_modularization_llm.json"
 
@@ -26,15 +26,12 @@ class InsufficientModularizationComparison:
                 print(f"Warning: Ignoring invalid file: {file}")
                 continue
 
-            pkg = content.get("package")
-            for det in content.get("detections", []):
-                cls_name = det.get("class")
-                identifier = f"{pkg}.{cls_name}"
-                consolidated.append({
-                    "identifier": identifier,
-                    "detection": det.get("detection"),
-                    "justification": det.get("justification"),
-                })
+            cls_full_name = content.get("class")
+            consolidated.append({
+                "identifier": cls_full_name,
+                "detection": content.get("detection"),
+                "justification": content.get("justification"),
+            })
 
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(consolidated, f, indent=4, ensure_ascii=False)

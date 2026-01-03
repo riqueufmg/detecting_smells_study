@@ -10,7 +10,6 @@ def main():
     load_dotenv()
 
     ## TODO: create a csv file with all projects and loop over it
-
     projects_list = [
         {
             "project_name": "jsoup",
@@ -36,69 +35,78 @@ def main():
             "project_name": "jitwatch",
             "classes_path": "data/repositories/jitwatch/core/target;data/repositories/jitwatch/ui/target"
         },
+        {
+            "project_name": "commons-io",
+            "classes_path": "data/repositories/commons-io/target"
+        },
+        {
+            "project_name": "javaparser",
+            "classes_path": "data/repositories/javaparser/javaparser-core/target;data/repositories/javaparser/javaparser-core-generators/target;data/repositories/javaparser/javaparser-core-metamodel-generator/target;data/repositories/javaparser/javaparser-core-serialization/target;data/repositories/javaparser/javaparser-core-testing/target;data/repositories/javaparser/javaparser-core-testing-bdd/target;data/repositories/javaparser/javaparser-symbol-solver-core/target;data/repositories/javaparser/javaparser-symbol-solver-testing/target;"
+        },
     ]
 
     smells_list = [
-        {
-            "smell_name": "God Component",
-            "smell_definition": "when a component is **excessively** large either in terms of Lines Of Code or the number of classes.",
-        },
+        #{
+        #    "smell_name": "God Component",
+        #    "smell_definition": "when a component is **excessively** large either in terms of Lines Of Code or the number of classes.",
+        #},
         {
             "smell_name": "Insufficient Modularization",
             "smell_definition": "when a class concentrates an **excessive** number of responsibilities, resulting in a large or complex implementation and an interface that is difficult to understand, use, or evolve.",
         },
-        {
-            "smell_name": "Unstable Dependency",
-            "smell_definition": "This smell occurs when a package depends on other packages that are less stable than itself, violating the Stable Dependencies Principle."
-        },
+        #{
+        #    "smell_name": "Unstable Dependency",
+        #    "smell_definition": "This smell occurs when a package depends on other packages that are less stable than itself, violating the Stable Dependencies Principle."
+        #},
     ]
     
     ## Loop over projects
     for project_data in projects_list:
 
-        '''## 1. Create the Detecting Agent ##
-        detector = DetectingAgent(**project_data)
+        ## 1. Create the Detecting Agent ##
+        #detector = DetectingAgent(**project_data)
 
         ## 2. Generate the input metrics JSON file
-        metrics_json = detector.collect_metrics()
+        #metrics_json = detector.collect_metrics()
 
         ## Loop over smells
         for smell in smells_list:
+            break ## TODO:remove this line after testing
             # 3. Generate Prompts
             list_of_prompt_files = detector.generate_prompts(**smell)
 
             # 4. Detect Smells
             detector.detect(smell["smell_name"], list_of_prompt_files)
-        '''
+        
         ## 5. Consolidate results
 
         ## 5.1 God Component
-        consolidator = GodComponentComparison(project_data['project_name'])
-        output_file = consolidator.consolidate_llm_outputs(project_data["project_name"])
-        output_file = consolidator.consolidate_designite_outputs(project_data["project_name"])
-        print(f"Consolidated file created at: {output_file}")
+        #consolidator = GodComponentComparison(project_data['project_name'])
+        #output_file = consolidator.consolidate_llm_outputs(project_data["project_name"])
+        #output_file = consolidator.consolidate_designite_outputs(project_data["project_name"])
+        #print(f"Consolidated file created at: {output_file}")
 
-        llm_file = f"data/processed/consolidated_detection/{project_data['project_name']}/god_component/godcomponent_llm.json"
-        designite_file = f"data/processed/consolidated_detection/{project_data['project_name']}/god_component/godcomponent_designite.json"
+        #llm_file = f"data/processed/consolidated_detection/{project_data['project_name']}/god_component/godcomponent_llm.json"
+        #designite_file = f"data/processed/consolidated_detection/{project_data['project_name']}/god_component/godcomponent_designite.json"
 
-        output_file = consolidator.generate_metrics_file(llm_file, designite_file)
-        print(f"Metrics file created at: {output_file}")
+        #output_file = consolidator.generate_metrics_file(llm_file, designite_file)
+        #print(f"Metrics file created at: {output_file}")
 
         ## 5.2 Unstable Dependency
-        ud_consolidator = UnstableDependencyComparison(project_data['project_name'])
-        output_file = ud_consolidator.consolidate_llm_outputs(project_data["project_name"])
-        output_file = ud_consolidator.consolidate_designite_outputs(project_data["project_name"])
-        print(f"Consolidated file created at: {output_file}")
+        #ud_consolidator = UnstableDependencyComparison(project_data['project_name'])
+        #output_file = ud_consolidator.consolidate_llm_outputs(project_data["project_name"])
+        #output_file = ud_consolidator.consolidate_designite_outputs(project_data["project_name"])
+        #print(f"Consolidated file created at: {output_file}")
 
-        llm_file = f"data/processed/consolidated_detection/{project_data['project_name']}/unstable_dependency/unstable_dependency_llm.json"
-        designite_file = f"data/processed/consolidated_detection/{project_data['project_name']}/unstable_dependency/unstable_dependency_designite.json"
+        #llm_file = f"data/processed/consolidated_detection/{project_data['project_name']}/unstable_dependency/unstable_dependency_llm.json"
+        #designite_file = f"data/processed/consolidated_detection/{project_data['project_name']}/unstable_dependency/unstable_dependency_designite.json"
 
-        output_file = ud_consolidator.generate_metrics_file(llm_file, designite_file)
-        print(f"Metrics file created at: {output_file}")
-
+        #output_file = ud_consolidator.generate_metrics_file(llm_file, designite_file)
+        #print(f"Metrics file created at: {output_file}")
+        
         ## 5.3 Insufficient Modularization
         im_consolidator = InsufficientModularizationComparison(project_data['project_name'])
-        output_file = im_consolidator.consolidate_llm_outputs(project_data["project_name"])
+        output_file = im_consolidator.consolidate_llm_outputs()
         output_file = im_consolidator.consolidate_designite_outputs(project_data["project_name"])
         print(f"Consolidated file created at: {output_file}")
 

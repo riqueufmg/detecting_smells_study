@@ -94,15 +94,12 @@ class DetectingAgent:
         try:
             if smell_name == "God Component":
                 GodComponentDetector(self.project_name).detect_gpt(list_of_prompt_files)
-                #GodComponentDetector(self.project_name).detect_hf(list_of_prompt_files)
                 print(f"God Component detection for {self.project_path} completed.")
             elif smell_name == "Insufficient Modularization":
                 InsufficientModularizationDetector(self.project_name).detect_gpt(list_of_prompt_files)
-                #InsufficientModularizationDetector(self.project_name).detect_hf(list_of_prompt_files)
                 print(f"Insufficient Modularization detection for {self.project_path} completed.")
             elif smell_name == "Unstable Dependency":
                 UnstableDependencyDetector(self.project_name).detect_gpt(list_of_prompt_files)
-                #UnstableDependencyDetector(self.project_name).detect_hf(list_of_prompt_files)
                 print(f"Unstable Dependency detection for {self.project_path} completed.")
             else:
                 print(f"Smell detection for {smell_name} is not implemented yet.")
