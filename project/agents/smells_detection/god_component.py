@@ -4,6 +4,7 @@ import os
 
 from agents.llm_inference.llm_engine import LLMInferenceEngine
 from agents.llm_inference.gpt_engine import GPTEngine
+from agents.llm_inference.deepseek_engine import DeepSeekEngine
 
 class GodComponentDetector:
 
@@ -76,8 +77,47 @@ class GodComponentDetector:
 
             response = llm_engine.generate(prompt_content)
 
-            output_dir = Path(os.getenv("OUTPUT_PATH"), "llm_outputs", self.project_name, "god_component")
+            output_dir = Path(
+                os.getenv("OUTPUT_PATH"),
+                "llm_outputs",
+                self.project_name,
+                "god_component",
+                "gpt"
+            )
             output_dir.mkdir(parents=True, exist_ok=True)
+
             output_file = output_dir / f"{prompt_file.stem}.txt"
+            
+            with open(output_file, "w") as out_f:
+                out_f.write(response)
+    
+    def detect_deepseek(self, list_of_prompt_files):
+
+        llm_config = {
+            "model_name": "deepseek-reasoner",  # ou deepseek-chat
+            "max_input_tokens": 100000,
+            "max_completion_tokens": 30720,
+        }
+
+        llm_engine = DeepSeekEngine(**llm_config)
+
+        for prompt_file in list_of_prompt_files:
+
+            with open(prompt_file, "r") as f:
+                prompt_content = f.read()
+
+            response = llm_engine.generate(prompt_content)
+
+            output_dir = Path(
+                os.getenv("OUTPUT_PATH"),
+                "llm_outputs",
+                self.project_name,
+                "god_component",
+                "deepseek"
+            )
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            output_file = output_dir / f"{prompt_file.stem}.txt"
+
             with open(output_file, "w") as out_f:
                 out_f.write(response)

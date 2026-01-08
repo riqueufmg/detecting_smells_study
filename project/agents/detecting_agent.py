@@ -90,11 +90,18 @@ class DetectingAgent:
             print(f"Error generating prompts for {smell_name}: {e}")
             raise
     
-    def detect(self, smell_name, list_of_prompt_files):
+    def detect(self, smell_name, list_of_prompt_files, engine):
         try:
             if smell_name == "God Component":
-                GodComponentDetector(self.project_name).detect_gpt(list_of_prompt_files)
-                print(f"God Component detection for {self.project_path} completed.")
+                detector = GodComponentDetector(self.project_name)
+
+                if engine == "gpt":
+                    detector.detect_gpt(list_of_prompt_files)
+                elif engine == "deepseek":
+                    detector.detect_deepseek(list_of_prompt_files)
+                else:
+                    raise ValueError(f"Unknown engine: {engine}")
+
             elif smell_name == "Insufficient Modularization":
                 InsufficientModularizationDetector(self.project_name).detect_gpt(list_of_prompt_files)
                 print(f"Insufficient Modularization detection for {self.project_path} completed.")
