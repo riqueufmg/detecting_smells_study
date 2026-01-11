@@ -1,11 +1,28 @@
 import json
 import csv
+import re
 from pathlib import Path
+
 
 class UnstableDependencyComparison:
     def __init__(self, project_name, base_path="data/processed/"):
         self.project_name = project_name
         self.base_path = Path(base_path)
+
+    def safe_load_json(self, text: str):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        match = re.search(r"\{[\s\S]*\}", text)
+        if match:
+            try:
+                return json.loads(match.group())
+            except json.JSONDecodeError:
+                return None
+
+        return None
 
     def consolidate_llm_outputs(self, project_name: str):
         project_path = self.base_path / "llm_outputs" / project_name / "unstable_dependency"
@@ -18,12 +35,18 @@ class UnstableDependencyComparison:
             raise FileNotFoundError(f"Path not found: {project_path}")
 
         consolidated = []
+        required_fields = {"package", "detection", "justification"}
 
         for file in project_path.glob("*.txt"):
-            try:
-                content = json.loads(file.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:
-                print(f"Warning: Ignoring invalid file: {file}")
+            raw_text = file.read_text(encoding="utf-8")
+            content = self.safe_load_json(raw_text)
+
+            if content is None:
+                print(f"Warning: Could not parse JSON in {file}")
+                continue
+
+            if not required_fields.issubset(content):
+                print(f"Warning: Missing required fields in {file}")
                 continue
 
             consolidated.append({
@@ -73,17 +96,16 @@ class UnstableDependencyComparison:
         package_dict = {}
         for entry in data:
             detected = entry.get("detection", False)
-            pkg = entry["package"]
+            pkg = entry.get("package")
 
             if isinstance(pkg, list):
                 if len(pkg) == 1:
-                    pkg = pkg[0]
+                    package_dict[pkg[0]] = detected
                 else:
                     for p in pkg:
                         package_dict[p] = detected
-                    continue
-
-            package_dict[pkg] = detected
+            else:
+                package_dict[pkg] = detected
 
         return package_dict
 
@@ -97,7 +119,7 @@ class UnstableDependencyComparison:
             return "TN"
         elif llm_detected and not designite_detected:
             return "FP"
-        elif not llm_detected and designite_detected:
+        else:
             return "FN"
 
     def compute_confusion_matrix(self, llm_file: str, designite_file: str):

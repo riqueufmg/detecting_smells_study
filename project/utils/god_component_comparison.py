@@ -1,6 +1,8 @@
 import json
 import csv
+import re
 from pathlib import Path
+
 
 class GodComponentComparison:
     def __init__(self, project_name, engine, base_path="data/processed/"):
@@ -8,10 +10,37 @@ class GodComponentComparison:
         self.base_path = Path(base_path)
         self.engine = engine
 
-    def consolidate_llm_outputs(self, project_name):
-        project_path = self.base_path / "llm_outputs" / project_name / "god_component" / self.engine
+    def safe_load_json(self, text: str):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
 
-        output_dir = self.base_path / "consolidated_detection" / project_name / "god_component" / self.engine
+        match = re.search(r"\{[\s\S]*\}", text)
+        if match:
+            try:
+                return json.loads(match.group())
+            except json.JSONDecodeError:
+                return None
+
+        return None
+
+    def consolidate_llm_outputs(self, project_name):
+        project_path = (
+            self.base_path
+            / "llm_outputs"
+            / project_name
+            / "god_component"
+            / self.engine
+        )
+
+        output_dir = (
+            self.base_path
+            / "consolidated_detection"
+            / project_name
+            / "god_component"
+            / self.engine
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / "godcomponent_llm.json"
 
@@ -19,12 +48,18 @@ class GodComponentComparison:
             raise FileNotFoundError(f"Path not found: {project_path}")
 
         consolidated = []
+        required_fields = {"package", "detection", "justification"}
 
         for file in project_path.glob("*.txt"):
-            try:
-                content = json.loads(file.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:
-                print(f"Warning: Ignoring invalid file: {file}")
+            raw_text = file.read_text(encoding="utf-8")
+            content = self.safe_load_json(raw_text)
+
+            if content is None:
+                print(f"Warning: Could not parse JSON in {file}")
+                continue
+
+            if not required_fields.issubset(content):
+                print(f"Warning: Missing required fields in {file}")
                 continue
 
             consolidated.append({
@@ -37,10 +72,16 @@ class GodComponentComparison:
             json.dump(consolidated, f, indent=4, ensure_ascii=False)
 
         return output_file
-    
+
     def consolidate_designite_outputs(self, project_name: str):
         csv_file = self.base_path / "metrics" / project_name / "ArchitectureSmells.csv"
-        output_dir = self.base_path / "consolidated_detection" / project_name / "god_component" / self.engine
+        output_dir = (
+            self.base_path
+            / "consolidated_detection"
+            / project_name
+            / "god_component"
+            / self.engine
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / "godcomponent_designite.json"
 
@@ -67,31 +108,31 @@ class GodComponentComparison:
             json.dump(consolidated, out, indent=4, ensure_ascii=False)
 
         return output_file
-    
+
     def load_consolidated_json(self, file_path: str):
         with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
 
         package_dict = {}
+
         for entry in data:
             detected = entry.get("detection", False)
-            pkg = entry["package"]
+            pkg = entry.get("package")
 
             if isinstance(pkg, list):
                 if len(pkg) == 1:
-                    pkg = pkg[0]
+                    package_dict[pkg[0]] = detected
                 else:
                     for p in pkg:
                         package_dict[p] = detected
-                    continue
-
-            package_dict[pkg] = detected
+            else:
+                package_dict[pkg] = detected
 
         return package_dict
-    
+
     def get_all_packages(self, llm_dict: dict, designite_dict: dict):
         return set(llm_dict.keys()) | set(designite_dict.keys())
-    
+
     def classify_package(self, llm_detected: bool, designite_detected: bool):
         if llm_detected and designite_detected:
             return "TP"
@@ -99,9 +140,9 @@ class GodComponentComparison:
             return "TN"
         elif llm_detected and not designite_detected:
             return "FP"
-        elif not llm_detected and designite_detected:
+        else:
             return "FN"
-    
+
     def compute_confusion_matrix(self, llm_file: str, designite_file: str):
         llm_dict = self.load_consolidated_json(llm_file)
         designite_dict = self.load_consolidated_json(designite_file)
@@ -116,9 +157,10 @@ class GodComponentComparison:
             counts[category] += 1
 
         return counts
-    
+
     def generate_metrics_file(self, llm_file: str, designite_file: str):
         confusion_matrix = self.compute_confusion_matrix(llm_file, designite_file)
+
         TP = confusion_matrix["TP"]
         TN = confusion_matrix["TN"]
         FP = confusion_matrix["FP"]
@@ -139,7 +181,13 @@ class GodComponentComparison:
             }
         }
 
-        output_dir = self.base_path / "consolidated_detection" / self.project_name / "god_component" / self.engine
+        output_dir = (
+            self.base_path
+            / "consolidated_detection"
+            / self.project_name
+            / "god_component"
+            / self.engine
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / "godcomponent_metrics.json"
 

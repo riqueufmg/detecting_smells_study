@@ -1,16 +1,43 @@
 import json
 import csv
+import re
 from pathlib import Path
+
 
 class InsufficientModularizationComparison:
     def __init__(self, project_name, base_path="data/processed/"):
         self.project_name = project_name
         self.base_path = Path(base_path)
 
-    def consolidate_llm_outputs(self):
-        project_path = self.base_path / "llm_outputs" / self.project_name / "insufficient_modularization"
+    def safe_load_json(self, text: str):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
 
-        output_dir = self.base_path / "consolidated_detection" / self.project_name / "insufficient_modularization"
+        match = re.search(r"\{[\s\S]*\}", text)
+        if match:
+            try:
+                return json.loads(match.group())
+            except json.JSONDecodeError:
+                return None
+
+        return None
+
+    def consolidate_llm_outputs(self):
+        project_path = (
+            self.base_path
+            / "llm_outputs"
+            / self.project_name
+            / "insufficient_modularization"
+        )
+
+        output_dir = (
+            self.base_path
+            / "consolidated_detection"
+            / self.project_name
+            / "insufficient_modularization"
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / "insufficient_modularization_llm.json"
 
@@ -18,15 +45,22 @@ class InsufficientModularizationComparison:
             raise FileNotFoundError(f"Path not found: {project_path}")
 
         consolidated = []
+        required_fields = {"class", "detection", "justification"}
 
         for file in project_path.glob("*.txt"):
-            try:
-                content = json.loads(file.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:
-                print(f"Warning: Ignoring invalid file: {file}")
+            raw_text = file.read_text(encoding="utf-8")
+            content = self.safe_load_json(raw_text)
+
+            if content is None:
+                print(f"Warning: Could not parse JSON in {file}")
+                continue
+
+            if not required_fields.issubset(content):
+                print(f"Warning: Missing required fields in {file}")
                 continue
 
             cls_full_name = content.get("class")
+
             consolidated.append({
                 "identifier": cls_full_name,
                 "detection": content.get("detection"),
@@ -40,7 +74,12 @@ class InsufficientModularizationComparison:
 
     def consolidate_designite_outputs(self, project_name: str):
         csv_file = self.base_path / "metrics" / project_name / "DesignSmells.csv"
-        output_dir = self.base_path / "consolidated_detection" / project_name / "insufficient_modularization"
+        output_dir = (
+            self.base_path
+            / "consolidated_detection"
+            / project_name
+            / "insufficient_modularization"
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / "insufficient_modularization_designite.json"
 
@@ -56,6 +95,7 @@ class InsufficientModularizationComparison:
                     pkg = row.get("Package")
                     cls_name = row.get("Class")
                     identifier = f"{pkg}.{cls_name}"
+
                     if identifier not in temp_dict:
                         temp_dict[identifier] = {
                             "identifier": identifier,
@@ -77,7 +117,7 @@ class InsufficientModularizationComparison:
         id_dict = {}
         for entry in data:
             detected = entry.get("detection", False)
-            identifier = entry["identifier"]
+            identifier = entry.get("identifier")
             id_dict[identifier] = detected
 
         return id_dict
@@ -92,7 +132,7 @@ class InsufficientModularizationComparison:
             return "TN"
         elif llm_detected and not designite_detected:
             return "FP"
-        elif not llm_detected and designite_detected:
+        else:
             return "FN"
 
     def compute_confusion_matrix(self, llm_file: str, designite_file: str):
@@ -112,6 +152,7 @@ class InsufficientModularizationComparison:
 
     def generate_metrics_file(self, llm_file: str, designite_file: str):
         confusion_matrix = self.compute_confusion_matrix(llm_file, designite_file)
+
         TP = confusion_matrix["TP"]
         TN = confusion_matrix["TN"]
         FP = confusion_matrix["FP"]
@@ -132,7 +173,12 @@ class InsufficientModularizationComparison:
             }
         }
 
-        output_dir = self.base_path / "consolidated_detection" / self.project_name / "insufficient_modularization"
+        output_dir = (
+            self.base_path
+            / "consolidated_detection"
+            / self.project_name
+            / "insufficient_modularization"
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / "insufficient_modularization_metrics.json"
 
