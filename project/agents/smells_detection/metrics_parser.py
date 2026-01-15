@@ -37,8 +37,8 @@ class MetricsParser:
                 "nc": int(row.get("nc", 0)),
                 "dit": int(row.get("dit", 0)),
                 "lcom": float(row.get("lcom", 0)),
-                "fanin": int(row.get("fanin", 0)),
-                "fanout": int(row.get("fanout", 0)),
+                "fanin": int(row.get("fan-in", 0)),
+                "fanout": int(row.get("fan-out", 0)),
             },
             "dependencies": []
         }
@@ -110,31 +110,6 @@ class MetricsParser:
             for target_pkg in targets:
                 afferent[target_pkg] += 1
         return dict(afferent)
-
-    '''@staticmethod
-    def attach_dependencies(packages, package_dependencies, class_dependencies):
-        package_index = {pkg["package"]: pkg for pkg in packages}
-        valid_classes = {f'{pkg["package"]}.{cls["class"]}' for pkg in packages for cls in pkg["classes"]}
-
-        for source_pkg, targets in package_dependencies.items():
-            if source_pkg in package_index:
-                deps = set(package_index[source_pkg]["dependencies"])
-                deps.update(targets)
-                package_index[source_pkg]["dependencies"] = list(deps)
-                package_index[source_pkg]["metrics"]["Ce"] = len(deps)
-
-        afferent_coupling = MetricsParser.calculate_afferent_coupling(package_dependencies)
-
-        for pkg_name, pkg in package_index.items():
-            pkg["metrics"]["Ca"] = afferent_coupling.get(pkg_name, 0)
-
-        for pkg in packages:
-            for cls_obj in pkg["classes"]:
-                class_name = f'{pkg["package"]}.{cls_obj["class"]}'
-                raw_deps = class_dependencies.get(class_name, [])
-                cls_obj["dependencies"] = [dep for dep in raw_deps if dep in valid_classes]
-
-        return packages'''
     
     @staticmethod
     def attach_dependencies(packages, package_dependencies, class_dependencies):

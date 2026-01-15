@@ -33,10 +33,6 @@ def main():
             "classes_path": "data/repositories/gson/metrics/target;data/repositories/gson/test-jpms/target;data/repositories/gson/test-graal-native-image/target;data/repositories/gson/gson/target;data/repositories/gson/extras/target;data/repositories/gson/test-shrinker/target;data/repositories/gson/target;data/repositories/gson/proto/target"
         },
         {
-            "project_name": "jsoup",
-            "classes_path": "data/repositories/jsoup/target/classes"
-        },
-        {
             "project_name": "javaparser",
             "classes_path": "data/repositories/javaparser/javaparser-core/target;data/repositories/javaparser/javaparser-core-generators/target;data/repositories/javaparser/javaparser-core-metamodel-generator/target;data/repositories/javaparser/javaparser-core-serialization/target;data/repositories/javaparser/javaparser-core-testing/target;data/repositories/javaparser/javaparser-core-testing-bdd/target;data/repositories/javaparser/javaparser-symbol-solver-core/target;data/repositories/javaparser/javaparser-symbol-solver-testing/target;"
         },
@@ -49,24 +45,28 @@ def main():
             "classes_path": "data/repositories/jitwatch/core/target;data/repositories/jitwatch/ui/target"
         },
         {
+            "project_name": "jsoup",
+            "classes_path": "data/repositories/jsoup/target/classes"
+        },
+        {
             "project_name": "zxing",
             "classes_path": "data/repositories/zxing/target;data/repositories/zxing/core/target;data/repositories/zxing/javase/target"
         },
     ]
 
     smells_list = [
-        #{
-        #    "smell_name": "God Component",
-        #    "smell_definition": "when a component is **excessively** large either in terms of Lines Of Code or the number of classes.",
-        #},
-        #{
-        #    "smell_name": "Unstable Dependency",
-        #    "smell_definition": "This smell occurs when a package depends on other packages that are less stable than itself, violating the Stable Dependencies Principle."
-        #},
-        #{
-        #    "smell_name": "Insufficient Modularization",
-        #    "smell_definition": "when a class concentrates an **excessive** number of responsibilities, resulting in a large or complex implementation and an interface that is difficult to understand, use, or evolve.",
-        #},
+        {
+            "smell_name": "God Component",
+            "smell_definition": "when a component is **excessively** large either in terms of Lines Of Code or the number of classes.",
+        },
+        {
+            "smell_name": "Unstable Dependency",
+            "smell_definition": "This smell occurs when a package depends on other packages that are less stable than itself, violating the Stable Dependencies Principle."
+        },
+        {
+            "smell_name": "Insufficient Modularization",
+            "smell_definition": "when a class concentrates an **excessive** number of responsibilities, resulting in a large or complex implementation and an interface that is difficult to understand, use, or evolve.",
+        },
         {
             "smell_name": "Hublike Modularization",
             "smell_definition": "when an abstraction has dependencies (both incoming and outgoing) with a large number of other abstractions.",
@@ -74,26 +74,26 @@ def main():
     ]
 
     engines = [
-        #"gpt",
-        #"deepseek",
+        "gpt",
+        "deepseek",
         "qwen",
     ]
     
     ## Loop over projects
     for project_data in projects_list:
-
+        continue ## TODO: remove in the future
         ## 1. Create the Detecting Agent ##
         detector = DetectingAgent(**project_data)
 
         ## 2. Generate the input metrics JSON file
-        metrics_json = detector.collect_metrics()
+        #metrics_json = detector.collect_metrics()
 
         ## Loop over smells
         for smell in smells_list:
-            # 3. Generate Prompts
+            ## 3. Generate Prompts
             list_of_prompt_files = detector.generate_prompts(**smell)
 
-            # 4. Detect Smells
+            ## 4. Detect Smells
             for engine in engines:
                 detector.detect(smell["smell_name"], list_of_prompt_files, engine)
 
@@ -104,6 +104,7 @@ def main():
             "Hublike Modularization": HublikeModularizationComparison,
         }
 
+        ## 5. Generate consolidated results
         for engine in engines:
             for smell in smells_list:
                 smell_name = smell["smell_name"]

@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from utils.openrouter_engine import OpenRouterEngine
 
-
 class GodComponentDetector:
 
     def __init__(self, project_name: str):
