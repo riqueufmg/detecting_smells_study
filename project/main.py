@@ -81,12 +81,14 @@ def main():
     
     ## Loop over projects
     for project_data in projects_list:
-        continue ## TODO: remove in the future
+
         ## 1. Create the Detecting Agent ##
         detector = DetectingAgent(**project_data)
 
         ## 2. Generate the input metrics JSON file
-        #metrics_json = detector.collect_metrics()
+        metrics_json = detector.collect_metrics()
+        
+        continue ## TODO: remove in the future
 
         ## Loop over smells
         for smell in smells_list:

@@ -40,6 +40,7 @@ class MetricsParser:
                 "fanin": int(row.get("fan-in", 0)),
                 "fanout": int(row.get("fan-out", 0)),
             },
+            #"methods": [],
             "dependencies": []
         }
 
@@ -119,7 +120,7 @@ class MetricsParser:
 
         for source_pkg, targets in package_dependencies.items():
             if source_pkg in package_index:
-                valid_targets = [t for t in targets if t in package_index]  # somente pacotes válidos
+                valid_targets = [t for t in targets if t in package_index]
                 package_index[source_pkg]["dependencies"] = valid_targets
                 package_index[source_pkg]["metrics"]["Ce"] = len(valid_targets)
 
@@ -137,5 +138,57 @@ class MetricsParser:
                 class_name = f'{pkg["package"]}.{cls_obj["class"]}'
                 raw_deps = class_dependencies.get(class_name, [])
                 cls_obj["dependencies"] = [dep for dep in raw_deps if dep in valid_classes]
+
+        return packages
+    
+    @staticmethod
+    def parse_method_metrics(row):
+        def to_int(v, default=0):
+            try:
+                return int(v)
+            except Exception:
+                return default
+
+        is_test_raw = row.get("istest", 0)
+        try:
+            is_test = bool(int(is_test_raw))
+        except Exception:
+            is_test = bool(is_test_raw)
+
+        return {
+            "method_name": row.get("method", row.get("method_name")),
+            "metrics": {
+                "loc": to_int(row.get("loc", 0), 0),
+                "cc": to_int(row.get("cc", 0), 0),
+                "pc": to_int(row.get("pc", 0), 0),
+            },
+        }
+
+    @staticmethod
+    def attach_methods_to_classes(packages, method_rows):
+        class_index = {}
+        for pkg in packages:
+            for cls in pkg["classes"]:
+                cls.setdefault("methods", [])
+                class_index[(pkg["package"], cls["class"])] = cls
+
+        not_attached = 0
+
+        for row in method_rows:
+            pkg_name = row.get("package")
+            cls_name = row.get("class")
+
+            if pkg_name is None or cls_name is None:
+                not_attached += 1
+                continue
+
+            key = (pkg_name, cls_name)
+            if key in class_index:
+                class_index[key]["methods"].append(MetricsParser.parse_method_metrics(row))
+            else:
+                not_attached += 1
+
+        if not_attached:
+            print(f"Warning: {not_attached} métodos não foram anexados (package/class não encontrados).")
 
         return packages

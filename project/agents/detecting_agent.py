@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from pathlib import Path
 from .smells_detection.designite_runner import DesigniteRunner
+from .smells_detection.arcan_runner import ArcanRunner
 from .smells_detection.metrics_parser import MetricsParser
 
 from .smells_detection.god_component import GodComponentDetector
@@ -16,12 +17,14 @@ class DetectingAgent:
         self.project_name = project_name
         self.output_path = f"{os.getenv("OUTPUT_PATH")}/metrics/{project_name}"
         self.project_path = f"{os.getenv("REPOSITORIES_PATH")}/{project_name}"
-        self.runner = DesigniteRunner(self.project_path, self.output_path, classes_path)
+        self.designite = DesigniteRunner(self.project_path, self.output_path, classes_path)
+        self.arcan = ArcanRunner(self.project_path, self.output_path, classes_path)
 
     def collect_metrics(self):
         try:
-            self.runner.run()
-
+            self.designite.run()
+            self.arcan.run()
+            
             class_csv = Path(self.output_path) / "TypeMetrics.csv"
             method_csv = Path(self.output_path) / "MethodMetrics.csv"
             graph_path = Path(self.output_path) / "DependencyGraph.graphml"
@@ -36,6 +39,17 @@ class DetectingAgent:
             ]
 
             packages = MetricsParser.group_classes_by_package(class_dicts)
+
+            '''method_df = pd.read_csv(method_csv)
+            method_df, _ = MetricsParser.normalize_columns(method_df)
+
+            method_rows = [
+                row for row in method_df.to_dict(orient="records")
+                if "/test/" not in (row.get("file") or "")
+            ]
+
+            packages = MetricsParser.attach_methods_to_classes(packages, method_rows)'''
+
             package_dependencies, class_dependencies = MetricsParser.parser_dependencies(graph_path)
             packages = MetricsParser.attach_dependencies(packages, package_dependencies, class_dependencies)
 
