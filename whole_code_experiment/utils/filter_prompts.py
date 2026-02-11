@@ -155,7 +155,7 @@ class FilterPrompts:
     def sample_candidates(
         self,
         candidates_csv: Path,
-        sample_csv: Path,  # agora é o caminho completo do arquivo de saída
+        sample_csv: Path,
         sample_size: int = 100,
         ratio_positive: float = 0.1
     ):
