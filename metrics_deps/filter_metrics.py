@@ -1,16 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import csv
 import json
 import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-CSV_PATH = "im.csv"
+CSV_PATH = "hm.csv"
 METRICS_BASE = os.path.join("data", "processed", "metrics")
 OUT_BASE = os.path.join("data", "filter")
-
 
 def split_fqn(fqn: str) -> Tuple[str, str]:
     fqn = fqn.strip()
@@ -21,22 +17,14 @@ def split_fqn(fqn: str) -> Tuple[str, str]:
     cls = cls.strip()
     return (pkg, cls)
 
-
 def safe_filename(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", name.strip())
 
-
 def make_output_filename(repo_name: str, fqn: str) -> str:
-    """
-    Exemplo:
-    javaparser + com.example.Class
-    -> javaparser__com.example.Class.json
-    """
     repo_safe = safe_filename(repo_name)
     fqn_safe = safe_filename(fqn)
     #return f"{repo_safe}__{fqn_safe}.json"
     return f"{fqn_safe}.json"
-
 
 def load_project_metrics(repo_name: str) -> Optional[Dict[str, Any]]:
     path = os.path.join(METRICS_BASE, repo_name, "project_metrics.json")
@@ -44,7 +32,6 @@ def load_project_metrics(repo_name: str) -> Optional[Dict[str, Any]]:
         return None
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def find_class_blocks_only(project_metrics: Dict[str, Any], pkg: str, cls: str) -> List[Dict[str, Any]]:
     matches: List[Dict[str, Any]] = []
@@ -54,10 +41,8 @@ def find_class_blocks_only(project_metrics: Dict[str, Any], pkg: str, cls: str) 
                 matches.append(c)
     return matches
 
-
 def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
-
 
 def main() -> None:
     ensure_dir(OUT_BASE)
@@ -96,7 +81,6 @@ def main() -> None:
                 json.dump(payload, out, ensure_ascii=False, indent=2)
 
     print(f"Concluído. Todos os arquivos estão em: {OUT_BASE}")
-
 
 if __name__ == "__main__":
     main()

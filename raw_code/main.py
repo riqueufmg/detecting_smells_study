@@ -52,7 +52,7 @@ def main():
             list_of_prompt_files = detector.generate_prompts()
             print(f"Generated {len(list_of_prompt_files)} prompts for project {project}")
 
-            max_context_size = 100_000
+            max_context_size = 100_000_000
             list_of_prompt_files = sorted(output_path.glob("*.txt"))
 
             filter = FilterPrompts(max_context_size)
@@ -82,7 +82,7 @@ def main():
             sample_size=sample_size,
             ratio_positive=0.3
         )
-    exit()
+
     # 5. Detect Smells
 
     ## 5.1 God Component
