@@ -140,7 +140,7 @@ class MetricsParser:
                 cls_obj["dependencies"] = [dep for dep in raw_deps if dep in valid_classes]
 
         return packages'''
-    
+
     @staticmethod
     def attach_dependencies(packages: list[dict], package_dependencies: dict, class_dependencies: dict):
         package_index = {pkg["package"]: pkg for pkg in packages}
@@ -152,27 +152,34 @@ class MetricsParser:
             if pkg.get("package") and cls.get("class")
         }
 
-        # Package outgoing deps + Ce
-        for source_pkg, targets in package_dependencies.items():
-            if source_pkg in package_index:
-                valid_targets = [t for t in targets if t in package_index]
-                package_index[source_pkg]["dependencies"] = valid_targets
-                package_index[source_pkg]["metrics"]["Ce"] = len(valid_targets)
+        # -------------------------
+        # PACKAGES: outgoing (Ce) + incoming list (Ca)
+        # -------------------------
+        incoming_by_package = defaultdict(set)
 
-        # Package incoming deps + Ca
-        afferent_coupling = defaultdict(int)
         for source_pkg, targets in package_dependencies.items():
             if source_pkg not in package_index:
                 continue
-            for target_pkg in targets:
-                if target_pkg in package_index:
-                    afferent_coupling[target_pkg] += 1
 
+            # outgoing deps (Ce)
+            valid_targets = [t for t in targets if t in package_index]
+            package_index[source_pkg]["dependencies"] = valid_targets
+            package_index[source_pkg]["metrics"]["Ce"] = len(valid_targets)
+
+            # build reverse edges for incoming deps
+            for target_pkg in valid_targets:
+                incoming_by_package[target_pkg].add(source_pkg)
+
+        # attach incoming deps + Ca
         for pkg_name, pkg in package_index.items():
-            pkg["metrics"]["Ca"] = afferent_coupling.get(pkg_name, 0)
+            incoming = sorted(incoming_by_package.get(pkg_name, set()))
+            pkg.setdefault("dependents", [])     # NEW FIELD: packages that depend on this pkg (IN)
+            pkg["dependents"] = incoming
+            pkg["metrics"]["Ca"] = len(incoming)  # usually Ca = number of distinct incoming packages
 
-        # ---- Class deps (outgoing) filtered to valid classes
-        # Also build incoming deps (dependents)
+        # -------------------------
+        # CLASSES: outgoing deps + incoming list (dependents)
+        # -------------------------
         incoming_by_class = defaultdict(set)
 
         for pkg in packages:
@@ -182,20 +189,17 @@ class MetricsParser:
                 outgoing = [dep for dep in raw_deps if dep in valid_classes]
 
                 cls_obj["dependencies"] = outgoing
-                cls_obj.setdefault("dependents", [])  # NEW FIELD
+                cls_obj.setdefault("dependents", [])  # classes that depend on this class (IN)
 
-                # fill reverse edges
                 for dep in outgoing:
                     incoming_by_class[dep].add(class_name)
 
-        # Attach incoming deps to each class
         for pkg in packages:
             for cls_obj in pkg.get("classes", []):
                 class_name = f'{pkg["package"]}.{cls_obj["class"]}'
                 cls_obj["dependents"] = sorted(incoming_by_class.get(class_name, set()))
 
-        return packages
-    
+        return packages    
     @staticmethod
     def parse_method_metrics(row):
         def to_int(v, default=0):
