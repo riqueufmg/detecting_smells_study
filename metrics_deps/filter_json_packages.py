@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-CSV_PATH = os.path.join(BASE_DIR, "gc.csv")
+CSV_PATH = os.path.join(BASE_DIR, "ud.csv")
 METRICS_BASE = os.path.join(BASE_DIR, "data", "processed", "metrics")
 OUT_BASE = os.path.join(BASE_DIR, "data", "filter")
 
