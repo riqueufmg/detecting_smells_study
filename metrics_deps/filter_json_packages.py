@@ -57,9 +57,6 @@ def main() -> None:
     with open(CSV_PATH, "r", encoding="utf-8") as f:
         reader = csv.reader(f, delimiter=";")
 
-        # Se seu CSV tem cabeçalho, descomente:
-        # next(reader, None)
-
         for row in reader:
             if not row or len(row) < 3:
                 continue
