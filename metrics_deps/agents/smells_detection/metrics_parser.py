@@ -205,7 +205,7 @@ class MetricsParser:
 
             # Each item contains Ca/Ce/I OF THAT ITEM PACKAGE
             pkg["dependencies"] = [pkg_ref(t) for t in deps]
-            pkg["dependents"]   = [pkg_ref(s) for s in dents]
+            #pkg["dependents"]   = [pkg_ref(s) for s in dents]
 
         # -------------------------
         # 4) Keep your class-level deps/dependents (unchanged)
