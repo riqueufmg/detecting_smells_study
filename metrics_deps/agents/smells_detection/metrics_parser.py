@@ -153,32 +153,62 @@ class MetricsParser:
         }
 
         # -------------------------
-        # PACKAGES: outgoing (Ce) + incoming list (Ca)
+        # 1) Build outgoing + incoming sets (package level)
         # -------------------------
+        outgoing_by_package = defaultdict(set)
         incoming_by_package = defaultdict(set)
 
         for source_pkg, targets in package_dependencies.items():
             if source_pkg not in package_index:
                 continue
 
-            # outgoing deps (Ce)
-            valid_targets = [t for t in targets if t in package_index]
-            package_index[source_pkg]["dependencies"] = valid_targets
-            package_index[source_pkg]["metrics"]["Ce"] = len(valid_targets)
-
-            # build reverse edges for incoming deps
-            for target_pkg in valid_targets:
-                incoming_by_package[target_pkg].add(source_pkg)
-
-        # attach incoming deps + Ca
-        for pkg_name, pkg in package_index.items():
-            incoming = sorted(incoming_by_package.get(pkg_name, set()))
-            pkg.setdefault("dependents", [])     # NEW FIELD: packages that depend on this pkg (IN)
-            pkg["dependents"] = incoming
-            pkg["metrics"]["Ca"] = len(incoming)  # usually Ca = number of distinct incoming packages
+            valid_targets = [t for t in targets if t in package_index and t != source_pkg]
+            for t in valid_targets:
+                outgoing_by_package[source_pkg].add(t)
+                incoming_by_package[t].add(source_pkg)
 
         # -------------------------
-        # CLASSES: outgoing deps + incoming list (dependents)
+        # 2) Compute Ca/Ce/I for ALL packages
+        # -------------------------
+        def calc_I(ca: int, ce: int) -> float:
+            denom = ca + ce
+            return (ce / denom) if denom > 0 else 0.0  # escolha comum quando não há acoplamento
+
+        for pkg_name, pkg in package_index.items():
+            ce = len(outgoing_by_package.get(pkg_name, set()))
+            ca = len(incoming_by_package.get(pkg_name, set()))
+            I  = calc_I(ca, ce)
+
+            pkg.setdefault("metrics", {})
+            pkg["metrics"]["Ce"] = ce
+            pkg["metrics"]["Ca"] = ca
+            pkg["metrics"]["I"]  = round(I, 2)
+
+        # helper: return Ca/Ce/I for a referenced package (safe defaults)
+        def pkg_ref(pkg_name: str) -> dict:
+            ref = package_index.get(pkg_name)
+            if not ref:
+                return {"package": pkg_name, "Ca": 0, "Ce": 0, "I": 0.0}
+
+            m = ref.get("metrics", {})
+            ca = int(m.get("Ca", 0))
+            ce = int(m.get("Ce", 0))
+            I  = float(m.get("I", calc_I(ca, ce)))
+            return {"package": pkg_name, "Ca": ca, "Ce": ce, "I": round(I, 2)}
+
+        # -------------------------
+        # 3) Attach enriched lists for each package
+        # -------------------------
+        for pkg_name, pkg in package_index.items():
+            deps = sorted(outgoing_by_package.get(pkg_name, set()))
+            dents = sorted(incoming_by_package.get(pkg_name, set()))
+
+            # Each item contains Ca/Ce/I OF THAT ITEM PACKAGE
+            pkg["dependencies"] = [pkg_ref(t) for t in deps]
+            pkg["dependents"]   = [pkg_ref(s) for s in dents]
+
+        # -------------------------
+        # 4) Keep your class-level deps/dependents (unchanged)
         # -------------------------
         incoming_by_class = defaultdict(set)
 
@@ -189,7 +219,7 @@ class MetricsParser:
                 outgoing = [dep for dep in raw_deps if dep in valid_classes]
 
                 cls_obj["dependencies"] = outgoing
-                cls_obj.setdefault("dependents", [])  # classes that depend on this class (IN)
+                cls_obj.setdefault("dependents", [])
 
                 for dep in outgoing:
                     incoming_by_class[dep].add(class_name)
@@ -199,7 +229,8 @@ class MetricsParser:
                 class_name = f'{pkg["package"]}.{cls_obj["class"]}'
                 cls_obj["dependents"] = sorted(incoming_by_class.get(class_name, set()))
 
-        return packages    
+        return packages
+
     @staticmethod
     def parse_method_metrics(row):
         def to_int(v, default=0):
