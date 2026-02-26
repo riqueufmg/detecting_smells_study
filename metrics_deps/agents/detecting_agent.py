@@ -57,7 +57,7 @@ class DetectingAgent:
                 "project": Path(self.project_path).name,
                 "summary": {
                     "total_packages": len(packages),
-                    #"total_classes": sum(len(p["classes"]) for p in packages)
+                    "total_classes": sum(len(p["classes"]) for p in packages)
                 },
                 "packages": packages
             }
