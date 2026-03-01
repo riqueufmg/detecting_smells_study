@@ -1,0 +1,57 @@
+{
+  "smell_type": "unstable_dependency",
+  "level": "package",
+  "criteria": [
+    {
+      "id": "C1",
+      "description": "Compute a normalized stability (instability) metric for the subject package and for each dependency.",
+      "how_to_check": "1) For the subject package and every dependency collect: number of outgoing package-level dependencies (efferent coupling, Ce) and number of incoming package-level dependents (afferent coupling, Ca). 2) Compute instability I = Ce / (Ca + Ce). If Ca + Ce == 0 set I = 0 (no dependencies = maximally stable by coupling). I is in [0,1], higher means more unstable. 3) Scoring (0..5): compute package I_pkg. If I_pkg <= 0.2 score 0. If 0.2 < I_pkg <= 0.4 score 1. If 0.4 < I_pkg <= 0.6 score 2. If 0.6 < I_pkg <= 0.8 score 3. If 0.8 < I_pkg <= 0.95 score 4. If I_pkg > 0.95 score 5.",
+      "weight": 5
+    },
+    {
+      "id": "C2",
+      "description": "Direct dependency stability delta: measure how many direct dependencies are less stable than the package and by how much.",
+      "how_to_check": "1) For each direct dependency D compute instability I_D (see C1). 2) For each D compute delta = I_D - I_pkg. 3) Use the configured instability_delta margin (default 0.05): treat D as 'less stable' if delta >= instability_delta. 4) Aggregate deltas across all direct dependencies to derive a severity score as follows (0..5): 0 = no direct dependency with delta >= margin; 1 = 1 small delta (>=margin and <0.15); 2 = 2 small deltas or 1 medium delta (>=0.15 and <0.30); 3 = 3 medium deltas or 1 large delta (>=0.30 and <0.50); 4 = 4+ medium/large deltas or 1 very large delta (>=0.50); 5 = majority (>50%) of direct dependencies are less stable by >=0.15 or any direct dependency has delta >=0.75.",
+      "weight": 5
+    },
+    {
+      "id": "C3",
+      "description": "Transitive dependency instability: check whether transitive (indirect) dependencies are significantly less stable and could propagate instability.",
+      "how_to_check": "1) Traverse the dependency graph from the subject package to a configurable depth (default: unlimited / all reachable nodes) and compute instability I for each transitive dependency using C1. 2) For each transitive dependency compute delta = I_transitive - I_pkg. 3) Weight deltas by graph distance (e.g., multiply delta by (1 / distance)). 4) Scoring (0..4): 0 = no transitive dependency with weighted delta >= instability_delta; 1 = small aggregated weighted delta between instability_delta and 0.10; 2 = aggregated weighted delta between 0.10 and 0.25; 3 = aggregated weighted delta between 0.25 and 0.45; 4 = aggregated weighted delta > 0.45 or presence of a transitive dependency within distance 2 with delta >=0.30.",
+      "weight": 4
+    },
+    {
+      "id": "C4",
+      "description": "Version-stability and semantic-versioning risk: dependence on unstable (pre-1.0, alpha/beta) or frequently breaking versions while the subject package claims stability.",
+      "how_to_check": "1) For subject package and each dependency, collect published version strings and release metadata. 2) Determine stability indicators: semver major 0 (pre-1.0) or presence of pre-release labels (alpha, beta, rc) = unstable. 3) Compare subject package's indicated stability (e.g., published major >=1 and project's stability claims) to dependencies' version stability. 4) Scoring (0..3): 0 = no dependencies in unstable versions; 1 = 1 dependency in pre-1.0 or pre-release; 2 = multiple dependencies or a direct dependency in pre-release while subject is >=1.0; 3 = core/direct dependency in unstable version or dependency uses breaking-change-heavy version histories relative to subject.",
+      "weight": 3
+    },
+    {
+      "id": "C5",
+      "description": "Cyclic dependency and layering violations: the package participates in cycles or depends on lower-layer (less abstract) packages.",
+      "how_to_check": "1) Detect cycles in the package-level dependency graph that include the subject package. 2) If architecture layering metadata exists, determine layers for subject and dependencies; otherwise infer layers from naming/paths or responsibilities. 3) Identify violations where subject depends on packages in a lower layer or where cycles create mutual instability. 4) Scoring (0..4): 0 = no cycles and no layering violations; 1 = minor inferred layering concern (non-core module depends on lower utility); 2 = one short cycle (length 2-3) or explicit layering violation; 3 = multiple cycles or layering violations involving direct dependencies; 4 = deep or pervasive cycles that include core packages or many modules.",
+      "weight": 4
+    },
+    {
+      "id": "C6",
+      "description": "Dependency criticality: whether unstable dependencies are required for core functionality versus optional/plug-in features.",
+      "how_to_check": "1) Identify which imports/usages of each dependency are used by core code paths (startup, primary API, core business logic) versus optional features (plugins, tests, examples). 2) Methods: static code analysis for call-graph from public API, runtime instrumentation to see which modules are loaded for core flows, or review of build/feature flags. 3) Scoring (0..4): 0 = unstable dependencies only in optional/test code; 1 = non-critical or replaceable usage; 2 = some core functions use unstable deps but with clear abstraction/adapter; 3 = core API depends directly on unstable dependency without adapter; 4 = critical initialization or public contract depends on unstable package and there is no isolation.",
+      "weight": 4
+    },
+    {
+      "id": "C7",
+      "description": "Dependency health and churn: instability caused by dependencies that are poorly maintained, have high churn, or frequent breaking changes.",
+      "how_to_check": "1) For each dependency collect maintenance indicators: time since last release, number of releases per unit time, open critical issues, and frequency of breaking changes (major-version bumps). 2) Normalize indicators into a maintenance risk score between 0 and 1. 3) Consider a dependency 'high-churn' if it has recent frequent major bumps or unresolved critical issues. 4) Scoring (0..2): 0 = dependencies show healthy maintenance; 1 = some dependencies show moderate churn or a few unresolved important issues; 2 = one or more direct dependencies are high-churn or abandoned and used by core functionality.",
+      "weight": 2
+    }
+  ],
+  "decision_policy": {
+    "type": "score_threshold",
+    "threshold": 10,
+    "notes": "Aggregate the per-criterion scores (each criterion yields an integer score from 0 up to its weight as described in how_to_check). Sum all criterion scores to produce a total. If total >= threshold, classify the package as exhibiting the 'unstable_dependency' smell. Use the criterion-level outputs to prioritize remediation: higher-scoring criteria indicate more urgent actions. For borderline totals (within +/- 10% of threshold) consider manual review."
+  },
+  "margins": {
+    "instability_delta": 0.05,
+    "notes": "instability_delta is the minimum I_dep - I_pkg required to consider a dependency 'less stable' (default 0.05). Use this margin to avoid flagging insignificant numerical differences. Additional recommended tolerances: treat transitive checks to at least depth 3 for practical analysis; when version metadata is unavailable, fallback to repository activity and release cadence. Adjust instability_delta upward for noisy ecosystems or downward when small stability differences are critical."
+  }
+}
