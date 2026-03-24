@@ -2,7 +2,7 @@ import csv
 import json
 from pathlib import Path
 
-LLM = "deepseek"
+LLM = "qwen"
 BASE_DIR = Path("data/processed")
 CANDIDATES_DIR = BASE_DIR / "candidates_sampled"
 LLM_OUTPUTS_DIR = BASE_DIR / "llm_outputs"
@@ -55,11 +55,30 @@ def compute_metrics(tp, tn, fp, fn):
         else 0.0
     )
 
+    # Cohen's Kappa
+    if total:
+        p_observed = (tp + tn) / total
+
+        pred_positive = (tp + fp) / total
+        pred_negative = (tn + fn) / total
+        gold_positive = (tp + fn) / total
+        gold_negative = (tn + fp) / total
+
+        p_expected = (pred_positive * gold_positive) + (pred_negative * gold_negative)
+
+        if (1 - p_expected) == 0:
+            cohen_kappa = 0.0
+        else:
+            cohen_kappa = (p_observed - p_expected) / (1 - p_expected)
+    else:
+        cohen_kappa = 0.0
+
     return {
         "accuracy": round(accuracy, 3),
         "precision": round(precision, 3),
         "recall": round(recall, 3),
         "f1": round(f1, 3),
+        "cohen_kappa": round(cohen_kappa, 3),
     }
 
 
@@ -93,19 +112,16 @@ def build_entity_id(row: dict, smell_name: str, prompt_filename: str) -> str:
     For class-level smells (insufficient_modularization, hublike_modularization): return package.class if possible.
     Fallback to prompt filename decoding.
     """
-    # if CSV already has a good identifier, use it
     direct = first_nonempty(row, ["fqn", "entity", "qualified_name", "qualifiedName"])
     if direct:
         return direct
 
-    # Package-level smells
     if smell_name in {"god_component", "unstable_dependency"}:
         pkg = first_nonempty(row, ["package", "package_name", "pkg", "package_fqn"])
         if pkg:
             return pkg
         return fqn_from_prompt_filename(prompt_filename)
 
-    # Class-level smells
     pkg = first_nonempty(row, ["package", "package_name", "pkg", "package_fqn"])
     cls = first_nonempty(row, ["class", "class_name", "type", "classname", "className"])
 
@@ -153,8 +169,6 @@ def process_smell(smell_name: str, csv_name: str):
                 cls = "fn"
 
             context_size = safe_int(row.get("context_size"), default=-1)
-
-            # <-- FIX: build a meaningful identifier depending on smell level
             entity_id = build_entity_id(row, smell_name, prompt_file.name)
 
             samples.append(
@@ -162,7 +176,7 @@ def process_smell(smell_name: str, csv_name: str):
                     "smell": smell_name,
                     "classification": cls,
                     "context_size": context_size,
-                    "fqn": entity_id,  # keep column name for your plotting
+                    "fqn": entity_id,
                     "label": label,
                     "prediction": prediction,
                     "prompt_file": prompt_file.name,
@@ -208,21 +222,17 @@ def main():
         all_results[smell] = result
         all_samples.extend(samples)
 
-        # Preserved behavior
         output_file = OUTPUT_DIR / f"{smell}_results.json"
         with output_file.open("w", encoding="utf-8") as f:
             json.dump(result, f, indent=4)
 
-        # New: per-smell CSV details
         details_csv = OUTPUT_DIR / f"{smell}_samples_details.csv"
         write_samples_csv(details_csv, samples)
 
-    # Preserved behavior
     aggregated_file = OUTPUT_DIR / "all_smells_results.json"
     with aggregated_file.open("w", encoding="utf-8") as f:
         json.dump(all_results, f, indent=4)
 
-    # New: aggregated CSV details
     all_details_csv = OUTPUT_DIR / "all_samples_details.csv"
     write_samples_csv(all_details_csv, all_samples)
 

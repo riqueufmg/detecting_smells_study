@@ -32,8 +32,6 @@ def compute_metrics(tp, tn, fp, fn):
     precision = tp / (tp + fp) if (tp + fp) else 0.0
     recall = tp / (tp + fn) if (tp + fn) else 0.0
     f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
-    #specificity = tn / (tn + fp) if (tn + fp) else 0.0
-    #balanced_acc = (recall + specificity) / 2
 
     denom = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
     mcc = ((tp * tn - fp * fn) / denom) if denom else 0.0
@@ -46,11 +44,7 @@ def compute_metrics(tp, tn, fp, fn):
         "Precision": round(precision, 2),
         "Recall": round(recall, 2),
         "F1": round(f1, 2),
-        #"Specificity": round(specificity, 4),
-        #"Balanced_Accuracy": round(balanced_acc, 4),
         "MCC": round(mcc, 2),
-        #"Support_Positive": int(tp + fn),
-        #"Support_Negative": int(tn + fp),
     }
 
 def main():
@@ -71,8 +65,6 @@ def main():
         for smell in sorted(df[SMELL_COL].unique()):
             df_smell = df[df[SMELL_COL] == smell]
 
-            print(f"\n--- Smell: {smell} ---")
-
             for llm in LLM_COLS:
                 tp, tn, fp, fn = compute_confusion(
                     df_smell[GROUND_TRUTH_COL],
@@ -85,15 +77,10 @@ def main():
 
                 results.append(metrics)
 
-                print(f"\nLLM: {llm}")
-                for k, v in metrics.items():
-                    if k not in ["Smell", "LLM"]:
-                        print(f"{k}: {v}")
-
         results_df = pd.DataFrame(results)
-        results_df.to_csv(f"{file}_per_smell.csv", index=False)
+        results_df.to_csv(f"{file}.csv", index=False)
 
-        print(f"\nResults saved to {file}_per_smell.csv")
+        print(f"\nResults saved to {file}.csv")
 
 if __name__ == "__main__":
     main()

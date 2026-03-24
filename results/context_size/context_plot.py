@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 CSV_PATH = "prompts_context_size.csv"
-OUTPUT_DIR = "plots_context_size"
+OUTPUT_DIR = "."
 
 
 def load_data(csv_path):
@@ -101,7 +101,7 @@ def plot_context_size_by_smell(df, output_dir):
 
     plt.tight_layout()
 
-    out_file = Path(output_dir) / "context_size_by_smell_and_approach.png"
+    out_file = Path(output_dir) / "context_size.png"
     plt.savefig(out_file, dpi=300, bbox_inches="tight")
     plt.close()
 

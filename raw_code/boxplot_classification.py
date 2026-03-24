@@ -21,35 +21,29 @@ def main():
 
     BASE_DIR = Path("data/processed")
 
-    # input CSV per LLM (generated previously)
     INPUT_CSVS = {
         llm: (BASE_DIR / "results" / llm / "all_samples_details.csv")
         for llm in LLMS
     }
 
-    # output folder for combined plots (all llms in the same figure)
     PLOTS_DIR = BASE_DIR / "results" / "plots" / "all_llms_from_details"
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
     ORDER = ["tp", "tn", "fp", "fn"]
     SMELLS = ["god_component", "unstable_dependency", "insufficient_modularization", "hublike_modularization"]
 
-    # Load all rows once (for all LLMs)
     all_rows = []
     for llm, path in INPUT_CSVS.items():
         if not path.exists():
             raise FileNotFoundError(f"Input CSV not found: {path}")
         for r in read_rows(path):
-            r["_llm"] = llm  # keep which LLM generated this row
+            r["_llm"] = llm
             all_rows.append(r)
 
-    # Build one plot per smell, showing ALL LLMs grouped by classification (tp/tn/fp/fn)
     for smell in SMELLS:
 
-        # groups key: (classification, llm) -> list[context_size]
         groups = defaultdict(list)
 
-        # count per llm (useful sanity check)
         counts = defaultdict(int)
 
         for r in all_rows:
@@ -64,14 +58,12 @@ def main():
                 groups[(cls, llm)].append(ctx)
                 counts[(cls, llm)] += 1
 
-        # --- build data in the preferred order:
-        # tp(gpt,deepseek,qwen), tn(...), fp(...), fn(...)
         data = []
         tick_labels = []
         positions = []
 
         pos = 1
-        block_gap = 1.5  # space between tp/tn/fp/fn blocks
+        block_gap = 1.5
 
         for cls in ORDER:
             for llm in LLMS:
@@ -83,7 +75,6 @@ def main():
 
         plt.figure(figsize=(12, 5))
 
-        # NOTE: labels -> tick_labels to avoid MatplotlibDeprecationWarning
         plt.boxplot(
             data,
             positions=positions,
@@ -91,7 +82,6 @@ def main():
             showfliers=True
         )
 
-        # optional scatter points (helpful when some groups have few samples)
         for i, ys in enumerate(data):
             x = positions[i]
             xs = [x] * len(ys)
@@ -101,12 +91,11 @@ def main():
         plt.ylabel("context size")
         plt.title(f"{smell}: context_size by TP/TN/FP/FN (all LLMs)")
 
-        out_path = PLOTS_DIR / f"{smell}_boxplot_context_by_classification_all_llms.png"
+        out_path = PLOTS_DIR / f"{smell}_boxplot_classification_all_llms.png"
         plt.tight_layout()
         plt.savefig(out_path, dpi=200)
         plt.close()
 
-        # print a compact summary of counts
         parts = []
         for cls in ORDER:
             parts.append(

@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
+
 class GlobalSmellMetrics:
 
     def __init__(
@@ -39,15 +40,33 @@ class GlobalSmellMetrics:
         recall = TP / (TP + FN) if (TP + FN) else 0.0
         f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) else 0.0
 
+        # Cohen's Kappa
+        if total:
+            p_observed = (TP + TN) / total
+
+            pred_positive = (TP + FP) / total
+            pred_negative = (TN + FN) / total
+            gold_positive = (TP + FN) / total
+            gold_negative = (TN + FP) / total
+
+            p_expected = (pred_positive * gold_positive) + (pred_negative * gold_negative)
+
+            if (1 - p_expected) == 0:
+                kappa = 0.0
+            else:
+                kappa = (p_observed - p_expected) / (1 - p_expected)
+        else:
+            kappa = 0.0
+
         return {
             "accuracy": round(accuracy, 3),
             "precision": round(precision, 3),
             "recall": round(recall, 3),
             "f1": round(f1, 3),
+            "cohen_kappa": round(kappa, 3),
         }
 
     def _load_dict(self, path: Path) -> Dict[str, bool]:
-
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, list):
             raise ValueError(f"Expected a JSON list in {path}, got {type(data)}")
@@ -77,7 +96,6 @@ class GlobalSmellMetrics:
         return sorted([p for p in self.base_in.iterdir() if p.is_dir()])
 
     def _paths_for_project(self, project_dir: Path) -> Tuple[Path, Path]:
-
         base = project_dir / self.smell_dir / self.engine
         llm_path = base / f"{self.smell_dir}_llm.json"
         designite_path = base / f"{self.smell_dir}_designite.json"

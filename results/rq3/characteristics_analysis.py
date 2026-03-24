@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
-from itertools import combinations
 import argparse
+from itertools import combinations
+from pathlib import Path
 import pandas as pd
 
-CATEGORIES = [
+
+ARCH_COLS = [
     "size",
     "coupling",
     "stability",
@@ -13,8 +14,8 @@ CATEGORIES = [
     "structural complexity",
 ]
 
-DEFAULT_AUTHOR1 = "RQ3_author1 - samples.csv"
-DEFAULT_AUTHOR2 = "RQ3_author2 - samples.csv"
+WEAK_REASONING_COL = "weak reasoning"
+TEXT_COLS = ["id", "element", "detection", "smell", "llm", "approach", "justification"]
 
 
 def normalize_binary(value) -> int:
@@ -22,188 +23,324 @@ def normalize_binary(value) -> int:
         return 0
     if isinstance(value, (int, float)):
         return 0 if value == 0 else 1
+
     text = str(value).strip().lower()
-    if text in {"", "0", "false", "no", "n", "nao", "não"}:
+    positive = {"1", "x", "true", "yes", "y", "sim", "checked", "selected"}
+    negative = {"0", "", "false", "no", "n", "nao", "não", "none", "null"}
+
+    if text in positive:
+        return 1
+    if text in negative:
         return 0
     return 1
 
 
-def load_single_csv(path: Path) -> pd.DataFrame:
+def normalize_approach(text: str) -> str:
+    t = str(text).strip().lower()
+    if "raw" in t:
+        return "raw code"
+    if any(s in t for s in ["metric", "dep", "dependency"]):
+        return "metrics/deps"
+    return str(text).strip()
+
+
+def require_columns(df: pd.DataFrame, cols: list[str]) -> None:
+    missing = [c for c in cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}")
+
+
+def load_dataset(path: Path, include_weak_reasoning: bool = False) -> pd.DataFrame:
     df = pd.read_csv(path)
     df = df.drop(columns=[c for c in df.columns if str(c).startswith("Unnamed:")], errors="ignore")
 
-    required = {"id", "element", "smell", "llm", "approach"}.union(CATEGORIES)
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        raise ValueError(f"Missing columns in {path.name}: {missing}")
+    required = TEXT_COLS + ARCH_COLS
+    if include_weak_reasoning:
+        required.append(WEAK_REASONING_COL)
+    require_columns(df, required)
 
-    for col in CATEGORIES:
+    df = df[required].copy()
+
+    for col in ARCH_COLS:
         df[col] = df[col].apply(normalize_binary).astype(int)
+
+    if include_weak_reasoning and WEAK_REASONING_COL in df.columns:
+        df[WEAK_REASONING_COL] = df[WEAK_REASONING_COL].apply(normalize_binary).astype(int)
+
+    df["approach"] = df["approach"].apply(normalize_approach)
+    df["smell"] = df["smell"].astype(str).str.strip()
+    df["llm"] = df["llm"].astype(str).str.strip()
+    df["element"] = df["element"].astype(str).str.strip()
+    df["justification"] = df["justification"].fillna("").astype(str).str.strip()
 
     return df
 
 
-def merge_authors(a1: pd.DataFrame, a2: pd.DataFrame, mode: str) -> pd.DataFrame:
-    merged = a1.merge(a2, on="id", suffixes=("_a1", "_a2"), how="inner")
-    if merged.empty:
-        raise ValueError("No matching rows between author files using column 'id'.")
+def merge_strict(author1: pd.DataFrame, author2: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    a1 = author1.copy()
+    a2 = author2.copy()
 
-    result = pd.DataFrame()
-    result["id"] = merged["id"]
+    rename1 = {c: f"{c}_a1" for c in cols}
+    rename2 = {c: f"{c}_a2" for c in cols}
+    rename1.update({c: f"{c}_a1" for c in TEXT_COLS if c != "id"})
+    rename2.update({c: f"{c}_a2" for c in TEXT_COLS if c != "id"})
 
-    for meta in ["element", "smell", "llm", "approach", "detection", "justification"]:
-        c1 = f"{meta}_a1"
-        c2 = f"{meta}_a2"
-        if c1 in merged.columns:
-            result[meta] = merged[c1]
-            if c2 in merged.columns:
-                mismatch = merged[c1].astype(str) != merged[c2].astype(str)
-                if mismatch.any() and meta in {"element", "smell", "llm", "approach"}:
-                    print(f"[WARN] {mismatch.sum()} metadata mismatches in column '{meta}'. Using author1 values.")
+    a1 = a1.rename(columns=rename1)
+    a2 = a2.rename(columns=rename2)
 
-    for col in CATEGORIES:
-        c1 = merged[f"{col}_a1"]
-        c2 = merged[f"{col}_a2"]
-        if mode == "strict":
-            result[col] = ((c1 == 1) & (c2 == 1)).astype(int)
-        elif mode == "lenient":
-            result[col] = ((c1 == 1) | (c2 == 1)).astype(int)
-        elif mode == "author1":
-            result[col] = c1.astype(int)
-        elif mode == "author2":
-            result[col] = c2.astype(int)
-        else:
-            raise ValueError(f"Unsupported mode: {mode}")
+    merged = pd.merge(a1, a2, on="id", how="inner")
+    if len(merged) == 0:
+        raise ValueError("No matching rows found between author1 and author2 using column 'id'.")
 
-    return result
+    out = pd.DataFrame()
+    out["id"] = merged["id"]
+
+    # Prefer author1 metadata, but keep author2 versions for checking mismatches
+    for c in ["element", "detection", "smell", "llm", "approach", "justification"]:
+        out[c] = merged[f"{c}_a1"]
+
+    # Strict agreement on category columns
+    for c in cols:
+        out[c] = ((merged[f"{c}_a1"] == 1) & (merged[f"{c}_a2"] == 1)).astype(int)
+
+    # Add mismatch report columns for optional inspection
+    mismatch_rows = []
+    for c in ["element", "detection", "smell", "llm", "approach"]:
+        left = f"{c}_a1"
+        right = f"{c}_a2"
+        mismatches = (merged[left].astype(str) != merged[right].astype(str)).sum()
+        mismatch_rows.append((c, int(mismatches)))
+    mismatch_df = pd.DataFrame(mismatch_rows, columns=["field", "mismatch_count"])
+
+    return out, mismatch_df
 
 
-def category_summary(df: pd.DataFrame) -> pd.DataFrame:
-    rows = []
+def active_categories(row: pd.Series, cols: list[str]) -> list[str]:
+    return [c for c in cols if int(row[c]) == 1]
+
+
+def combination_label(categories: list[str]) -> str:
+    return "none" if not categories else " + ".join(categories)
+
+
+def build_combination_columns(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    out = df.copy()
+    out["active_categories"] = out.apply(lambda r: active_categories(r, cols), axis=1)
+    out["n_categories"] = out["active_categories"].apply(len)
+    out["combination"] = out["active_categories"].apply(combination_label)
+    return out
+
+
+def overall_summary(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     n = len(df)
-    for col in CATEGORIES:
+    rows = []
+    for col in cols:
         count = int(df[col].sum())
         rows.append({
             "category": col,
             "count": count,
-            "percentage": round((count / n) * 100, 2) if n else 0,
+            "percentage": round((count / n) * 100, 2) if n else 0.0,
+            "n_instances": n,
         })
     return pd.DataFrame(rows).sort_values(["count", "category"], ascending=[False, True])
 
 
-def combination_label(row: pd.Series) -> str:
-    labels = [col for col in CATEGORIES if row[col] == 1]
-    return " + ".join(labels) if labels else "none"
-
-
-def combination_summary(df: pd.DataFrame, top_n: int = 15) -> pd.DataFrame:
-    combo = df.apply(combination_label, axis=1)
-    out = combo.value_counts(dropna=False).reset_index()
-    out.columns = ["combination", "count"]
-    out["percentage"] = (out["count"] / len(df) * 100).round(2)
-    return out.head(top_n)
-
-
-def pair_summary(df: pd.DataFrame) -> pd.DataFrame:
+def summary_by_approach(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     rows = []
-    for a, b in combinations(CATEGORIES, 2):
-        count = int(((df[a] == 1) & (df[b] == 1)).sum())
-        rows.append({
-            "pair": f"{a} + {b}",
-            "count": count,
-            "percentage": round((count / len(df)) * 100, 2) if len(df) else 0,
-        })
-    return pd.DataFrame(rows).sort_values(["count", "pair"], ascending=[False, True])
-
-
-def breakdown_summary(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
-    rows = []
-    for group_value, group_df in df.groupby(group_col):
-        n = len(group_df)
-        for col in CATEGORIES:
-            count = int(group_df[col].sum())
+    for approach, g in df.groupby("approach", dropna=False):
+        n = len(g)
+        for col in cols:
+            count = int(g[col].sum())
             rows.append({
-                group_col: group_value,
+                "approach": approach,
                 "category": col,
                 "count": count,
-                "percentage": round((count / n) * 100, 2) if n else 0,
-                "n_items": n,
+                "percentage": round((count / n) * 100, 2) if n else 0.0,
+                "n_instances": n,
             })
-    return pd.DataFrame(rows).sort_values([group_col, "count", "category"], ascending=[True, False, True])
+    return pd.DataFrame(rows).sort_values(["approach", "count", "category"], ascending=[True, False, True])
+
+
+def combinations_by_approach(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
+    rows = []
+    for approach, g in df.groupby("approach", dropna=False):
+        n = len(g)
+        counts = g["combination"].value_counts(dropna=False)
+        for combo, count in counts.head(top_n).items():
+            rows.append({
+                "approach": approach,
+                "combination": combo,
+                "count": int(count),
+                "percentage": round((count / n) * 100, 2) if n else 0.0,
+                "n_instances": n,
+            })
+    return pd.DataFrame(rows).sort_values(["approach", "count", "combination"], ascending=[True, False, True])
+
+
+def pair_cooccurrence_by_approach(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
+    rows = []
+    for approach, g in df.groupby("approach", dropna=False):
+        pair_counter = {}
+        for _, row in g.iterrows():
+            cats = row["active_categories"]
+            for pair in combinations(cats, 2):
+                pair_counter[pair] = pair_counter.get(pair, 0) + 1
+        sorted_pairs = sorted(pair_counter.items(), key=lambda x: (-x[1], x[0]))
+        for (a, b), count in sorted_pairs[:top_n]:
+            rows.append({
+                "approach": approach,
+                "pair": f"{a} + {b}",
+                "count": int(count),
+                "percentage": round((count / len(g)) * 100, 2) if len(g) else 0.0,
+                "n_instances": len(g),
+            })
+    if not rows:
+        return pd.DataFrame(columns=["approach", "pair", "count", "percentage", "n_instances"])
+    return pd.DataFrame(rows).sort_values(["approach", "count", "pair"], ascending=[True, False, True])
+
+
+def summary_by_smell(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    rows = []
+    for smell, g in df.groupby("smell", dropna=False):
+        n = len(g)
+        for col in cols:
+            count = int(g[col].sum())
+            rows.append({
+                "smell": smell,
+                "category": col,
+                "count": count,
+                "percentage": round((count / n) * 100, 2) if n else 0.0,
+                "n_instances": n,
+            })
+    return pd.DataFrame(rows).sort_values(["smell", "count", "category"], ascending=[True, False, True])
+
+
+def summary_by_smell_and_approach(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    rows = []
+    for (smell, approach), g in df.groupby(["smell", "approach"], dropna=False):
+        n = len(g)
+        for col in cols:
+            count = int(g[col].sum())
+            rows.append({
+                "smell": smell,
+                "approach": approach,
+                "category": col,
+                "count": count,
+                "percentage": round((count / n) * 100, 2) if n else 0.0,
+                "n_instances": n,
+            })
+    return pd.DataFrame(rows).sort_values(
+        ["smell", "approach", "count", "category"],
+        ascending=[True, True, False, True]
+    )
+
+
+def smell_takeaways(df_smell_approach: pd.DataFrame, top_n: int = 2) -> pd.DataFrame:
+    rows = []
+    for (smell, approach), g in df_smell_approach.groupby(["smell", "approach"], dropna=False):
+        top = g.sort_values(["count", "category"], ascending=[False, True]).head(top_n)
+        cats = [f"{r['category']} ({int(r['count'])}; {r['percentage']}%)" for _, r in top.iterrows()]
+        rows.append({
+            "smell": smell,
+            "approach": approach,
+            "top_categories": " | ".join(cats)
+        })
+    return pd.DataFrame(rows).sort_values(["smell", "approach"])
+
+
+def top_examples_by_smell(df: pd.DataFrame, top_k_per_smell: int = 6, max_just_len: int = 550) -> pd.DataFrame:
+    rows = []
+    for smell, g in df.groupby("smell", dropna=False):
+        ranked = g.copy()
+        ranked["just_len"] = ranked["justification"].str.len()
+        ranked = ranked.sort_values(
+            by=["n_categories", "just_len", "approach", "llm", "id"],
+            ascending=[False, True, True, True, True]
+        ).head(top_k_per_smell)
+        for _, row in ranked.iterrows():
+            just = row["justification"]
+            if len(just) > max_just_len:
+                just = just[: max_just_len - 3] + "..."
+            rows.append({
+                "smell": smell,
+                "id": row["id"],
+                "element": row["element"],
+                "llm": row["llm"],
+                "approach": row["approach"],
+                "detection": row["detection"],
+                "combination": row["combination"],
+                "n_categories": row["n_categories"],
+                "justification": just,
+            })
+    return pd.DataFrame(rows).sort_values(["smell", "n_categories", "approach", "llm"], ascending=[True, False, True, True])
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Generate RQ3 qualitative analysis tables with strict dual-author mode.")
+    parser.add_argument("--input", help="Single input CSV.")
+    parser.add_argument("--author1", help="Author 1 CSV.")
+    parser.add_argument("--author2", help="Author 2 CSV.")
+    parser.add_argument("--mode", choices=["strict"], help="Dual-author merge mode.")
+    parser.add_argument("--output-dir", default="rq3_reasoning_outputs", help="Directory for generated CSV files.")
+    parser.add_argument("--include-weak-reasoning", action="store_true", help="Include weak reasoning as analysis category.")
+    parser.add_argument("--top-combinations", type=int, default=10)
+    parser.add_argument("--top-pairs", type=int, default=10)
+    parser.add_argument("--top-examples-per-smell", type=int, default=6)
+    return parser.parse_args()
+
+
+def build_dataset_from_args(args: argparse.Namespace, cols: list[str]) -> tuple[pd.DataFrame, pd.DataFrame | None, str]:
+    if args.input:
+        df = load_dataset(Path(args.input), include_weak_reasoning=args.include_weak_reasoning)
+        return df, None, f"single input: {args.input}"
+
+    if args.author1 and args.author2 and args.mode == "strict":
+        a1 = load_dataset(Path(args.author1), include_weak_reasoning=args.include_weak_reasoning)
+        a2 = load_dataset(Path(args.author2), include_weak_reasoning=args.include_weak_reasoning)
+        merged, mismatch_df = merge_strict(a1, a2, cols)
+        return merged, mismatch_df, f"strict mode: {args.author1} + {args.author2}"
+
+    raise ValueError("Use either --input FILE or --author1 FILE --author2 FILE --mode strict.")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Summarize RQ3 labels for Section 5.3.2 (Architectural aspects used in LLM reasoning)."
-    )
-    parser.add_argument("--author1", default=DEFAULT_AUTHOR1, help="CSV file for author 1 annotations")
-    parser.add_argument("--author2", default=DEFAULT_AUTHOR2, help="CSV file for author 2 annotations")
-    parser.add_argument(
-        "--mode",
-        choices=["strict", "lenient", "author1", "author2"],
-        default="author1",
-        help=(
-            "How to build the analysis dataset when two files are available: "
-            "strict=both marked, lenient=either marked, author1=use author1 labels, author2=use author2 labels. "
-            "For the paper, replace this with the final adjudicated labels when you finish disagreement resolution."
-        ),
-    )
-    parser.add_argument("--outdir", default="rq3_5232_outputs", help="Output directory")
-    args = parser.parse_args()
+    args = parse_args()
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    author1_path = Path(args.author1)
-    author2_path = Path(args.author2)
-    outdir = Path(args.outdir)
-    outdir.mkdir(parents=True, exist_ok=True)
+    cols = ARCH_COLS.copy()
+    if args.include_weak_reasoning:
+        cols.append(WEAK_REASONING_COL)
 
-    if not author1_path.exists():
-        raise FileNotFoundError(f"Author 1 file not found: {author1_path}")
+    df, mismatch_df, source_desc = build_dataset_from_args(args, cols)
+    df = build_combination_columns(df, cols)
 
-    a1 = load_single_csv(author1_path)
+    overall = overall_summary(df, cols)
+    by_approach = summary_by_approach(df, cols)
+    combos_by_approach = combinations_by_approach(df, top_n=args.top_combinations)
+    pairs_by_approach = pair_cooccurrence_by_approach(df, top_n=args.top_pairs)
+    by_smell = summary_by_smell(df, cols)
+    by_smell_approach = summary_by_smell_and_approach(df, cols)
+    takeaways = smell_takeaways(by_smell_approach)
+    examples = top_examples_by_smell(df, top_k_per_smell=args.top_examples_per_smell)
 
-    if author2_path.exists():
-        a2 = load_single_csv(author2_path)
-        analysis_df = merge_authors(a1, a2, args.mode)
-        source_note = f"two authors merged with mode='{args.mode}'"
-    else:
-        analysis_df = a1.copy()
-        source_note = "single author file (author2 not found)"
-        print("[WARN] Author 2 file not found. Using only author 1 labels.")
+    df.to_csv(output_dir / "dataset_used.csv", index=False, encoding="utf-8-sig")
+    overall.to_csv(output_dir / "overall_category_summary.csv", index=False, encoding="utf-8-sig")
+    by_approach.to_csv(output_dir / "categories_by_approach.csv", index=False, encoding="utf-8-sig")
+    combos_by_approach.to_csv(output_dir / "combinations_by_approach.csv", index=False, encoding="utf-8-sig")
+    pairs_by_approach.to_csv(output_dir / "pairs_by_approach.csv", index=False, encoding="utf-8-sig")
+    by_smell.to_csv(output_dir / "categories_by_smell.csv", index=False, encoding="utf-8-sig")
+    by_smell_approach.to_csv(output_dir / "categories_by_smell_and_approach.csv", index=False, encoding="utf-8-sig")
+    takeaways.to_csv(output_dir / "smell_takeaways.csv", index=False, encoding="utf-8-sig")
+    examples.to_csv(output_dir / "representative_examples_by_smell.csv", index=False, encoding="utf-8-sig")
+    if mismatch_df is not None:
+        mismatch_df.to_csv(output_dir / "metadata_mismatches_between_authors.csv", index=False, encoding="utf-8-sig")
 
-    overall = category_summary(analysis_df)
-    combos = combination_summary(analysis_df)
-    pairs = pair_summary(analysis_df)
-    by_smell = breakdown_summary(analysis_df, "smell")
-    by_llm = breakdown_summary(analysis_df, "llm")
-    by_approach = breakdown_summary(analysis_df, "approach")
-
-    overall.to_csv(outdir / "overall_category_summary.csv", index=False, encoding="utf-8-sig")
-    combos.to_csv(outdir / "top_combinations.csv", index=False, encoding="utf-8-sig")
-    pairs.to_csv(outdir / "pair_cooccurrence.csv", index=False, encoding="utf-8-sig")
-    by_smell.to_csv(outdir / "category_by_smell.csv", index=False, encoding="utf-8-sig")
-    by_llm.to_csv(outdir / "category_by_llm.csv", index=False, encoding="utf-8-sig")
-    by_approach.to_csv(outdir / "category_by_approach.csv", index=False, encoding="utf-8-sig")
-
-    print("\n=== RQ3 / Section 5.3.2 Summary ===")
-    print(f"Source: {source_note}")
-    print(f"Instances: {len(analysis_df)}")
-    print("\nOverall category usage:")
+    print(f"Source: {source_desc}")
+    print(f"Total instances: {len(df)}")
+    print(f"Output directory: {output_dir.resolve()}")
+    print("\n=== Overall category summary ===")
     print(overall.to_string(index=False))
-    print("\nMost common label combinations:")
-    print(combos.to_string(index=False))
-    print("\nTop co-occurring pairs:")
-    print(pairs.head(10).to_string(index=False))
-
-    print("\nSaved files:")
-    for name in [
-        "overall_category_summary.csv",
-        "top_combinations.csv",
-        "pair_cooccurrence.csv",
-        "category_by_smell.csv",
-        "category_by_llm.csv",
-        "category_by_approach.csv",
-    ]:
-        print(f"- {outdir / name}")
 
 
 if __name__ == "__main__":
