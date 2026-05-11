@@ -1,4 +1,7 @@
-# multiagent_refactoring
+## Clone Repositories
 
-jsoup, javaparser, commons-io use java 17.0.10
-others use java 23.0.2
+The file **projects.json** contains the list of repositories evaluated in our study.
+
+Run:
+
+>> python clone_repos.py

@@ -23,7 +23,7 @@ class DetectingAgent:
     def collect_metrics(self):
         try:
             self.designite.run()
-            self.arcan.run()
+            #self.arcan.run()
             
             class_csv = Path(self.output_path) / "TypeMetrics.csv"
             method_csv = Path(self.output_path) / "MethodMetrics.csv"

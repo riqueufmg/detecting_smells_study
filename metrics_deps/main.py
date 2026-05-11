@@ -77,6 +77,7 @@ def main():
         "gpt",
         "deepseek",
         "qwen",
+        "claude",
     ]
     
     ## Loop over projects
@@ -88,7 +89,7 @@ def main():
         ## 2. Generate the input metrics JSON file
         metrics_json = detector.collect_metrics()
         
-        continue ## TODO: remove in the future
+        #continue ## TODO: remove in the future
 
         ## Loop over smells
         for smell in smells_list:

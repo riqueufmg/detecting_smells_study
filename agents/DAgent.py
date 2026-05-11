@@ -1,68 +1,49 @@
+import util
 import os
-from dotenv import load_dotenv
-from langchain.chat_models import init_chat_model
-from langchain.agents.structured_output import ToolStrategy
-from langchain.agents import create_agent
-from dataclasses import dataclass
-from typing import List
 
-PLANNER_PROMPT = """
-God Component is a software design where a Java package is very large and has many responsibilities.
-
-Define a set of rules to detect God Component in package level.
-
-Constraints:
-- Consider size, coupling, cohesion and complexity.
-- Rules must be verifiable.
-- Define between 3 and 5 rules.
-"""
-
-@dataclass
-class ResponseFormat:
-    role_name: str
-    verification: str
-    weight: str | None = None
+from langgraph.graph import StateGraph, END
+from AgentState import AgentState
 
 class DAgent:
-    def __init__(self, api_key: str, model_name: str):
-        self.model = init_chat_model(
-            model_name,
-            temperature=0.1,
-        )
 
-        self.planner_agent = create_agent(
-            model=self.model,
-            system_prompt=PLANNER_PROMPT,
-            response_format=ToolStrategy(ResponseFormat),
-        )
+    def __init__(self, project_path):
+        self.project_path = project_path
+        self.run_path = os.environ.get("RUN_PATH")
+        self.agent_state = AgentState()
+        self.graph = self._setup_graph()
     
-    def run_planner_agent(self):
+    def init_node(self, state):
+        state.messages.append("Agent initialized.")
+        self.run_path = util.create_unique_dir()
+        return state
+    
+    def static_analysis_node(self, state):
+        try:
+            cmd_output = util._run_designite(self.project_path, self.run_path)
 
-        response = self.planner_agent.invoke({
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Generate the rules."
-                }
-            ]
-        })
+            state.analysis_result = cmd_output.stdout
+            state.analysis_run = True
+            state.messages.append("Designite analysis completed.")
 
-        return response["structured_response"]
+        except Exception as e:
+            state.analysis_run = False
+            state.messages.append(f"Error occurred during Designite analysis: {e}")
 
-def main():
-    load_dotenv()
+        return state
 
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    if not OPENAI_API_KEY:
-        raise SystemExit(
-            "OPENAI_API_KEY not found. Put it in .env (OPENAI_API_KEY=...) or export it in your shell." 
-        )
+    def _setup_graph(self):
+        graph = StateGraph(AgentState)
 
-    agents = DAgent(OPENAI_API_KEY, "gpt-5-mini")
+        graph.add_node("init", self.init_node)
+        graph.add_node("static_analysis", self.static_analysis_node)
 
-    response = agents.run_planner_agent()
+        graph.set_entry_point("init")
 
-    print(response)
+        graph.add_edge("init", "static_analysis")
+        graph.add_edge("static_analysis", END)
+        
+        return graph.compile()
 
-if __name__ == "__main__":
-    main()
+    def run(self):
+        final_state = self.graph.invoke(self.agent_state)
+        return final_state
