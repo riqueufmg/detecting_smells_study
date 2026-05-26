@@ -259,3 +259,54 @@ class UnstableDependencyDetector:
 
             with open(output_file, "w") as out_f:
                 out_f.write(response)
+    
+    def detect_claude(self, list_of_prompt_files):
+        valid_components_file = Path("data/samples/unstable_dependency.txt")
+
+        with open(valid_components_file, "r") as f:
+            valid_components = {
+                line.strip()
+                for line in f
+                if line.strip()
+            }
+
+        llm_config = {
+            "model": "anthropic/claude-haiku-4.5",
+            "max_input_tokens": 100000,
+            "max_output_tokens": 1000,
+            "temperature": 0.1
+        }
+
+        llm_engine = OpenRouterEngine(**llm_config)
+
+        output_dir = Path(
+                os.getenv("OUTPUT_PATH"),
+                "llm_outputs",
+                self.project_name,
+                "unstable_dependency",
+                "claude"
+            )
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        for prompt_file in list_of_prompt_files:
+
+            component_name = prompt_file.stem
+
+            # Executa somente se existir no TXT
+            if component_name not in valid_components:
+                print(f"Skipping (not in unstable_dependency.txt): {component_name}")
+                continue
+
+            output_file = output_dir / f"{prompt_file.stem}.txt"
+
+            if output_file.exists():
+                print(f"Output already exists: {output_file.name}")
+                continue
+
+            with open(prompt_file, "r") as f:
+                prompt_content = f.read()
+
+            response = llm_engine.generate(prompt_content)
+
+            with open(output_file, "w") as out_f:
+                out_f.write(response)
