@@ -139,7 +139,10 @@ class DetectingAgent:
                 detector.detect_claude(list_of_prompt_files)
                 print(f"The {smell_name} detection for {self.project_path} completed for engine {engine}.")
             else:
-                raise ValueError(f"Unknown engine: {engine}")
+                detector.detect_claude(list_of_prompt_files, engine)
+                print(f"The {smell_name} detection for {self.project_path} completed for engine {engine}.")
+            #else:
+            #    raise ValueError(f"Unknown engine: {engine}")
 
         except Exception as e:
             print(f"Error detecting smell {smell_name}: {e} for {self.project_path}")

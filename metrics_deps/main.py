@@ -77,7 +77,7 @@ def main():
         #"gpt",
         #"deepseek",
         #"qwen",
-        "claude",
+        "kimik3",
     ]
     
     ## Loop over projects
@@ -97,10 +97,8 @@ def main():
             ## 4. Detect Smells
             for engine in engines:
                 detector.detect(smell["smell_name"], list_of_prompt_files, engine)
-
-        continue
         
-        smell_classes_map = {
+        '''smell_classes_map = {
             "God Component": GodComponentComparison,
             "Unstable Dependency": UnstableDependencyComparison,
             "Insufficient Modularization": InsufficientModularizationComparison,
@@ -123,7 +121,7 @@ def main():
                 designite_file_path = f"{base_path}/{smell_name.lower().replace(' ', '_')}_designite.json"
 
                 metrics_file = consolidator.generate_metrics_file(llm_file_path, designite_file_path)
-                print(f"[{smell_name}][{engine}] Metrics file created at: {metrics_file}")
+                print(f"[{smell_name}][{engine}] Metrics file created at: {metrics_file}")'''
 
 if __name__ == "__main__":
     main()
