@@ -104,3 +104,37 @@ class Inference:
 
             with open(output_file, "w") as out_f:
                 out_f.write(response)
+
+    def detect_kimik3(self, list_of_prompt_files):
+            llm_config = {
+                "model": "moonshotai/kimi-k3",
+                "max_input_tokens": 100_000,
+                "max_output_tokens": 8192,
+                "temperature": 0.1
+            }
+    
+            llm_engine = OpenRouterEngine(**llm_config)
+    
+            output_dir = Path(
+                    os.getenv("OUTPUT_PATH"),
+                    "llm_outputs",
+                    self.smell,
+                    "kimi-k3"
+            )
+            output_dir.mkdir(parents=True, exist_ok=True)
+    
+            for prompt_file in list_of_prompt_files:
+    
+                output_file = output_dir / f"{prompt_file.stem}.txt"
+    
+                if output_file.exists():
+                    print(f"Output already exists: {output_file.name}")
+                    continue
+    
+                with open(prompt_file, "r") as f:
+                    prompt_content = f.read()
+    
+                response = llm_engine.generate(prompt_content)
+    
+                with open(output_file, "w") as out_f:
+                    out_f.write(response)

@@ -6,6 +6,23 @@ from utils.unstable_dependency import UnstableDependencyComparison
 from utils.insufficient_modularization import InsufficientModularizationComparison
 from utils.hublike_modularization import HublikeModularizationComparison
 
+from pathlib import Path
+
+def get_prompt_files(project_name: str, smell_name: str) -> list[Path]:
+    smell_dir = smell_name.lower().replace(" ", "_")
+
+    prompts_dir = (
+        Path("data/processed/prompts/smell_detection")
+        / smell_dir
+        / project_name
+    )
+
+    if not prompts_dir.exists():
+        print(f"[WARNING] Prompt directory not found: {prompts_dir}")
+        return []
+
+    return sorted(prompts_dir.glob("*.txt"))
+
 def main():
 
     load_dotenv()
@@ -63,21 +80,21 @@ def main():
         #    "smell_name": "Unstable Dependency",
         #    "smell_definition": "This smell occurs when a package depends on other packages that are less stable than itself, violating the Stable Dependencies Principle."
         #},
-        {
-            "smell_name": "Insufficient Modularization",
-            "smell_definition": "when a class concentrates an **excessive** number of responsibilities, resulting in a large or complex implementation and an interface that is difficult to understand, use, or evolve.",
-        },
         #{
-        #    "smell_name": "Hublike Modularization",
-        #    "smell_definition": "when an abstraction has dependencies (both incoming and outgoing) with a large number of other abstractions.",
-        #}
+        #    "smell_name": "Insufficient Modularization",
+        #    "smell_definition": "when a class concentrates an **excessive** number of responsibilities, resulting in a large or complex implementation and an interface that is difficult to understand, use, or evolve.",
+        #},
+        {
+            "smell_name": "Hublike Modularization",
+            "smell_definition": "when an abstraction has dependencies (both incoming and outgoing) with a large number of other abstractions.",
+        }
     ]
 
     engines = [
         #"gpt",
         #"deepseek",
         #"qwen",
-        "kimik3",
+        "kimi-k3",
     ]
     
     ## Loop over projects
@@ -92,11 +109,27 @@ def main():
         ## Loop over smells
         for smell in smells_list:
             ## 3. Generate Prompts
-            list_of_prompt_files = detector.generate_prompts(**smell)
+            #detector.generate_prompts(**smell)
 
-            ## 4. Detect Smells
+            ## 4. Get generated prompts directly from directory
+            list_of_prompt_files = get_prompt_files(
+                project_data["project_name"],
+                smell["smell_name"]
+            )
+
+            print(
+                f"[{project_data['project_name']}] "
+                f"[{smell['smell_name']}] "
+                f"{len(list_of_prompt_files)} prompts found."
+            )
+
+            ## 5. Detect Smells
             for engine in engines:
-                detector.detect(smell["smell_name"], list_of_prompt_files, engine)
+                detector.detect(
+                    smell["smell_name"],
+                    list_of_prompt_files,
+                    engine
+                )
         
         '''smell_classes_map = {
             "God Component": GodComponentComparison,
@@ -105,7 +138,7 @@ def main():
             "Hublike Modularization": HublikeModularizationComparison,
         }
 
-        ## 5. Generate consolidated results
+        ## 6. Generate consolidated results
         for engine in engines:
             for smell in smells_list:
                 smell_name = smell["smell_name"]

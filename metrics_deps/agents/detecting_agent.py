@@ -135,11 +135,8 @@ class DetectingAgent:
             elif engine == "qwen":
                 detector.detect_qwen(list_of_prompt_files)
                 print(f"The {smell_name} detection for {self.project_path} completed for engine {engine}.")
-            elif engine == "claude":
-                detector.detect_claude(list_of_prompt_files)
-                print(f"The {smell_name} detection for {self.project_path} completed for engine {engine}.")
             else:
-                detector.detect_claude(list_of_prompt_files, engine)
+                detector.detect_openrouter(list_of_prompt_files, engine)
                 print(f"The {smell_name} detection for {self.project_path} completed for engine {engine}.")
             #else:
             #    raise ValueError(f"Unknown engine: {engine}")
