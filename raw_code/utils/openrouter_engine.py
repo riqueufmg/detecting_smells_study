@@ -9,8 +9,8 @@ class OpenRouterEngine:
         self,
         model: str,
         max_input_tokens: int = 100_000,
-        max_output_tokens: int = 4096,
-        temperature: float = 0.2
+        max_output_tokens: int = 8192,
+        temperature: float = 0.1
     ):
         self.model = model
         self.max_input_tokens = max_input_tokens

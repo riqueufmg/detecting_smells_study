@@ -25,15 +25,14 @@ def main():
     ]
 
     smell_list = [
-        #"God Component",
-        #"Unstable Dependency",
+        "God Component",
+        "Unstable Dependency",
         "Insufficient Modularization",
-        #"Hublike Modularization"
+        "Hublike Modularization"
     ]
 
     ## Project by project
     for project in projects_list:
-        break ## REMOVE
         for smell in smell_list:
 
             ## 1. Generate prompts
@@ -60,15 +59,14 @@ def main():
             filter.save_context_sizes_csv(list_of_prompt_files, output_path)
 
     ## 3. Generate the candidates
-    # filter.merge_all_candidates(projects_list) REMOVE comment
+    filter.merge_all_candidates(projects_list)
 
     ## 4. Select samples
-    #candidates_dir = Path("data/processed/candidates") REMOVE comment
-    #sample_dir = Path("data/processed/candidates_sampled") REMOVE comment
-    #sample_dir.mkdir(parents=True, exist_ok=True) REMOVE comment
+    candidates_dir = Path("data/processed/candidates")
+    sample_dir = Path("data/processed/candidates_sampled")
+    sample_dir.mkdir(parents=True, exist_ok=True)
 
     for smell_name in smell_list:
-        break ## REMOVE
         input_csv = candidates_dir / f"{smell_name.replace(' ', '_').lower()}.csv"
         output_csv = sample_dir / f"{smell_name.replace(' ', '_').lower()}_sample.csv"
 
@@ -87,7 +85,7 @@ def main():
     # 5. Detect Smells
 
     ## 5.1 God Component
-    '''candidates_csv = Path("data/processed/candidates_sampled/god_component_sample.csv")
+    candidates_csv = Path("data/processed/candidates_sampled/god_component_sample.csv")
 
     list_of_prompt_files = []
     with open(candidates_csv, "r", encoding="utf-8") as f:
@@ -103,10 +101,10 @@ def main():
     inference.detect_gpt(list_of_prompt_files)
     inference.detect_qwen(list_of_prompt_files)
     inference.detect_deepseek(list_of_prompt_files)
-    inference.detect_kimik3(list_of_prompt_files)'''
+    inference.detect_kimik3(list_of_prompt_files)
 
     # 5.2 Unstable Dependency
-    #candidates_csv = Path("data/processed/candidates_sampled/unstable_dependency_sample.csv")
+    candidates_csv = Path("data/processed/candidates_sampled/unstable_dependency_sample.csv")
     candidates_csv = Path("data/sample/UD.csv")
 
     list_of_prompt_files = []
@@ -120,13 +118,13 @@ def main():
     print(f"Loaded {len(list_of_prompt_files)} prompt files for Unstable Dependency.")
 
     inference = Inference("unstable_dependency")
-    #inference.detect_gpt(list_of_prompt_files)
-    #inference.detect_qwen(list_of_prompt_files)
-    #inference.detect_deepseek(list_of_prompt_files)
+    inference.detect_gpt(list_of_prompt_files)
+    inference.detect_qwen(list_of_prompt_files)
+    inference.detect_deepseek(list_of_prompt_files)
     inference.detect_kimik3(list_of_prompt_files)
 
     # 5.3 Insufficient Modularization
-    '''candidates_csv = Path("data/processed/candidates_sampled/insufficient_modularization_sample.csv")
+    candidates_csv = Path("data/processed/candidates_sampled/insufficient_modularization_sample.csv")
 
     list_of_prompt_files = []
     with open(candidates_csv, "r", encoding="utf-8") as f:
@@ -142,10 +140,10 @@ def main():
     inference.detect_gpt(list_of_prompt_files)
     inference.detect_qwen(list_of_prompt_files)
     inference.detect_deepseek(list_of_prompt_files)
-    inference.detect_kimik3(list_of_prompt_files)'''
+    inference.detect_kimik3(list_of_prompt_files)
 
     # 5.4 Hub-like Modularization
-    '''candidates_csv = Path("data/processed/candidates_sampled/hublike_modularization_sample.csv")
+    candidates_csv = Path("data/processed/candidates_sampled/hublike_modularization_sample.csv")
 
     list_of_prompt_files = []
     with open(candidates_csv, "r", encoding="utf-8") as f:
@@ -158,10 +156,10 @@ def main():
     print(f"Loaded {len(list_of_prompt_files)} prompt files for Hublike Modularization.")
 
     inference = Inference("hublike_modularization")
-    #inference.detect_gpt(list_of_prompt_files)
-    #inference.detect_qwen(list_of_prompt_files)
-    #inference.detect_deepseek(list_of_prompt_files)
-    inference.detect_kimik3(list_of_prompt_files)'''
+    inference.detect_gpt(list_of_prompt_files)
+    inference.detect_qwen(list_of_prompt_files)
+    inference.detect_deepseek(list_of_prompt_files)
+    inference.detect_kimik3(list_of_prompt_files)
 
 if __name__ == "__main__":
     main()
