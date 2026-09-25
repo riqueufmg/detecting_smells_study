@@ -1,0 +1,242 @@
+[
+  {
+    "repository": "commons-io",
+    "target": "org.apache.commons.io.CloseableURLConnection",
+    "detection": false,
+    "justification": "Although CloseableURLConnection declares a large number of methods (~40), it does not exhibit Insufficient Modularization. The class has a single, well-defined, and cohesive responsibility: adapting a URLConnection to the AutoCloseable interface by acting as a delegating decorator. Every method is a trivial one-line delegation to the wrapped urlConnection instance (e.g., getContent(), getInputStream(), setRequestProperty()), plus two static factory methods and a close() implementation. There is no excessive complexity, no accumulated state (a single final field), and no mixing of unrelated responsibilities. The bloated-looking interface is an inherent consequence of the Decorator pattern, which must mirror the full public API of the wrapped URLConnection abstract class; decomposing it further would break the contract of extending URLConnection and would not improve cohesion, understandability, or maintainability. Furthermore, the class is package-private and final, limiting its scope and coupling. Therefore, its size is justified by its role and does not represent an inadequately decomposed abstraction."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.ast.modules.ModuleOpensDirective",
+    "detection": false,
+    "justification": "The class represents a single, well-defined abstraction (an 'opens' directive in module-info.java) and does not exhibit excessive size, complexity, or a bloated interface. It declares only two fields (name and moduleNames) that are intrinsic to the abstraction. The majority of its methods are auto-generated boilerplate (annotated with @Generated) supporting the visitor pattern (accept), property accessors (getName/setName, getModuleNames/setModuleNames), AST manipulation (remove, replace, clone), type-casting helpers (isModuleOpensDirective, asModuleOpensDirective, etc.), and metamodel access (getMetaModel). These methods are small, cohesive, and consistent with the design of sibling AST node classes in the com.github.javaparser.ast.modules package. Responsibilities are properly delegated to the superclass ModuleDirective and interfaces such as NodeWithName, so there is no concentration of unrelated responsibilities that would require further decomposition."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.ast.body.ConstructorDeclaration",
+    "detection": false,
+    "justification": "The class is a focused AST node representing a constructor declaration and does not exhibit excessive size, complexity, or a bloated interface. It declares only one own field (body) and delegates the bulk of callable state and behavior (modifiers, annotations, type parameters, name, parameters, thrown exceptions, receiver parameter) to the CallableDeclaration superclass. Capabilities are composed through narrow, cohesive interfaces (NodeWithBlockStmt, NodeWithAccessModifiers, NodeWithJavadoc, NodeWithSimpleName, NodeWithParameters, NodeWithThrownExceptions, NodeWithTypeParameters, Resolvable), indicating separation rather than concentration of responsibilities. Many methods are @Generated infrastructure boilerplate for the visitor pattern, cloning, metamodel access, node replacement, and type-casting, which are idiomatic for this AST framework rather than symptoms of poor decomposition. The remaining domain logic is small and cohesive (get/setBody, getDeclarationAsString, toDescriptor, resolve), so the abstraction is adequately modularized."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.symbolsolver.resolution.typeinference.BoundSet",
+    "detection": true,
+    "justification": "BoundSet is a large, low-cohesion class that concentrates several distinct responsibilities that could be decomposed into separate abstractions. It simultaneously acts as a container of Bound objects (withBound, incorporate, equals/hashCode/toString), an engine for deriving implied bounds under JLS §18.3 (deriveImpliedBounds with many complementary-pair and capture-conversion rules), a resolution engine for JLS §18.4 (performResolution), a dependency-graph builder (VariableDependency, allInferenceVariables, hasInstantiationFor, getInstantiationFor, transitive dependency expansion), and a combinatorial subset utility (buildAllSubsetsOfSize, allButOne, smallestSetWithProperty, allPossibleSetsWithProperty, thereAreProperSubsets, isTheFirstAProperSubsetOfTheSecond, allSetsWithProperty). The methods deriveImpliedBounds and performResolution are excessively long and encode many specification rules inline, while generic helpers such as forEachPairSameAs/forEachPairSameAndSubtype/forEachPairSubtypeAndSubtype and subset-generation logic are reusable services rather than intrinsic state behavior. The public/private interface is bloated and the class contains multiple unsupported/placeholder paths, indicating an abstraction that has not been adequately decomposed into smaller cohesive collaborators such as BoundIncorporation, ImpliedBoundDerivation, ResolutionPlanner, DependencyGraph, and SubsetSelector."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.ast.visitor.HashCodeVisitor",
+    "detection": false,
+    "justification": "Although the class is large (~95 visit methods), its size is a direct consequence of the Visitor design pattern: it implements GenericVisitor<Integer, Void>, which contractually requires one visit method for every node type in the JavaParser AST hierarchy. The class has a single, well-defined responsibility — computing a deep hash code for a node by recursively combining the hash codes of its properties and children — so no unrelated responsibilities are concentrated here. Each method is short, homogeneous, and follows an identical simple pattern (multiplying child hash codes by 31 and summing), resulting in minimal per-method complexity and high cohesion. The effective public interface is minimal (the static hashCode(Node) entry point plus the pattern-mandated visit callbacks), so the interface is not bloated by design. Further decomposition (e.g., extracting classes by node category) would break the Visitor pattern, fragment a single cohesive responsibility, and add indirection without improving understandability or maintainability. Therefore, the size does not stem from inadequate decomposition, and the smell is not present."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.resolution.logic.MethodResolutionLogic",
+    "detection": true,
+    "justification": "The class exhibits clear signs of Insufficient Modularization: (1) Excessive size — it spans roughly 1000 lines of code with around 30 methods, making it difficult to understand and maintain. (2) Multiple distinct responsibilities are concentrated in a single abstraction: method applicability checking (isApplicable overloads), type assignability verification (isAssignableMatchTypeParameters, isAssignableMatchTypeParametersMatchingQName), type inference (inferTypes, matchTypeVariable), type parameter substitution (replaceTypeParam, substituteTypeVariables, substituteDeclaringTypeParameters), variadic argument handling (groupVariadicParamValues, groupTrailingArgumentsIntoArray, convertToVariadicParameter), method specificity comparison (isMoreSpecific overloads, isExactMatch), lambda compatibility checking (isConflictingLambdaType), and generic utilities (distinctByKey, isJavaLangObject, getLastParameterIndex). (3) Bloated interface — numerous public static entry points (isApplicable x2, findMostApplicable x2, findMostApplicableUsage, isAssignableMatchTypeParameters x2, replaceTypeParam, inferTypes, solveMethodInType x2, getMethodsExplicitAndVariadicParameterType, getMethodUsageExplicitAndVariadicParameterType, isExactMatch) expose a large surface area that couples many clients to one class. (4) Several methods are long and highly complex with deep nesting and many conditional branches (e.g., the private isApplicable, the MethodUsage-based isApplicable, isMoreSpecific, findMostApplicable, inferTypes), indicating they embed sub-algorithms that could be extracted. These responsibilities could be decomposed into smaller, cohesive abstractions (e.g., an applicability checker, a type inference engine, a type parameter substitutor, a variadic handler, and a specificity comparator), but instead the class acts as a monolithic catch-all for method resolution logic."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.symbolsolver.javassistmodel.JavassistMethodDeclaration",
+    "detection": false,
+    "justification": "The class is small and cohesive, acting primarily as an adapter between Javassist CtMethod instances and the ResolvedMethodDeclaration abstraction. Its methods are short, focused on method-declaration responsibilities, and delegate parameter, return-type, exception, and type-parameter handling to JavassistMethodLikeDeclarationAdapter and MethodDeclarationCommonLogic. It does not exhibit excessive size, complexity, or a bloated interface requiring further decomposition."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserClassDeclaration",
+    "detection": true,
+    "justification": "The class is large (~400 LOC) and exposes a bloated interface of ~30 public methods that span multiple, separable responsibilities: (1) AST-to-model adaptation (getWrappedNode, toAst, accessSpecifier); (2) symbol/method/type resolution (solveMethod in two overloads, solveMethodAsUsage, solveType, solveSymbol, getContext); (3) type hierarchy computation (getSuperClass, getInterfaces, getAncestors, isAncestor, canBeAssignedTo, isAssignableBy); (4) member adaptation with type-parameter substitution (getAllFields, which builds an anonymous ResolvedFieldDeclaration wrapper inline); (5) annotation handling (hasDirectlyAnnotation, getDeclaredAnnotations); and (6) low-level type reference construction (toReferenceType, containing intricate resolution fallback logic). The code itself acknowledges this design debt: the deprecated getContext() and solveType() carry comments stating that 'the context is an implementation detail that should not be exposed' and that 'Resolution should move out of declarations, so that they are pure declarations and the resolution should work for JavaParser, Reflection and Javassist classes in the same way,' explicitly recognizing that declaration and resolution concerns are improperly fused in this abstraction. Although part of the type-query behavior is delegated to JavaParserTypeAdapter, substantial resolution and hierarchy logic (getAllFields, getAncestors, canBeAssignedTo, solveType, toReferenceType) remains embedded in the class, keeping it large, complex, and difficult to understand and evolve. These elements indicate the abstraction has not been adequately decomposed into smaller, more cohesive collaborators (e.g., dedicated resolution, hierarchy, and member-adaptation components)."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.ast.type.PrimitiveType",
+    "detection": false,
+    "justification": "The class has a single, well-defined responsibility: representing a primitive type node in the JavaParser AST. It is already adequately decomposed: the set of primitive kinds and their associated data (boxed type name, descriptor, code representation) are encapsulated in the nested Primitive enum, while common AST node behavior (annotations, ranges, observation) is inherited from the Type base class. The public interface is not bloated; most members are small, cohesive overrides or generated boilerplate required by the framework (visitor accept methods, clone, getMetaModel, type-casting helpers such as isPrimitiveType/asPrimitiveType/toPrimitiveType, and resolve/convertToUsage). The static factory methods (intType, booleanType, etc.) are thin convenience constructors rather than additional responsibilities. The class is moderate in size, low in complexity, and its methods are cohesive around the primitive-type abstraction, so there is no concentration of unrelated responsibilities that would warrant further decomposition."
+  },
+  {
+    "repository": "commons-lang",
+    "target": "org.apache.commons.lang3.mutable.MutableFloat",
+    "detection": false,
+    "justification": "MutableFloat represents a single, well-defined abstraction: a mutable wrapper for a primitive float. It maintains only one piece of state (the 'value' field) and every method is directly cohesive with that state, including constructors, accessors (getValue/setValue, toFloat), Number conversions (intValue, longValue, floatValue, doubleValue), arithmetic operations (add, subtract, increment, decrement and their get/and-get variants), state checks (isNaN, isInfinite), and standard object protocol methods (equals, hashCode, compareTo, toString). Although the public interface contains many methods, they are all short, low-complexity operations required by the Number, Comparable, and Mutable contracts or provided as symmetric convenience overloads (float vs. Number parameters). There is no mixture of unrelated responsibilities, no excessive complexity, and no subset of behavior that could be extracted into a smaller, more cohesive abstraction. Therefore, the class is adequately modularized and does not exhibit the Insufficient Modularization smell."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.demo.MakeHotSpotLog",
+    "detection": true,
+    "justification": "The class MakeHotSpotLog accumulates a large number of distinct, independent responsibilities within a single abstraction, resulting in excessive size (~30 methods) and low cohesion. It mixes many unrelated JIT demo scenarios: arithmetic tests (addVariable, addConstant), branch prediction tests (randomBranchTest, changingBranchTest), intrinsic tests (intrinsicTest, intrinsicTestMin), inlining tests (tooBigToInline, bigMethod), sorting (testSort), multiple call-chain scenarios (testCallChain, testCallChainReturn, testCallChain3, testOptimizedVCall with helper chains chainA1-A4, chainB1-B3, chainC1-C3), leaf method tests (testLeaf, leaf1-4), string processing (testToUpperCase, toUpper), and loop unrolling tests (testLoopUnrolling, timesTen, timesHundred). The constructor acts as a bloated orchestrator invoking all of these unrelated behaviors. Each group of related test methods forms a cohesive cluster that could be extracted into separate, smaller abstractions (e.g., BranchTests, IntrinsicTests, CallChainTests, InliningTests, LoopTests), indicating the abstraction has not been adequately decomposed."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.util.StringUtil",
+    "detection": true,
+    "justification": "StringUtil is a catch-all utility class with a bloated interface of roughly 24 public static methods that concentrate several unrelated responsibilities in a single abstraction: timestamp formatting (formatTimestamp), XML entity handling (replaceXMLEntities), string padding/alignment (pad, padZero, alignRight, alignLeft, padLineNumber), text/list/array conversion (textToList, listToText, listToString, arrayToString), attribute parsing and serialization (attributeMapToString, attributeStringToMap, getLineAttributesDoubleQuote), class/package name manipulation (getUnqualifiedClassName, getUnqualifiedMemberName, getPackageName, getAbbreviatedFQName), number formatting (formatThousands), word wrapping (wordWrap), substring extraction (getSubstringBetween), and map key sorting (getSortedKeys). The low cohesion among these groups indicates the abstraction has not been adequately decomposed into smaller, focused abstractions (e.g., a TimeFormatter, an XmlEntityHelper, a NameUtils, an AttributeParser, a StringPadding/Alignment helper). Additionally, the class contains significant internal duplication—attributeStringToMap and getLineAttributesDoubleQuote are near-identical state-machine parsers differing only in the quote character, and alignRight/alignLeft each have redundant overloads—further evidencing excessive size and complexity that could be factored into smaller, more cohesive units."
+  },
+  {
+    "repository": "javaparser",
+    "target": "org.tensorflow.op.Ops",
+    "detection": true,
+    "justification": "The Ops class exhibits Insufficient Modularization due to its excessive size and bloated interface. It directly declares over 250 public factory methods spanning thousands of lines of code and requires ~250 imports, the vast majority from org.tensorflow.op.core. Although the design already demonstrates that decomposition is feasible—16 subgroup APIs (nn, math, linalg, random, image, data, io, etc.) are extracted into dedicated classes (NnOps, MathOps, LinalgOps, etc.)—all 'core' operations were left concentrated directly in this single class instead of being placed in a corresponding CoreOps subgroup or finer-grained abstractions. The class accumulates many distinct responsibilities that could form smaller, cohesive modules: (1) constant creation with ~60 overloaded constant()/array() methods; (2) variable and resource management (variable, varHandleOp, assignVariableOp, readVariableOp, destroyResourceOp, isVariableInitialized); (3) scatter/gather operations (gather, gatherNd, scatterAdd, scatterNd, resourceScatter*, tensorScatter*); (4) tensor shape manipulation (reshape, slice, stridedSlice, split, concat, stack, pad, tile, squeeze, expandDims); (5) reduction operations (sum, max, min, prod, reduceSum, reduceMax, all, any); (6) hash tables and lookup tables (hashTable, mutableHashTable, lookupTableFind/Insert/Import/Export/Size); (7) TensorArray and TensorList manipulation (~30 methods); (8) control flow (switchCond, merge, loopCond, nextIteration, refSwitch); (9) barriers, stages, and map containers; (10) RPC and session handling. This concentration of heterogeneous responsibilities in one abstraction makes the class difficult to understand, navigate, maintain, and evolve, and the existing subgroup pattern shows the class could and should have been further decomposed."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.Range",
+    "detection": false,
+    "justification": "The Range class does not exhibit Insufficient Modularization. It is a small, cohesive value object (~100 lines of actual code) with a single, well-defined responsibility: representing an inclusive range of characters between two Position objects in a source file. All of its ~20 methods are tightly focused on this one abstraction: construction and factory methods (Range, range), immutable copy modifiers (withBegin, withEnd, withBeginLine, withBeginColumn, withEndLine, withEndColumn), containment queries (contains, strictlyContains), overlap and ordering queries (overlapsWith, isBefore, isAfter), standard object methods (equals, hashCode, toString), and a simple derived metric (getLineCount). Each method is trivially simple, mostly one-liners that delegate position-level comparisons to the Position class, demonstrating proper separation of concerns rather than a lack of decomposition. The class has no excessive size, no complex logic, and no bloated interface mixing unrelated responsibilities; there are no distinct responsibility clusters that could reasonably be extracted into separate abstractions. Therefore, the class is adequately modularized."
+  },
+  {
+    "repository": "commons-lang",
+    "target": "org.apache.commons.lang3.time.FastDateFormat",
+    "detection": false,
+    "justification": "The FastDateFormat class does not exhibit Insufficient Modularization because its abstraction has already been adequately decomposed into cohesive, specialized components. The core responsibilities are properly delegated: formatting logic is fully handled by the internal FastDatePrinter instance (all format() overloads are one-line delegations to printer), parsing logic is fully handled by the internal FastDateParser instance (parse() and parseObject() methods delegate to parser), and instance caching is externalized to AbstractFormatCache. Although the class exposes a large number of public methods (approximately 17 static factory overloads and numerous format/parse variants), these methods are thin, trivial one-line delegations rather than complex implementations, so they contribute neither excessive size nor significant complexity. The class acts as a unified facade combining DatePrinter and DateParser interfaces with a factory API, maintaining high cohesion since every method relates exclusively to date/time formatting and parsing. The numerous factory overloads (getInstance, getDateInstance, getTimeInstance, getDateTimeInstance with TimeZone/Locale variants) represent a standard convenience-API pattern, not a concentration of unrelated responsibilities. There are no distinct responsibility clusters or complex logic blocks within the class that would justify further extraction, indicating the decomposition into printer, parser, and cache abstractions has already addressed modularization adequately."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.common.BitMatrix",
+    "detection": true,
+    "justification": "BitMatrix accumulates several separable responsibilities in a single abstraction, resulting in a bloated interface of roughly 29 public methods. Beyond the core responsibility of bit storage and access (get, set, unset, flip, clear), the class also implements: (1) parsing/deserialization logic — the static parse(String, String, String) method embeds a complex, stateful string-parsing algorithm with row-length validation that is independent of the matrix abstraction and could be extracted into a dedicated parser/factory class; (2) geometric transformations — rotate, rotate90, and rotate180 implement non-trivial transformation algorithms that could live in a separate transformer; (3) geometric analysis queries — getEnclosingRectangle, getTopLeftOnBit, and getBottomRightOnBit perform scanning/search computations over the matrix rather than defining its intrinsic behavior; and (4) multiple string-serialization variants (toString overloads and buildToString). These responsibility clusters operate largely independently and could be decomposed into smaller, more cohesive abstractions (e.g., a parser, a rotation utility, a region analyzer), indicating the class has not been adequately decomposed."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.parser.zing.ZingLine",
+    "detection": true,
+    "justification": "ZingLine exhibits a bloated interface and concentrates responsibilities that could be decomposed into smaller, more cohesive abstractions. The class exposes roughly 25 public methods, dominated by getters/setters for its 14 fields (compileId, tier, bytecodeSize, nativeSize, score, throwsExceptions, stashedCompile, three timestamps, signature, start/end addresses, lineType). Beyond acting as a data holder for a parsed Zing log line, it also embeds two additional responsibilities: (1) conversion/mapping logic through toTagQueued(), toTagNMethod(), and toTagTask(), which construct attribute maps, duplicate the map-building pattern, and embed knowledge of JITWatch attribute constants, compiler naming (tier == 3 ? FALCON : ZING), hex address formatting, and Tag/Task assembly — logic that belongs in a dedicated converter/mapper abstraction; and (2) timestamp formatting via millisToSecondsString(), a utility concern unrelated to the line abstraction itself. Extracting the tag-conversion behavior and the time-formatting helper into separate classes would reduce the class's size and interface and improve cohesion."
+  },
+  {
+    "repository": "commons-lang",
+    "target": "org.apache.commons.lang3.Validate",
+    "detection": true,
+    "justification": "The class concentrates a large and heterogeneous set of validation responsibilities in a single abstraction, resulting in excessive size and a bloated interface. It declares many default-message constants and dozens of public static methods (with numerous overloads) spanning distinct concerns: numeric range/finite/NaN checks (exclusiveBetween, inclusiveBetween, finite, notNaN), boolean/state checks (isTrue, validState), null/emptiness/blank checks (notNull, notEmpty, notBlank, noNullElements), index bounds checks (validIndex), pattern matching (matchesPattern), and type checks (isAssignableFrom, isInstanceOf). These groups could be separated into smaller, more cohesive abstractions (e.g., numeric, string, collection/array, index, and type validators), but are instead centralized in one large utility class, making it harder to understand, maintain, and evolve."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.ast.visitor.VoidVisitor",
+    "detection": false,
+    "justification": "VoidVisitor is a pure interface implementing the Visitor design pattern, where declaring one visit(...) method per concrete AST node type is an intrinsic requirement of the pattern, not a symptom of poor decomposition. Its large number of methods (~100) directly mirrors the number of node types in the Java grammar (expressions, statements, types, declarations, comments, module directives), so the interface breadth is domain-driven rather than caused by accumulating unrelated responsibilities. The abstraction is highly cohesive and has a single, well-defined responsibility: enabling traversal of AST nodes without returning a value. It contains no state, no implementation logic, and no mixing of concerns, so there is no excessive size or complexity in terms of behavior. Splitting it into smaller visitors (e.g., expression, statement, type visitors) would break the double-dispatch mechanism central to the pattern and would not improve cohesion, since each method already corresponds to exactly one node type. Therefore, the bloated-interface appearance is a deliberate and necessary design idiom, not Insufficient Modularization."
+  },
+  {
+    "repository": "jimfs",
+    "target": "com.google.common.jimfs.RegularFile",
+    "detection": true,
+    "justification": "The RegularFile class exhibits Insufficient Modularization due to its excessive size (~570 lines, ~40 methods) and the concentration of multiple distinct responsibilities in a single abstraction: (1) Low-level block list management (expandIfNecessary, copyBlocksTo, transferBlocksTo, truncateBlocks, addBlock, getBlock, blockForWrite), which the code itself demarcates with section comments ('lower-level methods dealing with the blocks array'), indicating an implicit sub-abstraction that could be extracted into a dedicated block store class; (2) Concurrency/locking management (readLock, writeLock, contentLock); (3) File lifecycle management (opened, closed, deleted, deleteContents, openCount/deleted state); (4) A bloated family of I/O operations with many overloads (four write methods, four read methods, transferFrom, transferTo); (5) Position/offset arithmetic and sizing utilities (blockIndex, offsetInBlock, length, bytesToRead, prepareForWrite); and (6) Copy/cloning logic (copyWithoutContent, copyContentTo). The presence of internal comment-delimited sections grouping related methods, the large number of fields spanning different concerns (lock, disk, blocks, blockCount, size, openCount, deleted), and the bloated interface all demonstrate that the abstraction has not been adequately decomposed into smaller, more cohesive abstractions (e.g., a BlockStore, position calculator, or reader/writer components), making the class harder to understand, maintain, and evolve."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.pdf417.decoder.DetectionResultColumn",
+    "detection": false,
+    "justification": "The class is small (~80 lines of code) with a single, well-defined responsibility: managing a column of Codeword objects within a BoundingBox during PDF417 decoding. It contains only two instance fields (boundingBox, codewords) and a small set of cohesive methods (getCodeword, setCodeword, getCodewordNearby, imageRowToCodewordIndex, getBoundingBox, getCodewords, toString), most of which are short accessors or simple index-translation helpers. The interface is not bloated, the methods are neither long nor complex (the longest, getCodewordNearby, is a straightforward bounded search loop), and there is no concentration of unrelated responsibilities that could be extracted into separate abstractions. Therefore, the class exhibits adequate modularization and does not suffer from excessive size, complexity, or a bloated interface."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.common.reedsolomon.ReedSolomonEncoder",
+    "detection": false,
+    "justification": "The class is small (approximately 50 lines of code) and has a single, well-defined responsibility: performing Reed-Solomon encoding. It contains only two methods (buildGenerator and encode) and two fields (field and cachedGenerators), resulting in a narrow, non-bloated interface with just one public operation (encode). The class already exhibits proper modularization by delegating polynomial arithmetic to GenericGFPoly and Galois field operations to GenericGF, maintaining high cohesion. There is no excessive size, complexity, or concentration of multiple responsibilities that would indicate inadequate decomposition."
+  },
+  {
+    "repository": "byte-buddy",
+    "target": "net.bytebuddy.dynamic.TypeResolutionStrategy",
+    "detection": false,
+    "justification": "The TypeResolutionStrategy interface demonstrates adequate modularization. The main interface exposes a single, focused method (resolve), presenting a narrow contract rather than a bloated interface. The nested Resolved interface declares only two cohesive methods (injectedInto and initialize) that are directly related to the abstraction's single responsibility of loading and initializing types. The four implementations (Passive, Active, Lazy, Disabled) each represent distinct, cohesive strategies with small, single-purpose methods, following the Strategy pattern where grouping standard implementations within the interface is a deliberate and common design choice that aids discoverability. The Active class, while containing a nested Resolved class, maintains clear separation of concerns (Nexus registration, initialization appending) with minimal state (nexusAccessor, identification). Methods throughout are short and focused, the overall size is moderate, and there is no concentration of unrelated responsibilities, excessive complexity, or bloated interface that would indicate inadequate decomposition."
+  },
+  {
+    "repository": "jsoup",
+    "target": "org.jsoup.helper.RequestDispatch",
+    "detection": false,
+    "justification": "The class is small and cohesive, exposing a narrow interface (a single static factory method get) and holding only one static field (clientConstructor) plus a static initializer. Its single responsibility is to select and instantiate the appropriate RequestExecutor implementation (HttpClientExecutor via reflection when available, otherwise UrlConnectionExecutor), while the actual request execution is delegated to separate abstractions (RequestExecutor, HttpClientExecutor, UrlConnectionExecutor). There is no excessive size, complexity, or bloated interface; responsibilities are already decomposed into focused collaborators, so the abstraction is adequately modularized."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.ui.report.ReportStageType",
+    "detection": false,
+    "justification": "The class ReportStageType is a simple enum containing only four constants (SUGGESTION, ELIMINATED_ALLOCATION, ELIDED_LOCK, INLINING) with no methods, fields, or additional logic. It represents a single, well-defined, cohesive abstraction (categorizing report stage types) and exhibits no excessive size, complexity, or bloated interface. There are no concentrated responsibilities that would require decomposition into smaller abstractions, so the criteria for Insufficient Modularization are not met."
+  },
+  {
+    "repository": "commons-io",
+    "target": "org.apache.commons.io.output.NullWriter",
+    "detection": false,
+    "justification": "The class does not exhibit Insufficient Modularization. It represents a single, well-defined abstraction: a no-op Writer (Null Object pattern) that discards all written data. The class is small, consisting of about 10 trivial methods (each 1-3 lines), all of which are cohesive overrides required by the java.io.Writer abstract class contract (write, append, flush, close). The interface is not bloated; the method count stems directly from the inherited Writer API rather than from poorly decomposed responsibilities. There is no excessive size, complexity, or concentration of unrelated responsibilities that could be extracted into smaller abstractions. The only additional elements are singleton-related members (INSTANCE, deprecated NULL_WRITER, and a deprecated constructor), which support the class's single purpose rather than introducing new responsibilities."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.ui.nmethod.NMethodInfo",
+    "detection": false,
+    "justification": "The class has a single, well-defined responsibility: rendering compilation/nmethod details as a JavaFX UI panel. Its public interface is narrow, exposing only the constructor, setInfo(Compilation), and clear(). Its size is moderate and its internal logic is already decomposed into small, cohesive helper methods (makeLeftColumn, makeRightColumn, makeCompilationNavigator, makeSizeInfo, makeTimingInfo, and the overloaded makeLabel), each handling a distinct part of the layout. All fields (labels for compilation attributes) are cohesive and directly related to the panel's purpose, and the setInfo/clear methods simply populate or reset those labels. There is no excessive size, no accumulation of unrelated responsibilities, and no bloated interface that would indicate the abstraction needs further decomposition."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.qrcode.decoder.ErrorCorrectionLevel",
+    "detection": false,
+    "justification": "The class is a small, cohesive enum with a single, well-defined responsibility: encapsulating the four QR code error correction levels (L, M, Q, H) and their bit encodings. It contains only one field (bits), a simple constructor, one getter (getBits), and one static lookup method (forBits) backed by a small constant array (FOR_BITS). Its size and interface are minimal, its complexity is low, and all members directly support the same abstraction. There is no excessive size, no concentration of unrelated responsibilities, and no bloated interface that would require decomposition into smaller abstractions."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.EncodeHintType",
+    "detection": false,
+    "justification": "EncodeHintType is a simple Java enum that declares only enum constants (ERROR_CORRECTION, CHARACTER_SET, DATA_MATRIX_SHAPE, MARGIN, PDF417_COMPACT, AZTEC_LAYERS, QR_VERSION, etc.). It contains no methods, no instance fields, no state, and no executable logic or behavior. Its single, cohesive responsibility is to enumerate the set of hint keys that can be passed to barcode Writers. The apparent length of the file comes almost entirely from Javadoc documentation on each constant, not from structural complexity or a bloated interface. There are no concentrated responsibilities that could be decomposed into smaller abstractions, and the number of constants does not by itself indicate a design problem for a pure constant-declaring enum. Therefore, the class does not exhibit excessive size, complexity, or a bloated interface, and no further modularization is warranted."
+  },
+  {
+    "repository": "jsoup",
+    "target": "org.jsoup.helper.CookieUtil",
+    "detection": false,
+    "justification": "The CookieUtil class does not exhibit Insufficient Modularization. It is a small, focused utility class (~100 lines) with a single, well-defined responsibility: supporting cookie management for HttpConnection. It contains only five methods (applyCookiesToRequest, requestCookieSet, asUri, storeCookies, parseCookie), all of which are cohesive and directly related to cookie handling—applying cookies to requests, storing response cookies, parsing cookie strings, and converting URLs to URIs. The interface is narrow (four package-private static entry points plus one private helper), the size is modest, and the complexity of each method is low to moderate. There is no excessive size, bloated interface, or concentration of unrelated responsibilities that would require decomposition into smaller abstractions."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.symbolsolver.javaparsermodel.contexts.ArrayAccessExprContext",
+    "detection": false,
+    "justification": "The class does not exhibit Insufficient Modularization. It is a small, highly cohesive class with a single, well-defined responsibility: to act as the symbol resolution context for ArrayAccessExpr nodes, preventing recursive access to the parent node during symbol resolution. It contains only a constructor and one public method (solveSymbolInParentContext), which simply delegates to the superclass implementation as documented. There is no excessive size, no complexity, and no bloated interface; on the contrary, the class is minimal and focused. The extensive Javadoc serves documentation purposes only and does not contribute to structural complexity or a bloated API. Therefore, there is no concentration of responsibilities that would require further decomposition."
+  },
+  {
+    "repository": "byte-buddy",
+    "target": "net.bytebuddy.utility.privilege.GetSystemPropertyAction",
+    "detection": false,
+    "justification": "The class GetSystemPropertyAction is small and highly cohesive, containing only a single field (key), one constructor, and one method (run()). It implements a single, well-defined responsibility: reading a system property as a PrivilegedAction<String>. Its interface is minimal (only the run() method inherited from the PrivilegedAction contract), and there is no excessive size, complexity, or concentration of multiple responsibilities that would require further decomposition into smaller abstractions."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.javasymbolsolver.javassist.symbols.main.jar.InterfaceUserOwnJar",
+    "detection": false,
+    "justification": "The class InterfaceUserOwnJar is extremely small and simple, containing only a single public static final String constant (OWN_FIELD) and implementing the InterfaceOwnJar interface. It has no methods, no complex logic, and no excessive responsibilities. The class represents a minimal, cohesive abstraction with a single clear purpose, which is the opposite of the characteristics associated with Insufficient Modularization (excessive size, complexity, or bloated interface). There is nothing to decompose further, as the class already concentrates a minimal set of responsibilities."
+  },
+  {
+    "repository": "byte-buddy",
+    "target": "net.bytebuddy.implementation.attribute.AnnotationValueFilter",
+    "detection": false,
+    "justification": "The class is a small, cohesive interface with a single, well-defined responsibility: determining whether annotation values should be written to a class file (via the isRelevant method). Its nested elements are appropriately decomposed: the Factory interface encapsulates the creation of filters for different annotation targets (type, field, method, record component), and the Default enum provides two focused strategy implementations (SKIP_DEFAULTS and APPEND_DEFAULTS) with trivial factory methods returning 'this'. The overall size is small, the interface is not bloated, and responsibilities are clearly separated into cohesive abstractions, so there is no excessive size, complexity, or concentration of responsibilities that would indicate Insufficient Modularization."
+  },
+  {
+    "repository": "commons-lang",
+    "target": "org.apache.commons.lang3.exception.CloneFailedException",
+    "detection": false,
+    "justification": "The class CloneFailedException is a small, highly cohesive exception type with a single, well-defined responsibility: signaling that a clone operation failed as a RuntimeException. It contains only three constructors that simply delegate to the superclass (RuntimeException) with different combinations of message and cause parameters, plus a serialVersionUID constant. There is no excessive size (roughly 30 lines of actual code), no complexity (no logic beyond constructor delegation), and no bloated interface (only three constructors, all serving the same abstraction). The class does not concentrate multiple responsibilities that would warrant decomposition into smaller abstractions; it is already a minimal, focused abstraction typical of custom exception types. Therefore, the Insufficient Modularization smell is not present."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.metamodel.TypeParameterMetaModel",
+    "detection": false,
+    "justification": "The class does not exhibit Insufficient Modularization. It is a small, auto-generated class consisting solely of a constructor that delegates initialization to its superclass (ReferenceTypeMetaModel) and two public field declarations (namePropertyMetaModel and typeBoundPropertyMetaModel). It has a single, well-defined, and cohesive responsibility: representing the metamodel metadata for the TypeParameter AST node. Common behavior and structure are already properly decomposed through the inheritance hierarchy (BaseNodeMetaModel -> ReferenceTypeMetaModel -> TypeParameterMetaModel), so responsibilities are not concentrated in this class. There is no excessive size, complexity, or bloated interface; the class contains no methods beyond the constructor and only two fields, making it easy to understand and maintain."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.datamatrix.decoder.DataBlock",
+    "detection": false,
+    "justification": "The DataBlock class does not exhibit Insufficient Modularization. It is a small, cohesive abstraction with only two fields (numDataCodewords and codewords), a private constructor, one static factory method (getDataBlocks), and two simple getters (getNumDataCodewords, getCodewords). The class has a single, well-defined responsibility: encapsulating a data block of a Data Matrix Code and providing the logic to de-interleave raw codewords into their original blocks. Its interface is narrow (package-private visibility with only three accessible methods), and its size is modest (~100 lines including license header, Javadoc, and comments). Although the getDataBlocks method is somewhat long and contains intricate de-interleaving logic (which could indicate a method-level smell such as Long Method/Complex Method), this does not translate into a class-level modularization problem: there are no multiple unrelated responsibilities concentrated here, no bloated public interface, and no excessive size or complexity that would warrant decomposition into smaller abstractions. The class is therefore easy to understand, maintain, and evolve as a single cohesive unit."
+  },
+  {
+    "repository": "byte-buddy",
+    "target": "net.bytebuddy.description.modifier.Ownership",
+    "detection": false,
+    "justification": "The Ownership enum is small and highly cohesive, containing only two enum constants (MEMBER, STATIC), a single field (mask), one constructor, and four short query methods (getMask, getRange, isDefault, isStatic). It has a single, well-defined responsibility: representing whether a member is static or instance-based, and implementing the ModifierContributor interfaces for fields, methods, and types. There is no excessive size, no accumulation of unrelated responsibilities, and no bloated interface, so the class does not require further decomposition."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.parser.ParserFactory",
+    "detection": false,
+    "justification": "The class is a small, cohesive factory with a single well-defined responsibility: instantiating the appropriate ILogParser implementation based on the ParserType. It contains only one private constructor and one static method (getParser) with a simple switch over three cases (HOTSPOT, J9, ZING). It exhibits neither excessive size, nor high complexity, nor a bloated interface; there are no concentrated responsibilities that would require decomposition into smaller abstractions. Therefore, the Insufficient Modularization smell is not present."
+  },
+  {
+    "repository": "commons-io",
+    "target": "org.apache.commons.io.output.ProxyOutputStream",
+    "detection": false,
+    "justification": "The class exhibits a single, well-defined responsibility: acting as a delegating proxy base class for OutputStream that forwards calls (write, flush, close) to the underlying stream while offering hook methods (beforeWrite, afterWrite, handleIOException) for subclass customization. All methods are cohesive with this abstraction: the three overridden write methods are thin delegation wrappers, close and flush delegate lifecycle operations, and the writeRepeat overloads are small convenience utilities built on top of the existing write methods. The class is small in size (few fields, mostly one-to-three line methods), has a narrow, non-bloated public interface, and contains no unrelated responsibilities that would require extraction into separate abstractions. The nested Builder class follows the standard builder pattern and is already separated from the core proxy logic. Therefore, the class is adequately modularized and does not exhibit excessive size, complexity, or responsibility concentration."
+  }
+]

@@ -33,9 +33,6 @@ MODELS = {
 
 
 def parse_bool(value):
-    """
-    Convert different representations to bool.
-    """
     if isinstance(value, bool):
         return value
 
@@ -46,45 +43,39 @@ def parse_bool(value):
             return False
 
     if isinstance(value, str):
-        normalized = value.strip().lower()
+        value = value.strip().lower()
 
-        if normalized in {"true", "1", "yes"}:
+        if value in {"true", "1", "yes"}:
             return True
 
-        if normalized in {"false", "0", "no"}:
+        if value in {"false", "0", "no"}:
             return False
 
     raise ValueError(f"Cannot convert to boolean: {value!r}")
 
 
+def target_to_filename(target):
+    """
+    Raw-code outputs use '_' instead of '.'.
+
+    Example:
+        com.github.javaparser.ast.Node
+        ->
+        com_github_javaparser_ast_Node.txt
+    """
+    return f"{target.replace('.', '_')}.txt"
+
+
 def extract_json_object(text):
-    """
-    Try to extract a JSON object from arbitrary LLM output.
-
-    Supports, for example:
-
-        ```json
-        {...}
-        ```
-
-        json
-        {...}
-
-        Some explanation...
-        {...}
-        More text...
-    """
-
-    # Remove Markdown fences.
     cleaned = re.sub(
         r"```(?:json)?",
         "",
         text,
         flags=re.IGNORECASE
     )
+
     cleaned = cleaned.replace("```", "").strip()
 
-    # Remove a standalone leading "json"
     cleaned = re.sub(
         r"^\s*json\s*",
         "",
@@ -92,7 +83,6 @@ def extract_json_object(text):
         flags=re.IGNORECASE
     )
 
-    # First try the entire content.
     try:
         data = json.loads(cleaned)
 
@@ -102,14 +92,13 @@ def extract_json_object(text):
     except json.JSONDecodeError:
         pass
 
-    # Then search for every possible JSON object.
     decoder = json.JSONDecoder()
 
     for match in re.finditer(r"\{", cleaned):
-        start = match.start()
-
         try:
-            data, _ = decoder.raw_decode(cleaned[start:])
+            data, _ = decoder.raw_decode(
+                cleaned[match.start():]
+            )
 
             if isinstance(data, dict):
                 return data
@@ -121,24 +110,27 @@ def extract_json_object(text):
 
 
 def extract_field_with_regex(text, field):
-    """
-    Fallback for malformed JSON.
-
-    Examples:
-        "detection": true
-        "package": "org.example.foo"
-    """
-
     if field == "detection":
-        pattern = r'["\']?detection["\']?\s*:\s*(true|false|1|0)'
-        match = re.search(pattern, text, flags=re.IGNORECASE)
+        pattern = (
+            r'["\']?detection["\']?\s*:\s*'
+            r'(true|false|1|0)'
+        )
+
+        match = re.search(
+            pattern,
+            text,
+            flags=re.IGNORECASE
+        )
 
         if match:
             return parse_bool(match.group(1))
 
         return None
 
-    pattern = rf'["\']?{re.escape(field)}["\']?\s*:\s*["\']([^"\']+)["\']'
+    pattern = (
+        rf'["\']?{re.escape(field)}["\']?'
+        rf'\s*:\s*["\']([^"\']+)["\']'
+    )
 
     match = re.search(
         pattern,
@@ -153,10 +145,6 @@ def extract_field_with_regex(text, field):
 
 
 def extract_justification_with_regex(text):
-    """
-    Fallback extraction for justification in malformed JSON.
-    """
-
     patterns = [
         r'"justification"\s*:\s*"((?:\\.|[^"\\])*)"',
         r"'justification'\s*:\s*'((?:\\.|[^'\\])*)'",
@@ -172,7 +160,6 @@ def extract_justification_with_regex(text):
         if match:
             value = match.group(1)
 
-            # Decode common escaped characters if possible.
             try:
                 return json.loads(f'"{value}"')
             except Exception:
@@ -182,15 +169,6 @@ def extract_justification_with_regex(text):
 
 
 def parse_llm_output(file_path, target_field):
-    """
-    Parse one LLM output.
-
-    Returns:
-        target
-        detection
-        justification
-    """
-
     text = file_path.read_text(
         encoding="utf-8",
         errors="replace"
@@ -206,18 +184,14 @@ def parse_llm_output(file_path, target_field):
     justification = None
 
     if data:
-        # Normally class smells have "class"
-        # and package smells have "package".
         target = data.get(target_field)
 
-        # Also tolerate the generic field "target".
         if target is None:
             target = data.get("target")
 
         detection = data.get("detection")
         justification = data.get("justification")
 
-    # Fall back to regex if JSON parsing failed or fields are missing.
     if target is None:
         target = extract_field_with_regex(
             text,
@@ -237,17 +211,17 @@ def parse_llm_output(file_path, target_field):
 
     if target is None:
         raise ValueError(
-            f"Could not find '{target_field}' in output"
+            f"Could not find '{target_field}'"
         )
 
     if detection is None:
         raise ValueError(
-            "Could not find 'detection' in output"
+            "Could not find 'detection'"
         )
 
     if justification is None:
         raise ValueError(
-            "Could not find 'justification' in output"
+            "Could not find 'justification'"
         )
 
     return {
@@ -256,35 +230,8 @@ def parse_llm_output(file_path, target_field):
         "justification": justification.strip(),
     }
 
-
-def find_sample_file(filename):
-    """
-    Prefer the sample directory at project root.
-
-    Also support the older metrics_deps/data/sample layout.
-    """
-
-    candidates = [
-        Path("data/sample") / filename,
-        Path("metrics_deps/data/sample") / filename,
-    ]
-
-    for path in candidates:
-        if path.exists():
-            return path
-
-    raise FileNotFoundError(
-        "Sample file not found. Tried:\n"
-        + "\n".join(f"  - {path}" for path in candidates)
-    )
-
-
 def load_ground_truth(sample_file):
-    """
-    Load repository + target -> human_label.
-    """
-
-    ground_truth = {}
+    rows = []
 
     with sample_file.open(
         "r",
@@ -302,20 +249,20 @@ def load_ground_truth(sample_file):
 
         if not required.issubset(reader.fieldnames or []):
             raise ValueError(
-                f"{sample_file} must contain columns "
-                f"{sorted(required)}. "
-                f"Found: {reader.fieldnames}"
+                f"Missing required columns in {sample_file}"
             )
 
         for row in reader:
-            repository = row["repository"].strip()
-            target = row["target"].strip()
+            rows.append({
+                "repository": row["repository"].strip(),
+                "target": row["target"].strip(),
+                "human_label": parse_bool(
+                    row["human_label"]
+                ),
+            })
 
-            ground_truth[(repository, target)] = parse_bool(
-                row["human_label"]
-            )
+    return rows
 
-    return ground_truth
 
 def calculate_metrics(records):
     tp = tn = fp = fn = 0
@@ -326,13 +273,10 @@ def calculate_metrics(records):
 
         if actual and predicted:
             tp += 1
-
         elif not actual and not predicted:
             tn += 1
-
         elif not actual and predicted:
             fp += 1
-
         elif actual and not predicted:
             fn += 1
 
@@ -340,20 +284,17 @@ def calculate_metrics(records):
 
     accuracy = (
         (tp + tn) / total
-        if total
-        else 0.0
+        if total else 0.0
     )
 
     precision = (
         tp / (tp + fp)
-        if (tp + fp)
-        else 0.0
+        if (tp + fp) else 0.0
     )
 
     recall = (
         tp / (tp + fn)
-        if (tp + fn)
-        else 0.0
+        if (tp + fn) else 0.0
     )
 
     f1 = (
@@ -378,7 +319,7 @@ def calculate_metrics(records):
 
     # Cohen's Kappa
     if total:
-        observed_agreement = accuracy
+        observed = accuracy
 
         actual_positive = tp + fn
         actual_negative = tn + fp
@@ -386,21 +327,22 @@ def calculate_metrics(records):
         predicted_positive = tp + fp
         predicted_negative = tn + fn
 
-        expected_agreement = (
-            (actual_positive * predicted_positive)
-            + (actual_negative * predicted_negative)
+        expected = (
+            actual_positive * predicted_positive
+            + actual_negative * predicted_negative
         ) / (total * total)
 
-        if expected_agreement != 1:
-            cohen_kappa = (
-                observed_agreement - expected_agreement
+        if expected != 1:
+            kappa = (
+                observed - expected
             ) / (
-                1 - expected_agreement
+                1 - expected
             )
         else:
-            cohen_kappa = 1.0
+            kappa = 1.0
+
     else:
-        cohen_kappa = 0.0
+        kappa = 0.0
 
     return {
         "TP": tp,
@@ -412,33 +354,22 @@ def calculate_metrics(records):
         "recall": round(recall, 4),
         "f1": round(f1, 4),
         "mcc": round(mcc, 4),
-        "cohen_kappa": round(cohen_kappa, 4),
+        "cohen_kappa": round(kappa, 4),
     }
 
 def main():
-    parser = argparse.ArgumentParser(
-        description=(
-            "Consolidate metrics+dependencies smell detection "
-            "results and compute classification metrics."
-        )
-    )
+    parser = argparse.ArgumentParser()
 
     parser.add_argument(
         "--smell",
         required=True,
         choices=SMELL_CONFIG.keys(),
-        help=(
-            "Target smell: insufficient_modularization, "
-            "hublike_modularization, god_component, "
-            "or unstable_dependency"
-        ),
     )
 
     parser.add_argument(
         "--model",
         required=True,
         choices=MODELS,
-        help="Model: deepseek, gpt, kimi-k3, or qwen",
     )
 
     args = parser.parse_args()
@@ -448,27 +379,36 @@ def main():
 
     config = SMELL_CONFIG[smell]
 
-    sample_file = find_sample_file(
-        config["sample_file"]
+    sample_file = (
+        Path("data/sample")
+        / config["sample_file"]
     )
 
-    ground_truth = load_ground_truth(
-        sample_file
-    )
+    if not sample_file.exists():
+        raise FileNotFoundError(
+            f"Sample file not found: {sample_file}"
+        )
 
-    input_base = Path(
-        "metrics_deps",
+    input_dir = Path(
+        "raw_code",
         "data",
         "processed",
-        "llm_outputs"
+        "llm_outputs",
+        smell,
+        model
     )
+
+    if not input_dir.exists():
+        raise FileNotFoundError(
+            f"LLM output directory not found: {input_dir}"
+        )
 
     output_dir = Path(
         "data",
         "results",
         smell,
         model,
-        "metrics_deps"
+        "raw_code"
     )
 
     output_dir.mkdir(
@@ -476,87 +416,91 @@ def main():
         exist_ok=True
     )
 
-    results = []
+    ground_truth = load_ground_truth(
+        sample_file
+    )
+
+    records = []
+    missing = []
     errors = []
-    unmatched = []
 
-    # The first directory level is the repository.
-    for repository_dir in sorted(input_base.iterdir()):
+    for sample in ground_truth:
 
-        if not repository_dir.is_dir():
-            continue
+        repository = sample["repository"]
+        expected_target = sample["target"]
 
-        repository = repository_dir.name
-
-        model_dir = (
-            repository_dir
-            / smell
-            / model
+        filename = target_to_filename(
+            expected_target
         )
 
-        if not model_dir.exists():
-            continue
+        output_file = input_dir / filename
 
-        for output_file in sorted(model_dir.glob("*.txt")):
-
-            try:
-                parsed = parse_llm_output(
-                    output_file,
-                    config["target_field"]
-                )
-
-            except Exception as error:
-                errors.append({
-                    "repository": repository,
-                    "file": str(output_file),
-                    "error": str(error),
-                })
-
-                print(
-                    f"[ERROR] {output_file}: {error}"
-                )
-
-                continue
-
-            target = parsed["target"]
-
-            key = (repository, target)
-
-            if key not in ground_truth:
-                unmatched.append({
-                    "repository": repository,
-                    "target": target,
-                    "file": str(output_file),
-                })
-
-                print(
-                    f"[WARNING] No human label for: "
-                    f"{repository} | {target}"
-                )
-
-                continue
-
-            results.append({
+        if not output_file.exists():
+            missing.append({
                 "repository": repository,
-                "target": target,
-                "detection": parsed["detection"],
-                "justification": parsed["justification"],
-                "human_label": ground_truth[key],
+                "target": expected_target,
+                "expected_file": str(output_file),
             })
 
+            print(
+                f"[MISSING] {repository} | "
+                f"{expected_target}"
+            )
+
+            continue
+
+        try:
+            parsed = parse_llm_output(
+                output_file,
+                config["target_field"]
+            )
+
+        except Exception as error:
+            errors.append({
+                "repository": repository,
+                "target": expected_target,
+                "file": str(output_file),
+                "error": str(error),
+            })
+
+            print(
+                f"[ERROR] {output_file}: {error}"
+            )
+
+            continue
+
+        #
+        # Important consistency check:
+        # target in output should match target in ground truth.
+        #
+        if parsed["target"] != expected_target:
+            print(
+                f"[WARNING] Target mismatch:\n"
+                f"  CSV: {expected_target}\n"
+                f"  LLM: {parsed['target']}"
+            )
+
+        records.append({
+            "repository": repository,
+            "target": expected_target,
+            "detection": parsed["detection"],
+            "justification": parsed["justification"],
+            "human_label": sample["human_label"],
+        })
+
     #
-    # Save requested consolidated result file.
+    # Consolidated results
     #
     results_file = output_dir / "results.json"
 
     public_results = [
         {
-            "repository": record["repository"],
-            "target": record["target"],
-            "detection": record["detection"],
-            "justification": record["justification"],
+            "repository": r["repository"],
+            "target": r["target"],
+            "detection": r["detection"],
+            "justification": r["justification"],
         }
-        for record in results
+        for r in records
     ]
 
     with results_file.open(
@@ -571,9 +515,9 @@ def main():
         )
 
     #
-    # Calculate and save aggregate metrics.
+    # Metrics
     #
-    metrics = calculate_metrics(results)
+    metrics = calculate_metrics(records)
 
     metrics_file = output_dir / "metrics.json"
 
@@ -592,24 +536,38 @@ def main():
     print("=" * 60)
     print(f"Smell: {smell}")
     print(f"Model: {model}")
-    print(f"Sample: {sample_file}")
-    print(f"Valid results: {len(results)}")
+    print(f"Valid results: {len(records)}")
+    print(f"Missing outputs: {len(missing)}")
     print(f"Parsing errors: {len(errors)}")
-    print(f"Unmatched results: {len(unmatched)}")
     print()
 
-    print("Metrics:")
     for metric, value in metrics.items():
-        print(f"  {metric}: {value}")
+        print(f"{metric}: {value}")
 
     print()
     print(f"Results: {results_file}")
     print(f"Metrics: {metrics_file}")
 
-    if errors:
-        error_file = output_dir / "parsing_errors.json"
+    if missing:
+        missing_file = output_dir / "missing_results.json"
 
-        with error_file.open(
+        with missing_file.open(
+            "w",
+            encoding="utf-8"
+        ) as f:
+            json.dump(
+                missing,
+                f,
+                indent=2,
+                ensure_ascii=False
+            )
+
+        print(f"Missing: {missing_file}")
+
+    if errors:
+        errors_file = output_dir / "parsing_errors.json"
+
+        with errors_file.open(
             "w",
             encoding="utf-8"
         ) as f:
@@ -620,23 +578,7 @@ def main():
                 ensure_ascii=False
             )
 
-        print(f"Parsing errors: {error_file}")
-
-    if unmatched:
-        unmatched_file = output_dir / "unmatched_results.json"
-
-        with unmatched_file.open(
-            "w",
-            encoding="utf-8"
-        ) as f:
-            json.dump(
-                unmatched,
-                f,
-                indent=2,
-                ensure_ascii=False
-            )
-
-        print(f"Unmatched results: {unmatched_file}")
+        print(f"Parsing errors: {errors_file}")
 
 
 if __name__ == "__main__":

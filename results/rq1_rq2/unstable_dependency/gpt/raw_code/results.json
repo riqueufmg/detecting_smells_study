@@ -1,0 +1,194 @@
+[
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.model.assembly",
+    "detection": true,
+    "justification": "The assembly package has an unstable dependency cycle with the core model package. Outgoing dependencies from org.adoptopenjdk.jitwatch.model.assembly include strong references to model types: e.g. AssemblyProcessor.attachAssemblyToMembers(PackageManager) imports and uses org.adoptopenjdk.jitwatch.model.PackageManager, MemberSignatureParts, MetaClass and IMetaMember; AbstractAssemblyParser.parseAssembly and other assembly classes reference org.adoptopenjdk.jitwatch.model.LogParseException and MemberSignatureParts. At the same time there are incoming dependencies from model and UI packages back to the assembly package: Compilation stores/returns org.adoptopenjdk.jitwatch.model.assembly.AssemblyMethod (Compilation.setAssembly/getAssembly), AbstractMetaMember.addAssembly(AssemblyMethod) and getCompilationByAddress(AssemblyMethod) create direct model→assembly coupling, and HotSpotLogParser/ViewerAssembly/Viewer use AssemblyProcessor/AssemblyMethod/AssemblyInstruction. This mutual dependency (assembly → model and model → assembly) violates the Stable Dependencies Principle because a core/model component (expected to be more stable) depends on the assembler layer (less stable), creating an unstable dependency architecture smell."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.ui.compilationchooser",
+    "detection": true,
+    "justification": "CompilationChooser (org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser) has outgoing dependencies on org.adoptopenjdk.jitwatch.ui.main.IMemberSelectedListener (imported and used in the constructor) and on model types (org.adoptopenjdk.jitwatch.model.Compilation, org.adoptopenjdk.jitwatch.model.IMetaMember). At the same time multiple higher-level UI packages depend on CompilationChooser: e.g. TriView constructs new CompilationChooser(memberSelectionListener) (org.adoptopenjdk.jitwatch.ui.triview.TriView#getAssemblyTitleComponents) and CompileChainStage does the same (org.adoptopenjdk.jitwatch.ui.compilechain.CompileChainStage). That creates a bidirectional dependency between this package and other ui.* packages (ui.main / ui.triview / ui.compilechain). Because CompilationChooser depends on a less-stable UI contract (IMemberSelectedListener in ui.main) while ui.main/other UI packages depend on CompilationChooser, the dependency direction is not from unstable to more stable but mutual/circular. This violates the Stable Dependencies Principle and indicates an Unstable Dependency smell."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.aztec",
+    "detection": true,
+    "justification": "com.google.zxing.aztec has multiple outgoing dependencies to more specialized, likely less-stable packages while receiving relatively few incoming dependencies. Evidence: AztecReader imports and depends on com.google.zxing.aztec.detector.Detector and com.google.zxing.aztec.decoder.Decoder; AztecWriter imports and depends on com.google.zxing.aztec.encoder.Encoder and AztecCode; AztecDetectorResult extends com.google.zxing.common.DetectorResult (depends on common). Incoming uses of this package are limited (examples: MultiFormatReader and MultiFormatWriter reference AztecReader/AztecWriter). This creates a dependency direction from a package with small afferent coupling to several more volatile/implementation-specific packages (encoder/decoder/detector), violating the Stable Dependencies Principle and indicating an Unstable Dependency smell."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.report",
+    "detection": false,
+    "justification": "The report package's outgoing dependencies are to core/stable packages rather than to less-stable layers. For example AbstractReportBuilder imports and depends on IReadOnlyJITDataModel (org.adoptopenjdk.jitwatch.model), TreeVisitor (org.adoptopenjdk.jitwatch.treevisitor) and AbstractCompilationVisitable (org.adoptopenjdk.jitwatch.compilation), and Report references IMetaMember (org.adoptopenjdk.jitwatch.model). These target the central model/treevisitor/compilation packages which are foundation/core components with many incoming usages. Conversely, the report package is primarily consumed by higher-level UI and presentation code (incoming dependencies) — e.g. ViewerBytecode, ReportStage, SuggestionRowBean, EliminatedAllocationRowBuilder and various ui.report.* classes all reference org.adoptopenjdk.jitwatch.report.Report — indicating dependency direction from unstable/upper layers to this package. No evidence was found of the report package depending on less stable packages (i.e., stable packages depending on this unstable one) or of cyclic/contra-directional dependencies that would constitute an Unstable Dependency smell."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.process.runtime",
+    "detection": true,
+    "justification": "The runtime package depends on packages that are likely less stable/more volatile, violating the Stable Dependencies Principle. Outgoing dependencies from org.adoptopenjdk.jitwatch.process.runtime include: org.adoptopenjdk.jitwatch.process.compiler (RuntimeKotlin references CompilerKotlin.KOTLIN_EXECUTABLE_JAR), org.adoptopenjdk.jitwatch.loader (RuntimeKotlin calls ResourceLoader.readManifestFromZip in getClassForTriView), org.adoptopenjdk.jitwatch.logger (ILogListener), and org.adoptopenjdk.jitwatch.process.AbstractProcess. Incoming dependencies include higher-level managers/users: org.adoptopenjdk.jitwatch.jvmlang.LanguageManager (creates Runtime* instances) and org.adoptopenjdk.jitwatch.sandbox.Sandbox (uses IRuntime). The key problem is RuntimeKotlin coupling to process.compiler.CompilerKotlin and loader.ResourceLoader (concrete, language-specific/utility code) — e.g. the use of CompilerKotlin.KOTLIN_EXECUTABLE_JAR and ResourceLoader.readManifestFromZip — which makes the runtime package depend on less stable, implementation-specific packages. This is an unstable dependency smell."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.ui.stage",
+    "detection": true,
+    "justification": "StageManager (org.adoptopenjdk.jitwatch.ui.stage.StageManager) is referenced by many other packages (incoming dependencies) such as org.adoptopenjdk.jitwatch.ui.main.* (NothingMountedStage, MainConfigStage, JITWatchUI, SandboxStage, etc.), indicating it is relatively stable/central. However it has outgoing dependencies on less-stable UI packages and concrete UI classes: it depends on org.adoptopenjdk.jitwatch.ui.main.ICompilationChangeListener (registerCompilationChangeListener/notifyCompilationChanged), on org.adoptopenjdk.jitwatch.ui.report.ReportStage (clearChildren uses instanceof ReportStage and casts to ((ReportStage) stage).clear()), and on org.adoptopenjdk.jitwatch.util.UserInterfaceUtil (addCloseButton). In particular, the direct use and instanceof/cast to ReportStage (a concrete UI stage) and the coupling to the ICompilationChangeListener interface in ui.main create a dependency from a widely-used/stable package to more volatile UI packages. This violates the Stable Dependencies Principle: a stable component (widely depended-on StageManager) depends on less stable UI components, so an Unstable Dependency smell is present."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.client.android.history",
+    "detection": true,
+    "justification": "The history package (com.google.zxing.client.android.history) is depended on by higher-level client code (incoming references from com.google.zxing.client.android.CaptureActivity — uses HistoryManager/HistoryItem — and from supplemental retrievers in com.google.zxing.client.android.result.supplement which call HistoryManager), indicating it is a relatively stable component. However, it has outgoing dependencies to less-stable/application-level packages: HistoryManager imports com.google.zxing.client.android.Intents and com.google.zxing.client.android.PreferencesActivity and refers to com.google.zxing.client.android.result.ResultHandler (e.g. addHistoryItem checks Intents.Scan.SAVE_HISTORY, reads PreferencesActivity keys, and accepts a ResultHandler), and HistoryItemAdapter imports android UI classes and com.google.zxing.client.android.R. This creates a dependency direction from a stable package (history) to less-stable client/application packages, violating the Stable Dependencies Principle and constituting an Unstable Dependency smell."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.ui.parserchooser",
+    "detection": false,
+    "justification": "Outgoing dependencies: ParserChooser and IParserSelectedListener depend on org.adoptopenjdk.jitwatch.parser.ParserType and JavaFX classes (javafx.beans.*, javafx.collections.*, javafx.scene.control.ComboBox). Incoming dependency: org.adoptopenjdk.jitwatch.ui.main.JITWatchUI imports and uses ParserChooser and IParserSelectedListener. The parser package (org.adoptopenjdk.jitwatch.parser) is a core package (contains ParserType, ParserFactory, AbstractLogParser, ILogParser and many parsing/model classes) and appears more stable (widely used, providing core functionality) than the small UI parser chooser. The UI parserchooser package depends on this more stable parser package (and on external JavaFX). Therefore the package does not depend on a less stable component; the Stable Dependencies Principle is not violated."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.toplist",
+    "detection": true,
+    "justification": "The top-list package depends on several packages that appear less stable (low afferent coupling) than itself. Evidence: outgoing dependencies from org.adoptopenjdk.jitwatch.toplist include org.adoptopenjdk.jitwatch.hotthrow (HotThrowTopListVisitable -> HotThrowFinder), org.adoptopenjdk.jitwatch.intrinsic (MostUsedIntrinsicsTopListVisitable -> IntrinsicFinder) and org.adoptopenjdk.jitwatch.compilation/ model/ util (multiple visitables). Incoming dependencies to the toplist package are minimal — the main incoming reference is org.adoptopenjdk.jitwatch.ui.toplist.TopListStage which uses the toplist API. In contrast, org.adoptopenjdk.jitwatch.hotthrow (HotThrowFinder) and org.adoptopenjdk.jitwatch.intrinsic (IntrinsicFinder) are only referenced by the toplist visitables (i.e., they have very few/no other dependents). That means toplist depends on packages (hotthrow, intrinsic) that have lower stability (fewer incoming dependencies) than toplist itself, violating the Stable Dependencies Principle and indicating an Unstable Dependency smell."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.process.javap",
+    "detection": true,
+    "justification": "There is a cyclic / bidirectional dependency between org.adoptopenjdk.jitwatch.process.javap and org.adoptopenjdk.jitwatch.loader, violating the Stable Dependencies Principle. Evidence: org.adoptopenjdk.jitwatch.loader.BytecodeLoader imports and calls classes from org.adoptopenjdk.jitwatch.process.javap (BytecodeLoader -> imports org.adoptopenjdk.jitwatch.process.javap.JavapProcess and org.adoptopenjdk.jitwatch.process.javap.ReflectionJavap), while org.adoptopenjdk.jitwatch.process.javap.ReflectionJavap imports/uses org.adoptopenjdk.jitwatch.loader.DisposableURLClassLoader (ReflectionJavap -> imports org.adoptopenjdk.jitwatch.loader.DisposableURLClassLoader). This mutual incoming/outgoing dependency makes the javap package depend on a package that itself depends on javap, creating an unstable dependency architecture smell."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.packageName",
+    "detection": false,
+    "justification": "Outgoing dependencies: none found in com.packageName classes. Incoming dependencies: multiple classes in the default package reference types from com.packageName (e.g. PackageDotExpressions calls com.packageName.ClassInPackage.staticMethod() and several com.packageName.InnerClassContainer/InnerClassFieldContainer members; InnerStaticClassFieldDotExpressions imports com.packageName.InnerStaticClassFieldContainer). Because com.packageName has incoming references and no outgoing references to less-stable packages, it is stable and does not depend on less-stable components — therefore no Unstable Dependency detected."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.client.android.result.supplement",
+    "detection": true,
+    "justification": "Unstable dependency detected due to bidirectional / dependent-on-less-stable relationships. Outgoing dependencies from this package include imports to higher-level Android/client code: com.google.zxing.client.android.HttpHelper (used in URIResultInfoRetriever, BookResultInfoRetriever, ProductResultInfoRetriever, TitleRetriever), com.google.zxing.client.android.LocaleManager, android.content.Context and android.widget.TextView resources (R), and com.google.zxing.client.android.history.HistoryManager (SupplementalInfoRetriever and retriever subclasses). The supplement package therefore depends on the concrete Android UI/client packages. Incoming dependencies: com.google.zxing.client.android.CaptureActivity (in com.google.zxing.client.android) calls SupplementalInfoRetriever.maybeInvokeRetrieval(...) (see handleDecodeInternally in CaptureActivity), creating a dependency from client.android -> com.google.zxing.client.android.result.supplement. Because the supplement package depends on com.google.zxing.client.android (less stable, UI/implementation-level) while that package also depends on the supplement package (cycle), the Stable Dependencies Principle is violated (a package depends on less stable, more change-prone packages). Specific code references: imports of HttpHelper and LocaleManager in BookResultInfoRetriever/ProductResultInfoRetriever/URIResultInfoRetriever/TitleRetriever; SupplementalInfoRetriever.maybeInvokeRetrieval invoked by CaptureActivity in handleDecodeInternally. These cross-dependencies indicate an unstable dependency architecture smell."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.client.android.camera",
+    "detection": true,
+    "justification": "The package com.google.zxing.client.android.camera has incoming dependencies from higher-level application packages (e.g. com.google.zxing.client.android.CaptureActivity, CaptureActivityHandler, DecodeThread, ViewfinderView, AmbientLightManager) while it also depends on the application package com.google.zxing.client.android (outgoing dependency). Concrete evidence: CameraConfigurationManager imports and uses com.google.zxing.client.android.PreferencesActivity and Preference keys (PreferencesActivity.KEY_AUTO_FOCUS, KEY_DISABLE_CONTINUOUS_FOCUS, KEY_DISABLE_EXPOSURE, KEY_DISABLE_METERING, KEY_INVERT_SCAN, KEY_DISABLE_BARCODE_SCENE_MODE, KEY_FRONT_LIGHT_MODE) and calls PreferenceManager.getDefaultSharedPreferences(context); AutoFocusManager and FrontLightMode also reference PreferencesActivity keys; CameraManager and other client.android classes (CaptureActivity, AmbientLightManager, DecodeThread, ViewfinderView, CaptureActivityHandler) import and use classes from this camera package (e.g. CameraManager). This creates a bidirectional dependency where the lower-level camera package relies on less-stable, higher-level application classes (PreferencesActivity), violating the Stable Dependencies Principle and indicating an Unstable Dependency smell."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.client.android.clipboard",
+    "detection": false,
+    "justification": "ClipboardInterface has incoming dependencies from internal packages (e.g. com.google.zxing.client.android: CaptureActivity calls ClipboardInterface.setText(...) in maybeSetClipboard; com.google.zxing.client.android.share: ShareActivity calls ClipboardInterface.getText(...) and hasText(...)). Its outgoing dependencies are only to Android framework APIs (android.content.ClipboardManager, android.content.ClipData, android.content.Context, android.util.Log) as shown by its imports. It does not depend on less-stable internal project packages, so it is not depending on less stable components and does not exhibit the Unstable Dependency smell."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.pdf417.detector",
+    "detection": false,
+    "justification": "com.google.zxing.pdf417.detector (classes: Detector, PDF417DetectorResult) has outgoing dependencies on more-central packages (imports: com.google.zxing.BinaryBitmap, DecodeHintType, NotFoundException, ResultPoint and com.google.zxing.common.BitMatrix). The dependent/common packages (com.google.zxing and com.google.zxing.common) contain many core classes used across the codebase (e.g. BitMatrix, BitArray, BinaryBitmap, Binarizer, etc.), indicating higher stability. Incoming dependencies to com.google.zxing.pdf417.detector are limited (e.g. com.google.zxing.pdf417.PDF417Reader calls Detector.detect), so the dependency direction is from this less-stable feature package toward more-stable core packages. Therefore the Stable Dependencies Principle is respected and an Unstable Dependency smell is not present."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.parser.zing",
+    "detection": false,
+    "justification": "Analyzed package org.adoptopenjdk.jitwatch.parser.zing has outgoing dependencies to stable packages: org.adoptopenjdk.jitwatch.model (CompilerThread, NumberedLine, Tag, Task, MemberSignatureParts, LogParseException, etc.), org.adoptopenjdk.jitwatch.core (IJITListener, JITWatchConstants), and org.adoptopenjdk.jitwatch.util (ParseUtil, StringUtil). In the provided codebase there are no incoming dependencies from those packages back to org.adoptopenjdk.jitwatch.parser.zing (no classes in org.adoptopenjdk.jitwatch.model/core/util import parser.zing). Because the package depends on larger/more stable packages and has no observed reverse dependencies, the Stable Dependencies Principle is respected and there is no Unstable Dependency smell."
+  },
+  {
+    "repository": "commons-io",
+    "target": "org.apache.commons.io.file.spi",
+    "detection": false,
+    "justification": "The package depends only on stable Java platform APIs (java.nio.file.FileSystems, java.nio.file.Path, java.nio.file.spi.FileSystemProvider, java.net.URI, java.net.URL, and java.util classes). These are more stable than library packages, and there are no indications of incoming dependencies from less stable components that would invert the stability direction. Hence the Stable Dependencies Principle is satisfied and no Unstable Dependency smell is detected."
+  },
+  {
+    "repository": "byte-buddy",
+    "target": "net.bytebuddy.benchmark.specimen",
+    "detection": false,
+    "justification": "The package net.bytebuddy.benchmark.specimen is primarily depended upon by many benchmark classes (incoming dependencies) such as net.bytebuddy.benchmark.ClassByImplementationBenchmark, ClassByExtensionBenchmark, TrivialClassCreationBenchmark, StubInvocationBenchmark and SuperClassInvocationBenchmark which import ExampleInterface and ExampleClass. Its outgoing dependencies are minimal (ExampleInterface imports only net.bytebuddy.utility.nullability.MaybeNull). Because the package has significant incoming usage and only minor outgoing ties, it is stable and does not depend on less-stable components; therefore no Unstable Dependency is detected."
+  },
+  {
+    "repository": "commons-lang",
+    "target": "org.apache.commons.lang3.event",
+    "detection": false,
+    "justification": "Outgoing dependencies: org.apache.commons.lang3.event classes import/use org.apache.commons.lang3.reflect.MethodUtils, org.apache.commons.lang3.ArrayUtils, org.apache.commons.lang3.Validate, org.apache.commons.lang3.exception.ExceptionUtils and org.apache.commons.lang3.function.FailableConsumer (and other org.apache.commons.lang3.* utilities). Incoming dependencies: in the provided corpus there are no references from other packages to org.apache.commons.lang3.event (no incoming dependencies detected). The packages depended on (org.apache.commons.lang3.function, org.apache.commons.lang3.exception, org.apache.commons.lang3.reflect, core org.apache.commons.lang3 utilities) contain many classes and act as shared utility packages (higher afferent usage and greater stability). Since org.apache.commons.lang3.event depends on these more-central, more-stable utility/exception/function packages rather than on less-stable packages, the Unstable Dependency smell is not present."
+  },
+  {
+    "repository": "byte-buddy",
+    "target": "org.gradle.work",
+    "detection": true,
+    "justification": "net.bytebuddy.build.gradle has outgoing dependencies on the smaller org.gradle.work API (org.gradle.work.InputChanges, org.gradle.work.FileChange, org.gradle.work.ChangeType). Examples: ByteBuddyTask.apply(InputChanges inputChanges) accepts org.gradle.work.InputChanges; IncrementalResolver.ForChangedFiles.apply(…) consumes org.gradle.work.FileChange and org.gradle.work.ChangeType. The depended-on package org.gradle.work in the analyzed codebase is minimal (only ChangeType, FileChange, InputChanges) and thus less stable than the large net.bytebuddy.build.gradle package. This direction (net.bytebuddy.build.gradle -> org.gradle.work) violates the Stable Dependencies Principle, indicating an Unstable Dependency smell."
+  },
+  {
+    "repository": "gson",
+    "target": "com.google.gson.internal.bind.util",
+    "detection": false,
+    "justification": "com.google.gson.internal.bind.util (ISO8601Utils) only has outgoing dependencies to Java standard library classes (java.text.ParseException, java.text.ParsePosition, java.util.Calendar, java.util.Date, java.util.GregorianCalendar, java.util.Locale, java.util.TimeZone) which are stable. Incoming usage is from com.google.gson.internal.bind.DefaultDateTypeAdapter (it imports and calls ISO8601Utils.parse). The dependency direction is com.google.gson.internal.bind -> com.google.gson.internal.bind.util (i.e. a larger/volatile package depends on a small stable utility), and the util package does not depend on less-stable project packages. Therefore the Stable Dependencies Principle is not violated and no Unstable Dependency smell is detected."
+  },
+  {
+    "repository": "byte-buddy",
+    "target": "org.gradle.api.file",
+    "detection": true,
+    "justification": "The org.gradle.api.file package (types DirectoryProperty and Directory) is depended on by many net.bytebuddy.build.gradle classes (e.g., ByteBuddyTask, ByteBuddySimpleTask, ByteBuddyJarTask, ByteBuddyJarsTask, ByteBuddyTaskConfiguration, AbstractByteBuddyTask, AbstractByteBuddyTaskConfiguration, ByteBuddyPlugin and others) indicating high afferent coupling (high stability). However, DirectoryProperty has outgoing dependencies on org.gradle.api.provider.Provider (it extends Provider<Directory> and returns Provider<File>), a package that in this snapshot has far fewer incoming usages (only the DirectoryProperty reference). Because a relatively stable package (org.gradle.api.file) depends on a less-stable package (org.gradle.api.provider), the Stable Dependencies Principle is violated, indicating an Unstable Dependency smell."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.aztec.detector",
+    "detection": true,
+    "justification": "com.google.zxing.aztec.detector has outgoing dependencies on com.google.zxing.aztec (uses AztecDetectorResult) and on lower-level common packages (com.google.zxing, com.google.zxing.common, com.google.zxing.common.detector, com.google.zxing.common.reedsolomon). At the same time there are incoming dependencies from com.google.zxing.aztec: AztecReader (in com.google.zxing.aztec) constructs and calls com.google.zxing.aztec.detector.Detector (AztecReader imports Detector) and uses AztecDetectorResult returned by Detector. This creates a cyclic/bi-directional dependency between com.google.zxing.aztec.detector and com.google.zxing.aztec (Detector -> AztecDetectorResult in com.google.zxing.aztec, and AztecReader -> Detector in com.google.zxing.aztec), meaning the detector package depends on a package that depends back on it (less stable). That violates the Stable Dependencies Principle (packages should only depend on more stable packages) and constitutes an Unstable Dependency smell."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.integration.android",
+    "detection": true,
+    "justification": "The package contains IntentIntegrator and IntentResult and has multiple outgoing dependencies on framework and external components (android.app.Activity, android.app.Fragment, android.app.AlertDialog, android.content.Intent, android.content.pm.PackageManager, android.content.pm.ResolveInfo, android.net.Uri, android.os.Bundle, android.util.Log, java.util.* and reliance on external app packages via BS_PACKAGE and BSPLUS_PACKAGE). No incoming dependencies are provided (afferent coupling Ca = 0) while efferent coupling Ce > 0, yielding maximum instability (I = Ce / (Ca+Ce) = 1). Because it depends on other (less-anchored) packages/apps and has no dependents, this violates the Stable Dependencies Principle and indicates an Unstable Dependency smell."
+  },
+  {
+    "repository": "gson",
+    "target": "com.google.gson.protobuf",
+    "detection": false,
+    "justification": "Outgoing dependencies: com.google.gson.protobuf references many types from com.google.gson (JsonObject, JsonArray, JsonElement, JsonPrimitive, JsonNull, JsonSerializer, JsonDeserializer, JsonSerializationContext, JsonDeserializationContext, JsonParseException, JsonIOException, Gson, TypeAdapter, JsonWriter, JsonReader, etc.). Incoming dependencies: no packages in the provided input depend on com.google.gson.protobuf. The dependency from com.google.gson.protobuf is directed to the core com.google.gson package which provides many stable, widely-used types (a clear core library in the dataset). Therefore the dependency direction is from the adapter package to a more stable core package, so the Unstable Dependency smell is not present."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.ui.resize",
+    "detection": false,
+    "justification": "The package org.adoptopenjdk.jitwatch.ui.resize has multiple incoming dependencies from higher-level UI packages (e.g. org.adoptopenjdk.jitwatch.ui.nmethod.AbstractNMethodStage / NMethodInfo, org.adoptopenjdk.jitwatch.ui.graphing.AbstractGraphStage / TimeLineStage / CodeCacheStage / HistoStage, org.adoptopenjdk.jitwatch.ui.compilechain.CompileChainStage) which use IRedrawable and RateLimitedResizeListener. Its outgoing dependencies are limited to stable external JavaFX APIs (javafx.application.Platform, javafx.beans.value.ChangeListener/ObservableValue, javafx.scene.* classes) and it does not depend on other less-stable internal project packages. Because it has many afferent (incoming) uses and minimal efferent (outgoing) project dependencies, it is stable and does not violate the Stable Dependencies Principle; therefore no Unstable Dependency smell is detected."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.histo",
+    "detection": false,
+    "justification": "The histo package has outgoing dependencies on core/model/compilation infrastructure (examples: imports of org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel, IMetaMember, Compilation, IParseDictionary, LogParseException, Tag in AbstractHistoVisitable/NativeSizeHistoWalker/AttributeNameHistoWalker/InlineSizeHistoVisitable; usage of org.adoptopenjdk.jitwatch.treevisitor.TreeVisitor in AbstractHistoVisitable and AbstractCompilationWalker; usage of org.adoptopenjdk.jitwatch.compilation.CompilationUtil in InlineSizeHistoVisitable; and core constants from org.adoptopenjdk.jitwatch.core.JITWatchConstants). These target packages (model, compilation, core, treevisitor) are central and widely used across the codebase (e.g. many classes in org.adoptopenjdk.jitwatch.model and UI/graphing use them), indicating they are more stable. Incoming dependencies to the histo package are minimal (notably org.adoptopenjdk.jitwatch.ui.graphing.HistoStage imports Histo and IHistoVisitable). Because histo depends on more central/stable packages while few packages depend on histo, the dependency direction aligns with the Stable Dependencies Principle; therefore there is no Unstable Dependency smell."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.ui.nmethod.compilerthread",
+    "detection": true,
+    "justification": "Outgoing dependencies: CompilerThreadStage directly depends on many other packages (imports): org.adoptopenjdk.jitwatch.model (Compilation, CompilerThread, IMetaMember), org.adoptopenjdk.jitwatch.ui.main.JITWatchUI, org.adoptopenjdk.jitwatch.ui.nmethod.AbstractNMethodStage, org.adoptopenjdk.jitwatch.util.UserInterfaceUtil and javafx.*. Incoming dependencies: org.adoptopenjdk.jitwatch.ui.main.JITWatchUI creates and holds CompilerThreadStage instances (see JITWatchUI.btnCompilerThreads action creating new CompilerThreadStage). This creates a bidirectional/cyclic dependency between ui.nmethod.compilerthread and ui.main (CompilerThreadStage takes a JITWatchUI parent; JITWatchUI constructs CompilerThreadStage). The analyzed package has multiple outgoing edges but very few incoming edges (primarily JITWatchUI), so it depends on other packages while being lightly depended-on itself. The presence of the cycle with a higher-level UI package (ui.main) and the many outgoing dependencies to other packages indicates an unstable-dependency architecture smell: the package depends on components (notably the main UI) in a direction that increases instability and creates a fragile cycle."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.chain",
+    "detection": false,
+    "justification": "The chain package's outgoing dependencies are to core, stable packages rather than to volatile ones. Evidence: CompileNode imports org.adoptopenjdk.jitwatch.model.Compilation, IMetaMember, IParseDictionary, IReadOnlyJITDataModel and util.ParseUtil; CompileChainWalker imports org.adoptopenjdk.jitwatch.compilation.AbstractCompilationVisitable, CompilationUtil, org.adoptopenjdk.jitwatch.model.* and util.TooltipUtil (see import lines in CompileNode and CompileChainWalker). The depended-on packages (org.adoptopenjdk.jitwatch.model, org.adoptopenjdk.jitwatch.compilation, org.adoptopenjdk.jitwatch.util) are large, central modules in the codebase (many classes provided under org.adoptopenjdk.jitwatch.model and util), indicating higher stability and wide reuse. Incoming dependencies into org.adoptopenjdk.jitwatch.chain exist (for example org.adoptopenjdk.jitwatch.ui.compilechain uses CompileChainStage which imports the chain package), so dependency direction is toward more stable/core packages. No indication that org.adoptopenjdk.jitwatch.chain depends on less-stable packages, therefore the Unstable Dependency smell is not detected."
+  },
+  {
+    "repository": "zxing",
+    "target": "com.google.zxing.oned.rss",
+    "detection": false,
+    "justification": "Outgoing dependencies from com.google.zxing.oned.rss go to core/stable packages (e.g. com.google.zxing: Result, ResultPoint, NotFoundException, BarcodeFormat, DecodeHintType, ResultMetadataType, ResultPointCallback; com.google.zxing.common: BitArray, BitMatrix utilities and com.google.zxing.common.detector.MathUtils). Incoming dependencies are limited and come from a related, less-central package (com.google.zxing.oned.rss.expanded classes like RSSExpandedReader, ExpandedPair which import AbstractRSSReader, DataCharacter, FinderPattern). The dependency direction is towards central/common packages (more stable), not toward less stable packages. Therefore there is no Unstable Dependency smell for com.google.zxing.oned.rss."
+  },
+  {
+    "repository": "jitwatch",
+    "target": "org.adoptopenjdk.jitwatch.hotthrow",
+    "detection": true,
+    "justification": "Outgoing dependencies: HotThrowFinder in org.adoptopenjdk.jitwatch.hotthrow imports and depends on many core packages (org.adoptopenjdk.jitwatch.compilation.AbstractCompilationVisitable, org.adoptopenjdk.jitwatch.compilation.CompilationUtil, org.adoptopenjdk.jitwatch.model.* including IReadOnlyJITDataModel, Compilation, IMetaMember, IParseDictionary, Tag and model.bytecode types like ExceptionTable/ExceptionTableEntry/MemberBytecode, plus util.ParseUtil). Incoming dependencies: org.adoptopenjdk.jitwatch.toplist.HotThrowTopListVisitable (in the toplist package) imports org.adoptopenjdk.jitwatch.hotthrow.HotThrowFinder and org.adoptopenjdk.jitwatch.hotthrow.HotThrowResult and uses them to build toplists. The hotthrow package is very small (two classes) while toplist is a larger, higher-level package with many classes. That means a relatively unstable/specialised package (hotthrow) is being depended upon by a broader/top-level package (toplist) — the dependency direction is from a more stable/higher-level package to a less stable/specialised package, violating the Stable Dependencies Principle. These incoming/outgoing dependency relationships (HotThrowTopListVisitable -> HotThrowFinder / HotThrowResult, and HotThrowFinder -> many core model/compilation/util classes) justify the detection of an Unstable Dependency smell."
+  },
+  {
+    "repository": "javaparser",
+    "target": "com.github.javaparser.storage",
+    "detection": false,
+    "justification": "The package com.github.javaparser.storage contains a single class PrimaryType with no imports or references shown. There are no outgoing dependencies to less-stable packages and no incoming dependencies provided in the analysis data. Therefore there is no evidence of an unstable dependency (no dependencies violate the Stable Dependencies Principle)."
+  }
+]
