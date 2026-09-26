@@ -1,0 +1,109 @@
+# Agentic architectural-smell detection config for mini-swe-agent.
+#
+# Merged ON TOP of the builtin `mini.yaml` (toolcall bash plumbing,
+# observation/format templates). run_batch.py does the merge and injects
+# per-cell values (model_name = OpenRouter slug, output_path, the read-only
+# repo bind-mount). The smell definition + unit are passed as template vars.
+#
+# This file is pinned by the study-repo git commit (no content hashing).
+# Any change to it is a change to the experimental apparatus.
+
+agent:
+  # Agent class is selected directly by run_batch.py (SmellAgent), not the
+  # registry, so no `agent_class` key here.
+
+  system_template: |
+    You are a software-architecture analyst. You inspect a Java repository
+    through a read-only shell to decide whether ONE specific architectural
+    smell affects ONE specific software unit (a Java package or a Java class).
+
+    Operating constraints (hard rules — violating any invalidates the run):
+    - The sources under /repo are READ-ONLY. Do not attempt to modify them.
+    - You have NO network access.
+    - You MUST NOT run, install, or invoke any static-analysis, metrics, or
+      smell-detection tool (e.g. arcan, designite, designitejava, pmd, sonar,
+      sonarqube, checkstyle, jdeps, structure101, ndepend, semgrep). Derive
+      every piece of evidence yourself from the source code using only basic
+      shell utilities (find, grep, sed, nl, cat, wc, sort, uniq, awk).
+    - Base your verdict only on evidence you actually observed in the
+      repository. Do not rely on prior knowledge of this open-source project.
+
+    Work step by step: locate the unit's source, gather concrete
+    structural evidence (dependencies, fan-in/fan-out, sizes,
+    responsibilities), then decide.
+
+  instance_template: |
+    ## Architectural smell definition
+
+    {{smell_definition}}
+
+    ## Your task
+
+    Decide whether the smell defined above affects the {{unit_kind}}
+    `{{unit}}` in the repository located at `{{repo_path}}` (read-only).
+
+    {% if unit_kind == "Java package" -%}
+    `{{unit}}` is a fully-qualified Java package name. The special value
+    `(default package)` denotes the unnamed package: the set of top-level
+    classes declared in `.java` files that have NO `package` statement.
+    For any other value, the package's classes are the `.java` files whose
+    `package` declaration equals `{{unit}}` exactly (not sub-packages).
+    {%- else -%}
+    `{{unit}}` is a fully-qualified Java class name of the form
+    `package.ClassName`. Locate the `.java` source whose `package`
+    declaration matches the package part and which declares that
+    (top-level or nested) class. Judge that class; use its package only
+    as supporting context.
+    {%- endif %}
+
+    Explore the code yourself to gather the structural evidence the
+    definition requires. Do not guess from the name.
+
+    ## How to submit your answer
+
+    1. Write your answer to a file named `verdict.json` in the current
+       directory, using EXACTLY this schema (no extra keys, no markdown):
+
+       {"class": "{{unit}}", "detection": <true|false>, "justification": "<concise evidence: the files you read and the concrete metrics/observations that justify the decision>"}
+
+       `detection` MUST be a JSON boolean (true or false).
+
+    2. Submit by issuing EXACTLY this single bash command, not combined with
+       anything else:
+
+       echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat verdict.json
+
+       After this command you cannot continue working on this task.
+
+  # Experimental budget. Calibrate in the pilot, then freeze and report.
+  step_limit: 40
+  cost_limit: 1.0
+
+  # SmellAgent-specific: malformed verdict.json retry budget before the run
+  # is recorded as MalformedVerdict.
+  max_verdict_retries: 1
+
+environment:
+  environment_class: docker
+  # Minimal JDK image, coreutils only, NO analyzer binaries.
+  # Pin by digest for the real runs: eclipse-temurin:17-jdk@sha256:...
+  image: "eclipse-temurin:17-jdk"
+  # /repo is bind-mounted read-only per cell by run_batch.py. The agent
+  # works (and writes verdict.json) in /tmp.
+  cwd: "/tmp"
+  timeout: 60
+  # --network none here; the per-cell read-only repo mount is appended by
+  # run_batch.py (host path differs per project).
+  run_args: ["--rm", "--network", "none"]
+  env:
+    PAGER: cat
+    MANPAGER: cat
+    LESS: -R
+
+model:
+  # Route via OpenRouter; model_name (the OpenRouter slug) is injected per
+  # cell by run_batch.py. Requires OPENROUTER_API_KEY on the host.
+  model_class: openrouter
+  model_kwargs:
+    drop_params: true
+    temperature: 0.0
