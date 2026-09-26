@@ -1,0 +1,1083 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f08-9d03-7720-8b93-079823836b7d
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.build.gradle.android.ByteBuddyAndroidPlugin.ForLegacyAndroid` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.build.gradle.android.ByteBuddyAndroidPlugin.ForLegacyAndroid",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.build.gradle.android.ByteBuddyAndroidPlugin.ForLegacyAndroid`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and reading the surrounding source to measure its fan-in and fan-out from the repository evidence before deciding on the smell.
+exec
+/bin/bash -lc 'rg -n "class ForLegacyAndroid|ForLegacyAndroid" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java:109:            dispatcher = TransformationDispatcher.ForLegacyAndroid.INSTANCE;
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java:495:        enum ForLegacyAndroid implements TransformationDispatcher {
+
+exec
+/bin/bash -lc 'rg --files . | rg "ByteBuddyAndroidPlugin|android.*Plugin|gradle/android"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyLocalClassesEnhancerTask.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/PluginArgument.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/Transformation.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAsmClassVisitorFactory.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/LegacyByteBuddyLocalClassesEnhancerTask.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/Discovery.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidTaskExtension.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidService.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/package-info.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyInstrumentationParameters.java
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/aar/AarPlugin.java
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/PluginForLibClass.java
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/PluginForLocalClass.java
+
+codex
+I found the target as a nested enum inside `ByteBuddyAndroidPlugin`. Next I’m checking its method bodies and how many repository classes point at it, because hub-like modularization depends on both outgoing and incoming coupling.
+exec
+/bin/bash -lc "sed -n '430,620p' byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+            attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.LIBRARY));
+            attributes.attribute(BuildTypeAttr.ATTRIBUTE, project.getObjects().named(BuildTypeAttr.class, buildType));
+            attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
+            attributes.attribute(TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE, project.getObjects().named(TargetJvmEnvironment.class, TargetJvmEnvironment.ANDROID));
+        }
+    }
+
+    /**
+     * A configuration for a {@link AttributeMatchingStrategy}.
+     */
+    protected static class AttributeMatchingStrategyConfigurationAction implements Action<AttributeMatchingStrategy<String>> {
+
+        /**
+         * {@inheritDoc}
+         */
+        public void execute(AttributeMatchingStrategy<String> stringAttributeMatchingStrategy) {
+            stringAttributeMatchingStrategy.getCompatibilityRules().add(ByteBuddyDependencyRule.class);
+        }
+    }
+
+    /**
+     * A configuration action for a {@link Configuration}.
+     */
+    protected static class ConfigurationConfigurationAction implements Action<Configuration> {
+
+        /**
+         * {@inheritDoc}
+         */
+        public void execute(Configuration configuration) {
+            configuration.setCanBeConsumed(false);
+            configuration.setCanBeResolved(false);
+        }
+    }
+
+    /**
+     * A rule to check for jar compatibility.
+     */
+    public abstract static class ByteBuddyDependencyRule implements AttributeCompatibilityRule<String> {
+
+        /**
+         * {@inheritDoc}
+         */
+        public void execute(CompatibilityCheckDetails<String> details) {
+            if (BYTE_BUDDY_CLASSES_TYPE.equals(details.getConsumerValue())) {
+                String producerValue = details.getProducerValue();
+                if ("java-classes-directory".equals(producerValue) || "android-classes-directory".equals(producerValue)) {
+                    details.compatible();
+                }
+            } else if (BYTE_BUDDY_RESOURCES_TYPE.equals(details.getConsumerValue())) {
+                String producerValue = details.getProducerValue();
+                if ("java-resources-directory".equals(producerValue) || "android-java-res".equals(producerValue)) {
+                    details.compatible();
+                }
+            }
+        }
+    }
+
+    /**
+     * Used to wire the local transformation task depending on the API being used in the host project.
+     */
+    protected interface TransformationDispatcher {
+
+        /**
+         * A dispatcher that is used for Android versions that do not support APK version 7.4 or newer.
+         */
+        enum ForLegacyAndroid implements TransformationDispatcher {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public void accept(Project project, Variant variant, Configuration configuration, FileCollection classPath) {
+                TaskProvider<LegacyByteBuddyLocalClassesEnhancerTask> provider = project.getTasks().register(variant.getName() + "BytebuddyLocalTransform",
+                    LegacyByteBuddyLocalClassesEnhancerTask.class,
+                    new LegacyByteBuddyLocalClassesEnhancerTask.ConfigurationAction(ByteBuddyViewConfiguration.toClassPath(project, configuration),
+                        project.getExtensions().getByType(BaseExtension.class),
+                        classPath));
+                variant.getArtifacts()
+                    .use(provider)
+                    .wiredWith(GetLocalClassesFunction.INSTANCE, GetOutputDirFunction.INSTANCE)
+                    .toTransform(MultipleArtifact.ALL_CLASSES_DIRS.INSTANCE);
+            }
+
+            /**
+             * A function representation of getting the local classes.
+             */
+            protected enum GetLocalClassesFunction implements Function1<LegacyByteBuddyLocalClassesEnhancerTask, ListProperty<Directory>> {
+
+                /**
+                 * The singleton instance.
+                 */
+                INSTANCE;
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public ListProperty<Directory> invoke(LegacyByteBuddyLocalClassesEnhancerTask task) {
+                    return task.getLocalClassesDirs();
+                }
+            }
+
+            /**
+             * A function representation of getting the output directory.
+             */
+            protected enum GetOutputDirFunction implements Function1<LegacyByteBuddyLocalClassesEnhancerTask, DirectoryProperty> {
+
+                /**
+                 * The singleton instance.
+                 */
+                INSTANCE;
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public DirectoryProperty invoke(LegacyByteBuddyLocalClassesEnhancerTask task) {
+                    return task.getOutputDir();
+                }
+            }
+        }
+
+        /**
+         * A dispatcher that is used for Android versions that do support APK version 7.4 or newer.
+         */
+        class ForApk74CompatibleAndroid implements TransformationDispatcher {
+
+            /**
+             * The {@code com.android.build.api.variant.ScopedArtifacts$Scope#forScope} method.
+             */
+            private final Method forScope;
+
+            /**
+             * The {@code com.android.build.api.variant.ScopedArtifacts#use} method.
+             */
+            private final Method use;
+
+            /**
+             * The {@code com.android.build.api.variant.ScopedArtifactsOperation¤toTransform} method.
+             */
+            private final Method toTransform;
+
+            /**
+             * The {@code com.android.build.api.variant.ScopedArtifacts$Scope#PROJECT} value.
+             */
+            private final Object scope;
+
+            /**
+             * The {@code com.android.build.api.artifact.ScopedArtifact$CLASSES#INSTANCE} value.
+             */
+            private final Artifact<FileSystemLocation> artifact;
+
+            /**
+             * Creates a new dispatcher.
+             *
+             * @param forScope    The {@code com.android.build.api.variant.ScopedArtifacts$Scope#forScope} method.
+             * @param use         The {@code com.android.build.api.variant.ScopedArtifacts#use} method.
+             * @param toTransform The {@code com.android.build.api.variant.ScopedArtifactsOperation¤toTransform} method.
+             * @param scope       The {@code com.android.build.api.variant.ScopedArtifacts$Scope#PROJECT} value.
+             * @param artifact    The {@code com.android.build.api.artifact.ScopedArtifact$CLASSES#INSTANCE} value.
+             */
+            protected ForApk74CompatibleAndroid(Method forScope, Method use, Method toTransform, Object scope, Artifact<FileSystemLocation> artifact) {
+                this.forScope = forScope;
+                this.use = use;
+                this.toTransform = toTransform;
+                this.scope = scope;
+                this.artifact = artifact;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public void accept(Project project, Variant variant, Configuration configuration, FileCollection classPath) {
+                if (configuration.getAllDependencies().isEmpty()) {
+                    return;
+                }
+                TaskProvider<ByteBuddyLocalClassesEnhancerTask> provider = project.getTasks().register(variant.getName() + "BytebuddyTransform",
+                    ByteBuddyLocalClassesEnhancerTask.class,
+                    new ByteBuddyLocalClassesEnhancerTask.ConfigurationAction(ByteBuddyViewConfiguration.toClassPath(project, configuration),
+                            project.getExtensions().getByType(BaseExtension.class),
+                            project.getExtensions().getByType(ByteBuddyAndroidTaskExtension.class)));
+                try {
+                    toTransform.invoke(use.invoke(forScope.invoke(variant.getArtifacts(), scope), provider),
+                        artifact,
+                        GetProjectJarsFunction.INSTANCE,
+                        GetLocalClassesDirsFunction.INSTANCE,
+                        GetOutputFileFunction.INSTANCE);
+                } catch (IllegalAccessException exception) {
+                    throw new IllegalStateException("Failed to variant scope", exception);
+
+exec
+/bin/bash -lc 'rg -n "ForLegacyAndroid" byte-buddy-gradle-plugin/android-plugin/src/main/java byte-buddy-gradle-plugin/android-plugin-test -S' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java:109:            dispatcher = TransformationDispatcher.ForLegacyAndroid.INSTANCE;
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java:495:        enum ForLegacyAndroid implements TransformationDispatcher {
+
+codex
+The repository search already shows only one explicit reference to `ForLegacyAndroid`, which is a strong sign against a hub. I’m checking the top-level plugin wiring and the class imports to confirm whether its dependency footprint is broad enough to offset that low fan-in.
+exec
+/bin/bash -lc "sed -n '1,140p' byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.build.gradle.android;
+
+import com.android.build.api.AndroidPluginVersion;
+import com.android.build.api.artifact.Artifact;
+import com.android.build.api.artifact.Artifacts;
+import com.android.build.api.artifact.MultipleArtifact;
+import com.android.build.api.attributes.BuildTypeAttr;
+import com.android.build.api.instrumentation.InstrumentationScope;
+import com.android.build.api.variant.AndroidComponentsExtension;
+import com.android.build.api.variant.Variant;
+import com.android.build.gradle.BaseExtension;
+import com.android.build.gradle.internal.component.ComponentCreationConfig;
+import com.android.build.gradle.internal.publishing.AndroidArtifacts;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import kotlin.Unit;
+import kotlin.jvm.functions.Function1;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.gradle.api.Action;
+import org.gradle.api.GradleException;
+import org.gradle.api.Plugin;
+import org.gradle.api.Project;
+import org.gradle.api.artifacts.ArtifactView;
+import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.attributes.Attribute;
+import org.gradle.api.attributes.AttributeCompatibilityRule;
+import org.gradle.api.attributes.AttributeContainer;
+import org.gradle.api.attributes.AttributeMatchingStrategy;
+import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.CompatibilityCheckDetails;
+import org.gradle.api.attributes.Usage;
+import org.gradle.api.attributes.java.TargetJvmEnvironment;
+import org.gradle.api.file.Directory;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.file.FileSystemLocation;
+import org.gradle.api.file.RegularFile;
+import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.TaskProvider;
+
+/**
+ * A Byte Buddy plugin-variant to use in combination with Gradle's support for Android.
+ */
+public class ByteBuddyAndroidPlugin implements Plugin<Project> {
+
+    /**
+     * The name of the artifact type attribute.
+     */
+    protected static final Attribute<String> ARTIFACT_TYPE_ATTRIBUTE = Attribute.of("artifactType", String.class);
+
+    /**
+     * The dispatcher to use for registering the transformation.
+     */
+    protected static final TransformationDispatcher TRANSFORMATION_DISPATCHER;
+
+    /**
+     * The name of the Byte Buddy jar type.
+     */
+    public static final String BYTE_BUDDY_CLASSES_TYPE = "bytebuddy-classes";
+
+    /**
+     * The name of the Byte Buddy resources type.
+     */
+    public static final String BYTE_BUDDY_RESOURCES_TYPE = "bytebuddy-resources";
+
+    /*
+     * Resolves the dispatcher.
+     */
+    static {
+        TransformationDispatcher dispatcher;
+        try {
+            Class<?> scope = Class.forName("com.android.build.api.variant.ScopedArtifacts$Scope");
+            Class<?> scopedArtifacts = Class.forName("com.android.build.api.variant.ScopedArtifacts");
+            Class<?> scopedArtifact = Class.forName("com.android.build.api.artifact.ScopedArtifact");
+            @SuppressWarnings("unchecked")
+            Object project = Enum.valueOf((Class) scope, "ALL");
+            @SuppressWarnings("unchecked")
+            Artifact<FileSystemLocation> location = (Artifact<FileSystemLocation>) Class.forName("com.android.build.api.artifact.ScopedArtifact$CLASSES").getField("INSTANCE").get(null);
+            dispatcher = new TransformationDispatcher.ForApk74CompatibleAndroid(
+                Artifacts.class.getMethod("forScope", scope),
+                scopedArtifacts.getMethod("use", TaskProvider.class),
+                Class.forName("com.android.build.api.variant.ScopedArtifactsOperation").getMethod("toTransform",
+                    scopedArtifact,
+                    Function1.class,
+                    Function1.class,
+                    Function1.class),
+                project,
+                location);
+        } catch (Throwable ignored) {
+            dispatcher = TransformationDispatcher.ForLegacyAndroid.INSTANCE;
+        }
+        TRANSFORMATION_DISPATCHER = dispatcher;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void apply(Project project) {
+        @SuppressWarnings("unchecked")
+        AndroidComponentsExtension<?, ?, Variant> extension = project.getExtensions().getByType(AndroidComponentsExtension.class);
+        AndroidPluginVersion currentAgpVersion = extension.getPluginVersion();
+        if (currentAgpVersion.compareTo(new AndroidPluginVersion(7, 2)) < 0) {
+            throw new IllegalStateException("Byte Buddy requires at least Gradle Plugin version 7.2+, but found " + currentAgpVersion);
+        }
+        project.getDependencies().getAttributesSchema().attribute(ARTIFACT_TYPE_ATTRIBUTE, new AttributeMatchingStrategyConfigurationAction());
+        project.getExtensions().add("byteBuddy", new ByteBuddyAndroidTaskExtension(project));
+        extension.onVariants(extension.selector().all(), new VariantAction(project, project.getConfigurations().create("byteBuddy", new ConfigurationConfigurationAction())));
+    }
+
+    /**
+     * An action to handle a {@link Variant}.
+     */
+    protected static class VariantAction implements Action<Variant> {
+
+        /**
+         * The current Gradle project.
+         */
+        private final Project project;
+
+        /**
+         * The general Byte Buddy configuration.
+
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/LegacyByteBuddyLocalClassesEnhancerTask.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.build.gradle.android;
+
+import com.android.build.gradle.BaseExtension;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.build.AndroidDescriptor;
+import net.bytebuddy.build.BuildLogger;
+import net.bytebuddy.build.EntryPoint;
+import net.bytebuddy.build.Plugin;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.scaffold.inline.MethodNameTransformer;
+import org.gradle.api.Action;
+import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
+import org.gradle.api.JavaVersion;
+import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.Directory;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.TaskAction;
+
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Transformation task for instrumenting the project's local classes using the legacy AGP api < 7.4.0.
+ */
+public abstract class LegacyByteBuddyLocalClassesEnhancerTask extends DefaultTask {
+
+    /**
+     * Returns the boot class path of Android.
+     *
+     * @return The boot class path of Android.
+     */
+    @InputFiles
+    public abstract ConfigurableFileCollection getAndroidBootClasspath();
+
+    /**
+     * Returns Byte Buddy's class path.
+     *
+     * @return Byte Buddy's class path.
+     */
+    @InputFiles
+    public abstract ConfigurableFileCollection getByteBuddyClasspath();
+
+    /**
+     * Returns the runtime class path.
+     *
+     * @return The runtime class path.
+     */
+    @InputFiles
+    public abstract ConfigurableFileCollection getRuntimeClasspath();
+
+    /**
+     * Returns the Java target compatibility version.
+     *
+     * @return The Java target compatibility version.
+     */
+    @Input
+    public abstract Property<JavaVersion> getJavaTargetCompatibilityVersion();
+
+    /**
+     * Target project's local classes dirs.
+     *
+     * @return The target project's local classes dirs.
+     */
+    @InputFiles
+    public abstract ListProperty<Directory> getLocalClassesDirs();
+
+    /**
+     * The instrumented classes destination dir.
+     *
+     * @return The instrumented classes destination dir.
+     */
+    @OutputDirectory
+    public abstract DirectoryProperty getOutputDir();
+
+    /**
+     * Translates a collection of files to {@link URL}s.
+     *
+     * @param files The list of files to translate.
+     * @return An array of URLs representing the provided files.
+     */
+    private static URL[] toUrls(Collection<File> files) {
+        URL[] url = new URL[files.size()];
+        int index = 0;
+        for (File file : files) {
+            try {
+                url[index++] = file.toURI().toURL();
+            } catch (MalformedURLException exception) {
+                throw new IllegalStateException("Failed to convert file " + file.getAbsolutePath(), exception);
+            }
+        }
+        return url;
+    }
+
+    /**
+     * Executes the plugin for transforming local classes.
+     */
+    @TaskAction
+    public void execute() {
+        try {
+            ClassFileVersion classFileVersion = ClassFileVersion.ofJavaVersionString(getJavaTargetCompatibilityVersion().get().toString());
+            List<ClassFileLocator> classFileLocators = new ArrayList<ClassFileLocator>();
+            for (File file : getRuntimeClasspath().plus(getAndroidBootClasspath()).plus(getByteBuddyClasspath()).getFiles()) {
+                classFileLocators.add(file.isFile()
+                        ? ClassFileLocator.ForJarFile.of(file, classFileVersion)
+                        : ClassFileLocator.ForFolder.of(file, classFileVersion));
+            }
+            classFileLocators.add(ClassFileLocator.ForClassLoader.of(ByteBuddy.class.getClassLoader()));
+            ClassFileLocator classFileLocator = new ClassFileLocator.Compound(classFileLocators);
+            try {
+                Set<Plugin.Engine.Source> sources = new LinkedHashSet<Plugin.Engine.Source>();
+                for (Directory directory : getLocalClassesDirs().get()) {
+                    sources.add(new Plugin.Engine.Source.ForFolder(directory.getAsFile()));
+                }
+                ClassLoader classLoader = new URLClassLoader(
+                        toUrls(getByteBuddyClasspath().getFiles()),
+                        new URLClassLoader(toUrls(getAndroidBootClasspath().getFiles()), ByteBuddy.class.getClassLoader()));
+                try {
+                    List<Plugin.Factory> factories = new ArrayList<Plugin.Factory>();
+                    BuildLogger buildLogger;
+                    try {
+                        buildLogger = (BuildLogger) Class.forName("net.bytebuddy.build.gradle.GradleBuildLogger")
+                                .getConstructor(Logger.class)
+                                .newInstance(getProject().getLogger());
+                    } catch (Exception exception) {
+                        throw new GradleException("Failed to resolve Gradle build logger", exception);
+                    }
+                    for (String name : Plugin.Engine.Default.scan(classLoader)) {
+                        try {
+                            @SuppressWarnings("unchecked")
+                            Class<? extends Plugin> type = (Class<? extends Plugin>) Class.forName(name, false, classLoader);
+                            if (!Plugin.class.isAssignableFrom(type)) {
+                                throw new GradleException(type.getName() + " does not implement " + Plugin.class.getName());
+                            }
+                            factories.add(new Plugin.Factory.UsingReflection(type)
+                                    .with(Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(AndroidDescriptor.class, AndroidDescriptor.Trivial.LOCAL))
+                                    .with(Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(Logger.class, getProject().getLogger()))
+                                    .with(Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(org.slf4j.Logger.class, getProject().getLogger()))
+                                    .with(Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(BuildLogger.class, buildLogger)));
+                        } catch (Throwable throwable) {
+                            throw new IllegalStateException("Cannot resolve plugin: " + name, throwable);
+                        }
+                    }
+                    Plugin.Engine.Summary summary = Plugin.Engine.Default.of(new EntryPoint.Unvalidated(EntryPoint.Default.DECORATE),
+                                    classFileVersion,
+                                    MethodNameTransformer.Suffixing.withRandomSuffix())
+                            .with(classFileLocator)
+                            .with(classFileVersion)
+                            .apply(new Plugin.Engine.Source.Compound(sources), new Plugin.Engine.Target.ForFolder(getOutputDir().get().getAsFile()), factories);
+                    if (!summary.getFailed().isEmpty()) {
+                        throw new IllegalStateException(summary.getFailed() + " local type transformations have failed");
+                    } else if (summary.getTransformed().isEmpty()) {
+                        getLogger().info("No local types were transformed during plugin execution");
+                    } else {
+                        getLogger().info("Transformed {} local type(s)", summary.getTransformed().size());
+                    }
+                } finally {
+                    if (classLoader instanceof Closeable) {
+                        ((Closeable) classLoader).close();
+                    }
+                    if (classLoader.getParent() instanceof Closeable) {
+                        ((Closeable) classLoader.getParent()).close();
+                    }
+                }
+            } finally {
+                classFileLocator.close();
+            }
+        } catch (IOException exception) {
+            throw new GradleException("Failed to transform local classes", exception);
+        }
+    }
+
+    /**
+     * A configuration action for the {@link LegacyByteBuddyLocalClassesEnhancerTask} task.
+     */
+    public static class ConfigurationAction implements Action<LegacyByteBuddyLocalClassesEnhancerTask> {
+
+        /**
+         * The current variant's Byte Buddy configuration.
+         */
+        private final FileCollection byteBuddyConfiguration;
+
+        /**
+         * The android gradle extension.
+         */
+        private final BaseExtension androidExtension;
+
+        /**
+
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyLocalClassesEnhancerTask.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.build.gradle.android;
+
+import com.android.build.gradle.BaseExtension;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.build.AndroidDescriptor;
+import net.bytebuddy.build.EntryPoint;
+import net.bytebuddy.build.Plugin;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.utility.QueueFactory;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.gradle.api.Action;
+import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
+import org.gradle.api.JavaVersion;
+import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.Directory;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.file.RegularFile;
+import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Nested;
+import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.Optional;
+
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Queue;
+import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
+import java.util.zip.ZipException;
+
+/**
+ * Transformation task for instrumenting the project's local and dependencies' classes.
+ */
+public abstract class ByteBuddyLocalClassesEnhancerTask extends DefaultTask {
+
+    @Nested
+    public abstract ListProperty<Transformation> getTransformations();
+
+    /**
+     * Returns the boot class path of Android.
+     *
+     * @return The boot class path of Android.
+     */
+    @InputFiles
+    public abstract ConfigurableFileCollection getAndroidBootClasspath();
+
+    /**
+     * Returns Byte Buddy's class path.
+     *
+     * @return Byte Buddy's class path.
+     */
+    @InputFiles
+    public abstract ConfigurableFileCollection getByteBuddyClasspath();
+
+    /**
+     * Returns the Java target compatibility version.
+     *
+     * @return The Java target compatibility version.
+     */
+    @Input
+    public abstract Property<JavaVersion> getJavaTargetCompatibilityVersion();
+
+    /**
+     * Determines the discovery for finding plugins on the class path.
+     *
+     * @return The discovery for finding plugins on the class path.
+     */
+    @Input
+    public abstract Property<Discovery> getDiscovery();
+
+    /**
+     * Returns the entry point to use for instrumentations. If not set, the instrumented classes
+     * will be rebased without type validation.
+     *
+     * @return The entry point to use for instrumentations.
+     */
+    @Input
+    public abstract Property<EntryPoint> getEntryPoint();
+
+    /**
+     * Target project's local and dependencies jars.
+     *
+     * @return The target project's local and dependencies jars.
+     */
+    @InputFiles
+    public abstract ListProperty<RegularFile> getInputJars();
+
+    /**
+     * Target project's local classes dirs.
+     *
+     * @return The target project's local classes dirs.
+     */
+    @InputFiles
+    public abstract ListProperty<Directory> getLocalClassesDirs();
+
+    /**
+     * The instrumented classes destination jar file.
+     *
+     * @return The instrumented classes destination jar file.
+     */
+    @OutputFile
+    public abstract RegularFileProperty getOutputFile();
+
+    /**
+     * Returns {@code true} if a warning should be issued for an empty type set.
+     *
+     * @return {@code true} if a warning should be issued for an empty type set.
+     */
+    @Internal
+    public abstract Property<Boolean> getWarnOnEmptyTypeSet();
+
+    /**
+     * Returns {@code true} if this task should fail fast.
+     *
+     * @return {@code true} if this task should fail fast.
+     */
+    @Internal
+    public abstract Property<Boolean> getFailFast();
+
+    /**
+     * Returns {@code true} if the transformation should fail if a live initializer is used.
+     *
+     * @return {@code true} if the transformation should fail if a live initializer is used.
+     */
+    @Internal
+    public abstract Property<Boolean> getFailOnLiveInitializer();
+
+    /**
+     * Returns the number of threads to use for transforming or {@code 0} if the transformation should be applied in the main thread.
+     *
+     * @return The number of threads to use for transforming or {@code 0} if the transformation should be applied in the main thread.
+     */
+    @Internal
+    public abstract Property<Integer> getThreads();
+
+    /**
+     * Returns the suffix to use for rebased methods or the empty string if a random suffix should be used.
+     *
+     * @return The suffix to use for rebased methods or the empty string if a random suffix should be used.
+     */
+    @Input
+    public abstract Property<String> getSuffix();
+
+    /**
+     * Returns {@code true} if extended parsing should be used.
+     *
+     * @return {@code true} if extended parsing should be used.
+     */
+    @Input
+    public abstract Property<Boolean> getExtendedParsing();
+
+    /**
+     * Returns the source set to resolve plugin names from or {@code null} if no such source set is used.
+     *
+     * @return The source set to resolve plugin names from or {@code null} if no such source set is used.
+     */
+    @MaybeNull
+    @InputFiles
+    @Optional
+    public abstract ConfigurableFileCollection getDiscoverySet();
+
+    /**
+     * Translates a collection of files to {@link URL}s.
+     *
+     * @param files The list of files to translate.
+     * @return An array of URLs representing the provided files.
+     */
+    private static URL[] toUrls(Collection<File> files) {
+        URL[] url = new URL[files.size()];
+        int index = 0;
+        for (File file : files) {
+            try {
+                url[index++] = file.toURI().toURL();
+            } catch (MalformedURLException exception) {
+                throw new IllegalStateException("Failed to convert file " + file.getAbsolutePath(), exception);
+            }
+        }
+        return url;
+    }
+
+codex
+I have enough to rule out a hub if the references stay this sparse. I’m pulling exact line numbers now so the verdict can cite concrete evidence from the plugin and the enum body.
+exec
+/bin/bash -lc "nl -ba byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java | sed -n '490,560p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   490	    protected interface TransformationDispatcher {
+   491	
+   492	        /**
+   493	         * A dispatcher that is used for Android versions that do not support APK version 7.4 or newer.
+   494	         */
+   495	        enum ForLegacyAndroid implements TransformationDispatcher {
+   496	
+   497	            /**
+   498	             * The singleton instance.
+   499	             */
+   500	            INSTANCE;
+   501	
+   502	            /**
+   503	             * {@inheritDoc}
+   504	             */
+   505	            public void accept(Project project, Variant variant, Configuration configuration, FileCollection classPath) {
+   506	                TaskProvider<LegacyByteBuddyLocalClassesEnhancerTask> provider = project.getTasks().register(variant.getName() + "BytebuddyLocalTransform",
+   507	                    LegacyByteBuddyLocalClassesEnhancerTask.class,
+   508	                    new LegacyByteBuddyLocalClassesEnhancerTask.ConfigurationAction(ByteBuddyViewConfiguration.toClassPath(project, configuration),
+   509	                        project.getExtensions().getByType(BaseExtension.class),
+   510	                        classPath));
+   511	                variant.getArtifacts()
+   512	                    .use(provider)
+   513	                    .wiredWith(GetLocalClassesFunction.INSTANCE, GetOutputDirFunction.INSTANCE)
+   514	                    .toTransform(MultipleArtifact.ALL_CLASSES_DIRS.INSTANCE);
+   515	            }
+   516	
+   517	            /**
+   518	             * A function representation of getting the local classes.
+   519	             */
+   520	            protected enum GetLocalClassesFunction implements Function1<LegacyByteBuddyLocalClassesEnhancerTask, ListProperty<Directory>> {
+   521	
+   522	                /**
+   523	                 * The singleton instance.
+   524	                 */
+   525	                INSTANCE;
+   526	
+   527	                /**
+   528	                 * {@inheritDoc}
+   529	                 */
+   530	                public ListProperty<Directory> invoke(LegacyByteBuddyLocalClassesEnhancerTask task) {
+   531	                    return task.getLocalClassesDirs();
+   532	                }
+   533	            }
+   534	
+   535	            /**
+   536	             * A function representation of getting the output directory.
+   537	             */
+   538	            protected enum GetOutputDirFunction implements Function1<LegacyByteBuddyLocalClassesEnhancerTask, DirectoryProperty> {
+   539	
+   540	                /**
+   541	                 * The singleton instance.
+   542	                 */
+   543	                INSTANCE;
+   544	
+   545	                /**
+   546	                 * {@inheritDoc}
+   547	                 */
+   548	                public DirectoryProperty invoke(LegacyByteBuddyLocalClassesEnhancerTask task) {
+   549	                    return task.getOutputDir();
+   550	                }
+   551	            }
+   552	        }
+   553	
+   554	        /**
+   555	         * A dispatcher that is used for Android versions that do support APK version 7.4 or newer.
+   556	         */
+   557	        class ForApk74CompatibleAndroid implements TransformationDispatcher {
+   558	
+   559	            /**
+   560	             * The {@code com.android.build.api.variant.ScopedArtifacts$Scope#forScope} method.
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java | sed -n '560,620p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   560	             * The {@code com.android.build.api.variant.ScopedArtifacts$Scope#forScope} method.
+   561	             */
+   562	            private final Method forScope;
+   563	
+   564	            /**
+   565	             * The {@code com.android.build.api.variant.ScopedArtifacts#use} method.
+   566	             */
+   567	            private final Method use;
+   568	
+   569	            /**
+   570	             * The {@code com.android.build.api.variant.ScopedArtifactsOperation¤toTransform} method.
+   571	             */
+   572	            private final Method toTransform;
+   573	
+   574	            /**
+   575	             * The {@code com.android.build.api.variant.ScopedArtifacts$Scope#PROJECT} value.
+   576	             */
+   577	            private final Object scope;
+   578	
+   579	            /**
+   580	             * The {@code com.android.build.api.artifact.ScopedArtifact$CLASSES#INSTANCE} value.
+   581	             */
+   582	            private final Artifact<FileSystemLocation> artifact;
+   583	
+   584	            /**
+   585	             * Creates a new dispatcher.
+   586	             *
+   587	             * @param forScope    The {@code com.android.build.api.variant.ScopedArtifacts$Scope#forScope} method.
+   588	             * @param use         The {@code com.android.build.api.variant.ScopedArtifacts#use} method.
+   589	             * @param toTransform The {@code com.android.build.api.variant.ScopedArtifactsOperation¤toTransform} method.
+   590	             * @param scope       The {@code com.android.build.api.variant.ScopedArtifacts$Scope#PROJECT} value.
+   591	             * @param artifact    The {@code com.android.build.api.artifact.ScopedArtifact$CLASSES#INSTANCE} value.
+   592	             */
+   593	            protected ForApk74CompatibleAndroid(Method forScope, Method use, Method toTransform, Object scope, Artifact<FileSystemLocation> artifact) {
+   594	                this.forScope = forScope;
+   595	                this.use = use;
+   596	                this.toTransform = toTransform;
+   597	                this.scope = scope;
+   598	                this.artifact = artifact;
+   599	            }
+   600	
+   601	            /**
+   602	             * {@inheritDoc}
+   603	             */
+   604	            public void accept(Project project, Variant variant, Configuration configuration, FileCollection classPath) {
+   605	                if (configuration.getAllDependencies().isEmpty()) {
+   606	                    return;
+   607	                }
+   608	                TaskProvider<ByteBuddyLocalClassesEnhancerTask> provider = project.getTasks().register(variant.getName() + "BytebuddyTransform",
+   609	                    ByteBuddyLocalClassesEnhancerTask.class,
+   610	                    new ByteBuddyLocalClassesEnhancerTask.ConfigurationAction(ByteBuddyViewConfiguration.toClassPath(project, configuration),
+   611	                            project.getExtensions().getByType(BaseExtension.class),
+   612	                            project.getExtensions().getByType(ByteBuddyAndroidTaskExtension.class)));
+   613	                try {
+   614	                    toTransform.invoke(use.invoke(forScope.invoke(variant.getArtifacts(), scope), provider),
+   615	                        artifact,
+   616	                        GetProjectJarsFunction.INSTANCE,
+   617	                        GetLocalClassesDirsFunction.INSTANCE,
+   618	                        GetOutputFileFunction.INSTANCE);
+   619	                } catch (IllegalAccessException exception) {
+   620	                    throw new IllegalStateException("Failed to variant scope", exception);
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java | sed -n '90,130p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+    90	        try {
+    91	            Class<?> scope = Class.forName("com.android.build.api.variant.ScopedArtifacts$Scope");
+    92	            Class<?> scopedArtifacts = Class.forName("com.android.build.api.variant.ScopedArtifacts");
+    93	            Class<?> scopedArtifact = Class.forName("com.android.build.api.artifact.ScopedArtifact");
+    94	            @SuppressWarnings("unchecked")
+    95	            Object project = Enum.valueOf((Class) scope, "ALL");
+    96	            @SuppressWarnings("unchecked")
+    97	            Artifact<FileSystemLocation> location = (Artifact<FileSystemLocation>) Class.forName("com.android.build.api.artifact.ScopedArtifact$CLASSES").getField("INSTANCE").get(null);
+    98	            dispatcher = new TransformationDispatcher.ForApk74CompatibleAndroid(
+    99	                Artifacts.class.getMethod("forScope", scope),
+   100	                scopedArtifacts.getMethod("use", TaskProvider.class),
+   101	                Class.forName("com.android.build.api.variant.ScopedArtifactsOperation").getMethod("toTransform",
+   102	                    scopedArtifact,
+   103	                    Function1.class,
+   104	                    Function1.class,
+   105	                    Function1.class),
+   106	                project,
+   107	                location);
+   108	        } catch (Throwable ignored) {
+   109	            dispatcher = TransformationDispatcher.ForLegacyAndroid.INSTANCE;
+   110	        }
+   111	        TRANSFORMATION_DISPATCHER = dispatcher;
+   112	    }
+   113	
+   114	    /**
+   115	     * {@inheritDoc}
+   116	     */
+   117	    public void apply(Project project) {
+   118	        @SuppressWarnings("unchecked")
+   119	        AndroidComponentsExtension<?, ?, Variant> extension = project.getExtensions().getByType(AndroidComponentsExtension.class);
+   120	        AndroidPluginVersion currentAgpVersion = extension.getPluginVersion();
+   121	        if (currentAgpVersion.compareTo(new AndroidPluginVersion(7, 2)) < 0) {
+   122	            throw new IllegalStateException("Byte Buddy requires at least Gradle Plugin version 7.2+, but found " + currentAgpVersion);
+   123	        }
+   124	        project.getDependencies().getAttributesSchema().attribute(ARTIFACT_TYPE_ATTRIBUTE, new AttributeMatchingStrategyConfigurationAction());
+   125	        project.getExtensions().add("byteBuddy", new ByteBuddyAndroidTaskExtension(project));
+   126	        extension.onVariants(extension.selector().all(), new VariantAction(project, project.getConfigurations().create("byteBuddy", new ConfigurationConfigurationAction())));
+   127	    }
+   128	
+   129	    /**
+   130	     * An action to handle a {@link Variant}.
+
+codex
+{"target":"net.bytebuddy.build.gradle.android.ByteBuddyAndroidPlugin.ForLegacyAndroid","detection":false,"justification":"Inspected byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java, LegacyByteBuddyLocalClassesEnhancerTask.java, and ByteBuddyLocalClassesEnhancerTask.java. `ForLegacyAndroid` has only one incoming reference in the repo, the static fallback assignment at ByteBuddyAndroidPlugin.java:109. Its outgoing coupling is also limited: the `accept` method at ByteBuddyAndroidPlugin.java:505-514 registers one legacy task and wires two nested function enums, touching only a small set of collaborators (`Project`, `Variant`, `Configuration`, `FileCollection`, `BaseExtension`, `LegacyByteBuddyLocalClassesEnhancerTask`, `MultipleArtifact`). This is not strong fan-in/fan-out evidence for a hub-like dependency center."}
+tokens used
+12,823

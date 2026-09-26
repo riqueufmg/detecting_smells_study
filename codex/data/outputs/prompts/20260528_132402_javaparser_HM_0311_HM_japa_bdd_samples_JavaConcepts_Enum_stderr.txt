@@ -1,0 +1,557 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f66-7dec-7380-8f28-d8d3232e2d88
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`japa.bdd.samples.JavaConcepts.Enum` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "japa.bdd.samples.JavaConcepts.Enum",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `japa.bdd.samples.JavaConcepts.Enum`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and checking its direct dependencies and the classes that depend on it, then I’ll decide whether it acts as a dependency hub.
+exec
+/bin/bash -lc "rg -n \"class\\s+Enum\\b|enum\\s+Enum\\b|japa\\.bdd\\.samples\\.JavaConcepts\\.Enum\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg --files . | rg \"JavaConcepts|Enum\\.java|japa/bdd/samples\"" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 289ms:
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsInnerClasses.java
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsUgly.java
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsEnums.java
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsMethods.java
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsBase.java
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/JavaConceptsMethods_prettyprinted
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/JavaConceptsInnerClasses_prettyprinted
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/JavaConceptsUgly_prettyprinted
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/JavaConceptsBase_prettyprinted
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/JavaConceptsEnums_prettyprinted
+./javaparser-symbol-solver-testing/src/test/resources/AnEnum.java.txt
+./javaparser-symbol-solver-testing/src/test/resources/solveMethodDeclaredInEnum/MyEnum.java
+./javaparser-symbol-solver-testing/src/test/resources/TypeResolutionWithSameNameTest/02_ignore_static_non_type_import/another/MyEnum.java
+./javaparser-symbol-solver-testing/src/test/resources/issue4450/a/RefCycleEnum.java
+./javaparser-symbol-solver-testing/src/test/resources/ConstructorCallsEnum.java.txt
+./javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/ConcreteEnum.java
+./javaparser-symbol-solver-testing/src/test/resources/SwitchOnEnum.java.txt
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java
+
+ succeeded in 419ms:
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsEnums.java:44:    public enum Enum {
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/Issue2284Test.java:44:        String s = "public enum Enum {\n" + "    CONSTANT_ENUM() {\n"
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:138:    public enum Enum {
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:138:    public enum Enum {
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/JavaConceptsEnums_prettyprinted:44:    public enum Enum {
+
+codex
+I found the sample source that contains the enum. Next I’m checking the file contents and who references that sample so I can judge fan-in/fan-out from actual usage rather than assumptions.
+exec
+/bin/bash -lc "sed -n '1,240p' javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"JavaConcepts\\.Enum|samples/JavaConcepts|pretty_printing_java_concepts|JavaConceptsEnums|Enum\\b\" javaparser-core-testing-bdd javaparser-core-testing -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 125ms:
+javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:138:    public enum Enum {
+javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:153:        private Enum(int x) {
+javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:138:    public enum Enum {
+javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:157:        private Enum(int x) {
+
+ succeeded in 221ms:
+package japa.bdd.samples;
+
+import com.github.javaparser.JavaParser;
+import japa.parser.ParseException;
+import com.github.javaparser.ast.CompilationUnit;
+import org.junit.Ignore;
+
+import java.io.*;
+import java.util.*;
+
+@Ignore
+@Deprecated
+public class JavaConcepts<T extends List<int[]>, X> extends Base implements Serializable {
+
+    static Class clz1 = String.class;
+
+    protected Class clz2 = (String.class);
+
+    Class clz3 = int.class;
+
+    Class clz4 = (int.class);
+
+    int[] arr = new int[10];
+
+    byte bye = 0;
+
+    byte byebye[] = null;
+
+    short sh1, sh2 = 1;
+
+    int intWithUnderscore = 1234_5678;
+
+    long longWithUnderscore = 1234_5678L;
+
+    float floatWithUnderscore = 1_234.5_678f;
+
+    float floatWithUnderscoreAndExponent = 1_234e1_0f;
+
+    double doubleWithUnderscore = 1_234.5_678;
+
+    double doubleWithUnderscoreAndExponent = 1_234e1_0;
+
+    int binaryLiteral = 0b101101;
+
+    List<String>[][] arrLS = (List<String>[][]) new List<?>[10][];
+
+    ;
+
+    {
+        int z = 0, y = 0;
+        int a = (z) + y;
+        a = (+z) + y;
+        byte b = (byte) +y;
+    }
+
+    List<String> diamond1 = new LinkedList<>();
+
+    @Deprecated()
+    static class Ugly {
+
+        static int x = 0;
+
+        public static void main(String[] args) {
+            x = +x;
+            x = ~x;
+            --x;
+            boolean b = !false;
+            x &= 2;
+            x |= 2;
+            x ^= 2;
+            x -= 2;
+            x %= 2;
+            x /= 2;
+            x *= 2;
+            x <<= 2;
+            x >>= 2;
+            x >>>= 2;
+            b = b || false;
+            b = b | false;
+            b = b & false;
+            b = b ^ false;
+            b = b != false;
+            b = x > 1;
+            b = x < 1;
+            b = x >= 1;
+            b = x <= 1;
+            x = x << 1;
+            x = x >> 1;
+            x = x >>> 1;
+            x = x - 1;
+            x = x * 1;
+            x = x % 1;
+            x = x / 1;
+        }
+    }
+
+    ;
+
+    @Deprecated()
+    int[][][][] arr2 = new int[10][2][1][0];
+
+    volatile float fff = 0x1.fffeP+127f;
+
+    char cc = 'a';
+
+    int[][] arr3 = {{1, 2}, {3, 4}};
+
+    static int[] arr4[] = {};
+
+    public static JavaConcepts t;
+
+    static {
+        arr4 = new int[][]{{2}, {1}};
+    }
+
+    {
+        arr3 = new int[][]{{2}, {1}};
+    }
+
+    public enum Teste {
+
+        asc, def
+    }
+
+    public enum Sexo {
+
+        m, @Deprecated
+        f;
+
+        public enum Sexo_ implements Serializable, Cloneable {
+        }
+
+        private Sexo() {
+        }
+    }
+
+    @Deprecated
+    public enum Enum {
+
+        m(1) {
+            @Override
+            void mm() {
+            }
+        }, f(2) {
+            void mm() {
+            }
+        };
+
+        native void nnn();
+
+        transient int x;
+
+        private Enum(int x) {
+            this.x = x;
+        }
+
+        abstract void mm();
+    }
+
+    strictfp double ddd() {
+        return 0.0;
+    }
+
+    public <T, E> JavaConcepts(int x) {
+        this.arr[0] = x;
+        T val1 = null;
+        E val2 = null;
+        super.<T, E>check2(val1, val2);
+        boolean b = true, y = false;
+        abstract class X {
+
+            int i = 0;
+
+            public <D> X() {
+            }
+
+            public void m() {
+            }
+        }
+        @Deprecated
+        final class Y extends X {
+
+            public Y() {
+                super();
+                JavaConcepts.this.cc = 'c';
+                super.i = 1;
+                Y.super.m();
+            }
+
+            public Y(int y) {
+                super();
+            }
+
+            public Y(long x) {
+                this();
+            }
+        }
+    }
+
+    public <T> JavaConcepts(String str) {
+    }
+
+    private class QWE extends JavaConcepts<List<int[]>, String> {
+
+        @Deprecated
+        final int z = 0;
+
+        int i = (int) -1;
+
+        public QWE(String... x) {
+            <String>super(x[0]);
+        }
+
+        public QWE(int... x) {
+            super(x[0]);
+            i = x[0];
+            assert true;
+            assert 1 == 1 : 2;
+            {
+                int iii = 3;
+                iii += 3;
+            }
+            label:
+            {
+                int iii = 1;
+            }
+            ;
+            ;
+            int min = -2147483648;
+            long sl = 123123123123l;
+            long minl = -9223372036854775808L;
+            switch (i) {
+            }
+            ll:
+            switch (i) {
+                case 1:
+                    System.out.println(1);
+                    break ll;
+                default: {
+                    System.out.println("default");
+
+codex
+I’ve confirmed the enum is a small nested sample type, not a production module. I’m now checking whether anything else in the repo actually depends on this class so the verdict can rest on concrete fan-in/fan-out evidence.
+exec
+/bin/bash -lc "rg -n \"japa\\.bdd\\.samples\\.JavaConcepts|JavaConcepts\\b\" . -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,120p' javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsBase.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,120p' javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsEnums.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 223ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2016 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package japa.bdd.samples;
+
+import com.github.javaparser.JavaParser;
+import japa.parser.ParseException;
+import com.github.javaparser.ast.CompilationUnit;
+import java.io.*;
+import java.util.*;
+
+@Deprecated
+public class JavaConceptsBase<T extends List<int[]>, X> extends Base implements Serializable {
+
+    static Class clz1 = String.class;
+
+    protected Class clz2 = (String.class);
+
+    Class clz3 = int.class;
+
+    Class clz4 = (int.class);
+
+    int[] arr = new int[10];
+
+    byte bye = 0;
+
+    byte[] byebye = null;
+
+    short sh1, sh2 = 1;
+
+    int intWithUnderscore = 1234_5678;
+
+    long longWithUnderscore = 1234_5678L;
+
+    float floatWithUnderscore = 1_234.5_678f;
+
+    float floatWithUnderscoreAndExponent = 1_234e1_0f;
+
+    double doubleWithUnderscore = 1_234.5_678;
+
+    double doubleWithUnderscoreAndExponent = 1_234e1_0;
+
+    int binaryLiteral = 0b101101;
+
+    List<String>[][] arrLS = (List<String>[][]) new List<?>[10][];
+
+    int[][][][] arr2 = new int[10][2][1][0];
+
+    volatile float fff = 0x1.fffeP+127f;
+
+    char cc = 'a';
+
+    int[][] arr3 = { { 1, 2 }, { 3, 4 } };
+
+    static int[][] arr4 = {};
+
+    static {
+        arr4 = new int[][] { { 2 }, { 1 } };
+    }
+
+    {
+        arr3 = new int[][] { { 2 }, { 1 } };
+    }
+
+    public static JavaConceptsBase t;
+}
+
+ succeeded in 260ms:
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsMethods.java:39:        JavaConcepts teste = new JavaConcepts(2);
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsMethods.java:40:        JavaConcepts.QWE qwe = teste.new QWE(1);
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsMethods.java:43:            teste = new JavaConcepts(1);
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsMethods.java:46:            teste = new JavaConcepts(1);
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/JavaConceptsMethods_prettyprinted:39:        JavaConcepts teste = new JavaConcepts(2);
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/JavaConceptsMethods_prettyprinted:40:        JavaConcepts.QWE qwe = teste.new QWE(1);
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/JavaConceptsMethods_prettyprinted:43:            teste = new JavaConcepts(1);
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/JavaConceptsMethods_prettyprinted:46:            teste = new JavaConcepts(1);
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:13:public class JavaConcepts<T extends List<int[]>, X> extends Base implements Serializable {
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:110:    public static JavaConcepts t;
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:164:    public <T, E> JavaConcepts(int x) {
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:185:                JavaConcepts.this.cc = 'c';
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:200:    public <T> JavaConcepts(String str) {
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:203:    private class QWE extends JavaConcepts<List<int[]>, String> {
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:262:        JavaConcepts teste = new JavaConcepts(2);
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:263:        JavaConcepts.QWE qwe = teste.new QWE(1);
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:266:            teste = new JavaConcepts(1);
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java:269:            teste = new JavaConcepts(1);
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:3:Given the class in the file "JavaConcepts.java"
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:17:public class JavaConcepts<T extends List<int[]>, X> extends Base implements Serializable {
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:110:    public static JavaConcepts t;
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:168:    public <T, E> JavaConcepts(int x) {
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:189:                JavaConcepts.this.cc = 'c';
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:204:    public <T> JavaConcepts(String str) {
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:207:    private class QWE extends JavaConcepts<List<int[]>, String> {
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:265:        JavaConcepts teste = new JavaConcepts(2);
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:266:        JavaConcepts.QWE qwe = teste.new QWE(1);
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:269:            teste = new JavaConcepts(1);
+./javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/pretty_printing_java_concepts.story:272:            teste = new JavaConcepts(1);
+./javaparser-core-testing/src/test/java/com/github/javaparser/printer/ConcreteSyntaxModelAcceptanceTest.java:53:    void printingExampleJavaConcepts() throws IOException {
+
+ succeeded in 255ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2016 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package japa.bdd.samples;
+
+@Deprecated
+public class JavaConceptsEnums {
+
+    public enum Teste {
+
+        asc,
+        def
+    }
+
+    public enum Sexo {
+
+        m,
+        @Deprecated
+        f;
+
+        public enum Sexo_ implements Serializable, Cloneable {
+
+        }
+    }
+
+    @Deprecated
+    public enum Enum {
+
+        m(1) {
+
+            @Override
+            void mm() {
+            }
+        }
+        ,
+        f(2) {
+
+            void mm() {
+            }
+        }
+        ;
+
+        native void nnn();
+
+        transient int x;
+
+        private Enum(int x) {
+            this.x = x;
+        }
+
+        abstract void mm();
+    }
+}
+
+codex
+{"target":"japa.bdd.samples.JavaConcepts.Enum","detection":false,"justification":"Inspected `javaparser-core-testing-bdd/src/test/resources/com/github/javaparser/samples/JavaConcepts.java`, where `Enum` is a small nested enum with only two constants, one private constructor, one field, and one abstract method; its dependencies are entirely internal to the enclosing class. A repo-wide search for `JavaConcepts.Enum` / `japa.bdd.samples.JavaConcepts` found no external classes depending on this nested enum, and the only other related files are mirrored sample resources such as `javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/JavaConceptsEnums.java`, not fan-in evidence. This is not a dependency hub."}
+tokens used
+8,821

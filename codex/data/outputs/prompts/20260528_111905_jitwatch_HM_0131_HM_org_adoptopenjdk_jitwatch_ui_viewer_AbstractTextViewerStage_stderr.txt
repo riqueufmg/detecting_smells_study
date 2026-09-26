@@ -1,0 +1,628 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ef4-0466-7be3-a342-db7643fbb6d2
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.ui.viewer.AbstractTextViewerStage` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.ui.viewer.AbstractTextViewerStage",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.ui.viewer.AbstractTextViewerStage`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and tracing its imports/usages to measure fan-in and fan-out from the repository itself. Then I’ll decide whether the dependency pattern is strong enough to count as a hub-like modularization smell.
+exec
+/bin/bash -lc "rg --files | rg 'AbstractTextViewerStage\\.java"'$|AbstractTextViewerStage'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc 'rg -n "AbstractTextViewerStage" .' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/JournalViewerStage.java:26:public class JournalViewerStage extends AbstractTextViewerStage
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/TextViewerStage.java:17:public class TextViewerStage extends AbstractTextViewerStage
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/AbstractTextViewerStage.java:19:public abstract class AbstractTextViewerStage extends Stage
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/AbstractTextViewerStage.java:23:	public AbstractTextViewerStage(final JITWatchUI parent, String title, boolean highlighting)
+
+ succeeded in 0ms:
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/AbstractTextViewerStage.java
+
+codex
+I found the target and the obvious direct clients. Next I’m reading the class and its subclasses to see whether it actually sits at the center of a dense dependency cluster or is just a small shared base class.
+exec
+/bin/bash -lc "sed -n '1,240p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/JournalViewerStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/AbstractTextViewerStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.viewer;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_OPEN_ANGLE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INLINE_FAIL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INLINE_SUCCESS;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INTRINSIC;
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.FONT_MONOSPACE_FAMILY;
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.FONT_MONOSPACE_SIZE;
+
+import java.util.ArrayList;
+import java.util.List;
+import javafx.scene.control.Label;
+import javafx.scene.paint.Color;
+
+import org.adoptopenjdk.jitwatch.model.Compilation;
+import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+import org.adoptopenjdk.jitwatch.ui.triview.Viewer;
+
+public class JournalViewerStage extends AbstractTextViewerStage
+{
+	public JournalViewerStage(final JITWatchUI parent, String title, Compilation compilation)
+	{
+		super(parent, title, false);
+
+		int maxLineLength = 0;
+
+		List<Label> labels = new ArrayList<>();
+		
+			String[] tagLines = compilation.toStringVerbose().split(S_NEWLINE);
+
+			for (int i = 0; i < tagLines.length; i++)
+			{
+				String row = tagLines[i];
+
+				int rowLen = row.length();
+
+				if (rowLen > maxLineLength)
+				{
+					maxLineLength = rowLen;
+				}
+
+				String style = "-fx-font-family:" + FONT_MONOSPACE_FAMILY + "; -fx-font-size:" + FONT_MONOSPACE_SIZE + "px;";
+
+				String colour = Viewer.COLOUR_BLACK;
+
+				if (tagLines[i].contains(S_OPEN_ANGLE + TAG_INLINE_FAIL))
+				{
+					colour = Viewer.COLOUR_RED;
+				}
+				else if (tagLines[i].contains(S_OPEN_ANGLE + TAG_INLINE_SUCCESS))
+				{
+					colour = Viewer.COLOUR_GREEN;
+				}
+				else if (tagLines[i].contains(S_OPEN_ANGLE + TAG_INTRINSIC))
+				{
+					colour = Viewer.COLOUR_BLUE;
+				}
+//				else if (tagLines[i].contains(S_OPEN_ANGLE + TAG_PARSE + C_SPACE))
+//				{
+//					Map<String, String> attrs = StringUtil.getLineAttributesDoubleQuote(tagLines[i].substring(1 + TAG_PARSE
+//							.length()));
+//
+//					String method = attrs.get(ATTR_METHOD);
+//
+//					if (tag instanceof Task)
+//					{
+//						tagLines[i] += ((Task) tag).decodeParseMethod(method);
+//					}
+//				}
+
+				Label lblLine = new Label(tagLines[i]);
+
+				lblLine.setStyle(style);
+				lblLine.setTextFill(Color.web(colour));
+
+				labels.add(lblLine);
+			}
+
+			Label lblLine = new Label(S_EMPTY);
+			labels.add(lblLine);
+		
+		setContent(labels, maxLineLength);
+	}
+}
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.viewer;
+
+import java.util.List;
+
+import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+import org.adoptopenjdk.jitwatch.ui.triview.Viewer;
+import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+
+import javafx.scene.Scene;
+import javafx.scene.control.Label;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+
+public abstract class AbstractTextViewerStage extends Stage
+{
+	private Viewer viewer;
+
+	public AbstractTextViewerStage(final JITWatchUI parent, String title, boolean highlighting)
+	{
+		initStyle(StageStyle.DECORATED);
+
+		viewer = new Viewer(parent, highlighting);
+
+		setTitle(title);
+
+		Scene scene = UserInterfaceUtil.getScene(viewer, 640, 480);
+
+		setScene(scene);
+	}
+
+	protected void setContent(List<Label> items, int maxLineLength)
+	{
+		viewer.setContent(items);
+
+		int x = Math.min(80, maxLineLength);
+		int y = Math.min(30, items.size());
+
+		x = Math.max(x, 20);
+		y = Math.max(y, 20);
+
+		setWidth(x * 12);
+		setHeight(y * 19);
+	}
+}
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/TextViewerStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2015 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.viewer;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+import org.adoptopenjdk.jitwatch.util.StringUtil;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.*;
+import javafx.scene.control.Label;
+
+public class TextViewerStage extends AbstractTextViewerStage
+{
+	public TextViewerStage(final JITWatchUI parent, String title, String inSource, boolean showLineNumbers, boolean highlighting)
+	{
+		super(parent, title, highlighting);
+
+        String source = inSource;
+
+		if (source == null)
+		{
+			source = "Empty";
+		}
+
+		source = source.replace("\t", "    "); // 4 spaces
+
+		String[] lines = source.split(S_NEWLINE);
+
+		int maxLineLength = 0;
+
+		int maxWidth = Integer.toString(lines.length).length();
+
+		List<Label> labels = new ArrayList<>();
+				
+		for (int i = 0; i < lines.length; i++)
+		{
+			String row = lines[i];
+
+			if (showLineNumbers)
+			{
+				lines[i] = StringUtil.alignRight(i + 1, maxWidth) + S_DOUBLE_SPACE + row;
+			}
+
+			int rowLen = row.length();
+
+			if (rowLen > maxLineLength)
+			{
+				maxLineLength = rowLen;
+			}
+
+			Label lblLine = new Label(lines[i]);
+
+			labels.add(lblLine);
+		}
+		
+		setContent(labels, maxLineLength);
+	}
+}
+codex
+The class looks like a thin base wrapper around JavaFX `Stage`, not a coordination point. I’m checking whether there are any additional in-repo clients beyond the two subclasses, because that’s the main thing that could change the verdict.
+exec
+/bin/bash -lc 'rg -n "extends AbstractTextViewerStage" ui/src/main/java' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/JournalViewerStage.java:26:public class JournalViewerStage extends AbstractTextViewerStage
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/TextViewerStage.java:17:public class TextViewerStage extends AbstractTextViewerStage
+
+exec
+/bin/bash -lc "rg -n \"new (TextViewerStage|JournalViewerStage)\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:1273:		TextViewerStage tvs = new TextViewerStage(this, title, content, lineNumbers, highlighting);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:1320:			JournalViewerStage jvs = new JournalViewerStage(this, title, member.getSelectedCompilation());
+
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/package-info.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ exited 2 in 0ms:
+sed: can't read ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/package-info.java: No such file or directory
+
+codex
+I confirmed there are only two subclasses in `ui/src/main/java`, and the rest of the UI uses those subclasses rather than the abstract class directly. I’m pulling the call sites so the justification can stay concrete and file-based.
+exec
+/bin/bash -lc "sed -n '1250,1335p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+				lastSelectedMember = null;
+			}
+			else
+			{
+				log("Could not focus tree on " + member.toStringUnqualifiedMethodName(false, true));
+
+				if (classTree.isHidingClassesWithNoCompiledMethods())
+				{
+					log("Perhaps this class doesn't contain any compiled methods and 'Hide uncompiled classes' is selected");
+				}
+
+				classMemberList.clearClassMembers();
+
+				classMemberList.setMetaClass(null);
+
+				classMemberList.selectMember(null);
+			}
+		}
+	}
+
+	@Override
+	public void openTextViewer(String title, String content, boolean lineNumbers, boolean highlighting)
+	{
+		TextViewerStage tvs = new TextViewerStage(this, title, content, lineNumbers, highlighting);
+		StageManager.addAndShow(this.stage, tvs);
+	}
+
+	public void openTextViewer(String title, String content)
+	{
+		openTextViewer(title, content, false, false);
+	}
+
+	@Override
+	public void openCompileChain(IMetaMember member)
+	{
+		if (member != null && member.isCompiled())
+		{
+			CompileChainStage compileChainStage = new CompileChainStage(this, this, logParser.getModel());
+
+			compileChainStage.compilationChanged(member);
+
+			StageManager.addAndShow(this.stage, compileChainStage);
+		}
+	}
+
+	@Override
+	public void openInlinedIntoReport(IMetaMember member)
+	{
+		if (member != null)
+		{
+			log("Finding inlined into reports for " + member.toStringUnqualifiedMethodName(true, true));
+
+			InliningWalker walker = new InliningWalker(logParser.getModel(), member);
+
+			List<Report> inlinedIntoMemberList = walker.getReports(new ScoreComparator());
+
+			log("Found " + inlinedIntoMemberList.size() + " locations.");
+
+			ReportStage inlinedIntoStage = new ReportStage(JITWatchUI.this,
+					"Inlining report for callee " + member.toStringUnqualifiedMethodName(true, true), ReportStageType.INLINING,
+					inlinedIntoMemberList);
+
+			StageManager.addAndShow(JITWatchUI.this.stage, inlinedIntoStage);
+		}
+	}
+
+	public void openJournalViewer(String title, IMetaMember member)
+	{
+		if (member.isCompiled())
+		{
+			JournalViewerStage jvs = new JournalViewerStage(this, title, member.getSelectedCompilation());
+			StageManager.addAndShow(this.stage, jvs);
+		}
+	}
+
+	private void chooseJITLog()
+	{
+		FileChooser fc = new FileChooser();
+		fc.setTitle("Choose JIT log file");
+
+		String osNameProperty = System.getProperty("os.name");
+
+		// don't use ExtensionFilter on OSX due to JavaFX2 missing combo bug
+		if (osNameProperty != null && !osNameProperty.toLowerCase()
+													 .contains("mac"))
+		{
+
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/AbstractTextViewerStage.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2017 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.ui.viewer;
+     7	
+     8	import java.util.List;
+     9	
+    10	import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+    11	import org.adoptopenjdk.jitwatch.ui.triview.Viewer;
+    12	import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+    13	
+    14	import javafx.scene.Scene;
+    15	import javafx.scene.control.Label;
+    16	import javafx.stage.Stage;
+    17	import javafx.stage.StageStyle;
+    18	
+    19	public abstract class AbstractTextViewerStage extends Stage
+    20	{
+    21		private Viewer viewer;
+    22	
+    23		public AbstractTextViewerStage(final JITWatchUI parent, String title, boolean highlighting)
+    24		{
+    25			initStyle(StageStyle.DECORATED);
+    26	
+    27			viewer = new Viewer(parent, highlighting);
+    28	
+    29			setTitle(title);
+    30	
+    31			Scene scene = UserInterfaceUtil.getScene(viewer, 640, 480);
+    32	
+    33			setScene(scene);
+    34		}
+    35	
+    36		protected void setContent(List<Label> items, int maxLineLength)
+    37		{
+    38			viewer.setContent(items);
+    39	
+    40			int x = Math.min(80, maxLineLength);
+    41			int y = Math.min(30, items.size());
+    42	
+    43			x = Math.max(x, 20);
+    44			y = Math.max(y, 20);
+    45	
+    46			setWidth(x * 12);
+    47			setHeight(y * 19);
+    48		}
+    49	}
+
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/TextViewerStage.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2015 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.ui.viewer;
+     7	
+     8	import java.util.ArrayList;
+     9	import java.util.List;
+    10	
+    11	import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+    12	import org.adoptopenjdk.jitwatch.util.StringUtil;
+    13	
+    14	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.*;
+    15	import javafx.scene.control.Label;
+    16	
+    17	public class TextViewerStage extends AbstractTextViewerStage
+    18	{
+    19		public TextViewerStage(final JITWatchUI parent, String title, String inSource, boolean showLineNumbers, boolean highlighting)
+    20		{
+    21			super(parent, title, highlighting);
+    22	
+    23	        String source = inSource;
+    24	
+    25			if (source == null)
+    26			{
+    27				source = "Empty";
+    28			}
+    29	
+    30			source = source.replace("\t", "    "); // 4 spaces
+    31	
+    32			String[] lines = source.split(S_NEWLINE);
+    33	
+    34			int maxLineLength = 0;
+    35	
+    36			int maxWidth = Integer.toString(lines.length).length();
+    37	
+    38			List<Label> labels = new ArrayList<>();
+    39					
+    40			for (int i = 0; i < lines.length; i++)
+    41			{
+    42				String row = lines[i];
+    43	
+    44				if (showLineNumbers)
+    45				{
+    46					lines[i] = StringUtil.alignRight(i + 1, maxWidth) + S_DOUBLE_SPACE + row;
+    47				}
+    48	
+    49				int rowLen = row.length();
+    50	
+    51				if (rowLen > maxLineLength)
+    52				{
+    53					maxLineLength = rowLen;
+    54				}
+    55	
+    56				Label lblLine = new Label(lines[i]);
+    57	
+    58				labels.add(lblLine);
+    59			}
+    60			
+    61			setContent(labels, maxLineLength);
+    62		}
+    63	}
+
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/JournalViewerStage.java | sed -n '1,160p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2017 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.ui.viewer;
+     7	
+     8	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+     9	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+    10	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_OPEN_ANGLE;
+    11	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INLINE_FAIL;
+    12	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INLINE_SUCCESS;
+    13	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INTRINSIC;
+    14	import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.FONT_MONOSPACE_FAMILY;
+    15	import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.FONT_MONOSPACE_SIZE;
+    16	
+    17	import java.util.ArrayList;
+    18	import java.util.List;
+    19	import javafx.scene.control.Label;
+    20	import javafx.scene.paint.Color;
+    21	
+    22	import org.adoptopenjdk.jitwatch.model.Compilation;
+    23	import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+    24	import org.adoptopenjdk.jitwatch.ui.triview.Viewer;
+    25	
+    26	public class JournalViewerStage extends AbstractTextViewerStage
+    27	{
+    28		public JournalViewerStage(final JITWatchUI parent, String title, Compilation compilation)
+    29		{
+    30			super(parent, title, false);
+    31	
+    32			int maxLineLength = 0;
+    33	
+    34			List<Label> labels = new ArrayList<>();
+    35			
+    36				String[] tagLines = compilation.toStringVerbose().split(S_NEWLINE);
+    37	
+    38				for (int i = 0; i < tagLines.length; i++)
+    39				{
+    40					String row = tagLines[i];
+    41	
+    42					int rowLen = row.length();
+    43	
+    44					if (rowLen > maxLineLength)
+    45					{
+    46						maxLineLength = rowLen;
+    47					}
+    48	
+    49					String style = "-fx-font-family:" + FONT_MONOSPACE_FAMILY + "; -fx-font-size:" + FONT_MONOSPACE_SIZE + "px;";
+    50	
+    51					String colour = Viewer.COLOUR_BLACK;
+    52	
+    53					if (tagLines[i].contains(S_OPEN_ANGLE + TAG_INLINE_FAIL))
+    54					{
+    55						colour = Viewer.COLOUR_RED;
+    56					}
+    57					else if (tagLines[i].contains(S_OPEN_ANGLE + TAG_INLINE_SUCCESS))
+    58					{
+    59						colour = Viewer.COLOUR_GREEN;
+    60					}
+    61					else if (tagLines[i].contains(S_OPEN_ANGLE + TAG_INTRINSIC))
+    62					{
+    63						colour = Viewer.COLOUR_BLUE;
+    64					}
+    65	//				else if (tagLines[i].contains(S_OPEN_ANGLE + TAG_PARSE + C_SPACE))
+    66	//				{
+    67	//					Map<String, String> attrs = StringUtil.getLineAttributesDoubleQuote(tagLines[i].substring(1 + TAG_PARSE
+    68	//							.length()));
+    69	//
+    70	//					String method = attrs.get(ATTR_METHOD);
+    71	//
+    72	//					if (tag instanceof Task)
+    73	//					{
+    74	//						tagLines[i] += ((Task) tag).decodeParseMethod(method);
+    75	//					}
+    76	//				}
+    77	
+    78					Label lblLine = new Label(tagLines[i]);
+    79	
+    80					lblLine.setStyle(style);
+    81					lblLine.setTextFill(Color.web(colour));
+    82	
+    83					labels.add(lblLine);
+    84				}
+    85	
+    86				Label lblLine = new Label(S_EMPTY);
+    87				labels.add(lblLine);
+    88			
+    89			setContent(labels, maxLineLength);
+    90		}
+    91	}
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.ui.viewer.AbstractTextViewerStage","detection":false,"justification":"Inspected ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/AbstractTextViewerStage.java, ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/TextViewerStage.java, ui/src/main/java/org/adoptopenjdk/jitwatch/ui/viewer/JournalViewerStage.java, and ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java. The target is a thin abstract base with one field and one helper method, and it only depends on a small set of collaborators (JITWatchUI, Viewer, UserInterfaceUtil, plus JavaFX Stage/Scene/Label/StageStyle). Repository-wide search found only two direct subclasses and no direct instantiations of the abstract class; JITWatchUI creates only those two subclasses. This is limited fan-in/fan-out, not a dependency hub."}
+tokens used
+9,230

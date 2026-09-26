@@ -1,0 +1,613 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f12-5915-7fd2-9d7a-92c2aced5ea7
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.dynamic.scaffold.TypeWriter.ForClassFileVersion` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.dynamic.scaffold.TypeWriter.ForClassFileVersion",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.dynamic.scaffold.TypeWriter.ForClassFileVersion`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and then I’ll inspect its declared relationships and the places that reference it to judge fan-in and fan-out evidence.
+exec
+/bin/bash -lc 'rg -n "class ForClassFileVersion|interface ForClassFileVersion|enum ForClassFileVersion|ForClassFileVersion" src' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 0ms:
+rg: src: IO error for operation on src: No such file or directory (os error 2)
+
+exec
+/bin/bash -lc "rg --files | rg 'TypeWriter\\.java|TypeWriter\\"'$|ForClassFileVersion'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java
+
+codex
+I found the source file location. Next I’m reading the class and checking who calls it so I can separate normal internal collaboration from actual hub-like dependency concentration.
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.dynamic.scaffold;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.asm.AsmVisitorWrapper;
+import net.bytebuddy.build.AccessControllerPlugin;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.annotation.AnnotationList;
+import net.bytebuddy.description.annotation.AnnotationValue;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.field.FieldList;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.MethodList;
+import net.bytebuddy.description.method.ParameterDescription;
+import net.bytebuddy.description.method.ParameterList;
+import net.bytebuddy.description.modifier.ModifierContributor;
+import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.description.module.ModuleDescription;
+import net.bytebuddy.description.type.PackageDescription;
+import net.bytebuddy.description.type.RecordComponentDescription;
+import net.bytebuddy.description.type.RecordComponentList;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.description.type.TypeList;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.dynamic.TypeResolutionStrategy;
+import net.bytebuddy.dynamic.scaffold.inline.MethodRebaseResolver;
+import net.bytebuddy.dynamic.scaffold.inline.RebaseImplementationTarget;
+import net.bytebuddy.dynamic.scaffold.subclass.SubclassImplementationTarget;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.LoadedTypeInitializer;
+import net.bytebuddy.implementation.attribute.AnnotationAppender;
+import net.bytebuddy.implementation.attribute.AnnotationRetention;
+import net.bytebuddy.implementation.attribute.AnnotationValueFilter;
+import net.bytebuddy.implementation.attribute.FieldAttributeAppender;
+import net.bytebuddy.implementation.attribute.MethodAttributeAppender;
+import net.bytebuddy.implementation.attribute.RecordComponentAttributeAppender;
+import net.bytebuddy.implementation.attribute.TypeAttributeAppender;
+import net.bytebuddy.implementation.auxiliary.AuxiliaryType;
+import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
+import net.bytebuddy.implementation.bytecode.constant.DefaultValue;
+import net.bytebuddy.implementation.bytecode.member.MethodInvocation;
+import net.bytebuddy.implementation.bytecode.member.MethodReturn;
+import net.bytebuddy.implementation.bytecode.member.MethodVariableAccess;
+import net.bytebuddy.pool.TypePool;
+import net.bytebuddy.utility.AsmClassReader;
+import net.bytebuddy.utility.AsmClassWriter;
+import net.bytebuddy.utility.CompoundList;
+import net.bytebuddy.utility.OpenedClassReader;
+import net.bytebuddy.utility.nullability.AlwaysNull;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import net.bytebuddy.utility.nullability.UnknownNull;
+import net.bytebuddy.utility.privilege.GetSystemPropertyAction;
+import net.bytebuddy.utility.visitor.ContextClassVisitor;
+import net.bytebuddy.utility.visitor.MetadataAwareClassVisitor;
+import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.ConstantDynamic;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.ModuleVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.RecordComponentVisitor;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.TypePath;
+import org.objectweb.asm.commons.ClassRemapper;
+import org.objectweb.asm.commons.Remapper;
+import org.objectweb.asm.commons.SimpleRemapper;
+
+import javax.annotation.Nonnull;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static net.bytebuddy.matcher.ElementMatchers.is;
+import static net.bytebuddy.matcher.ElementMatchers.isSubTypeOf;
+import static net.bytebuddy.matcher.ElementMatchers.not;
+
+/**
+ * A type writer is a utility for writing an actual class file using the ASM library.
+ *
+ * @param <T> The best known loaded type for the dynamically created type.
+ */
+public interface TypeWriter<T> {
+
+    /**
+     * A system property that indicates a folder for Byte Buddy to dump class files of all types that it creates.
+     * If this property is not set, Byte Buddy does not dump any class files. This property is only read a single
+     * time which is why it must be set on application start-up.
+     */
+    String DUMP_PROPERTY = "net.bytebuddy.dump";
+
+    /**
+     * Creates the dynamic type that is described by this type writer.
+     *
+     * @param typeResolver The type resolution strategy to use.
+     * @return An unloaded dynamic type that describes the created type.
+     */
+    DynamicType.Unloaded<T> make(TypeResolutionStrategy.Resolved typeResolver);
+
+    /**
+     * Wraps another ASM class visitor with a visitor that represents this ASM class writer.
+     *
+     * @param classVisitor The class visitor to wrap.
+     * @param writerFlags  The ASM writer flags to consider.
+     * @param readerFlags  The ASM reader flags to consider.
+     * @return The supplied class visitor wrapped by this type writer.
+     */
+    ContextClassVisitor wrap(ClassVisitor classVisitor, int writerFlags, int readerFlags);
+
+    /**
+     * An field pool that allows a lookup for how to implement a field.
+     */
+    interface FieldPool {
+
+        /**
+         * Looks up a handler entry for a given field.
+         *
+         * @param fieldDescription The field being processed.
+         * @return A handler entry for the given field.
+         */
+        Record target(FieldDescription fieldDescription);
+
+        /**
+         * An entry of a field pool that describes how a field is implemented.
+         *
+         * @see net.bytebuddy.dynamic.scaffold.TypeWriter.FieldPool
+         */
+        interface Record {
+
+            /**
+             * Determines if this record is implicit, i.e is not defined by a {@link FieldPool}.
+             *
+             * @return {@code true} if this record is implicit.
+             */
+            boolean isImplicit();
+
+            /**
+             * Returns the field that this record represents.
+             *
+             * @return The field that this record represents.
+             */
+            FieldDescription getField();
+
+            /**
+             * Returns the field attribute appender for a given field.
+             *
+             * @return The attribute appender to be applied on the given field.
+             */
+            FieldAttributeAppender getFieldAppender();
+
+            /**
+             * Resolves the default value that this record represents. This is not possible for implicit records.
+             *
+             * @param defaultValue The default value that was defined previously or {@code null} if no default value is defined.
+             * @return The default value for the represented field or {@code null} if no default value is to be defined.
+             */
+            @MaybeNull
+            Object resolveDefault(@MaybeNull Object defaultValue);
+
+            /**
+             * Writes this entry to a given class visitor.
+             *
+             * @param classVisitor                 The class visitor to which this entry is to be written to.
+             * @param annotationValueFilterFactory The annotation value filter factory to apply when writing annotations.
+             */
+            void apply(ClassVisitor classVisitor, AnnotationValueFilter.Factory annotationValueFilterFactory);
+
+            /**
+             * Applies this record to a field visitor. This is not possible for implicit records.
+             *
+             * @param fieldVisitor                 The field visitor onto which this record is to be applied.
+             * @param annotationValueFilterFactory The annotation value filter factory to use for annotations.
+             */
+            void apply(FieldVisitor fieldVisitor, AnnotationValueFilter.Factory annotationValueFilterFactory);
+
+            /**
+             * A record for a simple field without a default value where all of the field's declared annotations are appended.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            class ForImplicitField implements Record {
+
+                /**
+                 * The implemented field.
+                 */
+                private final FieldDescription fieldDescription;
+
+                /**
+                 * Creates a new record for a simple field.
+                 *
+                 * @param fieldDescription The described field.
+                 */
+                public ForImplicitField(FieldDescription fieldDescription) {
+                    this.fieldDescription = fieldDescription;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public boolean isImplicit() {
+                    return true;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public FieldDescription getField() {
+                    return fieldDescription;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public FieldAttributeAppender getFieldAppender() {
+                    throw new IllegalStateException("An implicit field record does not expose a field appender: " + this);
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Object resolveDefault(@MaybeNull Object defaultValue) {
+                    throw new IllegalStateException("An implicit field record does not expose a default value: " + this);
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+
+exec
+/bin/bash -lc 'rg -n "ForClassFileVersion" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2449:                constraints.add(new Constraint.ForClassFileVersion(classFileVersion));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:3592:                class ForClassFileVersion implements Constraint {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:3604:                    protected ForClassFileVersion(ClassFileVersion classFileVersion) {
+
+codex
+The target looks like an inner helper class inside `TypeWriter`. I’m now checking its definition and whether it is referenced broadly or just as one local implementation detail.
+exec
+/bin/bash -lc "sed -n '2410,2475p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+
+            /**
+             * Indicates that a method is ignored.
+             */
+            @AlwaysNull
+            private static final MethodVisitor IGNORE_METHOD = null;
+
+            /**
+             * The constraint to assert the members against. The constraint is first defined when the general class information is visited.
+             */
+            @UnknownNull
+            private Constraint constraint;
+
+            /**
+             * Creates a validating class visitor.
+             *
+             * @param classVisitor The class visitor to which any calls are delegated to.
+             */
+            protected ValidatingClassVisitor(ClassVisitor classVisitor) {
+                super(OpenedClassReader.ASM_API, classVisitor);
+            }
+
+            /**
+             * Adds a validating visitor if type validation is enabled.
+             *
+             * @param classVisitor   The original class visitor.
+             * @param typeValidation The type validation state.
+             * @return A class visitor that applies type validation if this is required.
+             */
+            protected static ClassVisitor of(ClassVisitor classVisitor, TypeValidation typeValidation) {
+                return typeValidation.isEnabled()
+                        ? new ValidatingClassVisitor(classVisitor)
+                        : classVisitor;
+            }
+
+            @Override
+            public void visit(int version, int modifiers, String name, @MaybeNull String signature, @MaybeNull String superName, @MaybeNull String[] interfaceInternalName) {
+                ClassFileVersion classFileVersion = ClassFileVersion.ofMinorMajor(version);
+                List<Constraint> constraints = new ArrayList<Constraint>();
+                constraints.add(new Constraint.ForClassFileVersion(classFileVersion));
+                if (name.equals(ModuleDescription.MODULE_CLASS_NAME)) {
+                    constraints.add(Constraint.ForModuleType.INSTANCE);
+                } else if (name.endsWith('/' + PackageDescription.PACKAGE_CLASS_NAME)) {
+                    constraints.add(Constraint.ForPackageType.INSTANCE);
+                } else if ((modifiers & Opcodes.ACC_ANNOTATION) != 0) {
+                    if (!classFileVersion.isAtLeast(ClassFileVersion.JAVA_V5)) {
+                        throw new IllegalStateException("Cannot define an annotation type for class file version " + classFileVersion);
+                    }
+                    constraints.add(classFileVersion.isAtLeast(ClassFileVersion.JAVA_V8)
+                            ? Constraint.ForAnnotation.JAVA_8
+                            : Constraint.ForAnnotation.CLASSIC);
+                } else if ((modifiers & Opcodes.ACC_INTERFACE) != 0) {
+                    constraints.add(classFileVersion.isAtLeast(ClassFileVersion.JAVA_V8)
+                            ? Constraint.ForInterface.JAVA_8
+                            : Constraint.ForInterface.CLASSIC);
+                } else if ((modifiers & Opcodes.ACC_ABSTRACT) != 0) {
+                    constraints.add(Constraint.ForClass.ABSTRACT);
+                } else {
+                    constraints.add(Constraint.ForClass.MANIFEST);
+                }
+                boolean record;
+                if ((modifiers & Opcodes.ACC_RECORD) != 0) {
+                    constraints.add(Constraint.ForRecord.INSTANCE);
+                    record = true;
+                } else {
+                    record = false;
+
+exec
+/bin/bash -lc "sed -n '3560,3655p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+                     * {@inheritDoc}
+                     */
+                    public void assertDynamicValueInConstantPool() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertNestMate() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertRecord() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertPermittedSubclass() {
+                        /* do nothing */
+                    }
+                }
+
+                /**
+                 * Represents the constraint implied by a class file version.
+                 */
+                @HashCodeAndEqualsPlugin.Enhance
+                class ForClassFileVersion implements Constraint {
+
+                    /**
+                     * The enforced class file version.
+                     */
+                    private final ClassFileVersion classFileVersion;
+
+                    /**
+                     * Creates a new constraint for the given class file version.
+                     *
+                     * @param classFileVersion The enforced class file version.
+                     */
+                    protected ForClassFileVersion(ClassFileVersion classFileVersion) {
+                        this.classFileVersion = classFileVersion;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertType(int modifiers, @MaybeNull String superClassInternalName, boolean definesInterfaces, boolean isGeneric) {
+                        if ((modifiers & Opcodes.ACC_ANNOTATION) != 0 && !classFileVersion.isAtLeast(ClassFileVersion.JAVA_V5)) {
+                            throw new IllegalStateException("Cannot define annotation type for class file version " + classFileVersion);
+                        } else if (isGeneric && !classFileVersion.isAtLeast(ClassFileVersion.JAVA_V4)) { // JSR14 allows for generic 1.4 classes.
+                            throw new IllegalStateException("Cannot define a generic type for class file version " + classFileVersion);
+                        }
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertField(String name, boolean isPublic, boolean isStatic, boolean isFinal, boolean isGeneric) {
+                        if (isGeneric && !classFileVersion.isAtLeast(ClassFileVersion.JAVA_V4)) { // JSR14 allows for generic 1.4 classes.
+                            throw new IllegalStateException("Cannot define generic field '" + name + "' for class file version " + classFileVersion);
+                        }
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertMethod(String name,
+                                             boolean isAbstract,
+                                             boolean isPublic,
+                                             boolean isPrivate,
+                                             boolean isStatic,
+                                             boolean isVirtual,
+                                             boolean isConstructor,
+                                             boolean isDefaultValueIncompatible,
+                                             boolean isGeneric) {
+                        if (isGeneric && !classFileVersion.isAtLeast(ClassFileVersion.JAVA_V4)) { // JSR14 allows for generic 1.4 classes.
+                            throw new IllegalStateException("Cannot define generic method '" + name + "' for class file version " + classFileVersion);
+                        } else if (!isVirtual && isAbstract) {
+                            throw new IllegalStateException("Cannot define static or non-virtual method '" + name + "' to be abstract");
+                        }
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertAnnotation() {
+                        if (classFileVersion.isLessThan(ClassFileVersion.JAVA_V5)) {
+                            throw new IllegalStateException("Cannot write annotations for class file version " + classFileVersion);
+                        }
+                    }
+
+
+exec
+/bin/bash -lc "rg -n \"Constraint\\.ForClassFileVersion|new ForClassFileVersion\\(|ForClassFileVersion\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2449:                constraints.add(new Constraint.ForClassFileVersion(classFileVersion));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:3604:                    protected ForClassFileVersion(ClassFileVersion classFileVersion) {
+
+codex
+The usage pattern is very narrow so far. I’m pulling exact line numbers to make the verdict evidence precise and to confirm there isn’t a hidden second call site elsewhere in the repository.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java | sed -n '2438,2454p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+  2438	             */
+  2439	            protected static ClassVisitor of(ClassVisitor classVisitor, TypeValidation typeValidation) {
+  2440	                return typeValidation.isEnabled()
+  2441	                        ? new ValidatingClassVisitor(classVisitor)
+  2442	                        : classVisitor;
+  2443	            }
+  2444	
+  2445	            @Override
+  2446	            public void visit(int version, int modifiers, String name, @MaybeNull String signature, @MaybeNull String superName, @MaybeNull String[] interfaceInternalName) {
+  2447	                ClassFileVersion classFileVersion = ClassFileVersion.ofMinorMajor(version);
+  2448	                List<Constraint> constraints = new ArrayList<Constraint>();
+  2449	                constraints.add(new Constraint.ForClassFileVersion(classFileVersion));
+  2450	                if (name.equals(ModuleDescription.MODULE_CLASS_NAME)) {
+  2451	                    constraints.add(Constraint.ForModuleType.INSTANCE);
+  2452	                } else if (name.endsWith('/' + PackageDescription.PACKAGE_CLASS_NAME)) {
+  2453	                    constraints.add(Constraint.ForPackageType.INSTANCE);
+  2454	                } else if ((modifiers & Opcodes.ACC_ANNOTATION) != 0) {
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java | sed -n '3596,3638p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+  3596	                     */
+  3597	                    private final ClassFileVersion classFileVersion;
+  3598	
+  3599	                    /**
+  3600	                     * Creates a new constraint for the given class file version.
+  3601	                     *
+  3602	                     * @param classFileVersion The enforced class file version.
+  3603	                     */
+  3604	                    protected ForClassFileVersion(ClassFileVersion classFileVersion) {
+  3605	                        this.classFileVersion = classFileVersion;
+  3606	                    }
+  3607	
+  3608	                    /**
+  3609	                     * {@inheritDoc}
+  3610	                     */
+  3611	                    public void assertType(int modifiers, @MaybeNull String superClassInternalName, boolean definesInterfaces, boolean isGeneric) {
+  3612	                        if ((modifiers & Opcodes.ACC_ANNOTATION) != 0 && !classFileVersion.isAtLeast(ClassFileVersion.JAVA_V5)) {
+  3613	                            throw new IllegalStateException("Cannot define annotation type for class file version " + classFileVersion);
+  3614	                        } else if (isGeneric && !classFileVersion.isAtLeast(ClassFileVersion.JAVA_V4)) { // JSR14 allows for generic 1.4 classes.
+  3615	                            throw new IllegalStateException("Cannot define a generic type for class file version " + classFileVersion);
+  3616	                        }
+  3617	                    }
+  3618	
+  3619	                    /**
+  3620	                     * {@inheritDoc}
+  3621	                     */
+  3622	                    public void assertField(String name, boolean isPublic, boolean isStatic, boolean isFinal, boolean isGeneric) {
+  3623	                        if (isGeneric && !classFileVersion.isAtLeast(ClassFileVersion.JAVA_V4)) { // JSR14 allows for generic 1.4 classes.
+  3624	                            throw new IllegalStateException("Cannot define generic field '" + name + "' for class file version " + classFileVersion);
+  3625	                        }
+  3626	                    }
+  3627	
+  3628	                    /**
+  3629	                     * {@inheritDoc}
+  3630	                     */
+  3631	                    public void assertMethod(String name,
+  3632	                                             boolean isAbstract,
+  3633	                                             boolean isPublic,
+  3634	                                             boolean isPrivate,
+  3635	                                             boolean isStatic,
+  3636	                                             boolean isVirtual,
+  3637	                                             boolean isConstructor,
+  3638	                                             boolean isDefaultValueIncompatible,
+
+exec
+/bin/bash -lc "rg -n \"Constraint\\.ForClassFileVersion|new Constraint\\.ForClassFileVersion|ForClassFileVersion\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2449:                constraints.add(new Constraint.ForClassFileVersion(classFileVersion));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:3592:                class ForClassFileVersion implements Constraint {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:3604:                    protected ForClassFileVersion(ClassFileVersion classFileVersion) {
+
+codex
+{"target":"net.bytebuddy.dynamic.scaffold.TypeWriter.ForClassFileVersion","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java`. The nested class is defined at lines 3592-3640 and is instantiated only once in the repo, at line 2449 inside `ValidatingClassVisitor.visit(...)`. `rg` over the repository found no other references to `Constraint.ForClassFileVersion` or `new ForClassFileVersion(...)`. Its outgoing dependency set is also narrow: it only stores a `ClassFileVersion` and uses it for validation checks. This does not show the high fan-in and fan-out expected for hub-like modularization."}
+tokens used
+8,760

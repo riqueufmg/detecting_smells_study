@@ -1,0 +1,1022 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ef6-fbc3-7090-9313-73f66655ff82
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.core.JITWatchConfig.BackgroundCompilation` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.core.JITWatchConfig.BackgroundCompilation",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.core.JITWatchConfig.BackgroundCompilation`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct dependencies and callers so I can judge fan-in/fan-out from the code itself.
+exec
+/bin/bash -lc "rg --files . | rg \"JITWatchConfig\\.java|JITWatchConfig|BackgroundCompilation\"" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./core/src/test/java/org/adoptopenjdk/jitwatch/test/TestJITWatchConfig.java
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java
+
+exec
+/bin/bash -lc 'rg -n "class BackgroundCompilation|enum BackgroundCompilation|BackgroundCompilation" .' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:23:import org.adoptopenjdk.jitwatch.core.JITWatchConfig.BackgroundCompilation;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:301:		BackgroundCompilation backgroundCompilationMode = logParser.getConfig().getBackgroundCompilationMode();
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:303:		if (backgroundCompilationMode == BackgroundCompilation.FORCE_BACKGROUND_COMPILATION)
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:305:			options.add("-XX:+BackgroundCompilation");
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:307:		else if (backgroundCompilationMode == BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION)
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:309:			options.add("-XX:-BackgroundCompilation");
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:9:import org.adoptopenjdk.jitwatch.core.JITWatchConfig.BackgroundCompilation;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:100:		vbox.getChildren().add(buildHBoxBackgroundCompilation());
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:405:	private HBox buildHBoxBackgroundCompilation()
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:409:		final RadioButton rbForceBackgroundCompilation = new RadioButton("Always");
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:410:		rbForceBackgroundCompilation.setTooltip(new Tooltip("-XX:+BackgroundCompilation"));
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:412:		final RadioButton rbForceNoBackgroundCompilation = new RadioButton("Never");
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:413:		rbForceNoBackgroundCompilation.setTooltip(new Tooltip("-XX:-BackgroundCompilation"));
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:415:		final ToggleGroup groupBackgroundCompilation = new ToggleGroup();
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:418:		rbForceBackgroundCompilation.setStyle(DEFAULT_DISPLAY_STYLE);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:420:		BackgroundCompilation backgroundCompilationMode = config.getBackgroundCompilationMode();
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:426:			rbForceBackgroundCompilation.setSelected(false);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:427:			rbForceNoBackgroundCompilation.setSelected(false);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:431:			rbForceBackgroundCompilation.setSelected(true);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:432:			rbForceNoBackgroundCompilation.setSelected(false);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:436:			rbForceBackgroundCompilation.setSelected(false);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:437:			rbForceNoBackgroundCompilation.setSelected(true);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:441:		rbVMDefault.setToggleGroup(groupBackgroundCompilation);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:442:		rbForceBackgroundCompilation.setToggleGroup(groupBackgroundCompilation);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:443:		rbForceNoBackgroundCompilation.setToggleGroup(groupBackgroundCompilation);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:445:		groupBackgroundCompilation.selectedToggleProperty().addListener(getChangeListenerForBackgroundCompilation(rbVMDefault,
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:446:				rbForceBackgroundCompilation, rbForceNoBackgroundCompilation, groupBackgroundCompilation));
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:456:		hbox.getChildren().add(rbForceBackgroundCompilation);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:457:		hbox.getChildren().add(rbForceNoBackgroundCompilation);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:631:	private ChangeListener<Toggle> getChangeListenerForBackgroundCompilation(final RadioButton rbVMDefault,
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:632:			final RadioButton rbForceBackgroundCompilation, final RadioButton rbForceNoBackgroundCompilation,
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:633:			final ToggleGroup groupBackgroundCompilation)
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:640:				Toggle selectedToggle = groupBackgroundCompilation.getSelectedToggle();
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:644:					if (selectedToggle.equals(rbForceBackgroundCompilation))
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:646:						config.setBackgroundCompilationMode(BackgroundCompilation.FORCE_BACKGROUND_COMPILATION);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:648:					else if (selectedToggle.equals(rbForceNoBackgroundCompilation))
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:650:						config.setBackgroundCompilationMode(BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:654:						config.setBackgroundCompilationMode(BackgroundCompilation.VM_DEFAULT);
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:45:	public enum BackgroundCompilation
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:109:	private BackgroundCompilation backgroundCompilationMode;
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:349:		loadBackgroundCompilationMode();
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:407:	private void loadBackgroundCompilationMode()
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:414:			backgroundCompilationMode = BackgroundCompilation.VM_DEFAULT;
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:417:			backgroundCompilationMode = BackgroundCompilation.FORCE_BACKGROUND_COMPILATION;
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:420:			backgroundCompilationMode = BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION;
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:475:	private void saveBackgroundCompilationMode()
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:610:		saveBackgroundCompilationMode();
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:879:	public BackgroundCompilation getBackgroundCompilationMode()
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:884:	public void setBackgroundCompilationMode(BackgroundCompilation backgroundCompilationMode)
+
+codex
+I found the enum in `core/src/main/java/.../JITWatchConfig.java` and the only obvious uses are configuration UI and sandbox code. Next I’m checking how much the enum actually connects to the rest of the codebase versus being a small config type.
+exec
+/bin/bash -lc "sed -n '1,180p' core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2022 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.core;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.DEBUG_LOGGING;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_COMMA;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_DOT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_PROFILE_DEFAULT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_PROFILE_SANDBOX;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
+
+import org.adoptopenjdk.jitwatch.model.ParsedClasspath;
+import org.adoptopenjdk.jitwatch.util.StringUtil;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+public class JITWatchConfig
+{
+	public enum TieredCompilation
+	{
+		VM_DEFAULT, FORCE_TIERED, FORCE_NO_TIERED;
+	}
+
+	public enum CompressedOops
+	{
+		VM_DEFAULT, FORCE_COMPRESSED, FORCE_NO_COMPRESSED;
+	}
+
+	public enum BackgroundCompilation
+	{
+		VM_DEFAULT, FORCE_BACKGROUND_COMPILATION, FORCE_NO_BACKGROUND_COMPILATION;
+	}
+
+	public enum OnStackReplacement
+	{
+		VM_DEFAULT, FORCE_ON_STACK_REPLACEMENT, FORCE_NO_ON_STACK_REPLACEMENT;
+	}
+
+	private static final Logger logger = LoggerFactory.getLogger(JITWatchConfig.class);
+
+	private static final String PROPERTIES_FILENAME = "jitwatch.properties";
+
+	private static final String KEY_SOURCE_LOCATIONS = "Sources";
+	private static final String KEY_CLASS_LOCATIONS = "Classes";
+
+	private static final String KEY_VM_LANGUAGE_PATH = "vm.language.path";
+
+	private static final String KEY_SHOW_JIT_ONLY_MEMBERS = "JitOnly";
+	private static final String KEY_SHOW_JIT_ONLY_CLASSES = "JitOnlyClasses";
+	private static final String KEY_SHOW_HIDE_INTERFACES = "HideInterfaces";
+	private static final String KEY_SHOW_NOTHING_MOUNTED = "ShowNothingMounted";
+	private static final String KEY_LAST_LOG_DIR = "LastLogDir";
+	private static final String KEY_LAST_SANDBOX_EDITOR_PANES = "LastSandboxEditorPanes";
+
+	private static final String KEY_TRIVIEW_TRILINK_MOUSE_FOLLOW = "triview.mouse_follow";
+	private static final String KEY_TRIVIEW_LOCAL_ASM_LABELS = "triview.local_asm_labels";
+
+	private static final String SANDBOX_PREFIX = "sandbox";
+	private static final String KEY_SANDBOX_INTEL_MODE = SANDBOX_PREFIX + ".intel.mode";
+	private static final String KEY_SANDBOX_TIERED_MODE = SANDBOX_PREFIX + ".tiered.mode";
+	private static final String KEY_SANDBOX_COMPRESSED_OOPS_MODE = SANDBOX_PREFIX + ".compressed.oops.mode";
+	private static final String KEY_SANDBOX_FREQ_INLINE_SIZE = SANDBOX_PREFIX + ".freq.inline.size";
+	private static final String KEY_SANDBOX_MAX_INLINE_SIZE = SANDBOX_PREFIX + ".max.inline.size";
+	private static final String KEY_SANDBOX_PRINT_ASSEMBLY = SANDBOX_PREFIX + ".print.assembly";
+	private static final String KEY_SANDBOX_DISABLE_INLINING = SANDBOX_PREFIX + ".disable.inlining";
+	private static final String KEY_SANDBOX_COMPILER_THRESHOLD = SANDBOX_PREFIX + ".compiler.threshold";
+	private static final String KEY_SANDBOX_EXTRA_VM_COMPILATION_SWITCHES = SANDBOX_PREFIX + ".extra.vm.switches.compilation";
+	private static final String KEY_SANDBOX_EXTRA_VM_RUNTIME_SWITCHES = SANDBOX_PREFIX + ".extra.vm.switches.runtime";
+	private static final String KEY_SANDBOX_BACKGROUND_COMPILATION = SANDBOX_PREFIX + ".background.compilation";
+	private static final String KEY_SANDBOX_ON_STACK_REPLACEMENT = SANDBOX_PREFIX + ".on.stack.replacement";
+
+	private static final String KEY_SANDBOX_WORKING_DIR = SANDBOX_PREFIX + ".working.dir";
+
+	private static final String KEY_LAST_PROFILE = "last.profile";
+	private static final String KEY_NO_PROMPT_HSDIS = SANDBOX_PREFIX + ".no.prompt.hsdis";
+
+	private List<String> sourceLocations = new ArrayList<>();
+	private List<String> classLocations = new ArrayList<>();
+	private List<String> editorPanes = new ArrayList<>();
+
+	private boolean showOnlyCompiledMembers = true;
+	private boolean showOnlyCompiledClasses = false;
+	private boolean hideInterfaces = true;
+	private boolean showNothingMounted = true;
+	private String lastLogDir = null;
+	private boolean intelMode = false;
+
+	private boolean mouseFollow = false;
+	private boolean localAsmLabels = false;
+
+	private TieredCompilation tieredCompilationMode;
+	private CompressedOops compressedOopsMode;
+	private BackgroundCompilation backgroundCompilationMode;
+	private OnStackReplacement onStackReplacementMode;
+
+	private int freqInlineSize;
+	private int maxInlineSize;
+	private boolean printAssembly;
+	private boolean disableInlining = false;
+
+	private int compileThreshold;
+	private String extraVMCompilationSwitches;
+	private String extraVMRuntimeSwitches;
+
+	private String sandboxWorkingDir;
+
+	private String profileName = S_PROFILE_DEFAULT;
+
+	private final String CONFIG_OVERRIDE = System.getProperty("jitwatch.config.file", null);
+
+	private File propertiesFile = (CONFIG_OVERRIDE != null) ?
+			new File(CONFIG_OVERRIDE) :
+			new File(System.getProperty("user.dir"), PROPERTIES_FILENAME);
+
+	private Properties loadedProps;
+
+	private String preSandboxProfile = S_PROFILE_DEFAULT;
+
+	private boolean noPromptHsdis = false;
+
+	private ParsedClasspath parsedClasspath = new ParsedClasspath();
+
+	public JITWatchConfig()
+	{
+		initialise();
+	}
+
+	public JITWatchConfig(File propertiesFile)
+	{
+		this.propertiesFile = propertiesFile;
+		initialise();
+	}
+
+	private void initialise()
+	{
+		if (DEBUG_LOGGING)
+		{
+			logger.debug("initialise: {}", propertiesFile);
+		}
+
+		loadedProps = new Properties();
+		loadPropertiesFromFile();
+	}
+
+	public void switchToSandbox()
+	{
+		if (DEBUG_LOGGING)
+		{
+			logger.debug("switchToSandbox()");
+		}
+
+		preSandboxProfile = profileName;
+		setProfileName(S_PROFILE_SANDBOX);
+	}
+
+	public void switchFromSandbox()
+	{
+		if (DEBUG_LOGGING)
+		{
+			logger.debug("switchFromSandbox()");
+		}
+
+		setProfileName(preSandboxProfile);
+	}
+
+exec
+/bin/bash -lc "sed -n '380,520p' core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+		case 1:
+			tieredCompilationMode = TieredCompilation.FORCE_TIERED;
+			break;
+		case 2:
+			tieredCompilationMode = TieredCompilation.FORCE_NO_TIERED;
+			break;
+		}
+	}
+
+	private void loadCompressedOopsMode()
+	{
+		int param = Integer.parseInt(getProperty(loadedProps, KEY_SANDBOX_COMPRESSED_OOPS_MODE, "0"));
+
+		switch (param)
+		{
+		case 0:
+			compressedOopsMode = CompressedOops.VM_DEFAULT;
+			break;
+		case 1:
+			compressedOopsMode = CompressedOops.FORCE_COMPRESSED;
+			break;
+		case 2:
+			compressedOopsMode = CompressedOops.FORCE_NO_COMPRESSED;
+			break;
+		}
+	}
+
+	private void loadBackgroundCompilationMode()
+	{
+		int param = Integer.parseInt(getProperty(loadedProps, KEY_SANDBOX_BACKGROUND_COMPILATION, "2"));
+
+		switch (param)
+		{
+		case 0:
+			backgroundCompilationMode = BackgroundCompilation.VM_DEFAULT;
+			break;
+		case 1:
+			backgroundCompilationMode = BackgroundCompilation.FORCE_BACKGROUND_COMPILATION;
+			break;
+		case 2:
+			backgroundCompilationMode = BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION;
+			break;
+		}
+	}
+
+	private void loadOnStackReplacementMode()
+	{
+		int param = Integer.parseInt(getProperty(loadedProps, KEY_SANDBOX_ON_STACK_REPLACEMENT, "0"));
+
+		switch (param)
+		{
+		case 0:
+			onStackReplacementMode = OnStackReplacement.VM_DEFAULT;
+			break;
+		case 1:
+			onStackReplacementMode = OnStackReplacement.FORCE_ON_STACK_REPLACEMENT;
+			break;
+		case 2:
+			onStackReplacementMode = OnStackReplacement.FORCE_NO_ON_STACK_REPLACEMENT;
+			break;
+		}
+	}
+
+	private void saveTieredCompilationMode()
+	{
+		switch (tieredCompilationMode)
+		{
+		case VM_DEFAULT:
+			putProperty(loadedProps, KEY_SANDBOX_TIERED_MODE, "0");
+			break;
+		case FORCE_TIERED:
+			putProperty(loadedProps, KEY_SANDBOX_TIERED_MODE, "1");
+			break;
+		case FORCE_NO_TIERED:
+			putProperty(loadedProps, KEY_SANDBOX_TIERED_MODE, "2");
+			break;
+		}
+	}
+
+	private void saveCompressedOopsMode()
+	{
+		switch (compressedOopsMode)
+		{
+		case VM_DEFAULT:
+			putProperty(loadedProps, KEY_SANDBOX_COMPRESSED_OOPS_MODE, "0");
+			break;
+		case FORCE_COMPRESSED:
+			putProperty(loadedProps, KEY_SANDBOX_COMPRESSED_OOPS_MODE, "1");
+			break;
+		case FORCE_NO_COMPRESSED:
+			putProperty(loadedProps, KEY_SANDBOX_COMPRESSED_OOPS_MODE, "2");
+			break;
+		}
+	}
+
+	private void saveBackgroundCompilationMode()
+	{
+		switch (backgroundCompilationMode)
+		{
+		case VM_DEFAULT:
+			putProperty(loadedProps, KEY_SANDBOX_BACKGROUND_COMPILATION, "0");
+			break;
+		case FORCE_BACKGROUND_COMPILATION:
+			putProperty(loadedProps, KEY_SANDBOX_BACKGROUND_COMPILATION, "1");
+			break;
+		case FORCE_NO_BACKGROUND_COMPILATION:
+			putProperty(loadedProps, KEY_SANDBOX_BACKGROUND_COMPILATION, "2");
+			break;
+		}
+	}
+
+	private void saveOnStackReplacementMode()
+	{
+		switch (onStackReplacementMode)
+		{
+		case VM_DEFAULT:
+			putProperty(loadedProps, KEY_SANDBOX_ON_STACK_REPLACEMENT, "0");
+			break;
+		case FORCE_ON_STACK_REPLACEMENT:
+			putProperty(loadedProps, KEY_SANDBOX_ON_STACK_REPLACEMENT, "1");
+			break;
+		case FORCE_NO_ON_STACK_REPLACEMENT:
+			putProperty(loadedProps, KEY_SANDBOX_ON_STACK_REPLACEMENT, "2");
+			break;
+		}
+	}
+
+	private boolean loadBooleanFromProperty(Properties props, String propertyName, boolean defaultValue)
+	{
+		return Boolean.parseBoolean(getProperty(props, propertyName, Boolean.toString(defaultValue)));
+	}
+
+	private int loadIntFromProperty(Properties props, String propertyName, int defaultValue)
+	{
+		return Integer.parseInt(getProperty(props, propertyName, Integer.toString(defaultValue)));
+	}
+
+	private List<String> loadCommaSeparatedListFromProperty(Properties props, String propertyName)
+	{
+		String propValue = getProperty(props, propertyName);
+
+
+exec
+/bin/bash -lc "sed -n '840,920p' core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+	{
+		return extraVMCompilationSwitches;
+	}
+
+	public void setExtraVMCompilationSwitches(String extraVMCompilationSwitches)
+	{
+		this.extraVMCompilationSwitches = extraVMCompilationSwitches;
+	}
+
+	public String getSandboxWorkingDir()
+	{
+		return sandboxWorkingDir;
+	}
+
+	public void setSandboxWorkingDir(String sandboxWorkingDir)
+	{
+		this.sandboxWorkingDir = sandboxWorkingDir;
+	}
+
+	public String getExtraVMRuntimeSwitches()
+	{
+		return extraVMRuntimeSwitches;
+	}
+
+	public void setExtraVMRuntimeSwitches(String extraVMRuntimeSwitches)
+	{
+		this.extraVMRuntimeSwitches = extraVMRuntimeSwitches;
+	}
+
+	public CompressedOops getCompressedOopsMode()
+	{
+		return compressedOopsMode;
+	}
+
+	public void setCompressedOopsMode(CompressedOops compressedOopsMode)
+	{
+		this.compressedOopsMode = compressedOopsMode;
+	}
+
+	public BackgroundCompilation getBackgroundCompilationMode()
+	{
+		return backgroundCompilationMode;
+	}
+
+	public void setBackgroundCompilationMode(BackgroundCompilation backgroundCompilationMode)
+	{
+		this.backgroundCompilationMode = backgroundCompilationMode;
+	}
+
+	public OnStackReplacement getOnStackReplacementMode()
+	{
+		return onStackReplacementMode;
+	}
+
+	public void setOnStackReplacementMode(OnStackReplacement onStackReplacementMode)
+	{
+		this.onStackReplacementMode = onStackReplacementMode;
+	}
+
+	public void addOrUpdateVMLanguage(String language, String path)
+	{
+		String pathKey = KEY_VM_LANGUAGE_PATH + C_DOT + language;
+
+		loadedProps.setProperty(pathKey, path);
+	}
+
+	public String getVMLanguagePath(String language)
+	{
+		String result = S_EMPTY;
+
+		String pathKey = KEY_VM_LANGUAGE_PATH + C_DOT + language;
+
+		if (loadedProps.containsKey(pathKey))
+		{
+			result = loadedProps.getProperty(pathKey);
+		}
+
+		return result;
+	}
+
+	public List<String> getVMLanguageList()
+
+codex
+I’ve confirmed the enum is a 3-value config mode with load/save methods in the same class. Now I’m checking how many distinct classes actually depend on it, because hub-like modularization needs strong fan-in/out rather than just a few ordinary references.
+exec
+/bin/bash -lc "sed -n '280,320p' ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java && printf '\\n---\\n' && sed -n '400,470p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java && printf '\\n---\\n' && sed -n '628,660p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+
+		if (tieredMode == TieredCompilation.FORCE_TIERED)
+		{
+			options.add("-XX:+TieredCompilation");
+		}
+		else if (tieredMode == TieredCompilation.FORCE_NO_TIERED)
+		{
+			options.add("-XX:-TieredCompilation");
+		}
+
+		CompressedOops oopsMode = logParser.getConfig().getCompressedOopsMode();
+
+		if (oopsMode == CompressedOops.FORCE_COMPRESSED)
+		{
+			options.add("-XX:+UseCompressedOops");
+		}
+		else if (oopsMode == CompressedOops.FORCE_NO_COMPRESSED)
+		{
+			options.add("-XX:-UseCompressedOops");
+		}
+
+		BackgroundCompilation backgroundCompilationMode = logParser.getConfig().getBackgroundCompilationMode();
+
+		if (backgroundCompilationMode == BackgroundCompilation.FORCE_BACKGROUND_COMPILATION)
+		{
+			options.add("-XX:+BackgroundCompilation");
+		}
+		else if (backgroundCompilationMode == BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION)
+		{
+			options.add("-XX:-BackgroundCompilation");
+		}
+
+		OnStackReplacement onStackReplacementMode = logParser.getConfig().getOnStackReplacementMode();
+
+		if (onStackReplacementMode == OnStackReplacement.FORCE_ON_STACK_REPLACEMENT)
+		{
+			options.add("-XX:+UseOnStackReplacement");
+		}
+		else if (onStackReplacementMode == OnStackReplacement.FORCE_NO_ON_STACK_REPLACEMENT)
+		{
+			options.add("-XX:-UseOnStackReplacement");
+
+---
+		hbox.getChildren().add(rbForceNoCompressed);
+
+		return hbox;
+	}
+
+	private HBox buildHBoxBackgroundCompilation()
+	{
+		final RadioButton rbVMDefault = new RadioButton("VM Default");
+
+		final RadioButton rbForceBackgroundCompilation = new RadioButton("Always");
+		rbForceBackgroundCompilation.setTooltip(new Tooltip("-XX:+BackgroundCompilation"));
+
+		final RadioButton rbForceNoBackgroundCompilation = new RadioButton("Never");
+		rbForceNoBackgroundCompilation.setTooltip(new Tooltip("-XX:-BackgroundCompilation"));
+
+		final ToggleGroup groupBackgroundCompilation = new ToggleGroup();
+
+		rbVMDefault.setStyle(DEFAULT_DISPLAY_STYLE);
+		rbForceBackgroundCompilation.setStyle(DEFAULT_DISPLAY_STYLE);
+
+		BackgroundCompilation backgroundCompilationMode = config.getBackgroundCompilationMode();
+
+		switch (backgroundCompilationMode)
+		{
+		case VM_DEFAULT:
+			rbVMDefault.setSelected(true);
+			rbForceBackgroundCompilation.setSelected(false);
+			rbForceNoBackgroundCompilation.setSelected(false);
+			break;
+		case FORCE_BACKGROUND_COMPILATION:
+			rbVMDefault.setSelected(false);
+			rbForceBackgroundCompilation.setSelected(true);
+			rbForceNoBackgroundCompilation.setSelected(false);
+			break;
+		case FORCE_NO_BACKGROUND_COMPILATION:
+			rbVMDefault.setSelected(false);
+			rbForceBackgroundCompilation.setSelected(false);
+			rbForceNoBackgroundCompilation.setSelected(true);
+			break;
+		}
+
+		rbVMDefault.setToggleGroup(groupBackgroundCompilation);
+		rbForceBackgroundCompilation.setToggleGroup(groupBackgroundCompilation);
+		rbForceNoBackgroundCompilation.setToggleGroup(groupBackgroundCompilation);
+
+		groupBackgroundCompilation.selectedToggleProperty().addListener(getChangeListenerForBackgroundCompilation(rbVMDefault,
+				rbForceBackgroundCompilation, rbForceNoBackgroundCompilation, groupBackgroundCompilation));
+
+		HBox hbox = new HBox();
+
+		Label lblMode = new Label("Background JIT:");
+		lblMode.setMinWidth(labelWidth);
+
+		hbox.getChildren().add(lblMode);
+
+		hbox.getChildren().add(rbVMDefault);
+		hbox.getChildren().add(rbForceBackgroundCompilation);
+		hbox.getChildren().add(rbForceNoBackgroundCompilation);
+
+		return hbox;
+	}
+
+	private HBox buildHBoxOnStackReplacement()
+	{
+		final RadioButton rbVMDefault = new RadioButton("VM Default");
+
+		final RadioButton rbAlways = new RadioButton("Always");
+		rbAlways.setTooltip(new Tooltip("-XX:+OnStackReplacement"));
+
+		final RadioButton rbNever = new RadioButton("Never");
+		rbNever.setTooltip(new Tooltip("-XX:-OnStackReplacement"));
+
+---
+		};
+	}
+
+	private ChangeListener<Toggle> getChangeListenerForBackgroundCompilation(final RadioButton rbVMDefault,
+			final RadioButton rbForceBackgroundCompilation, final RadioButton rbForceNoBackgroundCompilation,
+			final ToggleGroup groupBackgroundCompilation)
+	{
+		return new ChangeListener<Toggle>()
+		{
+			@Override
+			public void changed(ObservableValue<? extends Toggle> arg0, Toggle arg1, Toggle arg2)
+			{
+				Toggle selectedToggle = groupBackgroundCompilation.getSelectedToggle();
+
+				if (selectedToggle != null)
+				{
+					if (selectedToggle.equals(rbForceBackgroundCompilation))
+					{
+						config.setBackgroundCompilationMode(BackgroundCompilation.FORCE_BACKGROUND_COMPILATION);
+					}
+					else if (selectedToggle.equals(rbForceNoBackgroundCompilation))
+					{
+						config.setBackgroundCompilationMode(BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION);
+					}
+					else if (selectedToggle.equals(rbVMDefault))
+					{
+						config.setBackgroundCompilationMode(BackgroundCompilation.VM_DEFAULT);
+					}
+				}
+			}
+		};
+	}
+
+
+exec
+/bin/bash -lc "rg -n \"getBackgroundCompilationMode\\(|setBackgroundCompilationMode\\(|BackgroundCompilation\\.\" core ui ." in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:301:		BackgroundCompilation backgroundCompilationMode = logParser.getConfig().getBackgroundCompilationMode();
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:303:		if (backgroundCompilationMode == BackgroundCompilation.FORCE_BACKGROUND_COMPILATION)
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:307:		else if (backgroundCompilationMode == BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION)
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:410:		rbForceBackgroundCompilation.setTooltip(new Tooltip("-XX:+BackgroundCompilation"));
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:413:		rbForceNoBackgroundCompilation.setTooltip(new Tooltip("-XX:-BackgroundCompilation"));
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:418:		rbForceBackgroundCompilation.setStyle(DEFAULT_DISPLAY_STYLE);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:420:		BackgroundCompilation backgroundCompilationMode = config.getBackgroundCompilationMode();
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:426:			rbForceBackgroundCompilation.setSelected(false);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:427:			rbForceNoBackgroundCompilation.setSelected(false);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:431:			rbForceBackgroundCompilation.setSelected(true);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:432:			rbForceNoBackgroundCompilation.setSelected(false);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:436:			rbForceBackgroundCompilation.setSelected(false);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:437:			rbForceNoBackgroundCompilation.setSelected(true);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:442:		rbForceBackgroundCompilation.setToggleGroup(groupBackgroundCompilation);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:443:		rbForceNoBackgroundCompilation.setToggleGroup(groupBackgroundCompilation);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:445:		groupBackgroundCompilation.selectedToggleProperty().addListener(getChangeListenerForBackgroundCompilation(rbVMDefault,
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:640:				Toggle selectedToggle = groupBackgroundCompilation.getSelectedToggle();
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:646:						config.setBackgroundCompilationMode(BackgroundCompilation.FORCE_BACKGROUND_COMPILATION);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:650:						config.setBackgroundCompilationMode(BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:654:						config.setBackgroundCompilationMode(BackgroundCompilation.VM_DEFAULT);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:410:		rbForceBackgroundCompilation.setTooltip(new Tooltip("-XX:+BackgroundCompilation"));
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:413:		rbForceNoBackgroundCompilation.setTooltip(new Tooltip("-XX:-BackgroundCompilation"));
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:418:		rbForceBackgroundCompilation.setStyle(DEFAULT_DISPLAY_STYLE);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:420:		BackgroundCompilation backgroundCompilationMode = config.getBackgroundCompilationMode();
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:426:			rbForceBackgroundCompilation.setSelected(false);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:427:			rbForceNoBackgroundCompilation.setSelected(false);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:431:			rbForceBackgroundCompilation.setSelected(true);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:432:			rbForceNoBackgroundCompilation.setSelected(false);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:436:			rbForceBackgroundCompilation.setSelected(false);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:437:			rbForceNoBackgroundCompilation.setSelected(true);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:442:		rbForceBackgroundCompilation.setToggleGroup(groupBackgroundCompilation);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:443:		rbForceNoBackgroundCompilation.setToggleGroup(groupBackgroundCompilation);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:445:		groupBackgroundCompilation.selectedToggleProperty().addListener(getChangeListenerForBackgroundCompilation(rbVMDefault,
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:640:				Toggle selectedToggle = groupBackgroundCompilation.getSelectedToggle();
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:646:						config.setBackgroundCompilationMode(BackgroundCompilation.FORCE_BACKGROUND_COMPILATION);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:650:						config.setBackgroundCompilationMode(BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:654:						config.setBackgroundCompilationMode(BackgroundCompilation.VM_DEFAULT);
+ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:301:		BackgroundCompilation backgroundCompilationMode = logParser.getConfig().getBackgroundCompilationMode();
+ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:303:		if (backgroundCompilationMode == BackgroundCompilation.FORCE_BACKGROUND_COMPILATION)
+ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:307:		else if (backgroundCompilationMode == BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION)
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:414:			backgroundCompilationMode = BackgroundCompilation.VM_DEFAULT;
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:417:			backgroundCompilationMode = BackgroundCompilation.FORCE_BACKGROUND_COMPILATION;
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:420:			backgroundCompilationMode = BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION;
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:879:	public BackgroundCompilation getBackgroundCompilationMode()
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:884:	public void setBackgroundCompilationMode(BackgroundCompilation backgroundCompilationMode)
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:414:			backgroundCompilationMode = BackgroundCompilation.VM_DEFAULT;
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:417:			backgroundCompilationMode = BackgroundCompilation.FORCE_BACKGROUND_COMPILATION;
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:420:			backgroundCompilationMode = BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION;
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:879:	public BackgroundCompilation getBackgroundCompilationMode()
+./core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:884:	public void setBackgroundCompilationMode(BackgroundCompilation backgroundCompilationMode)
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/test/java/org/adoptopenjdk/jitwatch/test/TestJITWatchConfig.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2015 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.test;
+
+import static org.junit.Assert.*;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.core.JITWatchConstants;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+public class TestJITWatchConfig
+{
+
+	private String testConfigFilename;
+
+	@Before
+	public void setUp() throws IOException
+	{
+		testConfigFilename = File.createTempFile("test", ".properties").getAbsolutePath();
+	}
+
+	@After
+	public void tearDown()
+	{
+		if (testConfigFilename != null)
+		{
+			File configFile = new File(testConfigFilename);
+
+			if (configFile.exists() && configFile.isFile())
+			{
+				configFile.delete();
+			}
+		}
+	}
+
+	@Test
+	public void testConfigOnlyBuiltInProfiles()
+	{
+		JITWatchConfig config = new JITWatchConfig(new File(testConfigFilename));
+
+		Set<String> configNames = config.getProfileNames();
+
+		assertEquals(2, configNames.size());
+
+		assertTrue(configNames.contains(JITWatchConstants.S_PROFILE_DEFAULT));
+		assertTrue(configNames.contains(JITWatchConstants.S_PROFILE_SANDBOX));
+
+		List<String> sourcesList = config.getSourceLocations();
+
+		assertEquals(0, sourcesList.size());
+	}
+
+	@Test
+	public void testEmptyConfigSaveReload()
+	{
+		JITWatchConfig config = new JITWatchConfig(new File(testConfigFilename));
+
+		String foo = "foo";
+
+		List<String> sourcesList = new ArrayList<>();
+		sourcesList.add(foo);
+
+		config.setSourceLocations(sourcesList);
+
+		config.marshalConfigToProperties();
+
+		config.savePropertiesToFile();
+
+		config = new JITWatchConfig(new File(testConfigFilename));
+
+		List<String> retrievedSourcesList = config.getSourceLocations();
+
+		assertEquals(1, retrievedSourcesList.size());
+
+		assertTrue(retrievedSourcesList.contains(foo));
+
+		Set<String> configNames = config.getProfileNames();
+
+		assertEquals(2, configNames.size());
+
+		assertTrue(configNames.contains(JITWatchConstants.S_PROFILE_DEFAULT));
+		assertTrue(configNames.contains(JITWatchConstants.S_PROFILE_SANDBOX));
+
+		config.setProfileName("MISSING");
+
+		List<String> retrievedSourcesList2 = config.getSourceLocations();
+
+		assertEquals(0, retrievedSourcesList2.size());
+
+		assertFalse(retrievedSourcesList2.contains(foo));
+	}
+
+	@Test
+	public void testSwitchBetweenDefaultAndUserProfiles()
+	{
+		JITWatchConfig config = new JITWatchConfig(new File(testConfigFilename));
+
+		String foo = "foo";
+
+		List<String> sourcesListFoo = new ArrayList<>();
+		sourcesListFoo.add(foo);
+
+		config.setSourceLocations(sourcesListFoo);
+
+		config.marshalConfigToProperties();
+
+		config.savePropertiesToFile();
+
+		config = new JITWatchConfig(new File(testConfigFilename));
+
+		List<String> retrievedSourcesList = config.getSourceLocations();
+
+		assertEquals(1, retrievedSourcesList.size());
+
+		assertTrue(retrievedSourcesList.contains(foo));
+
+		Set<String> configNames = config.getProfileNames();
+
+		assertEquals(2, configNames.size());
+
+		assertTrue(configNames.contains(JITWatchConstants.S_PROFILE_DEFAULT));
+		assertTrue(configNames.contains(JITWatchConstants.S_PROFILE_SANDBOX));
+
+		String secondProfileName = "Spaceship";
+		
+		config.setProfileName(secondProfileName);
+
+		List<String> retrievedSourcesList2 = config.getSourceLocations();
+
+		assertEquals(0, retrievedSourcesList2.size());
+
+		String bar = "bar";
+
+		List<String> sourcesListBar = new ArrayList<>();
+		sourcesListBar.add(bar);
+		
+		config.setSourceLocations(sourcesListBar);
+		
+		config.saveConfig();
+		
+		assertEquals(secondProfileName, config.getProfileName());
+		
+		configNames = config.getProfileNames();
+
+		assertEquals(3, configNames.size());
+
+		assertTrue(configNames.contains(JITWatchConstants.S_PROFILE_DEFAULT));
+		assertTrue(configNames.contains(JITWatchConstants.S_PROFILE_SANDBOX));
+		
+		assertTrue(configNames.contains(secondProfileName));
+
+		config.setProfileName(JITWatchConstants.S_PROFILE_DEFAULT);
+		
+		assertEquals(JITWatchConstants.S_PROFILE_DEFAULT, config.getProfileName());
+
+		retrievedSourcesList = config.getSourceLocations();
+
+		assertEquals(1, retrievedSourcesList.size());
+
+		assertTrue(retrievedSourcesList.contains(foo));
+		
+		config.setProfileName(secondProfileName);
+		
+		retrievedSourcesList2 = config.getSourceLocations();
+
+		assertEquals(1, retrievedSourcesList2.size());
+
+		assertTrue(retrievedSourcesList2.contains(bar));
+		
+	}
+	
+	@Test
+	public void testMakeCustomProfileThenDeleteIt()
+	{
+		JITWatchConfig config = new JITWatchConfig(new File(testConfigFilename));
+
+		String foo = "foo";
+
+		List<String> sourcesListFoo = new ArrayList<>();
+		sourcesListFoo.add(foo);
+
+		config.setSourceLocations(sourcesListFoo);
+
+		config.marshalConfigToProperties();
+
+		config.savePropertiesToFile();
+
+		config = new JITWatchConfig(new File(testConfigFilename));
+
+		List<String> retrievedSourcesList = config.getSourceLocations();
+
+		assertEquals(1, retrievedSourcesList.size());
+
+		assertTrue(retrievedSourcesList.contains(foo));
+
+		Set<String> configNames = config.getProfileNames();
+
+		assertEquals(2, configNames.size());
+
+		assertTrue(configNames.contains(JITWatchConstants.S_PROFILE_DEFAULT));
+		assertTrue(configNames.contains(JITWatchConstants.S_PROFILE_SANDBOX));
+
+		String customProfileName = "Spaceship";
+		
+		config.setProfileName(customProfileName);
+
+		List<String> retrievedSourcesList2 = config.getSourceLocations();
+
+		assertEquals(0, retrievedSourcesList2.size());
+
+codex
+The usage set is still small, which is the key signal here. I’m doing one last pass to count distinct files so the verdict can be based on concrete fan-in/fan-out rather than intuition.
+exec
+/bin/bash -lc 'rg -l "BackgroundCompilation" core ui | sort' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java
+ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java
+
+exec
+/bin/bash -lc "rg -n \"enum BackgroundCompilation|getBackgroundCompilationMode\\(|setBackgroundCompilationMode\\(|BackgroundCompilation\\.\" core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java core/src/test/java/org/adoptopenjdk/jitwatch/test/TestJITWatchConfig.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:410:		rbForceBackgroundCompilation.setTooltip(new Tooltip("-XX:+BackgroundCompilation"));
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:413:		rbForceNoBackgroundCompilation.setTooltip(new Tooltip("-XX:-BackgroundCompilation"));
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:418:		rbForceBackgroundCompilation.setStyle(DEFAULT_DISPLAY_STYLE);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:420:		BackgroundCompilation backgroundCompilationMode = config.getBackgroundCompilationMode();
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:426:			rbForceBackgroundCompilation.setSelected(false);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:427:			rbForceNoBackgroundCompilation.setSelected(false);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:431:			rbForceBackgroundCompilation.setSelected(true);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:432:			rbForceNoBackgroundCompilation.setSelected(false);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:436:			rbForceBackgroundCompilation.setSelected(false);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:437:			rbForceNoBackgroundCompilation.setSelected(true);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:442:		rbForceBackgroundCompilation.setToggleGroup(groupBackgroundCompilation);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:443:		rbForceNoBackgroundCompilation.setToggleGroup(groupBackgroundCompilation);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:445:		groupBackgroundCompilation.selectedToggleProperty().addListener(getChangeListenerForBackgroundCompilation(rbVMDefault,
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:640:				Toggle selectedToggle = groupBackgroundCompilation.getSelectedToggle();
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:646:						config.setBackgroundCompilationMode(BackgroundCompilation.FORCE_BACKGROUND_COMPILATION);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:650:						config.setBackgroundCompilationMode(BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java:654:						config.setBackgroundCompilationMode(BackgroundCompilation.VM_DEFAULT);
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:45:	public enum BackgroundCompilation
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:414:			backgroundCompilationMode = BackgroundCompilation.VM_DEFAULT;
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:417:			backgroundCompilationMode = BackgroundCompilation.FORCE_BACKGROUND_COMPILATION;
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:420:			backgroundCompilationMode = BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION;
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:879:	public BackgroundCompilation getBackgroundCompilationMode()
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java:884:	public void setBackgroundCompilationMode(BackgroundCompilation backgroundCompilationMode)
+ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:301:		BackgroundCompilation backgroundCompilationMode = logParser.getConfig().getBackgroundCompilationMode();
+ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:303:		if (backgroundCompilationMode == BackgroundCompilation.FORCE_BACKGROUND_COMPILATION)
+ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:307:		else if (backgroundCompilationMode == BackgroundCompilation.FORCE_NO_BACKGROUND_COMPILATION)
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.core.JITWatchConfig.BackgroundCompilation","detection":false,"justification":"Inspected core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConfig.java, ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java, ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxConfigStage.java, and core/src/test/java/org/adoptopenjdk/jitwatch/test/TestJITWatchConfig.java. The enum is a small 3-state config mode loaded/saved only inside JITWatchConfig and referenced by just two production classes (sandbox command-line generation and sandbox config UI) plus one test file, so the fan-in/fan-out is limited and does not show hub-like modularization."}
+tokens used
+14,460

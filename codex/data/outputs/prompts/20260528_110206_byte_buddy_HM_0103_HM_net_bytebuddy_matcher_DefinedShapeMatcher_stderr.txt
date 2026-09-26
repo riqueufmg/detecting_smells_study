@@ -1,0 +1,441 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ee4-78c3-7c22-9deb-a1fee9e2735a
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.matcher.DefinedShapeMatcher` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.matcher.DefinedShapeMatcher",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.matcher.DefinedShapeMatcher`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `DefinedShapeMatcher` and tracing who uses it, then I’ll inspect the class body and nearby call sites to judge whether it acts as a dependency hub.
+exec
+/bin/bash -lc 'rg -n "class DefinedShapeMatcher|DefinedShapeMatcher" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:13:public class DefinedShapeMatcherTest extends AbstractElementMatcherTest<DefinedShapeMatcher<?, ?>> {
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:22:    public DefinedShapeMatcherTest() {
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:23:        super((Class<? extends DefinedShapeMatcher<?, ?>>) (Object) DefinedShapeMatcher.class, "isDefinedAs");
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:31:        assertThat(new DefinedShapeMatcher(matcher).matches(dependent), is(true));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:43:        assertThat(new DefinedShapeMatcher(matcher).matches(dependent), is(false));
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/DefinedShapeMatcher.java:28:public class DefinedShapeMatcher<T extends ByteCodeElement.TypeDependant<S, ?>, S extends ByteCodeElement.TypeDependant<?, ?>>
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/DefinedShapeMatcher.java:41:    public DefinedShapeMatcher(ElementMatcher<? super S> matcher) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:162:        return new DefinedShapeMatcher<T, FieldDescription.InDefinedShape>(matcher);
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:206:        return new DefinedShapeMatcher<T, MethodDescription.InDefinedShape>(matcher);
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:228:        return new DefinedShapeMatcher<T, ParameterDescription.InDefinedShape>(matcher);
+
+exec
+/bin/bash -lc "rg --files . | rg \"DefinedShapeMatcher\\.java"'$"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/DefinedShapeMatcher.java
+
+codex
+I found the implementation and a small set of call sites. Next I’m reading the class and its factory methods to see whether the dependency pattern is broad or just a localized wrapper.
+exec
+/bin/bash -lc "sed -n '1,200p' byte-buddy-dep/src/main/java/net/bytebuddy/matcher/DefinedShapeMatcher.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.matcher;
+
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.ByteCodeElement;
+
+/**
+ * An element matcher that matches a byte code's element's token against a matcher for such a token.
+ *
+ * @param <T> The type of the matched entity.
+ * @param <S> The type of the defined shape of the matched entity.
+ */
+@HashCodeAndEqualsPlugin.Enhance
+public class DefinedShapeMatcher<T extends ByteCodeElement.TypeDependant<S, ?>, S extends ByteCodeElement.TypeDependant<?, ?>>
+        extends ElementMatcher.Junction.ForNonNullValues<T> {
+
+    /**
+     * The matcher to apply onto the defined shape of the matched entity.
+     */
+    private final ElementMatcher<? super S> matcher;
+
+    /**
+     * Creates a new matcher for a byte code element's defined shape.
+     *
+     * @param matcher The matcher to apply onto the defined shape of the matched entity.
+     */
+    public DefinedShapeMatcher(ElementMatcher<? super S> matcher) {
+        this.matcher = matcher;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected boolean doMatch(T target) {
+        return matcher.matches(target.asDefined());
+    }
+
+    @Override
+    public String toString() {
+        return "isDefinedAs(" + matcher + ')';
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '130,260p' byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+    }
+
+    /**
+     * Exactly matches a given field as a {@link FieldDescription} in its defined shape.
+     *
+     * @param field The field to match by its description
+     * @param <T>   The type of the matched object.
+     * @return An element matcher that exactly matches the given field in its defined shape.
+     */
+    public static <T extends FieldDescription> ElementMatcher.Junction<T> is(Field field) {
+        return is(new FieldDescription.ForLoadedField(field));
+    }
+
+    /**
+     * Exactly matches a given field as a {@link FieldDescription} in its defined shape.
+     *
+     * @param field The field to match by its description
+     * @param <T>   The type of the matched object.
+     * @return An element matcher that exactly matches the given field in its defined shape.
+     */
+    public static <T extends FieldDescription> ElementMatcher.Junction<T> is(FieldDescription.InDefinedShape field) {
+        return definedField(new EqualityMatcher<FieldDescription.InDefinedShape>(field));
+    }
+
+    /**
+     * Matches a field in its defined shape.
+     *
+     * @param matcher The matcher to apply to the matched field's defined shape.
+     * @param <T>     The matched object's type.
+     * @return A matcher that matches a matched field's defined shape.
+     */
+    public static <T extends FieldDescription> ElementMatcher.Junction<T> definedField(ElementMatcher<? super FieldDescription.InDefinedShape> matcher) {
+        return new DefinedShapeMatcher<T, FieldDescription.InDefinedShape>(matcher);
+    }
+
+    /**
+     * Exactly matches a given method as a {@link MethodDescription} in its defined shape.
+     *
+     * @param method The method to match by its description
+     * @param <T>    The type of the matched object.
+     * @return An element matcher that exactly matches the given method in its defined shape.
+     */
+    public static <T extends MethodDescription> ElementMatcher.Junction<T> is(Method method) {
+        return is(new MethodDescription.ForLoadedMethod(method));
+    }
+
+    /**
+     * Exactly matches a given constructor as a {@link MethodDescription} in its defined shape.
+     *
+     * @param constructor The constructor to match by its description
+     * @param <T>         The type of the matched object.
+     * @return An element matcher that exactly matches the given constructor in its defined shape.
+     */
+    public static <T extends MethodDescription> ElementMatcher.Junction<T> is(Constructor<?> constructor) {
+        return is(new MethodDescription.ForLoadedConstructor(constructor));
+    }
+
+    /**
+     * Exactly matches a given method or constructor as a {@link MethodDescription} in its defined shape.
+     *
+     * @param method The method to match by its description
+     * @param <T>    The type of the matched object.
+     * @return An element matcher that exactly matches the given method or constructor in its defined shape.
+     */
+    public static <T extends MethodDescription> ElementMatcher.Junction<T> is(MethodDescription.InDefinedShape method) {
+        return definedMethod(new EqualityMatcher<MethodDescription.InDefinedShape>(method));
+    }
+
+    /**
+     * Matches a method in its defined shape.
+     *
+     * @param matcher The matcher to apply to the matched method's defined shape.
+     * @param <T>     The matched object's type.
+     * @return A matcher that matches a matched method's defined shape.
+     */
+    public static <T extends MethodDescription> ElementMatcher.Junction<T> definedMethod(ElementMatcher<? super MethodDescription.InDefinedShape> matcher) {
+        return new DefinedShapeMatcher<T, MethodDescription.InDefinedShape>(matcher);
+    }
+
+    /**
+     * Exactly matches a given parameter as a {@link ParameterDescription} in its defined shape.
+     *
+     * @param parameter The parameter to match by its description
+     * @param <T>       The type of the matched object.
+     * @return An element matcher that exactly matches the given parameter in its defined shape.
+     */
+    public static <T extends ParameterDescription> ElementMatcher.Junction<T> is(ParameterDescription.InDefinedShape parameter) {
+        return definedParameter(new EqualityMatcher<ParameterDescription.InDefinedShape>(parameter));
+    }
+
+    /**
+     * Matches a parameter in its defined shape.
+     *
+     * @param matcher The matcher to apply to the matched parameter's defined shape.
+     * @param <T>     The matched object's type.
+     * @return A matcher that matches a matched parameter's defined shape.
+     */
+    public static <T extends ParameterDescription> ElementMatcher.Junction<T> definedParameter(ElementMatcher<? super ParameterDescription.InDefinedShape> matcher) {
+        return new DefinedShapeMatcher<T, ParameterDescription.InDefinedShape>(matcher);
+    }
+
+    /**
+     * Matches a parameter's type by the given matcher.
+     *
+     * @param matcher The matcher to apply to the parameter's type.
+     * @param <T>     The type of the matched object.
+     * @return A matcher that matches a parameter's type by the given matcher.
+     */
+    public static <T extends ParameterDescription> ElementMatcher.Junction<T> hasType(ElementMatcher<? super TypeDescription> matcher) {
+        return hasGenericType(erasure(matcher));
+    }
+
+    /**
+     * Matches a method parameter by its generic type.
+     *
+     * @param matcher The matcher to apply to a parameter's generic type.
+     * @param <T>     The type of the matched object.
+     * @return A matcher that matches the matched parameter's generic type.
+     */
+    public static <T extends ParameterDescription> ElementMatcher.Junction<T> hasGenericType(ElementMatcher<? super TypeDescription.Generic> matcher) {
+        return new MethodParameterTypeMatcher<T>(matcher);
+    }
+
+    /**
+     * Matches a parameter description for a {@code mandated} parameter.
+     *
+     * @param <T> The type of the matched object.
+     * @return A matcher for a {@code mandated} parameter.
+     */
+    public static <T extends ParameterDescription> ElementMatcher.Junction<T> isMandated() {
+        return ModifierMatcher.of(ModifierMatcher.Mode.MANDATED);
+
+exec
+/bin/bash -lc "sed -n '1,200p' byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+package net.bytebuddy.matcher;
+
+import net.bytebuddy.description.ByteCodeElement;
+import org.junit.Test;
+import org.mockito.Mock;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+public class DefinedShapeMatcherTest extends AbstractElementMatcherTest<DefinedShapeMatcher<?, ?>> {
+
+    @Mock
+    private ByteCodeElement.TypeDependant<?, ?> dependent, resolvedDependant, otherResolvedDependant;
+
+    @Mock
+    private ElementMatcher<ByteCodeElement.TypeDependant<?, ?>> matcher;
+
+    @SuppressWarnings("unchecked")
+    public DefinedShapeMatcherTest() {
+        super((Class<? extends DefinedShapeMatcher<?, ?>>) (Object) DefinedShapeMatcher.class, "isDefinedAs");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void testMatch() throws Exception {
+        when(matcher.matches(resolvedDependant)).thenReturn(true);
+        when(dependent.asDefined()).thenReturn((ByteCodeElement.TypeDependant) resolvedDependant);
+        assertThat(new DefinedShapeMatcher(matcher).matches(dependent), is(true));
+        verify(dependent).asDefined();
+        verifyNoMoreInteractions(dependent);
+        verify(matcher).matches(resolvedDependant);
+        verifyNoMoreInteractions(matcher);
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void testNoMatch() throws Exception {
+        when(matcher.matches(resolvedDependant)).thenReturn(true);
+        when(dependent.asDefined()).thenReturn((ByteCodeElement.TypeDependant) otherResolvedDependant);
+        assertThat(new DefinedShapeMatcher(matcher).matches(dependent), is(false));
+        verify(dependent).asDefined();
+        verifyNoMoreInteractions(dependent);
+        verify(matcher).matches(otherResolvedDependant);
+        verifyNoMoreInteractions(matcher);
+    }
+}
+
+codex
+The class itself is a thin adapter over one matcher dependency. I’m checking the rest of the tree for actual fan-in so the verdict rests on usage breadth, not just the implementation shape.
+exec
+/bin/bash -lc "rg -n \"new DefinedShapeMatcher\\b|DefinedShapeMatcher<|DefinedShapeMatcher\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/DefinedShapeMatcher.java:28:public class DefinedShapeMatcher<T extends ByteCodeElement.TypeDependant<S, ?>, S extends ByteCodeElement.TypeDependant<?, ?>>
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/DefinedShapeMatcher.java:41:    public DefinedShapeMatcher(ElementMatcher<? super S> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:162:        return new DefinedShapeMatcher<T, FieldDescription.InDefinedShape>(matcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:206:        return new DefinedShapeMatcher<T, MethodDescription.InDefinedShape>(matcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:228:        return new DefinedShapeMatcher<T, ParameterDescription.InDefinedShape>(matcher);
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:13:public class DefinedShapeMatcherTest extends AbstractElementMatcherTest<DefinedShapeMatcher<?, ?>> {
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:23:        super((Class<? extends DefinedShapeMatcher<?, ?>>) (Object) DefinedShapeMatcher.class, "isDefinedAs");
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:31:        assertThat(new DefinedShapeMatcher(matcher).matches(dependent), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:43:        assertThat(new DefinedShapeMatcher(matcher).matches(dependent), is(false));
+
+exec
+/bin/bash -lc "rg -n \"definedField\\(|definedMethod\\(|definedParameter\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:152:        assertThat(ElementMatchers.definedField(ElementMatchers.is(fieldDescription.asDefined())).matches(fieldDescription), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:176:        assertThat(ElementMatchers.definedMethod(ElementMatchers.is(methodDescription.asDefined())).matches(methodDescription), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:188:        assertThat(ElementMatchers.definedMethod(ElementMatchers.is(methodDescription.asDefined())).matches(methodDescription), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:198:        assertThat(ElementMatchers.definedParameter(ElementMatchers.is(parameterDescription.asDefined())).matches(parameterDescription), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:261:        assertThat(ElementMatchers.definedMethod(ElementMatchers.anyOf(methodDescription.asDefined())).matches(methodDescription), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:273:        assertThat(ElementMatchers.definedMethod(ElementMatchers.anyOf(methodDescription.asDefined())).matches(methodDescription), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:295:        assertThat(ElementMatchers.definedField(ElementMatchers.anyOf(fieldDescription.asDefined())).matches(fieldDescription), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:340:        assertThat(ElementMatchers.definedMethod(ElementMatchers.noneOf(methodDescription.asDefined())).matches(methodDescription), is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:352:        assertThat(ElementMatchers.definedMethod(ElementMatchers.noneOf(methodDescription.asDefined())).matches(methodDescription), is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:374:        assertThat(ElementMatchers.definedField(ElementMatchers.noneOf(fieldDescription.asDefined())).matches(fieldDescription), is(false));
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:151:        return definedField(new EqualityMatcher<FieldDescription.InDefinedShape>(field));
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:161:    public static <T extends FieldDescription> ElementMatcher.Junction<T> definedField(ElementMatcher<? super FieldDescription.InDefinedShape> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:195:        return definedMethod(new EqualityMatcher<MethodDescription.InDefinedShape>(method));
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:205:    public static <T extends MethodDescription> ElementMatcher.Junction<T> definedMethod(ElementMatcher<? super MethodDescription.InDefinedShape> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:217:        return definedParameter(new EqualityMatcher<ParameterDescription.InDefinedShape>(parameter));
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:227:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> definedParameter(ElementMatcher<? super ParameterDescription.InDefinedShape> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:381:        return definedMethod(anyOf(new MethodList.ForLoadedMethods(value, new Method[0])));
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:393:        return definedMethod(anyOf(new MethodList.ForLoadedMethods(new Constructor<?>[0], value)));
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:405:        return definedField(anyOf(new FieldList.ForLoadedFields(value)));
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:473:        return definedMethod(noneOf(new MethodList.ForLoadedMethods(value, new Method[0])));
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:485:        return definedMethod(noneOf(new MethodList.ForLoadedMethods(new Constructor<?>[0], value)));
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:497:        return definedField(noneOf(new FieldList.ForLoadedFields(value)));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:952:                .filter(isMethod().and(definedMethod(takesArguments(Object.class)))).getOnly();
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:954:                .filter(isMethod().and(definedMethod(takesArguments(Void.class)))).getOnly();
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:1004:                .getDeclaredMethods().filter(isMethod().and(definedMethod(takesArguments(Object.class)))).getOnly();
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:1006:                .getDeclaredMethods().filter(isMethod().and(definedMethod(takesArguments(Void.class)))).getOnly();
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:536:                    return builder.method(definedMethod(is(getterMethod))).intercept(new FieldGetter(fieldDescription, assigner, methodAccessorFactory));
+
+exec
+/bin/bash -lc "rg -n \"isDefinedAs\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/DefinedShapeMatcher.java:54:        return "isDefinedAs(" + matcher + ')';
+
+codex
+The initial scan shows only three production entry points and one test class referencing `DefinedShapeMatcher`. I’m doing one broader repository-wide search to confirm there isn’t hidden fan-in from other modules.
+exec
+/bin/bash -lc "rg -n \"new DefinedShapeMatcher\\b|DefinedShapeMatcher\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:13:public class DefinedShapeMatcherTest extends AbstractElementMatcherTest<DefinedShapeMatcher<?, ?>> {
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:23:        super((Class<? extends DefinedShapeMatcher<?, ?>>) (Object) DefinedShapeMatcher.class, "isDefinedAs");
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:31:        assertThat(new DefinedShapeMatcher(matcher).matches(dependent), is(true));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java:43:        assertThat(new DefinedShapeMatcher(matcher).matches(dependent), is(false));
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:162:        return new DefinedShapeMatcher<T, FieldDescription.InDefinedShape>(matcher);
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:206:        return new DefinedShapeMatcher<T, MethodDescription.InDefinedShape>(matcher);
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:228:        return new DefinedShapeMatcher<T, ParameterDescription.InDefinedShape>(matcher);
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/DefinedShapeMatcher.java:28:public class DefinedShapeMatcher<T extends ByteCodeElement.TypeDependant<S, ?>, S extends ByteCodeElement.TypeDependant<?, ?>>
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/DefinedShapeMatcher.java:41:    public DefinedShapeMatcher(ElementMatcher<? super S> matcher) {
+
+exec
+/bin/bash -lc "rg -n \"definedField\\(|definedMethod\\(|definedParameter\\(\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:152:        assertThat(ElementMatchers.definedField(ElementMatchers.is(fieldDescription.asDefined())).matches(fieldDescription), is(true));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:176:        assertThat(ElementMatchers.definedMethod(ElementMatchers.is(methodDescription.asDefined())).matches(methodDescription), is(true));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:188:        assertThat(ElementMatchers.definedMethod(ElementMatchers.is(methodDescription.asDefined())).matches(methodDescription), is(true));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:198:        assertThat(ElementMatchers.definedParameter(ElementMatchers.is(parameterDescription.asDefined())).matches(parameterDescription), is(true));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:261:        assertThat(ElementMatchers.definedMethod(ElementMatchers.anyOf(methodDescription.asDefined())).matches(methodDescription), is(true));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:273:        assertThat(ElementMatchers.definedMethod(ElementMatchers.anyOf(methodDescription.asDefined())).matches(methodDescription), is(true));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:295:        assertThat(ElementMatchers.definedField(ElementMatchers.anyOf(fieldDescription.asDefined())).matches(fieldDescription), is(true));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:340:        assertThat(ElementMatchers.definedMethod(ElementMatchers.noneOf(methodDescription.asDefined())).matches(methodDescription), is(false));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:352:        assertThat(ElementMatchers.definedMethod(ElementMatchers.noneOf(methodDescription.asDefined())).matches(methodDescription), is(false));
+./byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:374:        assertThat(ElementMatchers.definedField(ElementMatchers.noneOf(fieldDescription.asDefined())).matches(fieldDescription), is(false));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:536:                    return builder.method(definedMethod(is(getterMethod))).intercept(new FieldGetter(fieldDescription, assigner, methodAccessorFactory));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:952:                .filter(isMethod().and(definedMethod(takesArguments(Object.class)))).getOnly();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:954:                .filter(isMethod().and(definedMethod(takesArguments(Void.class)))).getOnly();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:1004:                .getDeclaredMethods().filter(isMethod().and(definedMethod(takesArguments(Object.class)))).getOnly();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:1006:                .getDeclaredMethods().filter(isMethod().and(definedMethod(takesArguments(Void.class)))).getOnly();
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:151:        return definedField(new EqualityMatcher<FieldDescription.InDefinedShape>(field));
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:161:    public static <T extends FieldDescription> ElementMatcher.Junction<T> definedField(ElementMatcher<? super FieldDescription.InDefinedShape> matcher) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:195:        return definedMethod(new EqualityMatcher<MethodDescription.InDefinedShape>(method));
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:205:    public static <T extends MethodDescription> ElementMatcher.Junction<T> definedMethod(ElementMatcher<? super MethodDescription.InDefinedShape> matcher) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:217:        return definedParameter(new EqualityMatcher<ParameterDescription.InDefinedShape>(parameter));
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:227:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> definedParameter(ElementMatcher<? super ParameterDescription.InDefinedShape> matcher) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:381:        return definedMethod(anyOf(new MethodList.ForLoadedMethods(value, new Method[0])));
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:393:        return definedMethod(anyOf(new MethodList.ForLoadedMethods(new Constructor<?>[0], value)));
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:405:        return definedField(anyOf(new FieldList.ForLoadedFields(value)));
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:473:        return definedMethod(noneOf(new MethodList.ForLoadedMethods(value, new Method[0])));
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:485:        return definedMethod(noneOf(new MethodList.ForLoadedMethods(new Constructor<?>[0], value)));
+./byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:497:        return definedField(noneOf(new FieldList.ForLoadedFields(value)));
+
+codex
+{"target":"net.bytebuddy.matcher.DefinedShapeMatcher","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/matcher/DefinedShapeMatcher.java, byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java, and byte-buddy-dep/src/test/java/net/bytebuddy/matcher/DefinedShapeMatcherTest.java. The class is a thin adapter with one field (`matcher`) and one outgoing call (`matcher.matches(target.asDefined())`); repository-wide search found only three production instantiations, all in ElementMatchers.definedField/definedMethod/definedParameter, plus the dedicated test class. That is limited fan-in/fan-out, not a dependency hub."}
+tokens used
+10,200

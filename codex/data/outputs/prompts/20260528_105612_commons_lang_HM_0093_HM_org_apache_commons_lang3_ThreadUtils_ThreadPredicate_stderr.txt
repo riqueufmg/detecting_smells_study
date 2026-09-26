@@ -1,0 +1,1378 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6edf-1171-7e03-8886-ceeef0acebb5
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.apache.commons.lang3.ThreadUtils.ThreadPredicate` in the repository located at:
+
+`data/repositories/apache/commons-lang`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.apache.commons.lang3.ThreadUtils.ThreadPredicate",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.apache.commons.lang3.ThreadUtils.ThreadPredicate`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `ThreadUtils.ThreadPredicate`, then I’ll inspect its source and a few call sites/usages to judge fan-in and fan-out from repository evidence only.
+exec
+/bin/bash -lc "rg --files | rg 'ThreadUtils\\.java"'$|ThreadUtils|ThreadPredicate'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/main/java/org/apache/commons/lang3/ThreadUtils.java
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java
+
+exec
+/bin/bash -lc "rg -n \"ThreadPredicate|new ThreadUtils|ThreadUtils\\.\" src test ." in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ exited 2 in 0ms:
+rg: test: No such file or directory (os error 2)
+./RELEASE-NOTES.txt:851:o            Add and use ThreadUtils.sleepQuietly(Duration). Thanks to Gary Gregory.
+./RELEASE-NOTES.txt:954:o            Fix NullPointerException in ThreadUtils.getSystemThreadGroup() when the current thread is stopped. Thanks to Gary Gregory.
+./RELEASE-NOTES.txt:1127:o            Add and use ThreadUtils.sleep(Duration). Thanks to Gary Gregory.
+./RELEASE-NOTES.txt:1128:o            Add and use ThreadUtils.join(Thread, Duration). Thanks to Gary Gregory.
+./RELEASE-NOTES.txt:1405:o LANG-1417: Add @FunctionalInterface to ThreadPredicate and ThreadGroupPredicate
+src/changes/changes.xml:547:    <action                   type="fix" dev="ggregory" due-to="Gary Gregory">Fix NullPointerException in ThreadUtils.getSystemThreadGroup() when the current thread is stopped.</action>
+src/changes/changes.xml:620:    <action                   type="add" dev="ggregory" due-to="Gary Gregory">Add and use ThreadUtils.sleepQuietly(Duration).</action>
+src/changes/changes.xml:761:    <action                   type="fix" dev="ggregory" due-to="Gary Gregory">Add and use ThreadUtils.sleep(Duration).</action>
+src/changes/changes.xml:762:    <action                   type="fix" dev="ggregory" due-to="Gary Gregory">Add and use ThreadUtils.join(Thread, Duration).</action>
+src/changes/changes.xml:934:    <action issue="LANG-1417" type="update" dev="britter">Add @FunctionalInterface to ThreadPredicate and ThreadGroupPredicate</action>
+src/site/resources/release-notes/RELEASE-NOTES-3.9.txt:37:o LANG-1417: Add @FunctionalInterface to ThreadPredicate and ThreadGroupPredicate
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:50:    private static final class AlwaysTruePredicate implements ThreadPredicate, ThreadGroupPredicate {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:75:    public static class NamePredicate implements ThreadPredicate, ThreadGroupPredicate {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:126:    public static class ThreadIdPredicate implements ThreadPredicate {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:157:    public interface ThreadPredicate {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:368:    public static Collection<Thread> findThreads(final ThreadGroup threadGroup, final boolean recurse, final ThreadPredicate predicate) {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:383:    public static Collection<Thread> findThreads(final ThreadPredicate predicate) {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:527:     * ThreadUtils instances should NOT be constructed in standard programming. Instead, the class should be used as {@code ThreadUtils.getAllThreads()}
+./src/site/resources/release-notes/RELEASE-NOTES-3.9.txt:37:o LANG-1417: Add @FunctionalInterface to ThreadPredicate and ThreadGroupPredicate
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:41:import org.apache.commons.lang3.ThreadUtils.ThreadGroupPredicate;
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:42:import org.apache.commons.lang3.ThreadUtils.ThreadPredicate;
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:87:        assertFalse(ThreadUtils.getAllThreads().isEmpty());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:92:        assertFalse(ThreadUtils.getAllThreadGroups().isEmpty());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:126:            assertTrue(ThreadUtils.getAllThreadGroups().size() >= 7, "getAllThreadGroups");
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:127:            assertTrue(ThreadUtils.getAllThreads().size() >= 11, "getAllThreads");
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:128:            assertTrue(ThreadUtils.findThreads(Predicates.truePredicate()).size() >= 11, "findThreads(ThreadUtils.truePredicate())");
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:129:            assertEquals(1, ThreadUtils.findThreadsByName(t4.getName(), threadGroup3.getName()).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:130:            assertEquals(0, ThreadUtils.findThreadsByName(t4.getName(), threadGroup2.getName()).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:131:            assertEquals(2, ThreadUtils.findThreadsByName(t11.getName(), threadGroup7.getName()).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:147:        assertNotNull(new ThreadUtils());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:148:        final Constructor<?>[] cons = ThreadUtils.class.getDeclaredConstructors();
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:151:        assertTrue(Modifier.isPublic(ThreadUtils.class.getModifiers()));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:152:        assertFalse(Modifier.isFinal(ThreadUtils.class.getModifiers()));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:158:        assertNotNull(ThreadUtils.ALWAYS_TRUE_PREDICATE);
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:159:        final ThreadPredicate tp = ThreadUtils.ALWAYS_TRUE_PREDICATE;
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:162:        final ThreadGroupPredicate tgp = ThreadUtils.ALWAYS_TRUE_PREDICATE;
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:170:        final Collection<ThreadGroup> threads = ThreadUtils.getAllThreadGroups();
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:177:        final Collection<Thread> threads = ThreadUtils.getAllThreads();
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:183:        assertIllegalArgumentException(() -> ThreadUtils.findThreadById(-5L));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:188:        ThreadUtils.join(new Thread(), Duration.ZERO);
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:189:        ThreadUtils.join(new Thread(), Duration.ofMillis(1));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:194:        assertEquals(0, ThreadUtils.findThreadsByName("some_thread_which_does_not_exist_18762ZucTT").size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:199:        assertEquals(0, ThreadUtils.findThreadGroupsByName("some_thread_group_which_does_not_exist_18762ZucTTII").size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:204:        assertNullPointerException(() -> ThreadUtils.findThreadGroupsByName(null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:209:        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:214:        assertNullPointerException(() -> ThreadUtils.findThreadsByName("tname", (ThreadGroup) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:219:        assertNullPointerException(() -> ThreadUtils.findThreadById(1L, (ThreadGroup) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:224:        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null, (ThreadGroup) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:229:        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null, "tgname"));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:234:        assertNullPointerException(() -> ThreadUtils.findThreadsByName("tname", (String) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:239:        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null, (String) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:244:        ThreadUtils.sleep(Duration.ZERO);
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:245:        ThreadUtils.sleep(Duration.ofMillis(1));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:250:        final ThreadGroup systemThreadGroup = ThreadUtils.getSystemThreadGroup();
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:266:            assertEquals(1, ThreadUtils.findThreadsByName("thread1_XXOOPP__").size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:267:            assertEquals(1, ThreadUtils.findThreadsByName("thread1_XXOOPP__", threadGroupName).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:268:            assertEquals(1, ThreadUtils.findThreadsByName("thread2_XXOOPP__", threadGroupName).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:269:            assertEquals(0, ThreadUtils.findThreadsByName("thread1_XXOOPP__", "non_existent_thread_group_JJHHZZ__").size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:270:            assertEquals(0, ThreadUtils.findThreadsByName("non_existent_thread_BBDDWW__", threadGroupName).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:271:            assertEquals(1, ThreadUtils.findThreadGroupsByName(threadGroupName).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:272:            assertEquals(0, ThreadUtils.findThreadGroupsByName("non_existent_thread_group_JJHHZZ__").size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:273:            assertNotNull(ThreadUtils.findThreadById(t1.getId(), threadGroup));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:294:            assertSame(t1, ThreadUtils.findThreadById(t1.getId(), threadGroupName));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:295:            assertSame(t2, ThreadUtils.findThreadById(t2.getId(), threadGroupName));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:296:            assertNull(ThreadUtils.findThreadById(nonExistingId, "non_existent_thread_group_JJHHZZ__"));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:297:            assertNull(ThreadUtils.findThreadById(nonExistingId, threadGroupName));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:309:        assertNullPointerException(() -> ThreadUtils.findThreadById(Thread.currentThread().getId(), (String) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:314:        assertNullPointerException(() -> ThreadUtils.findThreadGroups(null, true, Predicates.truePredicate()));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:315:        assertNullPointerException(() -> ThreadUtils.findThreadGroups(null, false, Predicates.truePredicate()));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:320:        assertNullPointerException(() -> ThreadUtils.findThreadGroups((ThreadGroupPredicate) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:321:        assertNullPointerException(() -> ThreadUtils.findThreadGroups((Predicate<ThreadGroup>) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:322:        assertNullPointerException(() -> ThreadUtils.findThreadGroups((Predicate) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:336:            assertEquals(1, ThreadUtils.findThreadsByName("thread1_XXOOPP__").size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:337:            assertEquals(1, ThreadUtils.findThreadsByName("thread1_XXOOPP__", threadGroup).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:338:            assertEquals(1, ThreadUtils.findThreadsByName("thread2_XXOOPP__", threadGroup).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:339:            assertEquals(0, ThreadUtils.findThreadsByName("thread1_XXOOPP__", deadThreadGroup).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:346:            assertEquals(0, ThreadUtils.findThreadsByName("thread2_XXOOPP__", threadGroup).size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:358:            assertEquals(1, ThreadUtils.findThreadsByName("thread2_XXOOLL__").size());
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:375:            assertSame(t1, ThreadUtils.findThreadById(t1.getId()));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:376:            assertSame(t2, ThreadUtils.findThreadById(t2.getId()));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:392:            assertNull(ThreadUtils.findThreadById(t1.getId(), tg));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:402:        assertNullPointerException(() -> ThreadUtils.findThreads((ThreadPredicate) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:403:        assertNullPointerException(() -> ThreadUtils.findThreads((Predicate<Thread>) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:404:        assertNullPointerException(() -> ThreadUtils.findThreads((Predicate) null));
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:415:            assertEquals(2, ThreadUtils.findThreadsByName("thread1_XXOOLL__").size());
+src/test/java/org/apache/commons/lang3/concurrent/TimedSemaphoreTest.java:487:        ThreadUtils.sleepQuietly(DURATION);
+src/test/java/org/apache/commons/lang3/concurrent/locks/LockingVisitorsTest.java:70:                ThreadUtils.sleep(delay);
+src/test/java/org/apache/commons/lang3/concurrent/locks/LockingVisitorsTest.java:85:            ThreadUtils.sleep(SHORT_DELAY);
+src/test/java/org/apache/commons/lang3/concurrent/BackgroundInitializerTest.java:86:                ThreadUtils.sleep(Duration.ofMinutes(1));
+./src/main/java/org/apache/commons/lang3/ThreadUtils.java:50:    private static final class AlwaysTruePredicate implements ThreadPredicate, ThreadGroupPredicate {
+./src/main/java/org/apache/commons/lang3/ThreadUtils.java:75:    public static class NamePredicate implements ThreadPredicate, ThreadGroupPredicate {
+./src/main/java/org/apache/commons/lang3/ThreadUtils.java:126:    public static class ThreadIdPredicate implements ThreadPredicate {
+./src/main/java/org/apache/commons/lang3/ThreadUtils.java:157:    public interface ThreadPredicate {
+./src/main/java/org/apache/commons/lang3/ThreadUtils.java:368:    public static Collection<Thread> findThreads(final ThreadGroup threadGroup, final boolean recurse, final ThreadPredicate predicate) {
+./src/main/java/org/apache/commons/lang3/ThreadUtils.java:383:    public static Collection<Thread> findThreads(final ThreadPredicate predicate) {
+./src/main/java/org/apache/commons/lang3/ThreadUtils.java:527:     * ThreadUtils instances should NOT be constructed in standard programming. Instead, the class should be used as {@code ThreadUtils.getAllThreads()}
+src/test/java/org/apache/commons/lang3/time/StopWatchTest.java:92:        ThreadUtils.sleep(duration.plusMillis(1));
+src/test/java/org/apache/commons/lang3/time/StopWatchTest.java:142:        ThreadUtils.sleepQuietly(MIN_DURATION);
+src/test/java/org/apache/commons/lang3/time/StopWatchTest.java:153:        ThreadUtils.sleepQuietly(MIN_DURATION);
+./src/changes/changes.xml:547:    <action                   type="fix" dev="ggregory" due-to="Gary Gregory">Fix NullPointerException in ThreadUtils.getSystemThreadGroup() when the current thread is stopped.</action>
+./src/changes/changes.xml:620:    <action                   type="add" dev="ggregory" due-to="Gary Gregory">Add and use ThreadUtils.sleepQuietly(Duration).</action>
+./src/changes/changes.xml:761:    <action                   type="fix" dev="ggregory" due-to="Gary Gregory">Add and use ThreadUtils.sleep(Duration).</action>
+./src/changes/changes.xml:762:    <action                   type="fix" dev="ggregory" due-to="Gary Gregory">Add and use ThreadUtils.join(Thread, Duration).</action>
+./src/changes/changes.xml:934:    <action issue="LANG-1417" type="update" dev="britter">Add @FunctionalInterface to ThreadPredicate and ThreadGroupPredicate</action>
+./src/test/java/org/apache/commons/lang3/concurrent/TimedSemaphoreTest.java:487:        ThreadUtils.sleepQuietly(DURATION);
+./src/test/java/org/apache/commons/lang3/concurrent/locks/LockingVisitorsTest.java:70:                ThreadUtils.sleep(delay);
+./src/test/java/org/apache/commons/lang3/concurrent/locks/LockingVisitorsTest.java:85:            ThreadUtils.sleep(SHORT_DELAY);
+./src/test/java/org/apache/commons/lang3/concurrent/BackgroundInitializerTest.java:86:                ThreadUtils.sleep(Duration.ofMinutes(1));
+./src/test/java/org/apache/commons/lang3/time/StopWatchTest.java:92:        ThreadUtils.sleep(duration.plusMillis(1));
+./src/test/java/org/apache/commons/lang3/time/StopWatchTest.java:142:        ThreadUtils.sleepQuietly(MIN_DURATION);
+./src/test/java/org/apache/commons/lang3/time/StopWatchTest.java:153:        ThreadUtils.sleepQuietly(MIN_DURATION);
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:41:import org.apache.commons.lang3.ThreadUtils.ThreadGroupPredicate;
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:42:import org.apache.commons.lang3.ThreadUtils.ThreadPredicate;
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:87:        assertFalse(ThreadUtils.getAllThreads().isEmpty());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:92:        assertFalse(ThreadUtils.getAllThreadGroups().isEmpty());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:126:            assertTrue(ThreadUtils.getAllThreadGroups().size() >= 7, "getAllThreadGroups");
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:127:            assertTrue(ThreadUtils.getAllThreads().size() >= 11, "getAllThreads");
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:128:            assertTrue(ThreadUtils.findThreads(Predicates.truePredicate()).size() >= 11, "findThreads(ThreadUtils.truePredicate())");
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:129:            assertEquals(1, ThreadUtils.findThreadsByName(t4.getName(), threadGroup3.getName()).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:130:            assertEquals(0, ThreadUtils.findThreadsByName(t4.getName(), threadGroup2.getName()).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:131:            assertEquals(2, ThreadUtils.findThreadsByName(t11.getName(), threadGroup7.getName()).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:147:        assertNotNull(new ThreadUtils());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:148:        final Constructor<?>[] cons = ThreadUtils.class.getDeclaredConstructors();
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:151:        assertTrue(Modifier.isPublic(ThreadUtils.class.getModifiers()));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:152:        assertFalse(Modifier.isFinal(ThreadUtils.class.getModifiers()));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:158:        assertNotNull(ThreadUtils.ALWAYS_TRUE_PREDICATE);
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:159:        final ThreadPredicate tp = ThreadUtils.ALWAYS_TRUE_PREDICATE;
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:162:        final ThreadGroupPredicate tgp = ThreadUtils.ALWAYS_TRUE_PREDICATE;
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:170:        final Collection<ThreadGroup> threads = ThreadUtils.getAllThreadGroups();
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:177:        final Collection<Thread> threads = ThreadUtils.getAllThreads();
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:183:        assertIllegalArgumentException(() -> ThreadUtils.findThreadById(-5L));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:188:        ThreadUtils.join(new Thread(), Duration.ZERO);
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:189:        ThreadUtils.join(new Thread(), Duration.ofMillis(1));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:194:        assertEquals(0, ThreadUtils.findThreadsByName("some_thread_which_does_not_exist_18762ZucTT").size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:199:        assertEquals(0, ThreadUtils.findThreadGroupsByName("some_thread_group_which_does_not_exist_18762ZucTTII").size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:204:        assertNullPointerException(() -> ThreadUtils.findThreadGroupsByName(null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:209:        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:214:        assertNullPointerException(() -> ThreadUtils.findThreadsByName("tname", (ThreadGroup) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:219:        assertNullPointerException(() -> ThreadUtils.findThreadById(1L, (ThreadGroup) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:224:        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null, (ThreadGroup) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:229:        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null, "tgname"));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:234:        assertNullPointerException(() -> ThreadUtils.findThreadsByName("tname", (String) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:239:        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null, (String) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:244:        ThreadUtils.sleep(Duration.ZERO);
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:245:        ThreadUtils.sleep(Duration.ofMillis(1));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:250:        final ThreadGroup systemThreadGroup = ThreadUtils.getSystemThreadGroup();
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:266:            assertEquals(1, ThreadUtils.findThreadsByName("thread1_XXOOPP__").size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:267:            assertEquals(1, ThreadUtils.findThreadsByName("thread1_XXOOPP__", threadGroupName).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:268:            assertEquals(1, ThreadUtils.findThreadsByName("thread2_XXOOPP__", threadGroupName).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:269:            assertEquals(0, ThreadUtils.findThreadsByName("thread1_XXOOPP__", "non_existent_thread_group_JJHHZZ__").size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:270:            assertEquals(0, ThreadUtils.findThreadsByName("non_existent_thread_BBDDWW__", threadGroupName).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:271:            assertEquals(1, ThreadUtils.findThreadGroupsByName(threadGroupName).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:272:            assertEquals(0, ThreadUtils.findThreadGroupsByName("non_existent_thread_group_JJHHZZ__").size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:273:            assertNotNull(ThreadUtils.findThreadById(t1.getId(), threadGroup));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:294:            assertSame(t1, ThreadUtils.findThreadById(t1.getId(), threadGroupName));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:295:            assertSame(t2, ThreadUtils.findThreadById(t2.getId(), threadGroupName));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:296:            assertNull(ThreadUtils.findThreadById(nonExistingId, "non_existent_thread_group_JJHHZZ__"));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:297:            assertNull(ThreadUtils.findThreadById(nonExistingId, threadGroupName));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:309:        assertNullPointerException(() -> ThreadUtils.findThreadById(Thread.currentThread().getId(), (String) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:314:        assertNullPointerException(() -> ThreadUtils.findThreadGroups(null, true, Predicates.truePredicate()));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:315:        assertNullPointerException(() -> ThreadUtils.findThreadGroups(null, false, Predicates.truePredicate()));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:320:        assertNullPointerException(() -> ThreadUtils.findThreadGroups((ThreadGroupPredicate) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:321:        assertNullPointerException(() -> ThreadUtils.findThreadGroups((Predicate<ThreadGroup>) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:322:        assertNullPointerException(() -> ThreadUtils.findThreadGroups((Predicate) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:336:            assertEquals(1, ThreadUtils.findThreadsByName("thread1_XXOOPP__").size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:337:            assertEquals(1, ThreadUtils.findThreadsByName("thread1_XXOOPP__", threadGroup).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:338:            assertEquals(1, ThreadUtils.findThreadsByName("thread2_XXOOPP__", threadGroup).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:339:            assertEquals(0, ThreadUtils.findThreadsByName("thread1_XXOOPP__", deadThreadGroup).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:346:            assertEquals(0, ThreadUtils.findThreadsByName("thread2_XXOOPP__", threadGroup).size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:358:            assertEquals(1, ThreadUtils.findThreadsByName("thread2_XXOOLL__").size());
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:375:            assertSame(t1, ThreadUtils.findThreadById(t1.getId()));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:376:            assertSame(t2, ThreadUtils.findThreadById(t2.getId()));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:392:            assertNull(ThreadUtils.findThreadById(t1.getId(), tg));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:402:        assertNullPointerException(() -> ThreadUtils.findThreads((ThreadPredicate) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:403:        assertNullPointerException(() -> ThreadUtils.findThreads((Predicate<Thread>) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:404:        assertNullPointerException(() -> ThreadUtils.findThreads((Predicate) null));
+./src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:415:            assertEquals(2, ThreadUtils.findThreadsByName("thread1_XXOOLL__").size());
+
+codex
+I found the target in `src/main/java/org/apache/commons/lang3/ThreadUtils.java` and the dedicated tests in `src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java`. Next I’m checking the interface definition plus the methods that consume it, to see whether the class really acts as a dependency hub.
+exec
+/bin/bash -lc "sed -n '1,260p' src/main/java/org/apache/commons/lang3/ThreadUtils.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.lang3;
+
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.apache.commons.lang3.function.Predicates;
+import org.apache.commons.lang3.time.DurationUtils;
+
+/**
+ * Helpers for {@link Thread} and {@link ThreadGroup}.
+ *
+ * <p>
+ * #ThreadSafe#
+ * </p>
+ *
+ * @see Thread
+ * @see ThreadGroup
+ * @since 3.5
+ */
+public class ThreadUtils {
+
+    /**
+     * A predicate implementation which always returns true.
+     *
+     * @deprecated Use a {@link Predicate}.
+     */
+    @Deprecated
+    private static final class AlwaysTruePredicate implements ThreadPredicate, ThreadGroupPredicate {
+
+        private AlwaysTruePredicate() {
+        }
+
+        @Override
+        public boolean test(final Thread thread) {
+            return true;
+        }
+
+        @Override
+        public boolean test(final ThreadGroup threadGroup) {
+            return true;
+        }
+    }
+
+    /**
+     * Used internally, consider private.
+     * <p>
+     * A predicate implementation which matches a thread or thread group name.
+     * </p>
+     *
+     * @deprecated Use a {@link Predicate}.
+     */
+    @Deprecated
+    public static class NamePredicate implements ThreadPredicate, ThreadGroupPredicate {
+
+        private final String name;
+
+        /**
+         * Constructs an instance.
+         *
+         * @param name thread or thread group name.
+         * @throws NullPointerException if the name is {@code null}.
+         */
+        public NamePredicate(final String name) {
+            Objects.requireNonNull(name, "name");
+            this.name = name;
+        }
+
+        @Override
+        public boolean test(final Thread thread) {
+            return thread != null && thread.getName().equals(name);
+        }
+
+        @Override
+        public boolean test(final ThreadGroup threadGroup) {
+            return threadGroup != null && threadGroup.getName().equals(name);
+        }
+    }
+
+    /**
+     * A predicate for selecting thread groups.
+     *
+     * @deprecated Use a {@link Predicate}.
+     */
+    @Deprecated
+    // When breaking BC, replace this with Predicate<ThreadGroup>
+    @FunctionalInterface
+    public interface ThreadGroupPredicate {
+
+        /**
+         * Evaluates this predicate on the given thread group.
+         *
+         * @param threadGroup the thread group
+         * @return {@code true} if the threadGroup matches the predicate, otherwise {@code false}
+         */
+        boolean test(ThreadGroup threadGroup);
+    }
+
+    /**
+     * A predicate implementation which matches a thread id.
+     *
+     * @deprecated Use a {@link Predicate}.
+     */
+    @Deprecated
+    public static class ThreadIdPredicate implements ThreadPredicate {
+
+        private final long threadId;
+
+        /**
+         * Predicate constructor
+         *
+         * @param threadId the threadId to match.
+         * @throws IllegalArgumentException if the threadId is zero or negative.
+         */
+        public ThreadIdPredicate(final long threadId) {
+            if (threadId <= 0) {
+                throw new IllegalArgumentException("The thread id must be greater than zero");
+            }
+            this.threadId = threadId;
+        }
+
+        @Override
+        public boolean test(final Thread thread) {
+            return thread != null && thread.getId() == threadId;
+        }
+    }
+
+    /**
+     * A predicate for selecting threads.
+     *
+     * @deprecated Use a {@link Predicate}.
+     */
+    @Deprecated
+    // When breaking BC, replace this with Predicate<Thread>
+    @FunctionalInterface
+    public interface ThreadPredicate {
+
+        /**
+         * Evaluates this predicate on the given thread.
+         *
+         * @param thread the thread
+         * @return {@code true} if the thread matches the predicate, otherwise {@code false}
+         */
+        boolean test(Thread thread);
+    }
+
+    /**
+     * Predicate which always returns true.
+     *
+     * @deprecated Use a {@link Predicate}.
+     */
+    @Deprecated
+    public static final AlwaysTruePredicate ALWAYS_TRUE_PREDICATE = new AlwaysTruePredicate();
+
+    /**
+     * Finds the active thread with the specified id.
+     *
+     * @param threadId The thread id.
+     * @return The thread with the specified id or {@code null} if no such thread exists.
+     * @throws IllegalArgumentException if the specified id is zero or negative.
+     * @throws SecurityException        if the current thread cannot access the system thread group.
+     * @throws SecurityException        if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     */
+    public static Thread findThreadById(final long threadId) {
+        if (threadId <= 0) {
+            throw new IllegalArgumentException("The thread id must be greater than zero");
+        }
+        final Collection<Thread> result = findThreads((Predicate<Thread>) t -> t != null && t.getId() == threadId);
+        return result.isEmpty() ? null : result.iterator().next();
+    }
+
+    /**
+     * Finds the active thread with the specified id if it belongs to a thread group with the specified group name.
+     *
+     * @param threadId        The thread id.
+     * @param threadGroupName The thread group name.
+     * @return The threads which belongs to a thread group with the specified group name and the thread's id match the specified id. {@code null} is returned if
+     *         no such thread exists.
+     * @throws NullPointerException     if the group name is null.
+     * @throws IllegalArgumentException if the specified id is zero or negative.
+     * @throws SecurityException        if the current thread cannot access the system thread group.
+     * @throws SecurityException        if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     */
+    public static Thread findThreadById(final long threadId, final String threadGroupName) {
+        Objects.requireNonNull(threadGroupName, "threadGroupName");
+        final Thread thread = findThreadById(threadId);
+        if (thread != null && thread.getThreadGroup() != null && thread.getThreadGroup().getName().equals(threadGroupName)) {
+            return thread;
+        }
+        return null;
+    }
+
+    /**
+     * Finds the active thread with the specified id if it belongs to the specified thread group.
+     *
+     * @param threadId    The thread id.
+     * @param threadGroup The thread group.
+     * @return The thread which belongs to a specified thread group and the thread's id match the specified id. {@code null} is returned if no such thread
+     *         exists.
+     * @throws NullPointerException     if {@code threadGroup == null}.
+     * @throws IllegalArgumentException if the specified id is zero or negative.
+     * @throws SecurityException        if the current thread cannot access the system thread group.
+     * @throws SecurityException        if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     */
+    public static Thread findThreadById(final long threadId, final ThreadGroup threadGroup) {
+        Objects.requireNonNull(threadGroup, "threadGroup");
+        final Thread thread = findThreadById(threadId);
+        if (thread != null && threadGroup.equals(thread.getThreadGroup())) {
+            return thread;
+        }
+        return null;
+    }
+
+    /**
+     * Finds all active thread groups which match the given predicate.
+     *
+     * @param predicate the predicate.
+     * @return An unmodifiable {@link Collection} of active thread groups matching the given predicate.
+     * @throws NullPointerException if the predicate is null.
+     * @throws SecurityException    if the current thread cannot access the system thread group.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     * @since 3.13.0
+     */
+    public static Collection<ThreadGroup> findThreadGroups(final Predicate<ThreadGroup> predicate) {
+        return findThreadGroups(getSystemThreadGroup(), true, predicate);
+    }
+
+    /**
+     * Finds all active thread groups which match the given predicate and which is a subgroup of the given thread group (or one of its subgroups).
+     *
+     * @param threadGroup the thread group.
+     * @param recurse     if {@code true} then evaluate the predicate recursively on all thread groups in all subgroups of the given group.
+     * @param predicate   the predicate.
+     * @return An unmodifiable {@link Collection} of active thread groups which match the given predicate and which is a subgroup of the given thread group.
+     * @throws NullPointerException if the given group or predicate is null.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     * @since 3.13.0
+     */
+    public static Collection<ThreadGroup> findThreadGroups(final ThreadGroup threadGroup, final boolean recurse, final Predicate<ThreadGroup> predicate) {
+
+exec
+/bin/bash -lc "sed -n '260,460p' src/main/java/org/apache/commons/lang3/ThreadUtils.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+    public static Collection<ThreadGroup> findThreadGroups(final ThreadGroup threadGroup, final boolean recurse, final Predicate<ThreadGroup> predicate) {
+        Objects.requireNonNull(threadGroup, "threadGroup");
+        Objects.requireNonNull(predicate, "predicate");
+        int count = threadGroup.activeGroupCount();
+        ThreadGroup[] threadGroups;
+        do {
+            threadGroups = new ThreadGroup[count + count / 2 + 1]; //slightly grow the array size
+            count = threadGroup.enumerate(threadGroups, recurse);
+            //return value of enumerate() must be strictly less than the array size according to Javadoc
+        } while (count >= threadGroups.length);
+        return Collections.unmodifiableCollection(Stream.of(threadGroups).limit(count).filter(predicate).collect(Collectors.toList()));
+    }
+
+    /**
+     * Finds all active thread groups which match the given predicate and which is a subgroup of the given thread group (or one of its subgroups).
+     *
+     * @param threadGroup the thread group.
+     * @param recurse     if {@code true} then evaluate the predicate recursively on all thread groups in all subgroups of the given group.
+     * @param predicate   the predicate.
+     * @return An unmodifiable {@link Collection} of active thread groups which match the given predicate and which is a subgroup of the given thread group.
+     * @throws NullPointerException if the given group or predicate is null.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     * @deprecated Use {@link #findThreadGroups(ThreadGroup, boolean, Predicate)}.
+     */
+    @Deprecated
+    public static Collection<ThreadGroup> findThreadGroups(final ThreadGroup threadGroup, final boolean recurse, final ThreadGroupPredicate predicate) {
+        return findThreadGroups(threadGroup, recurse, (Predicate<ThreadGroup>) predicate::test);
+    }
+
+    /**
+     * Finds all active thread groups which match the given predicate.
+     *
+     * @param predicate the predicate.
+     * @return An unmodifiable {@link Collection} of active thread groups matching the given predicate.
+     * @throws NullPointerException if the predicate is null.
+     * @throws SecurityException    if the current thread cannot access the system thread group.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     * @deprecated Use {@link #findThreadGroups(Predicate)}.
+     */
+    @Deprecated
+    public static Collection<ThreadGroup> findThreadGroups(final ThreadGroupPredicate predicate) {
+        return findThreadGroups(getSystemThreadGroup(), true, predicate);
+    }
+
+    /**
+     * Finds active thread groups with the specified group name.
+     *
+     * @param threadGroupName The thread group name.
+     * @return the thread groups with the specified group name or an empty collection if no such thread group exists. The collection returned is always
+     *         unmodifiable.
+     * @throws NullPointerException if group name is null.
+     * @throws SecurityException    if the current thread cannot access the system thread group.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     */
+    public static Collection<ThreadGroup> findThreadGroupsByName(final String threadGroupName) {
+        return findThreadGroups(predicateThreadGroup(threadGroupName));
+    }
+
+    /**
+     * Finds all active threads which match the given predicate.
+     *
+     * @param predicate the predicate.
+     * @return An unmodifiable {@link Collection} of active threads matching the given predicate.
+     * @throws NullPointerException if the predicate is null.
+     * @throws SecurityException    if the current thread cannot access the system thread group.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     * @since 3.13.0
+     */
+    public static Collection<Thread> findThreads(final Predicate<Thread> predicate) {
+        return findThreads(getSystemThreadGroup(), true, predicate);
+    }
+
+    /**
+     * Finds all active threads which match the given predicate and which belongs to the given thread group (or one of its subgroups).
+     *
+     * @param threadGroup the thread group.
+     * @param recurse     if {@code true} then evaluate the predicate recursively on all threads in all subgroups of the given group.
+     * @param predicate   the predicate.
+     * @return An unmodifiable {@link Collection} of active threads which match the given predicate and which belongs to the given thread group.
+     * @throws NullPointerException if the given group or predicate is null.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     * @since 3.13.0
+     */
+    public static Collection<Thread> findThreads(final ThreadGroup threadGroup, final boolean recurse, final Predicate<Thread> predicate) {
+        Objects.requireNonNull(threadGroup, "The group must not be null");
+        Objects.requireNonNull(predicate, "The predicate must not be null");
+        int count = threadGroup.activeCount();
+        Thread[] threads;
+        do {
+            threads = new Thread[count + count / 2 + 1]; //slightly grow the array size
+            count = threadGroup.enumerate(threads, recurse);
+            //return value of enumerate() must be strictly less than the array size according to javadoc
+        } while (count >= threads.length);
+        return Collections.unmodifiableCollection(Stream.of(threads).limit(count).filter(predicate).collect(Collectors.toList()));
+    }
+
+    /**
+     * Finds all active threads which match the given predicate and which belongs to the given thread group (or one of its subgroups).
+     *
+     * @param threadGroup the thread group.
+     * @param recurse     if {@code true} then evaluate the predicate recursively on all threads in all subgroups of the given group.
+     * @param predicate   the predicate.
+     * @return An unmodifiable {@link Collection} of active threads which match the given predicate and which belongs to the given thread group.
+     * @throws NullPointerException if the given group or predicate is null.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     * @deprecated Use {@link #findThreads(ThreadGroup, boolean, Predicate)}.
+     */
+    @Deprecated
+    public static Collection<Thread> findThreads(final ThreadGroup threadGroup, final boolean recurse, final ThreadPredicate predicate) {
+        return findThreads(threadGroup, recurse, (Predicate<Thread>) predicate::test);
+    }
+
+    /**
+     * Finds all active threads which match the given predicate.
+     *
+     * @param predicate the predicate.
+     * @return An unmodifiable {@link Collection} of active threads matching the given predicate.
+     * @throws NullPointerException if the predicate is null.
+     * @throws SecurityException    if the current thread cannot access the system thread group.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     * @deprecated Use {@link #findThreads(Predicate)}.
+     */
+    @Deprecated
+    public static Collection<Thread> findThreads(final ThreadPredicate predicate) {
+        return findThreads(getSystemThreadGroup(), true, predicate);
+    }
+
+    /**
+     * Finds active threads with the specified name.
+     *
+     * @param threadName The thread name.
+     * @return The threads with the specified name or an empty collection if no such thread exists. The collection returned is always unmodifiable.
+     * @throws NullPointerException if the specified name is null.
+     * @throws SecurityException    if the current thread cannot access the system thread group.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     */
+    public static Collection<Thread> findThreadsByName(final String threadName) {
+        return findThreads(predicateThread(threadName));
+    }
+
+    /**
+     * Finds active threads with the specified name if they belong to a thread group with the specified group name.
+     *
+     * @param threadName      The thread name.
+     * @param threadGroupName The thread group name.
+     * @return The threads which belongs to a thread group with the specified group name and the thread's name match the specified name, An empty collection is
+     *         returned if no such thread exists. The collection returned is always unmodifiable.
+     * @throws NullPointerException if the specified thread name or group name is null.
+     * @throws SecurityException    if the current thread cannot access the system thread group.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     */
+    public static Collection<Thread> findThreadsByName(final String threadName, final String threadGroupName) {
+        Objects.requireNonNull(threadName, "threadName");
+        Objects.requireNonNull(threadGroupName, "threadGroupName");
+        return Collections.unmodifiableCollection(findThreadGroups(predicateThreadGroup(threadGroupName)).stream()
+            .flatMap(group -> findThreads(group, false, predicateThread(threadName)).stream()).collect(Collectors.toList()));
+    }
+
+    /**
+     * Finds active threads with the specified name if they belong to a specified thread group.
+     *
+     * @param threadName  The thread name.
+     * @param threadGroup The thread group.
+     * @return The threads which belongs to a thread group and the thread's name match the specified name, An empty collection is returned if no such thread
+     *         exists. The collection returned is always unmodifiable.
+     * @throws NullPointerException if the specified thread name or group is null.
+     * @throws SecurityException    if the current thread cannot access the system thread group.
+     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     */
+    public static Collection<Thread> findThreadsByName(final String threadName, final ThreadGroup threadGroup) {
+        return findThreads(threadGroup, false, predicateThread(threadName));
+    }
+
+    /**
+     * Gets all active thread groups excluding the system thread group (A thread group is active if it has been not destroyed).
+     *
+     * @return all thread groups excluding the system thread group. The collection returned is always unmodifiable.
+     * @throws SecurityException if the current thread cannot access the system thread group.
+     * @throws SecurityException if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     */
+    public static Collection<ThreadGroup> getAllThreadGroups() {
+        return findThreadGroups(Predicates.truePredicate());
+    }
+
+    /**
+     * Gets all active threads (A thread is active if it has been started and has not yet died).
+     *
+     * @return all active threads. The collection returned is always unmodifiable.
+     * @throws SecurityException if the current thread cannot access the system thread group.
+     * @throws SecurityException if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+     */
+    public static Collection<Thread> getAllThreads() {
+        return findThreads(Predicates.truePredicate());
+    }
+
+    /**
+     * Gets the system thread group (sometimes also referred as "root thread group").
+     * <p>
+     * This method returns null if this thread has died (been stopped).
+     * </p>
+     *
+
+exec
+/bin/bash -lc "sed -n '1,260p' src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.commons.lang3;
+
+import static org.apache.commons.lang3.LangAssertions.assertIllegalArgumentException;
+import static org.apache.commons.lang3.LangAssertions.assertNullPointerException;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.function.Predicate;
+
+import org.apache.commons.lang3.ThreadUtils.ThreadGroupPredicate;
+import org.apache.commons.lang3.ThreadUtils.ThreadPredicate;
+import org.apache.commons.lang3.function.Predicates;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Tests {@link ThreadUtils}.
+ */
+class ThreadUtilsTest extends AbstractLangTest {
+
+    private static final class TestThread extends Thread {
+        private final CountDownLatch latch = new CountDownLatch(1);
+
+        TestThread(final String name) {
+            super(name);
+        }
+
+        TestThread(final ThreadGroup group, final String name) {
+            super(group, name);
+        }
+
+        @Override
+        public void run() {
+            latch.countDown();
+            try {
+                synchronized (this) {
+                    this.wait();
+                }
+            } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        @Override
+        public synchronized void start() {
+            super.start();
+            try {
+                latch.await();
+            } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    @Test
+    void testAtLeastOneThreadExists() {
+        assertFalse(ThreadUtils.getAllThreads().isEmpty());
+    }
+
+    @Test
+    void testAtLeastOneThreadGroupsExists() {
+        assertFalse(ThreadUtils.getAllThreadGroups().isEmpty());
+    }
+
+    @Test
+    void testComplexThreadGroups() throws Exception {
+        final ThreadGroup threadGroup1 = new ThreadGroup("thread_group_1__");
+        final ThreadGroup threadGroup2 = new ThreadGroup("thread_group_2__");
+        final ThreadGroup threadGroup3 = new ThreadGroup(threadGroup2, "thread_group_3__");
+        final ThreadGroup threadGroup4 = new ThreadGroup(threadGroup2, "thread_group_4__");
+        final ThreadGroup threadGroup5 = new ThreadGroup(threadGroup1, "thread_group_5__");
+        final ThreadGroup threadGroup6 = new ThreadGroup(threadGroup4, "thread_group_6__");
+        final ThreadGroup threadGroup7 = new ThreadGroup(threadGroup4, "thread_group_7__");
+        final ThreadGroup threadGroup7Doubled = new ThreadGroup(threadGroup4, "thread_group_7__");
+        final List<ThreadGroup> threadGroups = Arrays.asList(threadGroup1, threadGroup2, threadGroup3, threadGroup4, threadGroup5, threadGroup6, threadGroup7,
+            threadGroup7Doubled);
+
+        final Thread t1 = new TestThread("thread1_X__");
+        final Thread t2 = new TestThread(threadGroup1, "thread2_X__");
+        final Thread t3 = new TestThread(threadGroup2, "thread3_X__");
+        final Thread t4 = new TestThread(threadGroup3, "thread4_X__");
+        final Thread t5 = new TestThread(threadGroup4, "thread5_X__");
+        final Thread t6 = new TestThread(threadGroup5, "thread6_X__");
+        final Thread t7 = new TestThread(threadGroup6, "thread7_X__");
+        final Thread t8 = new TestThread(threadGroup4, "thread8_X__");
+        final Thread t9 = new TestThread(threadGroup6, "thread9_X__");
+        final Thread t10 = new TestThread(threadGroup3, "thread10_X__");
+        final Thread t11 = new TestThread(threadGroup7, "thread11_X__");
+        final Thread t11Doubled = new TestThread(threadGroup7Doubled, "thread11_X__");
+        final List<Thread> threads = Arrays.asList(t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t11Doubled);
+
+        try {
+            for (final Thread thread : threads) {
+                thread.start();
+            }
+            assertTrue(ThreadUtils.getAllThreadGroups().size() >= 7, "getAllThreadGroups");
+            assertTrue(ThreadUtils.getAllThreads().size() >= 11, "getAllThreads");
+            assertTrue(ThreadUtils.findThreads(Predicates.truePredicate()).size() >= 11, "findThreads(ThreadUtils.truePredicate())");
+            assertEquals(1, ThreadUtils.findThreadsByName(t4.getName(), threadGroup3.getName()).size());
+            assertEquals(0, ThreadUtils.findThreadsByName(t4.getName(), threadGroup2.getName()).size());
+            assertEquals(2, ThreadUtils.findThreadsByName(t11.getName(), threadGroup7.getName()).size());
+        } finally {
+            for (final Thread thread : threads) {
+                thread.interrupt();
+                thread.join();
+            }
+            for (final ThreadGroup threadGroup : threadGroups) {
+                if (!threadGroup.isDestroyed()) {
+                    threadGroup.destroy();
+                }
+            }
+        }
+    }
+
+    @Test
+    void testConstructor() {
+        assertNotNull(new ThreadUtils());
+        final Constructor<?>[] cons = ThreadUtils.class.getDeclaredConstructors();
+        assertEquals(1, cons.length);
+        assertTrue(Modifier.isPublic(cons[0].getModifiers()));
+        assertTrue(Modifier.isPublic(ThreadUtils.class.getModifiers()));
+        assertFalse(Modifier.isFinal(ThreadUtils.class.getModifiers()));
+    }
+
+    @SuppressWarnings("deprecation")
+    @Test
+    void testDepreacted() {
+        assertNotNull(ThreadUtils.ALWAYS_TRUE_PREDICATE);
+        final ThreadPredicate tp = ThreadUtils.ALWAYS_TRUE_PREDICATE;
+        assertTrue(tp.test(null));
+        assertTrue(tp.test(new Thread()));
+        final ThreadGroupPredicate tgp = ThreadUtils.ALWAYS_TRUE_PREDICATE;
+        assertTrue(tgp.test(null));
+        assertTrue(tgp.test(new ThreadGroup("")));
+    }
+
+    @Test
+    void testGetAllThreadGroupsDoesNotReturnNull() {
+        // LANG-1706 getAllThreadGroups and findThreadGroups should not return null items
+        final Collection<ThreadGroup> threads = ThreadUtils.getAllThreadGroups();
+        assertEquals(0, threads.stream().filter(Objects::isNull).count());
+    }
+
+    @Test
+    void testGetAllThreadsDoesNotReturnNull() {
+        // LANG-1706 getAllThreads and findThreads should not return null items
+        final Collection<Thread> threads = ThreadUtils.getAllThreads();
+        assertEquals(0, threads.stream().filter(Objects::isNull).count());
+    }
+
+    @Test
+    void testInvalidThreadId() {
+        assertIllegalArgumentException(() -> ThreadUtils.findThreadById(-5L));
+    }
+
+    @Test
+    void testJoinDuration() throws InterruptedException {
+        ThreadUtils.join(new Thread(), Duration.ZERO);
+        ThreadUtils.join(new Thread(), Duration.ofMillis(1));
+    }
+
+    @Test
+    void testNoThread() {
+        assertEquals(0, ThreadUtils.findThreadsByName("some_thread_which_does_not_exist_18762ZucTT").size());
+    }
+
+    @Test
+    void testNoThreadGroup() {
+        assertEquals(0, ThreadUtils.findThreadGroupsByName("some_thread_group_which_does_not_exist_18762ZucTTII").size());
+    }
+
+    @Test
+    void testNullThreadGroupName() {
+        assertNullPointerException(() -> ThreadUtils.findThreadGroupsByName(null));
+    }
+
+    @Test
+    void testNullThreadName() {
+        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null));
+    }
+
+    @Test
+    void testNullThreadThreadGroup1() {
+        assertNullPointerException(() -> ThreadUtils.findThreadsByName("tname", (ThreadGroup) null));
+    }
+
+    @Test
+    void testNullThreadThreadGroup2() {
+        assertNullPointerException(() -> ThreadUtils.findThreadById(1L, (ThreadGroup) null));
+    }
+
+    @Test
+    void testNullThreadThreadGroup3() {
+        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null, (ThreadGroup) null));
+    }
+
+    @Test
+    void testNullThreadThreadGroupName1() {
+        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null, "tgname"));
+    }
+
+    @Test
+    void testNullThreadThreadGroupName2() {
+        assertNullPointerException(() -> ThreadUtils.findThreadsByName("tname", (String) null));
+    }
+
+    @Test
+    void testNullThreadThreadGroupName3() {
+        assertNullPointerException(() -> ThreadUtils.findThreadsByName(null, (String) null));
+    }
+
+    @Test
+    void testSleepDuration() throws InterruptedException {
+        ThreadUtils.sleep(Duration.ZERO);
+        ThreadUtils.sleep(Duration.ofMillis(1));
+    }
+
+    @Test
+    void testSystemThreadGroupExists() {
+        final ThreadGroup systemThreadGroup = ThreadUtils.getSystemThreadGroup();
+        assertNotNull(systemThreadGroup);
+        assertNull(systemThreadGroup.getParent());
+        assertEquals("system", systemThreadGroup.getName());
+    }
+
+    @Test
+    void testThreadGroups() throws InterruptedException {
+        final String threadGroupName = "thread_group_DDZZ99__for_testThreadGroups";
+        final ThreadGroup threadGroup = new ThreadGroup(threadGroupName);
+        final Thread t1 = new TestThread(threadGroup, "thread1_XXOOPP__");
+
+codex
+I’ve confirmed the target is an inner interface in `ThreadUtils`, not a standalone top-level type. I’m now counting concrete references so the verdict is based on actual fan-in/fan-out in this repo, not on the fact that `ThreadUtils` itself has many methods.
+exec
+/bin/bash -lc "rg -n \"ThreadUtils\\.ThreadPredicate|import org\\.apache\\.commons\\.lang3\\.ThreadUtils\\.ThreadPredicate|findThreads\\(final ThreadPredicate|findThreads\\(\\(ThreadPredicate\\)|ThreadPredicate predicate\" src/main/java src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:368:    public static Collection<Thread> findThreads(final ThreadGroup threadGroup, final boolean recurse, final ThreadPredicate predicate) {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:383:    public static Collection<Thread> findThreads(final ThreadPredicate predicate) {
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:42:import org.apache.commons.lang3.ThreadUtils.ThreadPredicate;
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:402:        assertNullPointerException(() -> ThreadUtils.findThreads((ThreadPredicate) null));
+
+exec
+/bin/bash -lc "rg -n \"\\bThreadPredicate\\b\" src/main/java src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:50:    private static final class AlwaysTruePredicate implements ThreadPredicate, ThreadGroupPredicate {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:75:    public static class NamePredicate implements ThreadPredicate, ThreadGroupPredicate {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:126:    public static class ThreadIdPredicate implements ThreadPredicate {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:157:    public interface ThreadPredicate {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:368:    public static Collection<Thread> findThreads(final ThreadGroup threadGroup, final boolean recurse, final ThreadPredicate predicate) {
+src/main/java/org/apache/commons/lang3/ThreadUtils.java:383:    public static Collection<Thread> findThreads(final ThreadPredicate predicate) {
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:42:import org.apache.commons.lang3.ThreadUtils.ThreadPredicate;
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:159:        final ThreadPredicate tp = ThreadUtils.ALWAYS_TRUE_PREDICATE;
+src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java:402:        assertNullPointerException(() -> ThreadUtils.findThreads((ThreadPredicate) null));
+
+codex
+I have enough to make the call, but I want line numbers for the exact evidence in `ThreadUtils.java` and the test class so the justification is precise rather than hand-wavy.
+exec
+/bin/bash -lc "nl -ba src/main/java/org/apache/commons/lang3/ThreadUtils.java | sed -n '360,395p'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+   360	     * @param recurse     if {@code true} then evaluate the predicate recursively on all threads in all subgroups of the given group.
+   361	     * @param predicate   the predicate.
+   362	     * @return An unmodifiable {@link Collection} of active threads which match the given predicate and which belongs to the given thread group.
+   363	     * @throws NullPointerException if the given group or predicate is null.
+   364	     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+   365	     * @deprecated Use {@link #findThreads(ThreadGroup, boolean, Predicate)}.
+   366	     */
+   367	    @Deprecated
+   368	    public static Collection<Thread> findThreads(final ThreadGroup threadGroup, final boolean recurse, final ThreadPredicate predicate) {
+   369	        return findThreads(threadGroup, recurse, (Predicate<Thread>) predicate::test);
+   370	    }
+   371	
+   372	    /**
+   373	     * Finds all active threads which match the given predicate.
+   374	     *
+   375	     * @param predicate the predicate.
+   376	     * @return An unmodifiable {@link Collection} of active threads matching the given predicate.
+   377	     * @throws NullPointerException if the predicate is null.
+   378	     * @throws SecurityException    if the current thread cannot access the system thread group.
+   379	     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+   380	     * @deprecated Use {@link #findThreads(Predicate)}.
+   381	     */
+   382	    @Deprecated
+   383	    public static Collection<Thread> findThreads(final ThreadPredicate predicate) {
+   384	        return findThreads(getSystemThreadGroup(), true, predicate);
+   385	    }
+   386	
+   387	    /**
+   388	     * Finds active threads with the specified name.
+   389	     *
+   390	     * @param threadName The thread name.
+   391	     * @return The threads with the specified name or an empty collection if no such thread exists. The collection returned is always unmodifiable.
+   392	     * @throws NullPointerException if the specified name is null.
+   393	     * @throws SecurityException    if the current thread cannot access the system thread group.
+   394	     * @throws SecurityException    if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+   395	     */
+
+exec
+/bin/bash -lc "nl -ba src/main/java/org/apache/commons/lang3/ThreadUtils.java | sed -n '40,190p'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+    40	 * @since 3.5
+    41	 */
+    42	public class ThreadUtils {
+    43	
+    44	    /**
+    45	     * A predicate implementation which always returns true.
+    46	     *
+    47	     * @deprecated Use a {@link Predicate}.
+    48	     */
+    49	    @Deprecated
+    50	    private static final class AlwaysTruePredicate implements ThreadPredicate, ThreadGroupPredicate {
+    51	
+    52	        private AlwaysTruePredicate() {
+    53	        }
+    54	
+    55	        @Override
+    56	        public boolean test(final Thread thread) {
+    57	            return true;
+    58	        }
+    59	
+    60	        @Override
+    61	        public boolean test(final ThreadGroup threadGroup) {
+    62	            return true;
+    63	        }
+    64	    }
+    65	
+    66	    /**
+    67	     * Used internally, consider private.
+    68	     * <p>
+    69	     * A predicate implementation which matches a thread or thread group name.
+    70	     * </p>
+    71	     *
+    72	     * @deprecated Use a {@link Predicate}.
+    73	     */
+    74	    @Deprecated
+    75	    public static class NamePredicate implements ThreadPredicate, ThreadGroupPredicate {
+    76	
+    77	        private final String name;
+    78	
+    79	        /**
+    80	         * Constructs an instance.
+    81	         *
+    82	         * @param name thread or thread group name.
+    83	         * @throws NullPointerException if the name is {@code null}.
+    84	         */
+    85	        public NamePredicate(final String name) {
+    86	            Objects.requireNonNull(name, "name");
+    87	            this.name = name;
+    88	        }
+    89	
+    90	        @Override
+    91	        public boolean test(final Thread thread) {
+    92	            return thread != null && thread.getName().equals(name);
+    93	        }
+    94	
+    95	        @Override
+    96	        public boolean test(final ThreadGroup threadGroup) {
+    97	            return threadGroup != null && threadGroup.getName().equals(name);
+    98	        }
+    99	    }
+   100	
+   101	    /**
+   102	     * A predicate for selecting thread groups.
+   103	     *
+   104	     * @deprecated Use a {@link Predicate}.
+   105	     */
+   106	    @Deprecated
+   107	    // When breaking BC, replace this with Predicate<ThreadGroup>
+   108	    @FunctionalInterface
+   109	    public interface ThreadGroupPredicate {
+   110	
+   111	        /**
+   112	         * Evaluates this predicate on the given thread group.
+   113	         *
+   114	         * @param threadGroup the thread group
+   115	         * @return {@code true} if the threadGroup matches the predicate, otherwise {@code false}
+   116	         */
+   117	        boolean test(ThreadGroup threadGroup);
+   118	    }
+   119	
+   120	    /**
+   121	     * A predicate implementation which matches a thread id.
+   122	     *
+   123	     * @deprecated Use a {@link Predicate}.
+   124	     */
+   125	    @Deprecated
+   126	    public static class ThreadIdPredicate implements ThreadPredicate {
+   127	
+   128	        private final long threadId;
+   129	
+   130	        /**
+   131	         * Predicate constructor
+   132	         *
+   133	         * @param threadId the threadId to match.
+   134	         * @throws IllegalArgumentException if the threadId is zero or negative.
+   135	         */
+   136	        public ThreadIdPredicate(final long threadId) {
+   137	            if (threadId <= 0) {
+   138	                throw new IllegalArgumentException("The thread id must be greater than zero");
+   139	            }
+   140	            this.threadId = threadId;
+   141	        }
+   142	
+   143	        @Override
+   144	        public boolean test(final Thread thread) {
+   145	            return thread != null && thread.getId() == threadId;
+   146	        }
+   147	    }
+   148	
+   149	    /**
+   150	     * A predicate for selecting threads.
+   151	     *
+   152	     * @deprecated Use a {@link Predicate}.
+   153	     */
+   154	    @Deprecated
+   155	    // When breaking BC, replace this with Predicate<Thread>
+   156	    @FunctionalInterface
+   157	    public interface ThreadPredicate {
+   158	
+   159	        /**
+   160	         * Evaluates this predicate on the given thread.
+   161	         *
+   162	         * @param thread the thread
+   163	         * @return {@code true} if the thread matches the predicate, otherwise {@code false}
+   164	         */
+   165	        boolean test(Thread thread);
+   166	    }
+   167	
+   168	    /**
+   169	     * Predicate which always returns true.
+   170	     *
+   171	     * @deprecated Use a {@link Predicate}.
+   172	     */
+   173	    @Deprecated
+   174	    public static final AlwaysTruePredicate ALWAYS_TRUE_PREDICATE = new AlwaysTruePredicate();
+   175	
+   176	    /**
+   177	     * Finds the active thread with the specified id.
+   178	     *
+   179	     * @param threadId The thread id.
+   180	     * @return The thread with the specified id or {@code null} if no such thread exists.
+   181	     * @throws IllegalArgumentException if the specified id is zero or negative.
+   182	     * @throws SecurityException        if the current thread cannot access the system thread group.
+   183	     * @throws SecurityException        if the current thread cannot modify thread groups from this thread's thread group up to the system thread group.
+   184	     */
+   185	    public static Thread findThreadById(final long threadId) {
+   186	        if (threadId <= 0) {
+   187	            throw new IllegalArgumentException("The thread id must be greater than zero");
+   188	        }
+   189	        final Collection<Thread> result = findThreads((Predicate<Thread>) t -> t != null && t.getId() == threadId);
+   190	        return result.isEmpty() ? null : result.iterator().next();
+
+exec
+/bin/bash -lc "nl -ba src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java | sed -n '395,410p'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "nl -ba src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java | sed -n '35,170p'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+   395	            t1.join();
+   396	            tg.destroy();
+   397	        }
+   398	    }
+   399	
+   400	    @Test
+   401	    void testThreadsNullPredicate() {
+   402	        assertNullPointerException(() -> ThreadUtils.findThreads((ThreadPredicate) null));
+   403	        assertNullPointerException(() -> ThreadUtils.findThreads((Predicate<Thread>) null));
+   404	        assertNullPointerException(() -> ThreadUtils.findThreads((Predicate) null));
+   405	    }
+   406	
+   407	    @Test
+   408	    void testThreadsSameName() throws InterruptedException {
+   409	        final Thread t1 = new TestThread("thread1_XXOOLL__");
+   410	        final Thread alsot1 = new TestThread("thread1_XXOOLL__");
+
+ succeeded in 0ms:
+    35	import java.util.Collection;
+    36	import java.util.List;
+    37	import java.util.Objects;
+    38	import java.util.concurrent.CountDownLatch;
+    39	import java.util.function.Predicate;
+    40	
+    41	import org.apache.commons.lang3.ThreadUtils.ThreadGroupPredicate;
+    42	import org.apache.commons.lang3.ThreadUtils.ThreadPredicate;
+    43	import org.apache.commons.lang3.function.Predicates;
+    44	import org.junit.jupiter.api.Test;
+    45	
+    46	/**
+    47	 * Tests {@link ThreadUtils}.
+    48	 */
+    49	class ThreadUtilsTest extends AbstractLangTest {
+    50	
+    51	    private static final class TestThread extends Thread {
+    52	        private final CountDownLatch latch = new CountDownLatch(1);
+    53	
+    54	        TestThread(final String name) {
+    55	            super(name);
+    56	        }
+    57	
+    58	        TestThread(final ThreadGroup group, final String name) {
+    59	            super(group, name);
+    60	        }
+    61	
+    62	        @Override
+    63	        public void run() {
+    64	            latch.countDown();
+    65	            try {
+    66	                synchronized (this) {
+    67	                    this.wait();
+    68	                }
+    69	            } catch (final InterruptedException e) {
+    70	                Thread.currentThread().interrupt();
+    71	            }
+    72	        }
+    73	
+    74	        @Override
+    75	        public synchronized void start() {
+    76	            super.start();
+    77	            try {
+    78	                latch.await();
+    79	            } catch (final InterruptedException e) {
+    80	                Thread.currentThread().interrupt();
+    81	            }
+    82	        }
+    83	    }
+    84	
+    85	    @Test
+    86	    void testAtLeastOneThreadExists() {
+    87	        assertFalse(ThreadUtils.getAllThreads().isEmpty());
+    88	    }
+    89	
+    90	    @Test
+    91	    void testAtLeastOneThreadGroupsExists() {
+    92	        assertFalse(ThreadUtils.getAllThreadGroups().isEmpty());
+    93	    }
+    94	
+    95	    @Test
+    96	    void testComplexThreadGroups() throws Exception {
+    97	        final ThreadGroup threadGroup1 = new ThreadGroup("thread_group_1__");
+    98	        final ThreadGroup threadGroup2 = new ThreadGroup("thread_group_2__");
+    99	        final ThreadGroup threadGroup3 = new ThreadGroup(threadGroup2, "thread_group_3__");
+   100	        final ThreadGroup threadGroup4 = new ThreadGroup(threadGroup2, "thread_group_4__");
+   101	        final ThreadGroup threadGroup5 = new ThreadGroup(threadGroup1, "thread_group_5__");
+   102	        final ThreadGroup threadGroup6 = new ThreadGroup(threadGroup4, "thread_group_6__");
+   103	        final ThreadGroup threadGroup7 = new ThreadGroup(threadGroup4, "thread_group_7__");
+   104	        final ThreadGroup threadGroup7Doubled = new ThreadGroup(threadGroup4, "thread_group_7__");
+   105	        final List<ThreadGroup> threadGroups = Arrays.asList(threadGroup1, threadGroup2, threadGroup3, threadGroup4, threadGroup5, threadGroup6, threadGroup7,
+   106	            threadGroup7Doubled);
+   107	
+   108	        final Thread t1 = new TestThread("thread1_X__");
+   109	        final Thread t2 = new TestThread(threadGroup1, "thread2_X__");
+   110	        final Thread t3 = new TestThread(threadGroup2, "thread3_X__");
+   111	        final Thread t4 = new TestThread(threadGroup3, "thread4_X__");
+   112	        final Thread t5 = new TestThread(threadGroup4, "thread5_X__");
+   113	        final Thread t6 = new TestThread(threadGroup5, "thread6_X__");
+   114	        final Thread t7 = new TestThread(threadGroup6, "thread7_X__");
+   115	        final Thread t8 = new TestThread(threadGroup4, "thread8_X__");
+   116	        final Thread t9 = new TestThread(threadGroup6, "thread9_X__");
+   117	        final Thread t10 = new TestThread(threadGroup3, "thread10_X__");
+   118	        final Thread t11 = new TestThread(threadGroup7, "thread11_X__");
+   119	        final Thread t11Doubled = new TestThread(threadGroup7Doubled, "thread11_X__");
+   120	        final List<Thread> threads = Arrays.asList(t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t11Doubled);
+   121	
+   122	        try {
+   123	            for (final Thread thread : threads) {
+   124	                thread.start();
+   125	            }
+   126	            assertTrue(ThreadUtils.getAllThreadGroups().size() >= 7, "getAllThreadGroups");
+   127	            assertTrue(ThreadUtils.getAllThreads().size() >= 11, "getAllThreads");
+   128	            assertTrue(ThreadUtils.findThreads(Predicates.truePredicate()).size() >= 11, "findThreads(ThreadUtils.truePredicate())");
+   129	            assertEquals(1, ThreadUtils.findThreadsByName(t4.getName(), threadGroup3.getName()).size());
+   130	            assertEquals(0, ThreadUtils.findThreadsByName(t4.getName(), threadGroup2.getName()).size());
+   131	            assertEquals(2, ThreadUtils.findThreadsByName(t11.getName(), threadGroup7.getName()).size());
+   132	        } finally {
+   133	            for (final Thread thread : threads) {
+   134	                thread.interrupt();
+   135	                thread.join();
+   136	            }
+   137	            for (final ThreadGroup threadGroup : threadGroups) {
+   138	                if (!threadGroup.isDestroyed()) {
+   139	                    threadGroup.destroy();
+   140	                }
+   141	            }
+   142	        }
+   143	    }
+   144	
+   145	    @Test
+   146	    void testConstructor() {
+   147	        assertNotNull(new ThreadUtils());
+   148	        final Constructor<?>[] cons = ThreadUtils.class.getDeclaredConstructors();
+   149	        assertEquals(1, cons.length);
+   150	        assertTrue(Modifier.isPublic(cons[0].getModifiers()));
+   151	        assertTrue(Modifier.isPublic(ThreadUtils.class.getModifiers()));
+   152	        assertFalse(Modifier.isFinal(ThreadUtils.class.getModifiers()));
+   153	    }
+   154	
+   155	    @SuppressWarnings("deprecation")
+   156	    @Test
+   157	    void testDepreacted() {
+   158	        assertNotNull(ThreadUtils.ALWAYS_TRUE_PREDICATE);
+   159	        final ThreadPredicate tp = ThreadUtils.ALWAYS_TRUE_PREDICATE;
+   160	        assertTrue(tp.test(null));
+   161	        assertTrue(tp.test(new Thread()));
+   162	        final ThreadGroupPredicate tgp = ThreadUtils.ALWAYS_TRUE_PREDICATE;
+   163	        assertTrue(tgp.test(null));
+   164	        assertTrue(tgp.test(new ThreadGroup("")));
+   165	    }
+   166	
+   167	    @Test
+   168	    void testGetAllThreadGroupsDoesNotReturnNull() {
+   169	        // LANG-1706 getAllThreadGroups and findThreadGroups should not return null items
+   170	        final Collection<ThreadGroup> threads = ThreadUtils.getAllThreadGroups();
+
+codex
+{"target":"org.apache.commons.lang3.ThreadUtils.ThreadPredicate","detection":false,"justification":"Inspected src/main/java/org/apache/commons/lang3/ThreadUtils.java and src/test/java/org/apache/commons/lang3/ThreadUtilsTest.java. ThreadPredicate is a small nested functional interface with only two production overloads that accept it (findThreads(ThreadGroup, boolean, ThreadPredicate) and findThreads(ThreadPredicate)) and a few in-file implementations/helpers (AlwaysTruePredicate, NamePredicate, ThreadIdPredicate); rg found no other production classes referencing it, only the test import and one null-argument test. That is low fan-in/fan-out, not a dependency hub."}
+tokens used
+18,951

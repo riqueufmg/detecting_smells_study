@@ -1,0 +1,828 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f81-7df0-77b2-85ab-9943034c4c8a
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.apache.commons.io.output.TaggedWriter` in the repository located at:
+
+`data/repositories/apache/commons-io`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.apache.commons.io.output.TaggedWriter",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.apache.commons.io.output.TaggedWriter`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and tracing its direct references so I can judge fan-in and fan-out from the repository evidence, then I’ll return a JSON verdict only.
+exec
+/bin/bash -lc "rg -n \"\\bTaggedWriter\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc "rg --files | rg 'TaggedWriter\\.java|TaggedWriter'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 271ms:
+./RELEASE-NOTES.txt:1479:* IO-614:  Add classes TaggedWriter, ClosedWriter and BrokenWriter. #86. Thanks to Rob Spoor. 
+./src/test/java/org/apache/commons/io/output/TaggedWriterTest.java:32: * Tests {@link TaggedWriter}.
+./src/test/java/org/apache/commons/io/output/TaggedWriterTest.java:39:        final TaggedWriter writer = new TaggedWriter(new BrokenWriter(exception));
+./src/test/java/org/apache/commons/io/output/TaggedWriterTest.java:87:            try (Writer writer = new TaggedWriter(buffer)) {
+./src/test/java/org/apache/commons/io/output/TaggedWriterTest.java:103:        try (TaggedWriter writer = new TaggedWriter(ClosedWriter.INSTANCE)) {
+./src/changes/changes.xml:1732:        Add classes TaggedWriter, ClosedWriter and BrokenWriter. #86.
+./src/main/java/org/apache/commons/io/output/TaggedWriter.java:53: * TaggedWriter writer = new TaggedWriter(...);
+./src/main/java/org/apache/commons/io/output/TaggedWriter.java:65:public class TaggedWriter extends ProxyWriter {
+./src/main/java/org/apache/commons/io/output/TaggedWriter.java:77:    public TaggedWriter(final Writer proxy) {
+
+ succeeded in 343ms:
+src/test/java/org/apache/commons/io/output/TaggedWriterTest.java
+src/main/java/org/apache/commons/io/output/TaggedWriter.java
+
+codex
+I found the class and its dedicated test. Next I’m checking the implementation and its superclass to see how many collaborators it pulls in and whether other production code depends on it.
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/apache/commons/io/output/TaggedWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc "sed -n '1,220p' src/test/java/org/apache/commons/io/output/TaggedWriterTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc "sed -n '1,240p' src/main/java/org/apache/commons/io/output/ProxyWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 238ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.io.output;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import java.io.IOException;
+import java.io.Writer;
+import java.util.UUID;
+
+import org.apache.commons.io.TaggedIOException;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Tests {@link TaggedWriter}.
+ */
+class TaggedWriterTest  {
+
+    @Test
+    void testBrokenWriter() {
+        final IOException exception = new IOException("test exception");
+        final TaggedWriter writer = new TaggedWriter(new BrokenWriter(exception));
+
+        // Test the write() method
+        try {
+            writer.write(new char[] { 'x' }, 0, 1);
+            fail("Expected exception not thrown.");
+        } catch (final IOException e) {
+            assertTrue(writer.isCauseOf(e));
+            try {
+                writer.throwIfCauseOf(e);
+                fail("Expected exception not thrown.");
+            } catch (final IOException e2) {
+                assertEquals(exception, e2);
+            }
+        }
+
+        // Test the flush() method
+        try {
+            writer.flush();
+            fail("Expected exception not thrown.");
+        } catch (final IOException e) {
+            assertTrue(writer.isCauseOf(e));
+            try {
+                writer.throwIfCauseOf(e);
+                fail("Expected exception not thrown.");
+            } catch (final IOException e2) {
+                assertEquals(exception, e2);
+            }
+        }
+
+        // Test the close() method
+        try {
+            writer.close();
+            fail("Expected exception not thrown.");
+        } catch (final IOException e) {
+            assertTrue(writer.isCauseOf(e));
+            try {
+                writer.throwIfCauseOf(e);
+                fail("Expected exception not thrown.");
+            } catch (final IOException e2) {
+                assertEquals(exception, e2);
+            }
+        }
+    }
+
+    @Test
+    void testNormalWriter() throws IOException {
+        try (StringBuilderWriter buffer = new StringBuilderWriter()) {
+            try (Writer writer = new TaggedWriter(buffer)) {
+                writer.write('a');
+                writer.write(new char[] { 'b' });
+                writer.write(new char[] { 'c' }, 0, 1);
+                writer.flush();
+            }
+            assertEquals(3, buffer.getBuilder().length());
+            assertEquals('a', buffer.getBuilder().charAt(0));
+            assertEquals('b', buffer.getBuilder().charAt(1));
+            assertEquals('c', buffer.getBuilder().charAt(2));
+        }
+    }
+
+    @Test
+    void testOtherException() throws Exception {
+        final IOException exception = new IOException("test exception");
+        try (TaggedWriter writer = new TaggedWriter(ClosedWriter.INSTANCE)) {
+            assertFalse(writer.isCauseOf(exception));
+            assertFalse(writer.isCauseOf(new TaggedIOException(exception, UUID.randomUUID())));
+            writer.throwIfCauseOf(exception);
+            writer.throwIfCauseOf(new TaggedIOException(exception, UUID.randomUUID()));
+        }
+    }
+
+}
+
+ succeeded in 273ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.io.output;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.io.Writer;
+import java.util.UUID;
+
+import org.apache.commons.io.TaggedIOException;
+
+/**
+ * A writer decorator that tags potential exceptions so that the
+ * reader that caused the exception can easily be identified. This is
+ * done by using the {@link TaggedIOException} class to wrap all thrown
+ * {@link IOException}s. See below for an example of using this class.
+ * <pre>
+ * TaggedReader reader = new TaggedReader(...);
+ * try {
+ *     // Processing that may throw an IOException either from this reader
+ *     // or from some other IO activity like temporary files, etc.
+ *     writeToWriter(writer);
+ * } catch (IOException e) {
+ *     if (writer.isCauseOf(e)) {
+ *         // The exception was caused by this writer.
+ *         // Use e.getCause() to get the original exception.
+ *     } else {
+ *         // The exception was caused by something else.
+ *     }
+ * }
+ * </pre>
+ * <p>
+ * Alternatively, the {@link #throwIfCauseOf(Exception)} method can be
+ * used to let higher levels of code handle the exception caused by this
+ * writer while other processing errors are being taken care of at this
+ * lower level.
+ * </p>
+ * <pre>
+ * TaggedWriter writer = new TaggedWriter(...);
+ * try {
+ *     writeToWriter(writer);
+ * } catch (IOException e) {
+ *     writer.throwIfCauseOf(e);
+ *     // ... or process the exception that was caused by something else
+ * }
+ * </pre>
+ *
+ * @see TaggedIOException
+ * @since 2.0
+ */
+public class TaggedWriter extends ProxyWriter {
+
+    /**
+     * The unique tag associated with exceptions from writer.
+     */
+    private final Serializable tag = UUID.randomUUID();
+
+    /**
+     * Constructs a tagging decorator for the given writer.
+     *
+     * @param proxy writer to be decorated.
+     */
+    public TaggedWriter(final Writer proxy) {
+        super(proxy);
+    }
+
+    /**
+     * Tags any IOExceptions thrown, wrapping and re-throwing.
+     *
+     * @param e The IOException thrown.
+     * @throws IOException if an I/O error occurs.
+     */
+    @Override
+    protected void handleIOException(final IOException e) throws IOException {
+        throw new TaggedIOException(e, tag);
+    }
+
+    /**
+     * Tests if the given exception was caused by this writer.
+     *
+     * @param exception an exception.
+     * @return {@code true} if the exception was thrown by this writer,
+     *         {@code false} otherwise.
+     */
+    public boolean isCauseOf(final Exception exception) {
+        return TaggedIOException.isTaggedWith(exception, tag);
+    }
+
+    /**
+     * Re-throws the original exception thrown by this writer. This method
+     * first checks whether the given exception is a {@link TaggedIOException}
+     * wrapper created by this decorator, and then unwraps and throws the
+     * original wrapped exception. Returns normally if the exception was
+     * not thrown by this writer.
+     *
+     * @param exception an exception.
+     * @throws IOException original exception, if any, thrown by this writer.
+     */
+    public void throwIfCauseOf(final Exception exception) throws IOException {
+        TaggedIOException.throwCauseIfTaggedWith(exception, tag);
+    }
+
+}
+
+ succeeded in 229ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.io.output;
+
+import java.io.FilterWriter;
+import java.io.IOException;
+import java.io.Writer;
+
+import org.apache.commons.io.IOUtils;
+
+/**
+ * A Proxy stream which acts as expected, that is it passes the method calls on to the proxied stream and doesn't
+ * change which methods are being called. It is an alternative base class to FilterWriter to increase reusability,
+ * because FilterWriter changes the methods being called, such as {@code write(char[]) to write(char[], int, int)}
+ * and {@code write(String) to write(String, int, int)}.
+ */
+public class ProxyWriter extends FilterWriter {
+
+    /**
+     * Constructs a new ProxyWriter.
+     *
+     * @param delegate  the Writer to delegate to.
+     */
+    public ProxyWriter(final Writer delegate) {
+        // the delegate is stored in a protected superclass variable named 'out'
+        super(delegate);
+    }
+
+    /**
+     * Invoked by the write methods after the proxied call has returned
+     * successfully. The number of chars written (1 for the
+     * {@link #write(int)} method, buffer length for {@link #write(char[])},
+     * etc.) is given as an argument.
+     * <p>
+     * Subclasses can override this method to add common post-processing
+     * functionality without having to override all the write methods.
+     * The default implementation does nothing.
+     * </p>
+     *
+     * @param n number of chars written.
+     * @throws IOException if the post-processing fails.
+     * @since 2.0
+     */
+    @SuppressWarnings("unused") // Possibly thrown from subclasses.
+    protected void afterWrite(final int n) throws IOException {
+        // noop
+    }
+
+    /**
+     * Invokes the delegate's {@code append(char)} method.
+     *
+     * @param c The character to write.
+     * @return this writer.
+     * @throws IOException if an I/O error occurs.
+     * @since 2.0
+     */
+    @Override
+    public Writer append(final char c) throws IOException {
+        try {
+            beforeWrite(1);
+            out.append(c);
+            afterWrite(1);
+        } catch (final IOException e) {
+            handleIOException(e);
+        }
+        return this;
+    }
+
+    /**
+     * Invokes the delegate's {@code append(CharSequence)} method.
+     *
+     * @param csq The character sequence to write.
+     * @return this writer.
+     * @throws IOException if an I/O error occurs.
+     * @since 2.0
+     */
+    @Override
+    public Writer append(final CharSequence csq) throws IOException {
+        try {
+            final int len = IOUtils.length(csq);
+            beforeWrite(len);
+            out.append(csq);
+            afterWrite(len);
+        } catch (final IOException e) {
+            handleIOException(e);
+        }
+        return this;
+    }
+
+    /**
+     * Invokes the delegate's {@code append(CharSequence, int, int)} method.
+     *
+     * @param csq The character sequence to write.
+     * @param start The index of the first character to write.
+     * @param end  The index of the first character to write (exclusive).
+     * @return this writer.
+     * @throws IOException if an I/O error occurs.
+     * @since 2.0
+     */
+    @Override
+    public Writer append(final CharSequence csq, final int start, final int end) throws IOException {
+        try {
+            beforeWrite(end - start);
+            out.append(csq, start, end);
+            afterWrite(end - start);
+        } catch (final IOException e) {
+            handleIOException(e);
+        }
+        return this;
+    }
+
+    /**
+     * Invoked by the write methods before the call is proxied. The number
+     * of chars to be written (1 for the {@link #write(int)} method, buffer
+     * length for {@link #write(char[])}, etc.) is given as an argument.
+     * <p>
+     * Subclasses can override this method to add common pre-processing
+     * functionality without having to override all the write methods.
+     * The default implementation does nothing.
+     * </p>
+     *
+     * @param n number of chars to be written.
+     * @throws IOException if the pre-processing fails.
+     * @since 2.0
+     */
+    @SuppressWarnings("unused") // Possibly thrown from subclasses.
+    protected void beforeWrite(final int n) throws IOException {
+        // noop
+    }
+
+    /**
+     * Invokes the delegate's {@code close()} method.
+     * @throws IOException if an I/O error occurs.
+     */
+    @Override
+    public void close() throws IOException {
+        IOUtils.close(out, this::handleIOException);
+    }
+
+    /**
+     * Invokes the delegate's {@code flush()} method.
+     * @throws IOException if an I/O error occurs.
+     */
+    @Override
+    public void flush() throws IOException {
+        try {
+            out.flush();
+        } catch (final IOException e) {
+            handleIOException(e);
+        }
+    }
+
+    /**
+     * Handles any IOExceptions thrown.
+     * <p>
+     * This method provides a point to implement custom exception
+     * handling. The default behavior is to re-throw the exception.
+     * </p>
+     *
+     * @param e The IOException thrown.
+     * @throws IOException if an I/O error occurs.
+     * @since 2.0
+     */
+    protected void handleIOException(final IOException e) throws IOException {
+        throw e;
+    }
+
+    /**
+     * Invokes the delegate's {@code write(char[])} method.
+     *
+     * @param cbuf the characters to write.
+     * @throws IOException if an I/O error occurs.
+     */
+    @Override
+    public void write(final char[] cbuf) throws IOException {
+        try {
+            final int len = IOUtils.length(cbuf);
+            beforeWrite(len);
+            out.write(cbuf);
+            afterWrite(len);
+        } catch (final IOException e) {
+            handleIOException(e);
+        }
+    }
+
+    /**
+     * Invokes the delegate's {@code write(char[], int, int)} method.
+     *
+     * @param cbuf the characters to write.
+     * @param off The start offset.
+     * @param len The number of characters to write.
+     * @throws IOException if an I/O error occurs.
+     */
+    @Override
+    public void write(final char[] cbuf, final int off, final int len) throws IOException {
+        try {
+            beforeWrite(len);
+            out.write(cbuf, off, len);
+            afterWrite(len);
+        } catch (final IOException e) {
+            handleIOException(e);
+        }
+    }
+
+    /**
+     * Invokes the delegate's {@code write(int)} method.
+     *
+     * @param c the character to write.
+     * @throws IOException if an I/O error occurs.
+     */
+    @Override
+    public void write(final int c) throws IOException {
+        try {
+            beforeWrite(1);
+            out.write(c);
+            afterWrite(1);
+        } catch (final IOException e) {
+            handleIOException(e);
+        }
+    }
+
+    /**
+     * Invokes the delegate's {@code write(String)} method.
+     *
+     * @param str the string to write.
+     * @throws IOException if an I/O error occurs.
+
+codex
+The reference search is complete and it’s looking sparse: the class appears to be isolated to its own implementation and one test. I’m pulling line-numbered evidence now so the verdict can cite exact repository observations.
+exec
+/bin/bash -lc "nl -ba src/main/java/org/apache/commons/io/output/TaggedWriter.java | sed -n '1,200p'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc 'rg -n "TaggedWriter" src/main src/test RELEASE-NOTES.txt src/changes/changes.xml' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc "nl -ba src/test/java/org/apache/commons/io/output/TaggedWriterTest.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 216ms:
+     1	/*
+     2	 * Licensed to the Apache Software Foundation (ASF) under one or more
+     3	 * contributor license agreements.  See the NOTICE file distributed with
+     4	 * this work for additional information regarding copyright ownership.
+     5	 * The ASF licenses this file to You under the Apache License, Version 2.0
+     6	 * (the "License"); you may not use this file except in compliance with
+     7	 * the License.  You may obtain a copy of the License at
+     8	 *
+     9	 *      https://www.apache.org/licenses/LICENSE-2.0
+    10	 *
+    11	 * Unless required by applicable law or agreed to in writing, software
+    12	 * distributed under the License is distributed on an "AS IS" BASIS,
+    13	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    14	 * See the License for the specific language governing permissions and
+    15	 * limitations under the License.
+    16	 */
+    17	package org.apache.commons.io.output;
+    18	
+    19	import java.io.IOException;
+    20	import java.io.Serializable;
+    21	import java.io.Writer;
+    22	import java.util.UUID;
+    23	
+    24	import org.apache.commons.io.TaggedIOException;
+    25	
+    26	/**
+    27	 * A writer decorator that tags potential exceptions so that the
+    28	 * reader that caused the exception can easily be identified. This is
+    29	 * done by using the {@link TaggedIOException} class to wrap all thrown
+    30	 * {@link IOException}s. See below for an example of using this class.
+    31	 * <pre>
+    32	 * TaggedReader reader = new TaggedReader(...);
+    33	 * try {
+    34	 *     // Processing that may throw an IOException either from this reader
+    35	 *     // or from some other IO activity like temporary files, etc.
+    36	 *     writeToWriter(writer);
+    37	 * } catch (IOException e) {
+    38	 *     if (writer.isCauseOf(e)) {
+    39	 *         // The exception was caused by this writer.
+    40	 *         // Use e.getCause() to get the original exception.
+    41	 *     } else {
+    42	 *         // The exception was caused by something else.
+    43	 *     }
+    44	 * }
+    45	 * </pre>
+    46	 * <p>
+    47	 * Alternatively, the {@link #throwIfCauseOf(Exception)} method can be
+    48	 * used to let higher levels of code handle the exception caused by this
+    49	 * writer while other processing errors are being taken care of at this
+    50	 * lower level.
+    51	 * </p>
+    52	 * <pre>
+    53	 * TaggedWriter writer = new TaggedWriter(...);
+    54	 * try {
+    55	 *     writeToWriter(writer);
+    56	 * } catch (IOException e) {
+    57	 *     writer.throwIfCauseOf(e);
+    58	 *     // ... or process the exception that was caused by something else
+    59	 * }
+    60	 * </pre>
+    61	 *
+    62	 * @see TaggedIOException
+    63	 * @since 2.0
+    64	 */
+    65	public class TaggedWriter extends ProxyWriter {
+    66	
+    67	    /**
+    68	     * The unique tag associated with exceptions from writer.
+    69	     */
+    70	    private final Serializable tag = UUID.randomUUID();
+    71	
+    72	    /**
+    73	     * Constructs a tagging decorator for the given writer.
+    74	     *
+    75	     * @param proxy writer to be decorated.
+    76	     */
+    77	    public TaggedWriter(final Writer proxy) {
+    78	        super(proxy);
+    79	    }
+    80	
+    81	    /**
+    82	     * Tags any IOExceptions thrown, wrapping and re-throwing.
+    83	     *
+    84	     * @param e The IOException thrown.
+    85	     * @throws IOException if an I/O error occurs.
+    86	     */
+    87	    @Override
+    88	    protected void handleIOException(final IOException e) throws IOException {
+    89	        throw new TaggedIOException(e, tag);
+    90	    }
+    91	
+    92	    /**
+    93	     * Tests if the given exception was caused by this writer.
+    94	     *
+    95	     * @param exception an exception.
+    96	     * @return {@code true} if the exception was thrown by this writer,
+    97	     *         {@code false} otherwise.
+    98	     */
+    99	    public boolean isCauseOf(final Exception exception) {
+   100	        return TaggedIOException.isTaggedWith(exception, tag);
+   101	    }
+   102	
+   103	    /**
+   104	     * Re-throws the original exception thrown by this writer. This method
+   105	     * first checks whether the given exception is a {@link TaggedIOException}
+   106	     * wrapper created by this decorator, and then unwraps and throws the
+   107	     * original wrapped exception. Returns normally if the exception was
+   108	     * not thrown by this writer.
+   109	     *
+   110	     * @param exception an exception.
+   111	     * @throws IOException original exception, if any, thrown by this writer.
+   112	     */
+   113	    public void throwIfCauseOf(final Exception exception) throws IOException {
+   114	        TaggedIOException.throwCauseIfTaggedWith(exception, tag);
+   115	    }
+   116	
+   117	}
+
+ succeeded in 254ms:
+src/test/java/org/apache/commons/io/output/TaggedWriterTest.java:32: * Tests {@link TaggedWriter}.
+src/test/java/org/apache/commons/io/output/TaggedWriterTest.java:34:class TaggedWriterTest  {
+src/test/java/org/apache/commons/io/output/TaggedWriterTest.java:39:        final TaggedWriter writer = new TaggedWriter(new BrokenWriter(exception));
+src/test/java/org/apache/commons/io/output/TaggedWriterTest.java:87:            try (Writer writer = new TaggedWriter(buffer)) {
+src/test/java/org/apache/commons/io/output/TaggedWriterTest.java:103:        try (TaggedWriter writer = new TaggedWriter(ClosedWriter.INSTANCE)) {
+src/main/java/org/apache/commons/io/output/TaggedWriter.java:53: * TaggedWriter writer = new TaggedWriter(...);
+src/main/java/org/apache/commons/io/output/TaggedWriter.java:65:public class TaggedWriter extends ProxyWriter {
+src/main/java/org/apache/commons/io/output/TaggedWriter.java:77:    public TaggedWriter(final Writer proxy) {
+src/changes/changes.xml:1732:        Add classes TaggedWriter, ClosedWriter and BrokenWriter. #86.
+RELEASE-NOTES.txt:1479:* IO-614:  Add classes TaggedWriter, ClosedWriter and BrokenWriter. #86. Thanks to Rob Spoor. 
+
+ succeeded in 299ms:
+     1	/*
+     2	 * Licensed to the Apache Software Foundation (ASF) under one or more
+     3	 * contributor license agreements.  See the NOTICE file distributed with
+     4	 * this work for additional information regarding copyright ownership.
+     5	 * The ASF licenses this file to You under the Apache License, Version 2.0
+     6	 * (the "License"); you may not use this file except in compliance with
+     7	 * the License.  You may obtain a copy of the License at
+     8	 *
+     9	 *      https://www.apache.org/licenses/LICENSE-2.0
+    10	 *
+    11	 * Unless required by applicable law or agreed to in writing, software
+    12	 * distributed under the License is distributed on an "AS IS" BASIS,
+    13	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    14	 * See the License for the specific language governing permissions and
+    15	 * limitations under the License.
+    16	 */
+    17	package org.apache.commons.io.output;
+    18	
+    19	import static org.junit.jupiter.api.Assertions.assertEquals;
+    20	import static org.junit.jupiter.api.Assertions.assertFalse;
+    21	import static org.junit.jupiter.api.Assertions.assertTrue;
+    22	import static org.junit.jupiter.api.Assertions.fail;
+    23	
+    24	import java.io.IOException;
+    25	import java.io.Writer;
+    26	import java.util.UUID;
+    27	
+    28	import org.apache.commons.io.TaggedIOException;
+    29	import org.junit.jupiter.api.Test;
+    30	
+    31	/**
+    32	 * Tests {@link TaggedWriter}.
+    33	 */
+    34	class TaggedWriterTest  {
+    35	
+    36	    @Test
+    37	    void testBrokenWriter() {
+    38	        final IOException exception = new IOException("test exception");
+    39	        final TaggedWriter writer = new TaggedWriter(new BrokenWriter(exception));
+    40	
+    41	        // Test the write() method
+    42	        try {
+    43	            writer.write(new char[] { 'x' }, 0, 1);
+    44	            fail("Expected exception not thrown.");
+    45	        } catch (final IOException e) {
+    46	            assertTrue(writer.isCauseOf(e));
+    47	            try {
+    48	                writer.throwIfCauseOf(e);
+    49	                fail("Expected exception not thrown.");
+    50	            } catch (final IOException e2) {
+    51	                assertEquals(exception, e2);
+    52	            }
+    53	        }
+    54	
+    55	        // Test the flush() method
+    56	        try {
+    57	            writer.flush();
+    58	            fail("Expected exception not thrown.");
+    59	        } catch (final IOException e) {
+    60	            assertTrue(writer.isCauseOf(e));
+    61	            try {
+    62	                writer.throwIfCauseOf(e);
+    63	                fail("Expected exception not thrown.");
+    64	            } catch (final IOException e2) {
+    65	                assertEquals(exception, e2);
+    66	            }
+    67	        }
+    68	
+    69	        // Test the close() method
+    70	        try {
+    71	            writer.close();
+    72	            fail("Expected exception not thrown.");
+    73	        } catch (final IOException e) {
+    74	            assertTrue(writer.isCauseOf(e));
+    75	            try {
+    76	                writer.throwIfCauseOf(e);
+    77	                fail("Expected exception not thrown.");
+    78	            } catch (final IOException e2) {
+    79	                assertEquals(exception, e2);
+    80	            }
+    81	        }
+    82	    }
+    83	
+    84	    @Test
+    85	    void testNormalWriter() throws IOException {
+    86	        try (StringBuilderWriter buffer = new StringBuilderWriter()) {
+    87	            try (Writer writer = new TaggedWriter(buffer)) {
+    88	                writer.write('a');
+    89	                writer.write(new char[] { 'b' });
+    90	                writer.write(new char[] { 'c' }, 0, 1);
+    91	                writer.flush();
+    92	            }
+    93	            assertEquals(3, buffer.getBuilder().length());
+    94	            assertEquals('a', buffer.getBuilder().charAt(0));
+    95	            assertEquals('b', buffer.getBuilder().charAt(1));
+    96	            assertEquals('c', buffer.getBuilder().charAt(2));
+    97	        }
+    98	    }
+    99	
+   100	    @Test
+   101	    void testOtherException() throws Exception {
+   102	        final IOException exception = new IOException("test exception");
+   103	        try (TaggedWriter writer = new TaggedWriter(ClosedWriter.INSTANCE)) {
+   104	            assertFalse(writer.isCauseOf(exception));
+   105	            assertFalse(writer.isCauseOf(new TaggedIOException(exception, UUID.randomUUID())));
+   106	            writer.throwIfCauseOf(exception);
+   107	            writer.throwIfCauseOf(new TaggedIOException(exception, UUID.randomUUID()));
+   108	        }
+   109	    }
+   110	
+   111	}
+
+codex
+{"target":"org.apache.commons.io.output.TaggedWriter","detection":false,"justification":"Inspected src/main/java/org/apache/commons/io/output/TaggedWriter.java and src/test/java/org/apache/commons/io/output/TaggedWriterTest.java, plus repository-wide references via rg. TaggedWriter is a small decorator that only extends ProxyWriter and directly depends on Writer, IOException, UUID/Serializable, and TaggedIOException; there is no sign of broad outbound coupling. Fan-in is also low: the only code reference is its dedicated test class (plus mentions in release notes/changes docs), and no other production class depends on it, so there is no evidence of hub-like modularization."}
+tokens used
+9,760

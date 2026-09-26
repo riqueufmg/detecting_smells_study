@@ -1,0 +1,1289 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ed1-8b4d-7d63-bb34-0a6abb8735d2
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and then I’ll inspect its direct dependencies and references to judge fan-in/fan-out from the repository evidence.
+exec
+/bin/bash -lc "rg -n \"class ReflectionInterfaceDeclaration|interface ReflectionInterfaceDeclaration|ReflectionInterfaceDeclaration\" src test -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ exited 2 in 0ms:
+rg: src: No such file or directory (os error 2)
+rg: test: No such file or directory (os error 2)
+
+exec
+/bin/bash -lc "rg --files | rg 'ReflectionInterfaceDeclaration\\.java"'$|ReflectionInterfaceDeclaration'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java
+
+codex
+I found the production source plus a dedicated test file. Next I’m checking the class body and who depends on it so I can ground the hub-like judgment in actual references.
+exec
+/bin/bash -lc "sed -n '1,240p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.reflectionmodel;
+
+import com.github.javaparser.ast.AccessSpecifier;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.resolution.Context;
+import com.github.javaparser.resolution.MethodUsage;
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.declarations.*;
+import com.github.javaparser.resolution.logic.ConflictingGenericTypesException;
+import com.github.javaparser.resolution.logic.InferenceContext;
+import com.github.javaparser.resolution.logic.MethodResolutionCapability;
+import com.github.javaparser.resolution.model.LambdaArgumentTypePlaceholder;
+import com.github.javaparser.resolution.model.SymbolReference;
+import com.github.javaparser.resolution.model.typesystem.NullType;
+import com.github.javaparser.resolution.model.typesystem.ReferenceTypeImpl;
+import com.github.javaparser.resolution.types.ResolvedReferenceType;
+import com.github.javaparser.resolution.types.ResolvedType;
+import com.github.javaparser.symbolsolver.core.resolution.MethodUsageResolutionCapability;
+import com.github.javaparser.symbolsolver.core.resolution.SymbolResolutionCapability;
+import com.github.javaparser.symbolsolver.logic.AbstractTypeDeclaration;
+import java.lang.reflect.Field;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * @author Federico Tomassetti
+ */
+public class ReflectionInterfaceDeclaration extends AbstractTypeDeclaration
+        implements ResolvedInterfaceDeclaration,
+                MethodResolutionCapability,
+                MethodUsageResolutionCapability,
+                SymbolResolutionCapability {
+
+    ///
+    /// Fields
+    ///
+
+    private Class<?> clazz;
+    private TypeSolver typeSolver;
+    private ReflectionClassAdapter reflectionClassAdapter;
+
+    ///
+    /// Constructor
+    ///
+
+    public ReflectionInterfaceDeclaration(Class<?> clazz, TypeSolver typeSolver) {
+        if (!clazz.isInterface()) {
+            throw new IllegalArgumentException();
+        }
+
+        this.clazz = clazz;
+        this.typeSolver = typeSolver;
+        this.reflectionClassAdapter = new ReflectionClassAdapter(clazz, typeSolver, this);
+    }
+
+    ///
+    /// Public methods
+    ///
+
+    @Override
+    public boolean isAssignableBy(ResolvedReferenceTypeDeclaration other) {
+        return isAssignableBy(new ReferenceTypeImpl(other));
+    }
+
+    @Override
+    public String getPackageName() {
+        if (clazz.getPackage() != null) {
+            return clazz.getPackage().getName();
+        }
+        return null;
+    }
+
+    @Override
+    public String getClassName() {
+        String canonicalName = clazz.getCanonicalName();
+        if (canonicalName != null && getPackageName() != null) {
+            return canonicalName.substring(getPackageName().length() + 1);
+        }
+        return null;
+    }
+
+    @Override
+    public String getQualifiedName() {
+        return clazz.getCanonicalName();
+    }
+
+    @Override
+    @Deprecated
+    public SymbolReference<ResolvedMethodDeclaration> solveMethod(
+            String name, List<ResolvedType> parameterTypes, boolean staticOnly) {
+        return ReflectionMethodResolutionLogic.solveMethod(name, parameterTypes, staticOnly, typeSolver, this, clazz);
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "{" + "clazz=" + clazz.getCanonicalName() + '}';
+    }
+
+    public ResolvedType getUsage(Node node) {
+        return new ReferenceTypeImpl(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ReflectionInterfaceDeclaration)) return false;
+
+        ReflectionInterfaceDeclaration that = (ReflectionInterfaceDeclaration) o;
+
+        if (!clazz.getCanonicalName().equals(that.clazz.getCanonicalName())) return false;
+
+        return getTypeParameters().equals(that.getTypeParameters());
+    }
+
+    @Override
+    public int hashCode() {
+        return clazz.hashCode();
+    }
+
+    /**
+     * Solves method usage with proper generic type inference, including support for varargs methods.
+     * This method first resolves the basic method signature, then performs generic type inference
+     * based on the actual parameter types provided at the call site.
+     *
+     * @param name the method name to resolve
+     * @param parameterTypes the actual parameter types at the call site
+     * @param invokationContext the context where the method is invoked
+     * @param typeParameterValues explicit type parameter values (if any)
+     * @return an Optional containing the resolved MethodUsage with inferred types, or empty if resolution fails
+     */
+    public Optional<MethodUsage> solveMethodAsUsage(
+            String name,
+            List<ResolvedType> parameterTypes,
+            Context invokationContext,
+            List<ResolvedType> typeParameterValues) {
+
+        Optional<MethodUsage> res = ReflectionMethodResolutionLogic.solveMethodAsUsage(
+                name, parameterTypes, typeSolver, invokationContext, typeParameterValues, this, clazz);
+
+        if (!res.isPresent()) {
+            return res;
+        }
+
+        return performTypeInference(res.get(), parameterTypes);
+    }
+
+    /**
+     * Performs generic type inference on a resolved method usage by analyzing the relationship
+     * between formal parameter types and actual parameter types provided at the call site.
+     * Handles both regular methods and varargs methods with appropriate constraint collection.
+     *
+     * @param methodUsage the initially resolved method usage
+     * @param parameterTypes the actual parameter types from the call site
+     * @return an Optional containing the method usage with inferred generic types, or empty if inference fails
+     */
+    private Optional<MethodUsage> performTypeInference(MethodUsage methodUsage, List<ResolvedType> parameterTypes) {
+        try {
+            InferenceContext inferenceContext = new InferenceContext(typeSolver);
+            List<ResolvedType> constraintPairs = collectTypeConstraints(methodUsage, parameterTypes, inferenceContext);
+            return resolveInferredTypes(methodUsage, constraintPairs, inferenceContext);
+        } catch (ConflictingGenericTypesException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Collects type constraints by comparing formal parameter types with actual parameter types.
+     * Automatically detects whether the method is varargs and delegates to the appropriate
+     * constraint collection strategy. Also validates that parameter counts are compatible.
+     *
+     * @param methodUsage the method usage to analyze
+     * @param parameterTypes the actual parameter types from the call site
+     * @param inferenceContext the inference context for collecting type constraints
+     * @return a list of type constraints that will be used for generic type resolution
+     * @throws IllegalArgumentException if parameter counts are incompatible
+     */
+    private List<ResolvedType> collectTypeConstraints(
+            MethodUsage methodUsage, List<ResolvedType> parameterTypes, InferenceContext inferenceContext) {
+
+        boolean isVarArgs = methodUsage.getDeclaration().hasVariadicParameter();
+        int formalParamCount = methodUsage.getNoParams();
+        int actualParamCount = parameterTypes.size();
+
+        validateParameterCount(isVarArgs, formalParamCount, actualParamCount);
+
+        if (isVarArgs) {
+            return collectVarArgsConstraints(methodUsage, parameterTypes, inferenceContext, formalParamCount);
+        } else {
+            return collectRegularConstraints(methodUsage, parameterTypes, inferenceContext);
+        }
+    }
+
+    /**
+     * Validates that the number of actual parameters is compatible with the method signature.
+     * For regular methods, counts must match exactly. For varargs methods, actual parameter
+     * count must be at least the number of required parameters (formal count - 1).
+     *
+     * @param isVarArgs whether the method is a varargs method
+     * @param formalParamCount the number of formal parameters in the method signature
+     * @param actualParamCount the number of actual parameters provided at the call site
+     * @throws IllegalArgumentException if parameter counts are incompatible
+     */
+    private void validateParameterCount(boolean isVarArgs, int formalParamCount, int actualParamCount) {
+        if (isVarArgs && actualParamCount < formalParamCount - 1) {
+            throw new IllegalArgumentException("Too few parameters for varargs method");
+        }
+        if (!isVarArgs && actualParamCount != formalParamCount) {
+            throw new IllegalArgumentException("Parameter count mismatch for non-varargs method");
+        }
+    }
+
+    /**
+     * Collects type constraints for regular (non-varargs) methods by creating pairs
+     * between each formal parameter type and its corresponding actual parameter type.
+     * This is a straightforward one-to-one mapping since parameter counts must match exactly.
+     *
+     * @param methodUsage the method usage to analyze
+     * @param parameterTypes the actual parameter types from the call site
+     * @param inferenceContext the inference context for collecting constraints
+
+exec
+/bin/bash -lc "rg -n \"ReflectionInterfaceDeclaration\" javaparser-symbol-solver-core javaparser-symbol-solver-testing -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/SymbolSolver.java:44:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/SymbolSolver.java:189:            declaration = new ReflectionInterfaceDeclaration(clazz, typeSolver);
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_resolution_MethodResolutionLogic.txt:362:  Line 605) ((ReflectionInterfaceDeclaration) typeDeclaration).solveMethod(name, argumentsTypes, staticOnly) ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.solveMethod(java.lang.String, java.util.List<com.github.javaparser.symbolsolver.model.typesystem.Type>, boolean)
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt:2:  Line 71) isAssignableBy(new ReferenceTypeImpl(other, typeSolver)) ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.isAssignableBy(com.github.javaparser.symbolsolver.model.typesystem.Type)
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt:7:  Line 85) getPackageName() ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.getPackageName()
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt:10:  Line 86) getPackageName() ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.getPackageName()
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt:19:  Line 122) getTypeParameters() ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.getTypeParameters()
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt:20:  Line 122) that.getTypeParameters() ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.getTypeParameters()
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt:41:  Line 170) getQualifiedName() ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.getQualifiedName()
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt:43:  Line 174) new ReflectionInterfaceDeclaration(clazz.getSuperclass(), typeSolver).canBeAssignedTo(other) ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.canBeAssignedTo(com.github.javaparser.symbolsolver.model.declarations.ReferenceTypeDeclaration)
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt:46:  Line 178) new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other) ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.canBeAssignedTo(com.github.javaparser.symbolsolver.model.declarations.ReferenceTypeDeclaration)
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt:55:  Line 204) getQualifiedName() ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.getQualifiedName()
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt:70:  Line 269) res.add(new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(i, typeSolver), typeSolver)) ==> java.util.List.add(E)
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionClassDeclaration.txt:92:  Line 214) new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other) ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.canBeAssignedTo(com.github.javaparser.symbolsolver.model.declarations.ReferenceTypeDeclaration)
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_javaparsermodel_contexts_ContextHelper.txt:5:  Line 58) ((ReflectionInterfaceDeclaration) typeDeclaration).solveMethodAsUsage(name, argumentsTypes, typeSolver, invokationContext, typeParameters) ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.solveMethodAsUsage(java.lang.String, java.util.List<com.github.javaparser.symbolsolver.model.typesystem.Type>, com.github.javaparser.symbolsolver.model.resolution.TypeSolver, com.github.javaparser.symbolsolver.core.resolution.Context, java.util.List<com.github.javaparser.symbolsolver.model.typesystem.Type>)
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_resolution_SymbolSolver.txt:35:  Line 143) ((ReflectionInterfaceDeclaration) typeDeclaration).solveSymbol(name, typeSolver) ==> com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration.solveSymbol(java.lang.String, com.github.javaparser.symbolsolver.model.resolution.TypeSolver)
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionClassAdapter.txt:18:  Line 58) interfaces.add(new ReferenceTypeImpl(new ReflectionInterfaceDeclaration((Class<?>) ((ParameterizedType) superInterface).getRawType(), typeSolver), typeParameters, typeSolver)) ==> java.util.List.add(E)
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionClassAdapter.txt:20:  Line 60) interfaces.add(new ReferenceTypeImpl(new ReflectionInterfaceDeclaration((Class<?>) superInterface, typeSolver), typeSolver)) ==> java.util.List.add(E)
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassAdapter.java:82:                        new ReflectionInterfaceDeclaration(
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassAdapter.java:87:                        new ReflectionInterfaceDeclaration((Class<?>) superInterface, typeSolver)));
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionRecordDeclaration.java:282:            if (new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other)) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:58:            return new ReflectionInterfaceDeclaration(clazz, typeSolver);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclaration.java:278:            if (new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other)) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:49:public class ReflectionInterfaceDeclaration extends AbstractTypeDeclaration
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:67:    public ReflectionInterfaceDeclaration(Class<?> clazz, TypeSolver typeSolver) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:127:        if (!(o instanceof ReflectionInterfaceDeclaration)) return false;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:129:        ReflectionInterfaceDeclaration that = (ReflectionInterfaceDeclaration) o;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:393:                && new ReflectionInterfaceDeclaration(clazz.getSuperclass(), typeSolver).canBeAssignedTo(other)) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:397:            if (new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other)) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:489:            res.add(new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(i, typeSolver)));
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionMethodDeclaration.java:88:            return new ReflectionInterfaceDeclaration(method.getDeclaringClass(), typeSolver);
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/resolution/SymbolSolver.java:39:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/resolution/SymbolSolver.java:142:        if (typeDeclaration instanceof ReflectionInterfaceDeclaration) {
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/resolution/SymbolSolver.java:143:            return ((ReflectionInterfaceDeclaration) typeDeclaration).solveSymbol(name, typeSolver);
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/resolution/MethodResolutionLogic.java:34:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/resolution/MethodResolutionLogic.java:604:        if (typeDeclaration instanceof ReflectionInterfaceDeclaration) {
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/resolution/MethodResolutionLogic.java:605:          return ((ReflectionInterfaceDeclaration) typeDeclaration).solveMethod(name, argumentsTypes, staticOnly);
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/javaparsermodel/contexts/ContextHelper.java:32:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/javaparsermodel/contexts/ContextHelper.java:57:        } else if (typeDeclaration instanceof ReflectionInterfaceDeclaration) {
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/javaparsermodel/contexts/ContextHelper.java:58:            return ((ReflectionInterfaceDeclaration) typeDeclaration).solveMethodAsUsage(name, argumentsTypes, typeSolver, invokationContext, typeParameters);
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:41:public class ReflectionInterfaceDeclaration extends AbstractTypeDeclaration implements InterfaceDeclaration {
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:55:    public ReflectionInterfaceDeclaration(Class<?> clazz, TypeSolver typeSolver) {
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:104:        return "ReflectionInterfaceDeclaration{" +
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:116:        if (!(o instanceof ReflectionInterfaceDeclaration)) return false;
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:118:        ReflectionInterfaceDeclaration that = (ReflectionInterfaceDeclaration) o;
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:174:                && new ReflectionInterfaceDeclaration(clazz.getSuperclass(), typeSolver).canBeAssignedTo(other)) {
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:178:            if (new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other)) {
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:269:            res.add(new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(i, typeSolver), typeSolver));
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassAdapter.java:58:                interfaces.add(new ReferenceTypeImpl(new ReflectionInterfaceDeclaration((Class<?>) ((ParameterizedType) superInterface).getRawType(), typeSolver), typeParameters, typeSolver));
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassAdapter.java:60:                interfaces.add(new ReferenceTypeImpl(new ReflectionInterfaceDeclaration((Class<?>) superInterface, typeSolver), typeSolver));
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:44:            return new ReflectionInterfaceDeclaration(clazz, typeSolver);
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclaration.java:214:            if (new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other)) {
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/logic/InferenceContextTest.java:37:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/logic/InferenceContextTest.java:70:                new ReflectionInterfaceDeclaration(List.class, typeSolver), ImmutableList.of(elementType));
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionMethodDeclaration.java:78:            return new ReflectionInterfaceDeclaration(method.getDeclaringClass(), typeSolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/logic/FunctionInterfaceLogicTest.java:31:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/logic/FunctionInterfaceLogicTest.java:49:        ResolvedType function = new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Function.class, typeSolver));
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/logic/FunctionInterfaceLogicTest.java:55:        ResolvedType consumer = new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Consumer.class, typeSolver));
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/logic/FunctionInterfaceLogicTest.java:66:        ResolvedType function = new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Foo.class, typeSolver));
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/AnalyseJavaSymbolSolver060Test.java:372:                "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/Issue4864Test.java:35:    void testReflectionInterfaceDeclarationToString() {
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/Issue4864Test.java:36:        ReflectionInterfaceDeclaration decl = new ReflectionInterfaceDeclaration(Runnable.class, typeSolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/Issue4864Test.java:39:        assertTrue(output.contains("ReflectionInterfaceDeclaration"));
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionMethodDeclarationTest.java:41:        ResolvedInterfaceDeclaration list = new ReflectionInterfaceDeclaration(List.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionParameterDeclarationTest.java:42:        ResolvedInterfaceDeclaration list = new ReflectionInterfaceDeclaration(List.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionParameterDeclarationTest.java:75:        ResolvedInterfaceDeclaration map = new ReflectionInterfaceDeclaration(Map.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionParameterDeclarationTest.java:91:        ResolvedInterfaceDeclaration map = new ReflectionInterfaceDeclaration(Map.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:48:class ReflectionInterfaceDeclarationTest extends AbstractSymbolResolutionTest {
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:53:        ResolvedReferenceTypeDeclaration list = new ReflectionInterfaceDeclaration(List.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:82:        ResolvedInterfaceDeclaration list = new ReflectionInterfaceDeclaration(List.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:92:                        new ReflectionInterfaceDeclaration(Collection.class, typeResolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:97:                        new ReflectionInterfaceDeclaration(Iterable.class, typeResolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:105:        ResolvedInterfaceDeclaration list = new ReflectionInterfaceDeclaration(List.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:113:                        new ReflectionInterfaceDeclaration(Collection.class, typeResolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:118:                        new ReflectionInterfaceDeclaration(Iterable.class, typeResolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:133:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Appendable.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:136:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(CharSequence.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java:139:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Readable.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:437:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(RandomAccess.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:446:                        new ReflectionInterfaceDeclaration(List.class, typeResolver), ImmutableList.of(typeVariable)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:449:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Cloneable.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:453:                        new ReflectionInterfaceDeclaration(Collection.class, typeResolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:466:                        new ReflectionInterfaceDeclaration(Iterable.class, typeResolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:470:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Serializable.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:36:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:97:        ReflectionInterfaceDeclaration listDeclaration =
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:98:                (ReflectionInterfaceDeclaration) typeSolver.solveType("java.util.List");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:122:        ReflectionInterfaceDeclaration listDeclaration =
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:123:                (ReflectionInterfaceDeclaration) typeSolver.solveType("java.util.List");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:146:        ReflectionInterfaceDeclaration listDeclaration =
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:147:                (ReflectionInterfaceDeclaration) typeSolver.solveType("java.util.List");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:171:        ReflectionInterfaceDeclaration listDeclaration =
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:172:                (ReflectionInterfaceDeclaration) typeSolver.solveType("java.util.List");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:191:        ReflectionInterfaceDeclaration listDeclaration =
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:192:                (ReflectionInterfaceDeclaration) typeSolver.solveType("java.util.List");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:215:        ReflectionInterfaceDeclaration listDeclaration =
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:216:                (ReflectionInterfaceDeclaration) typeSolver.solveType("java.util.List");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:239:        ReflectionInterfaceDeclaration streamDeclaration =
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:240:                (ReflectionInterfaceDeclaration) typeSolver.solveType("java.util.stream.Stream");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:260:        ReflectionInterfaceDeclaration listDeclaration =
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:261:                (ReflectionInterfaceDeclaration) typeSolver.solveType("java.util.List");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:290:        ReflectionInterfaceDeclaration mapDeclaration =
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:291:                (ReflectionInterfaceDeclaration) typeSolver.solveType("java.util.Map");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:336:        ReflectionInterfaceDeclaration declaration =
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:337:                (ReflectionInterfaceDeclaration) typeSolver.solveType("java.util.List");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:48:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:85:                new ReflectionInterfaceDeclaration(List.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:89:                new ReflectionInterfaceDeclaration(List.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:95:                new ReflectionInterfaceDeclaration(Collection.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:98:                new ReflectionInterfaceDeclaration(List.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:101:                new ReflectionInterfaceDeclaration(List.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:509:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(CharSequence.class, typeSolver));
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:616:        ResolvedInterfaceDeclaration list = new ReflectionInterfaceDeclaration(List.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:617:        ResolvedInterfaceDeclaration collection = new ReflectionInterfaceDeclaration(Collection.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:618:        ResolvedInterfaceDeclaration iterable = new ReflectionInterfaceDeclaration(Iterable.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:656:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(RandomAccess.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:664:                        new ReflectionInterfaceDeclaration(List.class, typeResolver), ImmutableList.of(tv)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:667:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Cloneable.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:671:                        new ReflectionInterfaceDeclaration(Collection.class, typeResolver), ImmutableList.of(tv)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:682:                        new ReflectionInterfaceDeclaration(Iterable.class, typeResolver), ImmutableList.of(tv)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:685:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Serializable.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:692:        ResolvedInterfaceDeclaration list = new ReflectionInterfaceDeclaration(List.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:702:                        new ReflectionInterfaceDeclaration(Collection.class, typeResolver), ImmutableList.of(string)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:706:                        new ReflectionInterfaceDeclaration(Iterable.class, typeResolver), ImmutableList.of(string)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:725:                        new ReflectionInterfaceDeclaration(Collection.class, typeResolver), ImmutableList.of(string)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:732:                        new ReflectionInterfaceDeclaration(Iterable.class, typeResolver), ImmutableList.of(string)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:754:                        new ReflectionInterfaceDeclaration(List.class, typeResolver), ImmutableList.of(string)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:758:                        new ReflectionInterfaceDeclaration(Collection.class, typeResolver), ImmutableList.of(string)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:765:                        new ReflectionInterfaceDeclaration(Iterable.class, typeResolver), ImmutableList.of(string)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:781:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(RandomAccess.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:790:                        new ReflectionInterfaceDeclaration(List.class, typeResolver), ImmutableList.of(string)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:793:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Cloneable.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:797:                        new ReflectionInterfaceDeclaration(Collection.class, typeResolver), ImmutableList.of(string)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:808:                        new ReflectionInterfaceDeclaration(Iterable.class, typeResolver), ImmutableList.of(string)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:811:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Serializable.class, typeResolver)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:819:                new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(Stream.class, typeResolver));
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:822:                new ResolvedTypeVariable(new ReflectionInterfaceDeclaration(Stream.class, typeResolver)
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:831:        ResolvedInterfaceDeclaration streamInterface = new ReflectionInterfaceDeclaration(Stream.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:856:        ResolvedInterfaceDeclaration streamInterface = new ReflectionInterfaceDeclaration(Stream.class, typeResolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:886:                new ReflectionInterfaceDeclaration(Iterable.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTestingJss060Test.java:307:                "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTestingJss060Test.java:712:                "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/PrimitiveTypeTest.java:35:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/PrimitiveTypeTest.java:67:                new ReflectionInterfaceDeclaration(List.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ArrayTypeTest.java:34:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ArrayTypeTest.java:62:                new ReflectionInterfaceDeclaration(List.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ArrayTypeTest.java:65:                new ReflectionInterfaceDeclaration(List.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ArrayTypeTest.java:145:                new ReflectionInterfaceDeclaration(List.class, typeSolver), ImmutableList.of(OBJECT)));
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ArrayTypeTest.java:156:                new ReflectionInterfaceDeclaration(List.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ArrayTypeTest.java:166:                        new ReflectionInterfaceDeclaration(List.class, typeSolver), ImmutableList.of(OBJECT)),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:389:        ReferenceTypeUsage charSequence = new ReferenceTypeUsage(new ReflectionInterfaceDeclaration(CharSequence.class, typeSolver), typeSolver);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/NullTypeTest.java:35:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/NullTypeTest.java:58:                new ReflectionInterfaceDeclaration(List.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/VoidTypeTest.java:35:import com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/VoidTypeTest.java:58:                new ReflectionInterfaceDeclaration(List.class, typeSolver),
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacadeTest.java:55:    void classToResolvedType_givenClassShouldBeAReflectionInterfaceDeclaration() {
+
+codex
+I have the dependency surface from the source and the call sites. I’m now quantifying how many distinct repository files use this class and how many external types it reaches into, because hub-like modularization needs both sides of that picture.
+exec
+/bin/bash -lc "rg -l \"ReflectionInterfaceDeclaration\" javaparser-symbol-solver-core javaparser-symbol-solver-testing -g '"'!**/target/**'"' | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassAdapter.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclaration.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionMethodDeclaration.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionRecordDeclaration.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/SymbolSolver.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/Issue4864Test.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacadeTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/logic/FunctionInterfaceLogicTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/logic/InferenceContextTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ArrayTypeTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/NullTypeTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/PrimitiveTypeTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/VoidTypeTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclarationTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionMethodDeclarationTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionParameterDeclarationTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/AnalyseJavaSymbolSolver060Test.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTestingJss060Test.java
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_javaparsermodel_contexts_ContextHelper.txt
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionClassAdapter.txt
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionClassDeclaration.txt
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_reflectionmodel_ReflectionInterfaceDeclaration.txt
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_resolution_MethodResolutionLogic.txt
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/expected_output/java-symbol-solver-core/com_github_javaparser_symbolsolver_resolution_SymbolSolver.txt
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/javaparsermodel/contexts/ContextHelper.java
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassAdapter.java
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclaration.java
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionMethodDeclaration.java
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/resolution/MethodResolutionLogic.java
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/resolution/SymbolSolver.java
+
+exec
+/bin/bash -lc "rg -n \"new ReflectionInterfaceDeclaration\\(|\\(ReflectionInterfaceDeclaration\\)|ReflectionInterfaceDeclaration\\.\" javaparser-symbol-solver-core/src/main/java -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/SymbolSolver.java:189:            declaration = new ReflectionInterfaceDeclaration(clazz, typeSolver);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclaration.java:278:            if (new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other)) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionMethodDeclaration.java:88:            return new ReflectionInterfaceDeclaration(method.getDeclaringClass(), typeSolver);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:58:            return new ReflectionInterfaceDeclaration(clazz, typeSolver);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:129:        ReflectionInterfaceDeclaration that = (ReflectionInterfaceDeclaration) o;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:393:                && new ReflectionInterfaceDeclaration(clazz.getSuperclass(), typeSolver).canBeAssignedTo(other)) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:397:            if (new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other)) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java:489:            res.add(new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(i, typeSolver)));
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassAdapter.java:82:                        new ReflectionInterfaceDeclaration(
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassAdapter.java:87:                        new ReflectionInterfaceDeclaration((Class<?>) superInterface, typeSolver)));
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionRecordDeclaration.java:282:            if (new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other)) {
+
+exec
+/bin/bash -lc "python - <<'PY'
+from pathlib import Path
+p=Path('javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java')
+text=p.read_text()
+print('lines', text.count('\\n')+1)
+PY" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+lines 531
+
+codex
+The target is used as a shared adapter across solver, reflection, and tests. I’m checking whether that centrality is actually “hub-like” or just normal for a core type by reading the rest of the class and the production call sites around it.
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2015-2016 Federico Tomassetti
+     3	 * Copyright (C) 2017-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	
+    22	package com.github.javaparser.symbolsolver.reflectionmodel;
+    23	
+    24	import com.github.javaparser.ast.AccessSpecifier;
+    25	import com.github.javaparser.ast.Node;
+    26	import com.github.javaparser.resolution.Context;
+    27	import com.github.javaparser.resolution.MethodUsage;
+    28	import com.github.javaparser.resolution.TypeSolver;
+    29	import com.github.javaparser.resolution.declarations.*;
+    30	import com.github.javaparser.resolution.logic.ConflictingGenericTypesException;
+    31	import com.github.javaparser.resolution.logic.InferenceContext;
+    32	import com.github.javaparser.resolution.logic.MethodResolutionCapability;
+    33	import com.github.javaparser.resolution.model.LambdaArgumentTypePlaceholder;
+    34	import com.github.javaparser.resolution.model.SymbolReference;
+    35	import com.github.javaparser.resolution.model.typesystem.NullType;
+    36	import com.github.javaparser.resolution.model.typesystem.ReferenceTypeImpl;
+    37	import com.github.javaparser.resolution.types.ResolvedReferenceType;
+    38	import com.github.javaparser.resolution.types.ResolvedType;
+    39	import com.github.javaparser.symbolsolver.core.resolution.MethodUsageResolutionCapability;
+    40	import com.github.javaparser.symbolsolver.core.resolution.SymbolResolutionCapability;
+    41	import com.github.javaparser.symbolsolver.logic.AbstractTypeDeclaration;
+    42	import java.lang.reflect.Field;
+    43	import java.util.*;
+    44	import java.util.stream.Collectors;
+    45	
+    46	/**
+    47	 * @author Federico Tomassetti
+    48	 */
+    49	public class ReflectionInterfaceDeclaration extends AbstractTypeDeclaration
+    50	        implements ResolvedInterfaceDeclaration,
+    51	                MethodResolutionCapability,
+    52	                MethodUsageResolutionCapability,
+    53	                SymbolResolutionCapability {
+    54	
+    55	    ///
+    56	    /// Fields
+    57	    ///
+    58	
+    59	    private Class<?> clazz;
+    60	    private TypeSolver typeSolver;
+    61	    private ReflectionClassAdapter reflectionClassAdapter;
+    62	
+    63	    ///
+    64	    /// Constructor
+    65	    ///
+    66	
+    67	    public ReflectionInterfaceDeclaration(Class<?> clazz, TypeSolver typeSolver) {
+    68	        if (!clazz.isInterface()) {
+    69	            throw new IllegalArgumentException();
+    70	        }
+    71	
+    72	        this.clazz = clazz;
+    73	        this.typeSolver = typeSolver;
+    74	        this.reflectionClassAdapter = new ReflectionClassAdapter(clazz, typeSolver, this);
+    75	    }
+    76	
+    77	    ///
+    78	    /// Public methods
+    79	    ///
+    80	
+    81	    @Override
+    82	    public boolean isAssignableBy(ResolvedReferenceTypeDeclaration other) {
+    83	        return isAssignableBy(new ReferenceTypeImpl(other));
+    84	    }
+    85	
+    86	    @Override
+    87	    public String getPackageName() {
+    88	        if (clazz.getPackage() != null) {
+    89	            return clazz.getPackage().getName();
+    90	        }
+    91	        return null;
+    92	    }
+    93	
+    94	    @Override
+    95	    public String getClassName() {
+    96	        String canonicalName = clazz.getCanonicalName();
+    97	        if (canonicalName != null && getPackageName() != null) {
+    98	            return canonicalName.substring(getPackageName().length() + 1);
+    99	        }
+   100	        return null;
+   101	    }
+   102	
+   103	    @Override
+   104	    public String getQualifiedName() {
+   105	        return clazz.getCanonicalName();
+   106	    }
+   107	
+   108	    @Override
+   109	    @Deprecated
+   110	    public SymbolReference<ResolvedMethodDeclaration> solveMethod(
+   111	            String name, List<ResolvedType> parameterTypes, boolean staticOnly) {
+   112	        return ReflectionMethodResolutionLogic.solveMethod(name, parameterTypes, staticOnly, typeSolver, this, clazz);
+   113	    }
+   114	
+   115	    @Override
+   116	    public String toString() {
+   117	        return getClass().getSimpleName() + "{" + "clazz=" + clazz.getCanonicalName() + '}';
+   118	    }
+   119	
+   120	    public ResolvedType getUsage(Node node) {
+   121	        return new ReferenceTypeImpl(this);
+   122	    }
+   123	
+   124	    @Override
+   125	    public boolean equals(Object o) {
+   126	        if (this == o) return true;
+   127	        if (!(o instanceof ReflectionInterfaceDeclaration)) return false;
+   128	
+   129	        ReflectionInterfaceDeclaration that = (ReflectionInterfaceDeclaration) o;
+   130	
+   131	        if (!clazz.getCanonicalName().equals(that.clazz.getCanonicalName())) return false;
+   132	
+   133	        return getTypeParameters().equals(that.getTypeParameters());
+   134	    }
+   135	
+   136	    @Override
+   137	    public int hashCode() {
+   138	        return clazz.hashCode();
+   139	    }
+   140	
+   141	    /**
+   142	     * Solves method usage with proper generic type inference, including support for varargs methods.
+   143	     * This method first resolves the basic method signature, then performs generic type inference
+   144	     * based on the actual parameter types provided at the call site.
+   145	     *
+   146	     * @param name the method name to resolve
+   147	     * @param parameterTypes the actual parameter types at the call site
+   148	     * @param invokationContext the context where the method is invoked
+   149	     * @param typeParameterValues explicit type parameter values (if any)
+   150	     * @return an Optional containing the resolved MethodUsage with inferred types, or empty if resolution fails
+   151	     */
+   152	    public Optional<MethodUsage> solveMethodAsUsage(
+   153	            String name,
+   154	            List<ResolvedType> parameterTypes,
+   155	            Context invokationContext,
+   156	            List<ResolvedType> typeParameterValues) {
+   157	
+   158	        Optional<MethodUsage> res = ReflectionMethodResolutionLogic.solveMethodAsUsage(
+   159	                name, parameterTypes, typeSolver, invokationContext, typeParameterValues, this, clazz);
+   160	
+   161	        if (!res.isPresent()) {
+   162	            return res;
+   163	        }
+   164	
+   165	        return performTypeInference(res.get(), parameterTypes);
+   166	    }
+   167	
+   168	    /**
+   169	     * Performs generic type inference on a resolved method usage by analyzing the relationship
+   170	     * between formal parameter types and actual parameter types provided at the call site.
+   171	     * Handles both regular methods and varargs methods with appropriate constraint collection.
+   172	     *
+   173	     * @param methodUsage the initially resolved method usage
+   174	     * @param parameterTypes the actual parameter types from the call site
+   175	     * @return an Optional containing the method usage with inferred generic types, or empty if inference fails
+   176	     */
+   177	    private Optional<MethodUsage> performTypeInference(MethodUsage methodUsage, List<ResolvedType> parameterTypes) {
+   178	        try {
+   179	            InferenceContext inferenceContext = new InferenceContext(typeSolver);
+   180	            List<ResolvedType> constraintPairs = collectTypeConstraints(methodUsage, parameterTypes, inferenceContext);
+   181	            return resolveInferredTypes(methodUsage, constraintPairs, inferenceContext);
+   182	        } catch (ConflictingGenericTypesException e) {
+   183	            return Optional.empty();
+   184	        }
+   185	    }
+   186	
+   187	    /**
+   188	     * Collects type constraints by comparing formal parameter types with actual parameter types.
+   189	     * Automatically detects whether the method is varargs and delegates to the appropriate
+   190	     * constraint collection strategy. Also validates that parameter counts are compatible.
+   191	     *
+   192	     * @param methodUsage the method usage to analyze
+   193	     * @param parameterTypes the actual parameter types from the call site
+   194	     * @param inferenceContext the inference context for collecting type constraints
+   195	     * @return a list of type constraints that will be used for generic type resolution
+   196	     * @throws IllegalArgumentException if parameter counts are incompatible
+   197	     */
+   198	    private List<ResolvedType> collectTypeConstraints(
+   199	            MethodUsage methodUsage, List<ResolvedType> parameterTypes, InferenceContext inferenceContext) {
+   200	
+   201	        boolean isVarArgs = methodUsage.getDeclaration().hasVariadicParameter();
+   202	        int formalParamCount = methodUsage.getNoParams();
+   203	        int actualParamCount = parameterTypes.size();
+   204	
+   205	        validateParameterCount(isVarArgs, formalParamCount, actualParamCount);
+   206	
+   207	        if (isVarArgs) {
+   208	            return collectVarArgsConstraints(methodUsage, parameterTypes, inferenceContext, formalParamCount);
+   209	        } else {
+   210	            return collectRegularConstraints(methodUsage, parameterTypes, inferenceContext);
+   211	        }
+   212	    }
+   213	
+   214	    /**
+   215	     * Validates that the number of actual parameters is compatible with the method signature.
+   216	     * For regular methods, counts must match exactly. For varargs methods, actual parameter
+   217	     * count must be at least the number of required parameters (formal count - 1).
+   218	     *
+   219	     * @param isVarArgs whether the method is a varargs method
+   220	     * @param formalParamCount the number of formal parameters in the method signature
+
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassAdapter.java | sed -n '1,140p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java | sed -n '220,531p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2015-2016 Federico Tomassetti
+     3	 * Copyright (C) 2017-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	
+    22	package com.github.javaparser.symbolsolver.reflectionmodel;
+    23	
+    24	import com.github.javaparser.resolution.TypeSolver;
+    25	import com.github.javaparser.resolution.UnsolvedSymbolException;
+    26	import com.github.javaparser.resolution.declarations.*;
+    27	import com.github.javaparser.resolution.logic.FunctionalInterfaceLogic;
+    28	import com.github.javaparser.resolution.model.LambdaArgumentTypePlaceholder;
+    29	import com.github.javaparser.resolution.model.typesystem.NullType;
+    30	import com.github.javaparser.resolution.model.typesystem.ReferenceTypeImpl;
+    31	import com.github.javaparser.resolution.types.ResolvedReferenceType;
+    32	import com.github.javaparser.resolution.types.ResolvedType;
+    33	import java.lang.annotation.Annotation;
+    34	import java.lang.reflect.Field;
+    35	import java.lang.reflect.ParameterizedType;
+    36	import java.lang.reflect.TypeVariable;
+    37	import java.util.*;
+    38	import java.util.stream.Collectors;
+    39	
+    40	/**
+    41	 * @author Federico Tomassetti
+    42	 */
+    43	class ReflectionClassAdapter {
+    44	
+    45	    private Class<?> clazz;
+    46	    private TypeSolver typeSolver;
+    47	    private ResolvedReferenceTypeDeclaration typeDeclaration;
+    48	
+    49	    public ReflectionClassAdapter(
+    50	            Class<?> clazz, TypeSolver typeSolver, ResolvedReferenceTypeDeclaration typeDeclaration) {
+    51	        this.clazz = clazz;
+    52	        this.typeSolver = typeSolver;
+    53	        this.typeDeclaration = typeDeclaration;
+    54	    }
+    55	
+    56	    public Optional<ReferenceTypeImpl> getSuperClass() {
+    57	        if (clazz.getGenericSuperclass() == null) {
+    58	            // There isn't a super class (e.g. when this refers to java.lang.Object)
+    59	            return Optional.empty();
+    60	        }
+    61	        java.lang.reflect.Type superType = clazz.getGenericSuperclass();
+    62	        if (superType instanceof ParameterizedType) {
+    63	            ParameterizedType parameterizedType = (ParameterizedType) superType;
+    64	            List<ResolvedType> typeParameters = Arrays.stream(parameterizedType.getActualTypeArguments())
+    65	                    .map((t) -> ReflectionFactory.typeUsageFor(t, typeSolver))
+    66	                    .collect(Collectors.toList());
+    67	            return Optional.of(new ReferenceTypeImpl(
+    68	                    new ReflectionClassDeclaration(clazz.getSuperclass(), typeSolver), typeParameters));
+    69	        }
+    70	        return Optional.of(new ReferenceTypeImpl(new ReflectionClassDeclaration(clazz.getSuperclass(), typeSolver)));
+    71	    }
+    72	
+    73	    public List<ResolvedReferenceType> getInterfaces() {
+    74	        List<ResolvedReferenceType> interfaces = new ArrayList<>();
+    75	        for (java.lang.reflect.Type superInterface : clazz.getGenericInterfaces()) {
+    76	            if (superInterface instanceof ParameterizedType) {
+    77	                ParameterizedType parameterizedType = (ParameterizedType) superInterface;
+    78	                List<ResolvedType> typeParameters = Arrays.stream(parameterizedType.getActualTypeArguments())
+    79	                        .map((t) -> ReflectionFactory.typeUsageFor(t, typeSolver))
+    80	                        .collect(Collectors.toList());
+    81	                interfaces.add(new ReferenceTypeImpl(
+    82	                        new ReflectionInterfaceDeclaration(
+    83	                                (Class<?>) ((ParameterizedType) superInterface).getRawType(), typeSolver),
+    84	                        typeParameters));
+    85	            } else {
+    86	                interfaces.add(new ReferenceTypeImpl(
+    87	                        new ReflectionInterfaceDeclaration((Class<?>) superInterface, typeSolver)));
+    88	            }
+    89	        }
+    90	        return interfaces;
+    91	    }
+    92	
+    93	    public List<ResolvedReferenceType> getAncestors() {
+    94	        List<ResolvedReferenceType> ancestors = new LinkedList<>();
+    95	        if ((typeDeclaration.isClass() || typeDeclaration.isRecord())
+    96	                && !Object.class.getCanonicalName().equals(clazz.getCanonicalName())) {
+    97	            if (getSuperClass().isPresent()) {
+    98	                ReferenceTypeImpl superClass = getSuperClass().get();
+    99	                ancestors.add(superClass);
+   100	            } else {
+   101	                // Inject the implicitly added extends java.lang.Object
+   102	                ReferenceTypeImpl object =
+   103	                        new ReferenceTypeImpl(new ReflectionClassDeclaration(Object.class, typeSolver));
+   104	                ancestors.add(object);
+   105	            }
+   106	        }
+   107	        ancestors.addAll(getInterfaces());
+   108	        return ancestors;
+   109	    }
+   110	
+   111	    public ResolvedFieldDeclaration getField(String name) {
+   112	        for (Field field : clazz.getDeclaredFields()) {
+   113	            if (field.getName().equals(name)) {
+   114	                return new ReflectionFieldDeclaration(field, typeSolver);
+   115	            }
+   116	        }
+   117	        for (ResolvedReferenceType ancestor : typeDeclaration.getAllAncestors()) {
+   118	            if (ancestor.getTypeDeclaration().isPresent()) {
+   119	                ResolvedReferenceTypeDeclaration typeDeclaration =
+   120	                        ancestor.getTypeDeclaration().get();
+   121	                if (typeDeclaration.hasField(name)) {
+   122	                    ReflectionFieldDeclaration reflectionFieldDeclaration =
+   123	                            (ReflectionFieldDeclaration) typeDeclaration.getField(name);
+   124	                    return reflectionFieldDeclaration.replaceType(
+   125	                            ancestor.getFieldType(name).get());
+   126	                }
+   127	            }
+   128	        }
+   129	        throw new UnsolvedSymbolException(name, "Field in " + this);
+   130	    }
+   131	
+   132	    public boolean hasField(String name) {
+   133	        // First consider fields declared on this class
+   134	        for (Field field : clazz.getDeclaredFields()) {
+   135	            if (field.getName().equals(name)) {
+   136	                return true;
+   137	            }
+   138	        }
+   139	
+   140	        // Then consider fields inherited from ancestors
+
+ succeeded in 0ms:
+   220	     * @param formalParamCount the number of formal parameters in the method signature
+   221	     * @param actualParamCount the number of actual parameters provided at the call site
+   222	     * @throws IllegalArgumentException if parameter counts are incompatible
+   223	     */
+   224	    private void validateParameterCount(boolean isVarArgs, int formalParamCount, int actualParamCount) {
+   225	        if (isVarArgs && actualParamCount < formalParamCount - 1) {
+   226	            throw new IllegalArgumentException("Too few parameters for varargs method");
+   227	        }
+   228	        if (!isVarArgs && actualParamCount != formalParamCount) {
+   229	            throw new IllegalArgumentException("Parameter count mismatch for non-varargs method");
+   230	        }
+   231	    }
+   232	
+   233	    /**
+   234	     * Collects type constraints for regular (non-varargs) methods by creating pairs
+   235	     * between each formal parameter type and its corresponding actual parameter type.
+   236	     * This is a straightforward one-to-one mapping since parameter counts must match exactly.
+   237	     *
+   238	     * @param methodUsage the method usage to analyze
+   239	     * @param parameterTypes the actual parameter types from the call site
+   240	     * @param inferenceContext the inference context for collecting constraints
+   241	     * @return a list of type constraints, one for each parameter position
+   242	     */
+   243	    private List<ResolvedType> collectRegularConstraints(
+   244	            MethodUsage methodUsage, List<ResolvedType> parameterTypes, InferenceContext inferenceContext) {
+   245	        List<ResolvedType> constraints = new LinkedList<>();
+   246	
+   247	        for (int i = 0; i < parameterTypes.size(); i++) {
+   248	            ResolvedType formalType = methodUsage.getParamType(i);
+   249	            ResolvedType actualType = parameterTypes.get(i);
+   250	            constraints.add(inferenceContext.addPair(formalType, actualType));
+   251	        }
+   252	
+   253	        return constraints;
+   254	    }
+   255	
+   256	    /**
+   257	     * Collects type constraints for varargs methods. This involves two phases:
+   258	     * 1. Regular parameters: handled like non-varargs methods (one-to-one mapping)
+   259	     * 2. Varargs parameter: handled specially based on how arguments are passed
+   260	     *
+   261	     * The varargs parameter can receive arguments in two ways:
+   262	     * - Direct array passing: method(array) - constraint between array types
+   263	     * - Individual elements: method(elem1, elem2, ...) - constraints between component type and each element
+   264	     *
+   265	     * @param methodUsage the varargs method usage to analyze
+   266	     * @param parameterTypes the actual parameter types from the call site
+   267	     * @param inferenceContext the inference context for collecting constraints
+   268	     * @param formalParamCount the total number of formal parameters (including varargs)
+   269	     * @return a list of type constraints covering both regular and varargs parameters
+   270	     */
+   271	    private List<ResolvedType> collectVarArgsConstraints(
+   272	            MethodUsage methodUsage,
+   273	            List<ResolvedType> parameterTypes,
+   274	            InferenceContext inferenceContext,
+   275	            int formalParamCount) {
+   276	        List<ResolvedType> constraints = new LinkedList<>();
+   277	        int regularParamCount = formalParamCount - 1;
+   278	
+   279	        // Process regular parameters
+   280	        for (int i = 0; i < regularParamCount; i++) {
+   281	            ResolvedType formalType = methodUsage.getParamType(i);
+   282	            ResolvedType actualType = parameterTypes.get(i);
+   283	            constraints.add(inferenceContext.addPair(formalType, actualType));
+   284	        }
+   285	
+   286	        // Process varargs parameter
+   287	        if (formalParamCount > 0) {
+   288	            ResolvedType varargsParamType = methodUsage.getParamType(regularParamCount);
+   289	            processVarArgsParameter(varargsParamType, parameterTypes, regularParamCount, inferenceContext, constraints);
+   290	        }
+   291	
+   292	        return constraints;
+   293	    }
+   294	
+   295	    /**
+   296	     * Processes the varargs parameter by determining how arguments are passed and creating
+   297	     * appropriate type constraints. Handles two scenarios:
+   298	     *
+   299	     * 1. Direct array passing: When exactly one argument is passed to varargs and it's an array,
+   300	     *    creates a constraint between the formal array type and the actual array type.
+   301	     *    Example: method(String[] args) called as method(stringArray)
+   302	     *
+   303	     * 2. Individual element passing: When multiple arguments are passed to varargs,
+   304	     *    creates constraints between the array's component type and each individual argument.
+   305	     *    Example: method(String... args) called as method("a", "b", "c")
+   306	     *
+   307	     * @param varargsParamType the formal type of the varargs parameter (must be an array type)
+   308	     * @param parameterTypes all actual parameter types from the call site
+   309	     * @param regularParamCount the number of regular (non-varargs) parameters
+   310	     * @param inferenceContext the inference context for collecting constraints
+   311	     * @param constraints the constraint list to add new constraints to
+   312	     * @throws IllegalStateException if the varargs parameter is not an array type
+   313	     */
+   314	    private void processVarArgsParameter(
+   315	            ResolvedType varargsParamType,
+   316	            List<ResolvedType> parameterTypes,
+   317	            int regularParamCount,
+   318	            InferenceContext inferenceContext,
+   319	            List<ResolvedType> constraints) {
+   320	        if (!varargsParamType.isArray()) {
+   321	            throw new IllegalStateException("Varargs parameter is not an array type");
+   322	        }
+   323	
+   324	        ResolvedType componentType = varargsParamType.asArrayType().getComponentType();
+   325	        int actualParamCount = parameterTypes.size();
+   326	
+   327	        if (isDirectArrayPassing(parameterTypes, regularParamCount, actualParamCount)) {
+   328	            // Direct array passing: method(array)
+   329	            ResolvedType actualArrayType = parameterTypes.get(regularParamCount);
+   330	            constraints.add(inferenceContext.addPair(varargsParamType, actualArrayType));
+   331	        } else {
+   332	            // Individual elements passing: method(elem1, elem2, ...)
+   333	            for (int i = regularParamCount; i < actualParamCount; i++) {
+   334	                ResolvedType actualType = parameterTypes.get(i);
+   335	                constraints.add(inferenceContext.addPair(componentType, actualType));
+   336	            }
+   337	        }
+   338	    }
+   339	
+   340	    /**
+   341	     * Determines whether arguments are being passed directly as an array to the varargs parameter.
+   342	     * This happens when there is exactly one argument for the varargs parameter and that argument
+   343	     * is an array type. This is a special case that requires different constraint handling.
+   344	     *
+   345	     * @param parameterTypes all actual parameter types from the call site
+   346	     * @param regularParamCount the number of regular (non-varargs) parameters
+   347	     * @param actualParamCount the total number of actual parameters
+   348	     * @return true if a single array is being passed directly to varargs, false otherwise
+   349	     */
+   350	    private boolean isDirectArrayPassing(
+   351	            List<ResolvedType> parameterTypes, int regularParamCount, int actualParamCount) {
+   352	        return actualParamCount == regularParamCount + 1
+   353	                && parameterTypes.get(regularParamCount).isArray();
+   354	    }
+   355	
+   356	    /**
+   357	     * Applies the inferred generic types to the method usage by resolving all collected constraints
+   358	     * and updating both parameter types and return type with their concrete resolved types.
+   359	     * This is the final step that produces a fully resolved MethodUsage with no remaining generic placeholders.
+   360	     *
+   361	     * @param methodUsage the method usage to update with resolved types
+   362	     * @param constraints the collected type constraints from parameter analysis
+   363	     * @param inferenceContext the inference context containing all type relationships
+   364	     * @return an Optional containing the fully resolved MethodUsage
+   365	     * @throws ConflictingGenericTypesException if type constraints are contradictory
+   366	     */
+   367	    private Optional<MethodUsage> resolveInferredTypes(
+   368	            MethodUsage methodUsage, List<ResolvedType> constraints, InferenceContext inferenceContext) {
+   369	        // Resolve return type
+   370	        ResolvedType returnType = inferenceContext.addSingle(methodUsage.returnType());
+   371	
+   372	        // Apply resolved parameter types
+   373	        for (int i = 0; i < constraints.size() && i < methodUsage.getNoParams(); i++) {
+   374	            ResolvedType resolvedParamType = inferenceContext.resolve(constraints.get(i));
+   375	            methodUsage = methodUsage.replaceParamType(i, resolvedParamType);
+   376	        }
+   377	
+   378	        // Apply resolved return type
+   379	        methodUsage = methodUsage.replaceReturnType(inferenceContext.resolve(returnType));
+   380	
+   381	        return Optional.of(methodUsage);
+   382	    }
+   383	
+   384	    @Override
+   385	    public boolean canBeAssignedTo(ResolvedReferenceTypeDeclaration other) {
+   386	        if (other instanceof LambdaArgumentTypePlaceholder) {
+   387	            return isFunctionalInterface();
+   388	        }
+   389	        if (other.getQualifiedName().equals(getQualifiedName())) {
+   390	            return true;
+   391	        }
+   392	        if (this.clazz.getSuperclass() != null
+   393	                && new ReflectionInterfaceDeclaration(clazz.getSuperclass(), typeSolver).canBeAssignedTo(other)) {
+   394	            return true;
+   395	        }
+   396	        for (Class interfaze : clazz.getInterfaces()) {
+   397	            if (new ReflectionInterfaceDeclaration(interfaze, typeSolver).canBeAssignedTo(other)) {
+   398	                return true;
+   399	            }
+   400	        }
+   401	
+   402	        // Everything can be assigned to {@code java.lang.Object}
+   403	        return other.isJavaLangObject();
+   404	    }
+   405	
+   406	    @Override
+   407	    public boolean isAssignableBy(ResolvedType type) {
+   408	        if (type instanceof NullType) {
+   409	            return true;
+   410	        }
+   411	        if (type instanceof LambdaArgumentTypePlaceholder) {
+   412	            return isFunctionalInterface();
+   413	        }
+   414	        if (type.isArray()) {
+   415	            return false;
+   416	        }
+   417	        if (type.isPrimitive()) {
+   418	            return false;
+   419	        }
+   420	        if (type.describe().equals(getQualifiedName())) {
+   421	            return true;
+   422	        }
+   423	        if (type instanceof ReferenceTypeImpl) {
+   424	            ReferenceTypeImpl otherTypeDeclaration = (ReferenceTypeImpl) type;
+   425	            if (otherTypeDeclaration.getTypeDeclaration().isPresent()) {
+   426	                return otherTypeDeclaration.getTypeDeclaration().get().canBeAssignedTo(this);
+   427	            }
+   428	        }
+   429	
+   430	        return false;
+   431	    }
+   432	
+   433	    @Override
+   434	    public boolean isTypeParameter() {
+   435	        return false;
+   436	    }
+   437	
+   438	    @Override
+   439	    public ResolvedFieldDeclaration getField(String name) {
+   440	        return reflectionClassAdapter.getField(name);
+   441	    }
+   442	
+   443	    @Override
+   444	    public List<ResolvedFieldDeclaration> getAllFields() {
+   445	        return reflectionClassAdapter.getAllFields();
+   446	    }
+   447	
+   448	    @Override
+   449	    public SymbolReference<? extends ResolvedValueDeclaration> solveSymbol(String name, TypeSolver typeSolver) {
+   450	        for (Field field : clazz.getFields()) {
+   451	            if (field.getName().equals(name)) {
+   452	                return SymbolReference.solved(new ReflectionFieldDeclaration(field, typeSolver));
+   453	            }
+   454	        }
+   455	        return SymbolReference.unsolved();
+   456	    }
+   457	
+   458	    @Override
+   459	    public List<ResolvedReferenceType> getAncestors(boolean acceptIncompleteList) {
+   460	        // we do not attempt to perform any symbol solving when analyzing ancestors in the reflection model, so we can
+   461	        // simply ignore the boolean parameter here; an UnsolvedSymbolException cannot occur
+   462	        return reflectionClassAdapter.getAncestors();
+   463	    }
+   464	
+   465	    @Override
+   466	    public Set<ResolvedMethodDeclaration> getDeclaredMethods() {
+   467	        return reflectionClassAdapter.getDeclaredMethods();
+   468	    }
+   469	
+   470	    @Override
+   471	    public boolean hasField(String name) {
+   472	        return reflectionClassAdapter.hasField(name);
+   473	    }
+   474	
+   475	    @Override
+   476	    public String getName() {
+   477	        return clazz.getSimpleName();
+   478	    }
+   479	
+   480	    @Override
+   481	    public boolean isInterface() {
+   482	        return true;
+   483	    }
+   484	
+   485	    @Override
+   486	    public List<ResolvedReferenceType> getInterfacesExtended() {
+   487	        List<ResolvedReferenceType> res = new ArrayList<>();
+   488	        for (Class i : clazz.getInterfaces()) {
+   489	            res.add(new ReferenceTypeImpl(new ReflectionInterfaceDeclaration(i, typeSolver)));
+   490	        }
+   491	        return res;
+   492	    }
+   493	
+   494	    @Override
+   495	    public Optional<ResolvedReferenceTypeDeclaration> containerType() {
+   496	        return reflectionClassAdapter.containerType();
+   497	    }
+   498	
+   499	    @Override
+   500	    public Set<ResolvedReferenceTypeDeclaration> internalTypes() {
+   501	        return Arrays.stream(this.clazz.getDeclaredClasses())
+   502	                .map(ic -> ReflectionFactory.typeDeclarationFor(ic, typeSolver))
+   503	                .collect(Collectors.toSet());
+   504	    }
+   505	
+   506	    @Override
+   507	    public ResolvedInterfaceDeclaration asInterface() {
+   508	        return this;
+   509	    }
+   510	
+   511	    @Override
+   512	    public boolean hasDirectlyAnnotation(String canonicalName) {
+   513	        return reflectionClassAdapter.hasDirectlyAnnotation(canonicalName);
+   514	    }
+   515	
+   516	    @Override
+   517	    public List<ResolvedTypeParameterDeclaration> getTypeParameters() {
+   518	        return reflectionClassAdapter.getTypeParameters();
+   519	    }
+   520	
+   521	    @Override
+   522	    public AccessSpecifier accessSpecifier() {
+   523	        return ReflectionFactory.modifiersToAccessLevel(this.clazz.getModifiers());
+   524	    }
+   525	
+   526	    @Override
+   527	    public List<ResolvedConstructorDeclaration> getConstructors() {
+   528	        return Collections.emptyList();
+   529	    }
+   530	}
+
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/SymbolSolver.java | sed -n '160,210p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+   160	    public SymbolReference<ResolvedTypeDeclaration> solveTypeInType(
+   161	            ResolvedTypeDeclaration typeDeclaration, String name) {
+   162	        if (typeDeclaration instanceof JavaParserClassDeclaration) {
+   163	            return ((JavaParserClassDeclaration) typeDeclaration).solveType(name);
+   164	        }
+   165	        if (typeDeclaration instanceof JavaParserInterfaceDeclaration) {
+   166	            return ((JavaParserInterfaceDeclaration) typeDeclaration).solveType(name);
+   167	        }
+   168	        return SymbolReference.unsolved();
+   169	    }
+   170	
+   171	    /**
+   172	     * Convert a {@link Class} into the corresponding {@link ResolvedType}.
+   173	     *
+   174	     * @param clazz The class to be converted.
+   175	     *
+   176	     * @return The class resolved.
+   177	     */
+   178	    public ResolvedType classToResolvedType(Class<?> clazz) {
+   179	        if (clazz.isPrimitive()) {
+   180	            return ResolvedPrimitiveType.byName(clazz.getName());
+   181	        }
+   182	
+   183	        ResolvedReferenceTypeDeclaration declaration;
+   184	        if (clazz.isAnnotation()) {
+   185	            declaration = new ReflectionAnnotationDeclaration(clazz, typeSolver);
+   186	        } else if (clazz.isEnum()) {
+   187	            declaration = new ReflectionEnumDeclaration(clazz, typeSolver);
+   188	        } else if (clazz.isInterface()) {
+   189	            declaration = new ReflectionInterfaceDeclaration(clazz, typeSolver);
+   190	        } else {
+   191	            declaration = new ReflectionClassDeclaration(clazz, typeSolver);
+   192	        }
+   193	        return new ReferenceTypeImpl(declaration);
+   194	    }
+   195	}
+
+codex
+{"target":"com.github.javaparser.symbolsolver.reflectionmodel.ReflectionInterfaceDeclaration","detection":true,"justification":"`javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration.java` is a 531-line class with broad fan-out: it imports/uses AST, resolution, inference, symbol, reflection, and collection types, and delegates to `ReflectionClassAdapter`, `ReflectionMethodResolutionLogic`, `InferenceContext`, `ReflectionFactory`, and `ReflectionFieldDeclaration` while recursively creating more `ReflectionInterfaceDeclaration` instances. Fan-in is also high: `rg -l` shows 6 production files depending on it (`SymbolSolver`, `ReflectionClassAdapter`, `ReflectionClassDeclaration`, `ReflectionFactory`, `ReflectionMethodDeclaration`, `ReflectionRecordDeclaration`) plus 11 test files, which is strong evidence of hub-like modularization."}
+tokens used
+21,850

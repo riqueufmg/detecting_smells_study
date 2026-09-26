@@ -1,0 +1,632 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f6f-0b5f-7f60-bc5c-a502d7eff575
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.dynamic.scaffold.TypeWriter.WithActiveRecord` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.dynamic.scaffold.TypeWriter.WithActiveRecord",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.dynamic.scaffold.TypeWriter.WithActiveRecord`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and mapping its direct references first, then I’ll check whether it has the kind of high fan-in/fan-out pattern that would justify a hub-like modularization verdict.
+exec
+/bin/bash -lc "rg --files . | rg \"TypeWriter\\.java"'$|TypeWriter'"\\b\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc 'rg -n "class WithActiveRecord|WithActiveRecord" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 335ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java
+
+ succeeded in 292ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4572:                                    ? new WithDrain.WithActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames)
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4595:                                    ? new WithoutDrain.WithActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames)
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4844:                            protected static class WithActiveRecord extends WithoutDrain {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4861:                                protected WithActiveRecord(MethodVisitor methodVisitor,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4988:                            protected static class WithActiveRecord extends WithDrain {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:5005:                                protected WithActiveRecord(MethodVisitor methodVisitor,
+
+codex
+I found the target in `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java`. Next I’m reading the nested class definitions and call sites to see whether this is actually a dependency hub or just a local implementation detail.
+exec
+/bin/bash -lc "rg -n \"new (WithDrain|WithoutDrain)\\.WithActiveRecord|WithActiveRecord\\(\" byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '4800,5055p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc 'rg -n "WithActiveRecord" byte-buddy-dep/src/main/java | wc -l' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 209ms:
+                                super(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames);
+                            }
+
+                            @Override
+                            protected void onStart() {
+                                /* do nothing */
+                            }
+
+                            @Override
+                            public void visitEnd() {
+                                /* do nothing */
+                            }
+
+                            /**
+                             * An initialization handler that appends code to a previously visited type initializer without allowing active
+                             * {@link TypeInitializer} registrations and without an active record.
+                             */
+                            protected static class WithoutActiveRecord extends WithoutDrain {
+
+                                /**
+                                 * Creates a new appending initialization handler without a drain and without an active record.
+                                 *
+                                 * @param methodVisitor                The underlying method visitor.
+                                 * @param instrumentedType             The instrumented type.
+                                 * @param record                       The method pool record for the type initializer.
+                                 * @param annotationValueFilterFactory The used annotation value filter factory.
+                                 */
+                                protected WithoutActiveRecord(MethodVisitor methodVisitor,
+                                                              TypeDescription instrumentedType,
+                                                              MethodPool.Record record,
+                                                              AnnotationValueFilter.Factory annotationValueFilterFactory) {
+                                    super(methodVisitor, instrumentedType, record, annotationValueFilterFactory, false, false);
+                                }
+
+                                @Override
+                                protected void onComplete(Implementation.Context implementationContext) {
+                                    /* do nothing */
+                                }
+                            }
+
+                            /**
+                             * An initialization handler that appends code to a previously visited type initializer without allowing active
+                             * {@link TypeInitializer} registrations and with an active record.
+                             */
+                            protected static class WithActiveRecord extends WithoutDrain {
+
+                                /**
+                                 * The label that indicates the beginning of the active record.
+                                 */
+                                private final Label label;
+
+                                /**
+                                 * Creates a new appending initialization handler without a drain and with an active record.
+                                 *
+                                 * @param methodVisitor                The underlying method visitor.
+                                 * @param instrumentedType             The instrumented type.
+                                 * @param record                       The method pool record for the type initializer.
+                                 * @param annotationValueFilterFactory The used annotation value filter factory.
+                                 * @param requireFrames                {@code true} if the visitor is required to add frames.
+                                 * @param expandFrames                 {@code true} if the visitor is required to expand any added frame.
+                                 */
+                                protected WithActiveRecord(MethodVisitor methodVisitor,
+                                                           TypeDescription instrumentedType,
+                                                           MethodPool.Record record,
+                                                           AnnotationValueFilter.Factory annotationValueFilterFactory,
+                                                           boolean requireFrames,
+                                                           boolean expandFrames) {
+                                    super(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames);
+                                    label = new Label();
+                                }
+
+                                @Override
+                                public void visitInsn(int opcode) {
+                                    if (opcode == Opcodes.RETURN) {
+                                        mv.visitJumpInsn(Opcodes.GOTO, label);
+                                    } else {
+                                        super.visitInsn(opcode);
+                                    }
+                                }
+
+                                @Override
+                                protected void onComplete(Implementation.Context implementationContext) {
+                                    mv.visitLabel(label);
+                                    frameWriter.emitFrame(mv);
+                                    ByteCodeAppender.Size size = record.applyCode(mv, implementationContext);
+                                    stackSize = Math.max(stackSize, size.getOperandStackSize());
+                                    localVariableLength = Math.max(localVariableLength, size.getLocalVariableSize());
+                                }
+
+                            }
+                        }
+
+                        /**
+                         * An initialization handler that appends code to a previously visited type initializer with allowing active
+                         * {@link TypeInitializer} registrations.
+                         */
+                        protected abstract static class WithDrain extends Appending {
+
+                            /**
+                             * A label marking the beginning of the appended code.
+                             */
+                            protected final Label appended;
+
+                            /**
+                             * A label marking the beginning og the original type initializer's code.
+                             */
+                            protected final Label original;
+
+                            /**
+                             * Creates a new appending initialization handler with a drain.
+                             *
+                             * @param methodVisitor                The underlying method visitor.
+                             * @param instrumentedType             The instrumented type.
+                             * @param record                       The method pool record for the type initializer.
+                             * @param annotationValueFilterFactory The used annotation value filter factory.
+                             * @param requireFrames                {@code true} if the visitor is required to add frames.
+                             * @param expandFrames                 {@code true} if the visitor is required to expand any added frame.
+                             */
+                            protected WithDrain(MethodVisitor methodVisitor,
+                                                TypeDescription instrumentedType,
+                                                MethodPool.Record record,
+                                                AnnotationValueFilter.Factory annotationValueFilterFactory,
+                                                boolean requireFrames,
+                                                boolean expandFrames) {
+                                super(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames);
+                                appended = new Label();
+                                original = new Label();
+                            }
+
+                            @Override
+                            protected void onStart() {
+                                mv.visitJumpInsn(Opcodes.GOTO, appended);
+                                mv.visitLabel(original);
+                                frameWriter.emitFrame(mv);
+                            }
+
+                            @Override
+                            public void visitEnd() {
+                                mv.visitLabel(appended);
+                                frameWriter.emitFrame(mv);
+                            }
+
+                            @Override
+                            protected void onComplete(Implementation.Context implementationContext) {
+                                mv.visitJumpInsn(Opcodes.GOTO, original);
+                                onAfterComplete(implementationContext);
+                            }
+
+                            /**
+                             * Invoked after completion of writing the type initializer.
+                             *
+                             * @param implementationContext The implementation context to use.
+                             */
+                            protected abstract void onAfterComplete(Implementation.Context implementationContext);
+
+                            /**
+                             * A code appending initialization handler with a drain that does not apply an explicit record.
+                             */
+                            protected static class WithoutActiveRecord extends WithDrain {
+
+                                /**
+                                 * Creates a new appending initialization handler with a drain and without an active record.
+                                 *
+                                 * @param methodVisitor                The underlying method visitor.
+                                 * @param instrumentedType             The instrumented type.
+                                 * @param record                       The method pool record for the type initializer.
+                                 * @param annotationValueFilterFactory The used annotation value filter factory.
+                                 * @param requireFrames                {@code true} if the visitor is required to add frames.
+                                 * @param expandFrames                 {@code true} if the visitor is required to expand any added frame.
+                                 */
+                                protected WithoutActiveRecord(MethodVisitor methodVisitor,
+                                                              TypeDescription instrumentedType,
+                                                              MethodPool.Record record,
+                                                              AnnotationValueFilter.Factory annotationValueFilterFactory,
+                                                              boolean requireFrames,
+                                                              boolean expandFrames) {
+                                    super(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames);
+                                }
+
+                                @Override
+                                protected void onAfterComplete(Implementation.Context implementationContext) {
+                                    /* do nothing */
+                                }
+                            }
+
+                            /**
+                             * A code appending initialization handler with a drain that applies an explicit record.
+                             */
+                            protected static class WithActiveRecord extends WithDrain {
+
+                                /**
+                                 * A label indicating the beginning of the record's code.
+                                 */
+                                private final Label label;
+
+                                /**
+                                 * Creates a new appending initialization handler with a drain and with an active record.
+                                 *
+                                 * @param methodVisitor                The underlying method visitor.
+                                 * @param instrumentedType             The instrumented type.
+                                 * @param record                       The method pool record for the type initializer.
+                                 * @param annotationValueFilterFactory The used annotation value filter factory.
+                                 * @param requireFrames                {@code true} if the visitor is required to add frames.
+                                 * @param expandFrames                 {@code true} if the visitor is required to expand any added frame.
+                                 */
+                                protected WithActiveRecord(MethodVisitor methodVisitor,
+                                                           TypeDescription instrumentedType,
+                                                           MethodPool.Record record,
+                                                           AnnotationValueFilter.Factory annotationValueFilterFactory,
+                                                           boolean requireFrames,
+                                                           boolean expandFrames) {
+                                    super(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames);
+                                    label = new Label();
+                                }
+
+                                @Override
+                                public void visitInsn(int opcode) {
+                                    if (opcode == Opcodes.RETURN) {
+                                        mv.visitJumpInsn(Opcodes.GOTO, label);
+                                    } else {
+                                        super.visitInsn(opcode);
+                                    }
+                                }
+
+                                @Override
+                                protected void onAfterComplete(Implementation.Context implementationContext) {
+                                    mv.visitLabel(label);
+                                    frameWriter.emitFrame(mv);
+                                    ByteCodeAppender.Size size = record.applyCode(mv, implementationContext);
+                                    stackSize = Math.max(stackSize, size.getOperandStackSize());
+                                    localVariableLength = Math.max(localVariableLength, size.getLocalVariableSize());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                /**
+                 * A class visitor which is capable of applying a redefinition of an existing class file.
+                 */
+                @SuppressFBWarnings(value = "UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR", justification = "Field access order is implied by ASM.")
+                protected class RedefinitionClassVisitor extends MetadataAwareClassVisitor {
+
+                    /**
+                     * The type initializer to apply.
+                     */
+                    private final TypeInitializer typeInitializer;
+
+                    /**
+                     * A context registry to register the lazily created implementation context to.
+                     */
+                    private final ContextRegistry contextRegistry;
+
+                    /**
+                     * The writer flags being used.
+                     */
+
+ succeeded in 220ms:
+4572:                                    ? new WithDrain.WithActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames)
+4595:                                    ? new WithoutDrain.WithActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames)
+4861:                                protected WithActiveRecord(MethodVisitor methodVisitor,
+5005:                                protected WithActiveRecord(MethodVisitor methodVisitor,
+
+ succeeded in 368ms:
+6
+
+codex
+I’ve confirmed the nested class is only instantiated in two places inside the same file, so I’m checking the broader repository for any external fan-in before deciding. After that I’ll write the verdict JSON.
+exec
+/bin/bash -lc "rg -n \"WithDrain\\.WithActiveRecord|WithoutDrain\\.WithActiveRecord|\\bWithActiveRecord\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '4510,4605p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 192ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4572:                                    ? new WithDrain.WithActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames)
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4595:                                    ? new WithoutDrain.WithActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames)
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4844:                            protected static class WithActiveRecord extends WithoutDrain {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4861:                                protected WithActiveRecord(MethodVisitor methodVisitor,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4988:                            protected static class WithActiveRecord extends WithDrain {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:5005:                                protected WithActiveRecord(MethodVisitor methodVisitor,
+
+ succeeded in 205ms:
+                        protected Appending(MethodVisitor methodVisitor,
+                                            TypeDescription instrumentedType,
+                                            MethodPool.Record record,
+                                            AnnotationValueFilter.Factory annotationValueFilterFactory,
+                                            boolean requireFrames,
+                                            boolean expandFrames) {
+                            super(OpenedClassReader.ASM_API, methodVisitor);
+                            this.instrumentedType = instrumentedType;
+                            this.record = record;
+                            this.annotationValueFilterFactory = annotationValueFilterFactory;
+                            if (!requireFrames) {
+                                frameWriter = FrameWriter.NoOp.INSTANCE;
+                            } else if (expandFrames) {
+                                frameWriter = FrameWriter.Expanding.INSTANCE;
+                            } else {
+                                frameWriter = new FrameWriter.Active();
+                            }
+                        }
+
+                        /**
+                         * Resolves an initialization handler.
+                         *
+                         * @param enabled                      {@code true} if the implementation context is enabled, i.e. any {@link TypeInitializer} might be active.
+                         * @param methodVisitor                The delegation method visitor.
+                         * @param instrumentedType             The instrumented type.
+                         * @param methodPool                   The method pool to use.
+                         * @param annotationValueFilterFactory The annotation value filter factory to use.
+                         * @param requireFrames                {@code true} if frames must be computed.
+                         * @param expandFrames                 {@code true} if frames must be expanded.
+                         * @return An initialization handler which is also guaranteed to be a {@link MethodVisitor}.
+                         */
+                        protected static InitializationHandler of(boolean enabled,
+                                                                  MethodVisitor methodVisitor,
+                                                                  TypeDescription instrumentedType,
+                                                                  MethodPool methodPool,
+                                                                  AnnotationValueFilter.Factory annotationValueFilterFactory,
+                                                                  boolean requireFrames,
+                                                                  boolean expandFrames) {
+                            return enabled
+                                    ? withDrain(methodVisitor, instrumentedType, methodPool, annotationValueFilterFactory, requireFrames, expandFrames)
+                                    : withoutDrain(methodVisitor, instrumentedType, methodPool, annotationValueFilterFactory, requireFrames, expandFrames);
+                        }
+
+                        /**
+                         * Resolves an initialization handler with a drain.
+                         *
+                         * @param methodVisitor                The delegation method visitor.
+                         * @param instrumentedType             The instrumented type.
+                         * @param methodPool                   The method pool to use.
+                         * @param annotationValueFilterFactory The annotation value filter factory to use.
+                         * @param requireFrames                {@code true} if frames must be computed.
+                         * @param expandFrames                 {@code true} if frames must be expanded.
+                         * @return An initialization handler which is also guaranteed to be a {@link MethodVisitor}.
+                         */
+                        private static WithDrain withDrain(MethodVisitor methodVisitor,
+                                                           TypeDescription instrumentedType,
+                                                           MethodPool methodPool,
+                                                           AnnotationValueFilter.Factory annotationValueFilterFactory,
+                                                           boolean requireFrames,
+                                                           boolean expandFrames) {
+                            MethodPool.Record record = methodPool.target(new MethodDescription.Latent.TypeInitializer(instrumentedType));
+                            return record.getSort().isImplemented()
+                                    ? new WithDrain.WithActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames)
+                                    : new WithDrain.WithoutActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames);
+                        }
+
+                        /**
+                         * Resolves an initialization handler without a drain.
+                         *
+                         * @param methodVisitor                The delegation method visitor.
+                         * @param instrumentedType             The instrumented type.
+                         * @param methodPool                   The method pool to use.
+                         * @param annotationValueFilterFactory The annotation value filter factory to use.
+                         * @param requireFrames                {@code true} if frames must be computed.
+                         * @param expandFrames                 {@code true} if frames must be expanded.
+                         * @return An initialization handler which is also guaranteed to be a {@link MethodVisitor}.
+                         */
+                        private static WithoutDrain withoutDrain(MethodVisitor methodVisitor,
+                                                                 TypeDescription instrumentedType,
+                                                                 MethodPool methodPool,
+                                                                 AnnotationValueFilter.Factory annotationValueFilterFactory,
+                                                                 boolean requireFrames,
+                                                                 boolean expandFrames) {
+                            MethodPool.Record record = methodPool.target(new MethodDescription.Latent.TypeInitializer(instrumentedType));
+                            return record.getSort().isImplemented()
+                                    ? new WithoutDrain.WithActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames)
+                                    : new WithoutDrain.WithoutActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory);
+                        }
+
+                        @Override
+                        public void visitCode() {
+                            record.applyAttributes(mv, annotationValueFilterFactory);
+                            super.visitCode();
+                            onStart();
+                        }
+
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java | sed -n '4560,4605p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java | sed -n '4980,5035p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java | sed -n '4835,4875p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 105ms:
+  4560	                         * @param requireFrames                {@code true} if frames must be computed.
+  4561	                         * @param expandFrames                 {@code true} if frames must be expanded.
+  4562	                         * @return An initialization handler which is also guaranteed to be a {@link MethodVisitor}.
+  4563	                         */
+  4564	                        private static WithDrain withDrain(MethodVisitor methodVisitor,
+  4565	                                                           TypeDescription instrumentedType,
+  4566	                                                           MethodPool methodPool,
+  4567	                                                           AnnotationValueFilter.Factory annotationValueFilterFactory,
+  4568	                                                           boolean requireFrames,
+  4569	                                                           boolean expandFrames) {
+  4570	                            MethodPool.Record record = methodPool.target(new MethodDescription.Latent.TypeInitializer(instrumentedType));
+  4571	                            return record.getSort().isImplemented()
+  4572	                                    ? new WithDrain.WithActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames)
+  4573	                                    : new WithDrain.WithoutActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames);
+  4574	                        }
+  4575	
+  4576	                        /**
+  4577	                         * Resolves an initialization handler without a drain.
+  4578	                         *
+  4579	                         * @param methodVisitor                The delegation method visitor.
+  4580	                         * @param instrumentedType             The instrumented type.
+  4581	                         * @param methodPool                   The method pool to use.
+  4582	                         * @param annotationValueFilterFactory The annotation value filter factory to use.
+  4583	                         * @param requireFrames                {@code true} if frames must be computed.
+  4584	                         * @param expandFrames                 {@code true} if frames must be expanded.
+  4585	                         * @return An initialization handler which is also guaranteed to be a {@link MethodVisitor}.
+  4586	                         */
+  4587	                        private static WithoutDrain withoutDrain(MethodVisitor methodVisitor,
+  4588	                                                                 TypeDescription instrumentedType,
+  4589	                                                                 MethodPool methodPool,
+  4590	                                                                 AnnotationValueFilter.Factory annotationValueFilterFactory,
+  4591	                                                                 boolean requireFrames,
+  4592	                                                                 boolean expandFrames) {
+  4593	                            MethodPool.Record record = methodPool.target(new MethodDescription.Latent.TypeInitializer(instrumentedType));
+  4594	                            return record.getSort().isImplemented()
+  4595	                                    ? new WithoutDrain.WithActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames)
+  4596	                                    : new WithoutDrain.WithoutActiveRecord(methodVisitor, instrumentedType, record, annotationValueFilterFactory);
+  4597	                        }
+  4598	
+  4599	                        @Override
+  4600	                        public void visitCode() {
+  4601	                            record.applyAttributes(mv, annotationValueFilterFactory);
+  4602	                            super.visitCode();
+  4603	                            onStart();
+  4604	                        }
+  4605	
+
+ succeeded in 223ms:
+  4835	                                protected void onComplete(Implementation.Context implementationContext) {
+  4836	                                    /* do nothing */
+  4837	                                }
+  4838	                            }
+  4839	
+  4840	                            /**
+  4841	                             * An initialization handler that appends code to a previously visited type initializer without allowing active
+  4842	                             * {@link TypeInitializer} registrations and with an active record.
+  4843	                             */
+  4844	                            protected static class WithActiveRecord extends WithoutDrain {
+  4845	
+  4846	                                /**
+  4847	                                 * The label that indicates the beginning of the active record.
+  4848	                                 */
+  4849	                                private final Label label;
+  4850	
+  4851	                                /**
+  4852	                                 * Creates a new appending initialization handler without a drain and with an active record.
+  4853	                                 *
+  4854	                                 * @param methodVisitor                The underlying method visitor.
+  4855	                                 * @param instrumentedType             The instrumented type.
+  4856	                                 * @param record                       The method pool record for the type initializer.
+  4857	                                 * @param annotationValueFilterFactory The used annotation value filter factory.
+  4858	                                 * @param requireFrames                {@code true} if the visitor is required to add frames.
+  4859	                                 * @param expandFrames                 {@code true} if the visitor is required to expand any added frame.
+  4860	                                 */
+  4861	                                protected WithActiveRecord(MethodVisitor methodVisitor,
+  4862	                                                           TypeDescription instrumentedType,
+  4863	                                                           MethodPool.Record record,
+  4864	                                                           AnnotationValueFilter.Factory annotationValueFilterFactory,
+  4865	                                                           boolean requireFrames,
+  4866	                                                           boolean expandFrames) {
+  4867	                                    super(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames);
+  4868	                                    label = new Label();
+  4869	                                }
+  4870	
+  4871	                                @Override
+  4872	                                public void visitInsn(int opcode) {
+  4873	                                    if (opcode == Opcodes.RETURN) {
+  4874	                                        mv.visitJumpInsn(Opcodes.GOTO, label);
+  4875	                                    } else {
+
+ succeeded in 228ms:
+  4980	                                protected void onAfterComplete(Implementation.Context implementationContext) {
+  4981	                                    /* do nothing */
+  4982	                                }
+  4983	                            }
+  4984	
+  4985	                            /**
+  4986	                             * A code appending initialization handler with a drain that applies an explicit record.
+  4987	                             */
+  4988	                            protected static class WithActiveRecord extends WithDrain {
+  4989	
+  4990	                                /**
+  4991	                                 * A label indicating the beginning of the record's code.
+  4992	                                 */
+  4993	                                private final Label label;
+  4994	
+  4995	                                /**
+  4996	                                 * Creates a new appending initialization handler with a drain and with an active record.
+  4997	                                 *
+  4998	                                 * @param methodVisitor                The underlying method visitor.
+  4999	                                 * @param instrumentedType             The instrumented type.
+  5000	                                 * @param record                       The method pool record for the type initializer.
+  5001	                                 * @param annotationValueFilterFactory The used annotation value filter factory.
+  5002	                                 * @param requireFrames                {@code true} if the visitor is required to add frames.
+  5003	                                 * @param expandFrames                 {@code true} if the visitor is required to expand any added frame.
+  5004	                                 */
+  5005	                                protected WithActiveRecord(MethodVisitor methodVisitor,
+  5006	                                                           TypeDescription instrumentedType,
+  5007	                                                           MethodPool.Record record,
+  5008	                                                           AnnotationValueFilter.Factory annotationValueFilterFactory,
+  5009	                                                           boolean requireFrames,
+  5010	                                                           boolean expandFrames) {
+  5011	                                    super(methodVisitor, instrumentedType, record, annotationValueFilterFactory, requireFrames, expandFrames);
+  5012	                                    label = new Label();
+  5013	                                }
+  5014	
+  5015	                                @Override
+  5016	                                public void visitInsn(int opcode) {
+  5017	                                    if (opcode == Opcodes.RETURN) {
+  5018	                                        mv.visitJumpInsn(Opcodes.GOTO, label);
+  5019	                                    } else {
+  5020	                                        super.visitInsn(opcode);
+  5021	                                    }
+  5022	                                }
+  5023	
+  5024	                                @Override
+  5025	                                protected void onAfterComplete(Implementation.Context implementationContext) {
+  5026	                                    mv.visitLabel(label);
+  5027	                                    frameWriter.emitFrame(mv);
+  5028	                                    ByteCodeAppender.Size size = record.applyCode(mv, implementationContext);
+  5029	                                    stackSize = Math.max(stackSize, size.getOperandStackSize());
+  5030	                                    localVariableLength = Math.max(localVariableLength, size.getLocalVariableSize());
+  5031	                                }
+  5032	                            }
+  5033	                        }
+  5034	                    }
+  5035	                }
+
+codex
+{"target":"net.bytebuddy.dynamic.scaffold.TypeWriter.WithActiveRecord","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java` at the nested class definitions and factory methods. The target `WithActiveRecord` is only instantiated twice, both from private helper methods in the same file (`withDrain(...)` at lines 4570-4573 and `withoutDrain(...)` at lines 4593-4596), and `rg` found no other repository references beyond the two nested class declarations and those two call sites. Its dependencies are also local and limited to a few collaborators (`MethodVisitor`, `TypeDescription`, `MethodPool.Record`, `AnnotationValueFilter.Factory`, `Label`, `Implementation.Context`, `ByteCodeAppender.Size`), so there is no evidence of the high fan-in/fan-out expected for hub-like modularization."}
+tokens used
+9,167

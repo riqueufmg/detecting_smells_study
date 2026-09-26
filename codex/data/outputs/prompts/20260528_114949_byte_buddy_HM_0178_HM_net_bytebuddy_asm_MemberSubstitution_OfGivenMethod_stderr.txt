@@ -1,0 +1,1370 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f10-298c-78a0-8410-d0b6d171283a
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.asm.MemberSubstitution.OfGivenMethod` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.asm.MemberSubstitution.OfGivenMethod",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.asm.MemberSubstitution.OfGivenMethod`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and then tracing its direct references to estimate fan-in and fan-out from the repository itself.
+exec
+/bin/bash -lc "rg --files src | rg 'MemberSubstitution\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 1 in 0ms:
+rg: src: IO error for operation on src: No such file or directory (os error 2)
+
+exec
+/bin/bash -lc "rg -n \"class OfGivenMethod|OfGivenMethod\" src -g'*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 0ms:
+rg: src: IO error for operation on src: No such file or directory (os error 2)
+
+codex
+The repository layout is different than a standard `src` root, so I’m checking the top-level tree first and then I’ll open the target class plus a few high-signal references.
+exec
+/bin/bash -lc 'rg --files . | head -n 200' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-android-test/pom.xml
+./byte-buddy-android-test/AndroidManifest.xml
+./byte-buddy-android-test/res/layout/main.xml
+./byte-buddy-android-test/res/drawable/icon.png
+./byte-buddy-android-test/res/values/strings.xml
+./byte-buddy-android/pom.xml
+./byte-buddy-android/README.md
+./byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/package-info.java
+./byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java
+./byte-buddy-android-test/src/main/resources/maven.properties
+./pom.xml
+./spotbugs-exclude.xml
+./SECURITY.md
+./release-notes.md
+./byte-buddy-agent/pom.xml
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/test/utility/AgentAttachmentRule.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/test/utility/JnaRule.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/test/utility/JavaVersionRule.java
+./byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentAgentProviderTest.java
+./byte-buddy-android/src/main/java/net/bytebuddy/android/package-info.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/VirtualMachineForHotSpotTest.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentInstallationTest.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/VirtualMachineAttachmentTest.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/InstallerTest.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/VirtualMachineForOpenJ9Test.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentAttachmentTypeEvaluator.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/SampleAgent.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/AttacherTest.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentTest.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentAttachmentProviderTest.java
+./byte-buddy-maven-plugin/pom.xml
+./byte-buddy-maven-plugin/README.md
+./byte-buddy-agent/src/main/c/attach_hotspot_windows.c
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/Installer.java
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/utility/nullability/UnknownNull.java
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/utility/nullability/MaybeNull.java
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/utility/nullability/NeverNull.java
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/utility/nullability/package-info.java
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/utility/nullability/AlwaysNull.java
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/Attacher.java
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/VirtualMachine.java
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/package-info.java
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/ByteBuddyAgent.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/InitializationTest.java
+./byte-buddy-agent/src/main/resources/win32-x86-64/attach_hotspot_windows.dll
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/ClassLoaderResolverTest.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/ByteBuddyMojoTest.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/MavenCoordinateTest.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/TransformationTest.java
+./byte-buddy-agent/src/main/resources/win32-x86/attach_hotspot_windows.dll
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/SimpleEntryPoint.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/IllegalTransformPlugin.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/ArgumentPlugin.java
+./byte-buddy-gradle-plugin/gradlew
+./byte-buddy-gradle-plugin/pom.xml
+./byte-buddy-gradle-plugin/gradle.properties
+./byte-buddy-gradle-plugin/bytebuddy.gradle
+./byte-buddy-gradle-plugin/common.gradle
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/IllegalEntryPoint.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/LiveInitializerPlugin.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/SimplePlugin.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/IllegalTransformEntryPoint.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/IllegalPlugin.java
+./byte-buddy-gradle-plugin/android-plugin-test/gradlew
+./byte-buddy-gradle-plugin/android-plugin-test/gradle.properties
+./byte-buddy-gradle-plugin/android-plugin-test/bytebuddy.gradle
+./byte-buddy-gradle-plugin/android-plugin-test/service-definition-lib/build.gradle
+./byte-buddy-gradle-plugin/android-plugin-test/service-definition-lib/src/main/java/module-info.java
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/entry.illegal.transform.pom.xml
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/illegal.apply.pom.xml
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/suffix.pom.xml
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/entry.pom.xml
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/simple.pom.xml
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/live.allowed.pom.xml
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/illegal.pom.xml
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/live.pom.xml
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/empty.pom.xml
+./byte-buddy-gradle-plugin/android-plugin-test/service-definition-lib/src/main/java/com/service/definition/ServiceDefinition.java
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/test.pom.xml
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/argument.pom.xml
+./byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/entry.illegal.pom.xml
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/build.gradle
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/java/module-info.java
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/java/com/service/usage/ServiceImplementation.java
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/MavenCoordinate.java
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/CoordinateConfiguration.java
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ClassLoaderResolver.java
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/PluginArgument.java
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/Initialization.java
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/resources/NOTICE.txt
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/Transformation.java
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/Discovery.java
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/package-info.java
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/resources/META-INF/services/com.service.definition.ServiceDefinition
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/resources/NOTICE
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/resources/LICENSE
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/resources/LICENSE.txt
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/build.gradle
+./byte-buddy-maven-plugin/src/main/resources/META-INF/m2e/lifecycle-mapping-metadata.xml
+./version-rules.xml
+./byte-buddy-benchmark/pom.xml
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/java/module-info.java
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/java/com/service/usage2/ServiceImplementation.java
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/resources/NOTICE.txt
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/StubInvocationBenchmarkTest.java
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/AbstractBlackHoleTest.java
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmarkTest.java
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/TrivialClassCreationBenchmarkTest.java
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByImplementationBenchmarkTest.java
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/resources/META-INF/services/com.service.definition.ServiceDefinition
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/resources/NOTICE
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/resources/LICENSE
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/resources/LICENSE.txt
+./byte-buddy-gradle-plugin/android-plugin-test/README.md
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/build.gradle
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByImplementationBenchmark.java
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/runner/QuickRunner.java
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/runner/package-info.java
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/StubInvocationBenchmark.java
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/TrivialClassCreationBenchmark.java
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/package-info.java
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/specimen/ExampleInterface.java
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/specimen/ExampleClass.java
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/specimen/package-info.java
+./byte-buddy-benchmark/result.txt
+./README.md
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/PluginForLibClass.java
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/PluginForLocalClass.java
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/package-info.java
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/AdviceForLocalClass.java
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/AdviceForLibClass.java
+./byte-buddy/pom.xml
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/resources/META-INF/net.bytebuddy/build.plugins
+./byte-buddy-gradle-plugin/android-plugin-test/build.gradle
+./byte-buddy-gradle-plugin/android-plugin-test/settings.gradle
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/build.gradle
+./byte-buddy/src/main/resources/META-INF/licenses/ASM
+./byte-buddy/src/main/resources/META-INF/LICENSE
+./NOTICE
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/AndroidManifest.xml
+./byte-buddy-dep/pom.xml
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/aar/AarAdvice.java
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/aar/AarPlugin.java
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/aar/package-info.java
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/resources/META-INF/net.bytebuddy/build.plugins
+./byte-buddy-gradle-plugin/android-plugin-test/app/build.gradle
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/DynamicInvokeBootstrap.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceBootstrap.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceBootstrapErased.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionDynamicConstant.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodType.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MethodDelegationDynamicConstant.java
+./byte-buddy-gradle-plugin/android-plugin-test/app/src/main/AndroidManifest.xml
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/OriginMethodHandlesLookup.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/DynamicSampleBootstrap.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceDynamicConstant.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandlesLookup.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceOriginMethodType.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceOriginMethodHandle.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandle.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/OriginMethodType.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/OriginMethodHandle.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionBootstrap.java
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceOriginMethodHandlesLookup.java
+./byte-buddy-dep/src/test/c/net_bytebuddy_test_c_NativeSample.h
+./byte-buddy-dep/src/test/c/net_bytebuddy_test_c_NativeSample.c
+./byte-buddy-gradle-plugin/android-plugin-test/app/src/main/java/net/bytebuddy/android/test/AnotherClass.java
+./byte-buddy-gradle-plugin/android-plugin-test/app/src/main/java/net/bytebuddy/android/test/SomeClass.java
+./byte-buddy-gradle-plugin/android-plugin-test/app/src/main/java/net/bytebuddy/android/test/package-info.java
+./byte-buddy-dep/src/test/java-16/net/bytebuddy/test/precompiled/v16/GenericRecordSample.java
+./byte-buddy-dep/src/test/java-16/net/bytebuddy/test/precompiled/v16/RecordSample.java
+./byte-buddy-gradle-plugin/android-plugin-test/app/src/androidTest/java/net/bytebuddy/android/test/ByteBuddyInstrumentedTest.java
+./byte-buddy-gradle-plugin/android-plugin-test/gradlew.bat
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-target/build.gradle
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-target/src/main/AndroidManifest.xml
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/AdviceBootstrap.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/AdviceOriginMethodHandlesLookup.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/OriginMethodType.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionDynamicConstant.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/AdviceBootstrapErased.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/DynamicSampleBootstrap.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/AdviceOriginMethodType.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/DynamicInvokeBootstrap$SampleEnum.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/AdviceDynamicConstant.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/DynamicSampleBootstrap$1.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodType.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandle.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/OriginMethodHandlesLookup.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/DynamicInvokeBootstrap.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionBootstrap.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/OriginMethodHandle.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/AdviceOriginMethodHandle.class
+./byte-buddy-dep/src/test/precompiled-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandlesLookup.class
+
+exec
+/bin/bash -lc pwd in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+
+codex
+I found the repository root and am narrowing to the `byte-buddy` module, where the target class should live. Next I’m reading the class body and then checking who uses it and what it depends on.
+exec
+/bin/bash -lc "rg -n \"class OfGivenMethod|interface OfGivenMethod|OfGivenMethod\" byte-buddy/src/main/java byte-buddy-dep/src/main/java -g'MemberSubstitution.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 0ms:
+rg: byte-buddy/src/main/java: No such file or directory (os error 2)
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:510:            return replaceWith(new Substitution.ForMethodInvocation.OfGivenMethod(methodDescription));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1740:            public static class OfGivenMethod implements Factory<Target> {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1752:                public OfGivenMethod(MethodDescription methodDescription) {
+
+exec
+/bin/bash -lc "rg --files byte-buddy/src/main/java byte-buddy-dep/src/main/java | rg 'MemberSubstitution\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+rg: byte-buddy/src/main/java: No such file or directory (os error 2)
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java
+
+exec
+/bin/bash -lc "sed -n '1700,1805p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+                        if (parameters.isEmpty()) {
+                            throw new IllegalStateException("Cannot substitute parameterless instruction with " + parameters);
+                        } else if (parameters.get(0).isPrimitive() || parameters.get(0).isArray()) {
+                            throw new IllegalStateException("Cannot invoke method on primitive or array type for " + parameters.get(0));
+                        }
+                        TypeDefinition typeDefinition = parameters.get(0).accept(new TypeDescription.Generic.Visitor.Substitutor.ForReplacement(instrumentedType));
+                        List<MethodDescription> candidates = CompoundList.<MethodDescription>of(methodGraphCompiler.compile(typeDefinition, instrumentedType).listNodes()
+                                .asMethodList()
+                                .filter(matcher), typeDefinition.getDeclaredMethods().filter(isPrivate().<MethodDescription>and(isVisibleTo(instrumentedType)).and(matcher)));
+                        if (candidates.size() == 1) {
+                            return candidates.get(0);
+                        } else {
+                            throw new IllegalStateException("Not exactly one method that matches " + matcher + ": " + candidates);
+                        }
+                    }
+                }
+            }
+
+            /**
+             * A factory for a substitution that invokes the instrumented method.
+             */
+            enum OfInstrumentedMethod implements Factory<Target> {
+
+                /**
+                 * The singleton instance.
+                 */
+                INSTANCE;
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                    return new ForMethodInvocation(instrumentedType, new MethodResolver.Simple(instrumentedMethod));
+                }
+            }
+
+            /**
+             * A factory for a substitution that invokes a given method.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            public static class OfGivenMethod implements Factory<Target> {
+
+                /**
+                 * The method to invoke.
+                 */
+                private final MethodDescription methodDescription;
+
+                /**
+                 * Creates a new factory for a substitution that invokes a given method.
+                 *
+                 * @param methodDescription The method to invoke.
+                 */
+                public OfGivenMethod(MethodDescription methodDescription) {
+                    this.methodDescription = methodDescription;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                    return new ForMethodInvocation(instrumentedType, new MethodResolver.Simple(methodDescription));
+                }
+            }
+
+            /**
+             * A factory for a substitution that locates a method on the receiver type using a matcher.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            public static class OfMatchedMethod implements Factory<Target> {
+
+                /**
+                 * The matcher for locating the method to substitute with.
+                 */
+                private final ElementMatcher<? super MethodDescription> matcher;
+
+                /**
+                 * The method graph compiler to use.
+                 */
+                private final MethodGraph.Compiler methodGraphCompiler;
+
+                /**
+                 * Creates a factory for a substitution that locates a method on the receiver type.
+                 *
+                 * @param matcher             The matcher for locating the method to substitute with.
+                 * @param methodGraphCompiler The method graph compiler to use.
+                 */
+                public OfMatchedMethod(ElementMatcher<? super MethodDescription> matcher, MethodGraph.Compiler methodGraphCompiler) {
+                    this.matcher = matcher;
+                    this.methodGraphCompiler = methodGraphCompiler;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                    return new ForMethodInvocation(instrumentedType, new MethodResolver.Matching(instrumentedType, methodGraphCompiler, matcher));
+                }
+            }
+        }
+
+        /**
+         * A substitution chain allows for chaining multiple substitution steps for a byte code element being replaced.
+         *
+         * @param <S> The type of the matched target.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+
+exec
+/bin/bash -lc "rg -n \"OfGivenMethod\\b\" . -g'*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:510:            return replaceWith(new Substitution.ForMethodInvocation.OfGivenMethod(methodDescription));
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1740:            public static class OfGivenMethod implements Factory<Target> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1752:                public OfGivenMethod(MethodDescription methodDescription) {
+
+exec
+/bin/bash -lc "rg -n \"MemberSubstitution\\.OfGivenMethod|new OfGivenMethod\\(|ForMethodInvocation\\.OfGivenMethod|OfGivenMethod\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java byte-buddy-dep/src/test/java-* -g'*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:510:            return replaceWith(new Substitution.ForMethodInvocation.OfGivenMethod(methodDescription));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1752:                public OfGivenMethod(MethodDescription methodDescription) {
+
+codex
+The target is a nested factory class inside `MemberSubstitution`; I’m checking the enclosing structure so the evidence matches the exact fully qualified name, not just the source file.
+exec
+/bin/bash -lc "sed -n '430,560p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+         * the field's type.
+         * </p>
+         *
+         * @param field The field to access instead of interacting with any of the matched byte code elements.
+         * @return A member substitution that replaces any matched byte code element with an access of the specified field.
+         */
+        public MemberSubstitution replaceWith(Field field) {
+            return replaceWith(new FieldDescription.ForLoadedField(field));
+        }
+
+        /**
+         * <p>
+         * Replaces any interaction with a matched byte code element by an interaction with the specified field. If a field
+         * is replacing a method or constructor invocation, it is treated as if it was a field getter or setter respectively.
+         * </p>
+         * <p>
+         * A replacement can only be applied if the field is compatible to the original byte code element, i.e. consumes an
+         * instance of the declaring type if it is not {@code static} as an argument and consumes or produces an instance of
+         * the field's type.
+         * </p>
+         *
+         * @param fieldDescription The field to access instead of interacting with any of the matched byte code elements.
+         * @return A member substitution that replaces any matched byte code element with an access of the specified field.
+         */
+        public MemberSubstitution replaceWith(FieldDescription fieldDescription) {
+            return replaceWith(new Substitution.ForFieldAccess.OfGivenField(fieldDescription));
+        }
+
+        /**
+         * Replaces any interaction with a matched byte code element with a non-static field access on the first
+         * parameter of the matched element. When matching a non-static field access or method invocation, the
+         * substituted field is located on the same receiver type as the original access. For static access, the
+         * first argument is used as a receiver.
+         *
+         * @param matcher A matcher for locating a field on the original interaction's receiver type.
+         * @return A member substitution that replaces any matched byte code element with an access of the matched field.
+         */
+        public MemberSubstitution replaceWithField(ElementMatcher<? super FieldDescription> matcher) {
+            return replaceWith(new Substitution.ForFieldAccess.OfMatchedField(matcher));
+        }
+
+        /**
+         * <p>
+         * Replaces any interaction with a matched byte code element by an invocation of the specified method. If a method
+         * is replacing a field access, it is treated as if it was replacing an invocation of the field's getter or setter respectively.
+         * </p>
+         * <p>
+         * A replacement can only be applied if the method is compatible to the original byte code element, i.e. consumes compatible
+         * arguments and returns a compatible value. If the method is not {@code static}, it is treated as if {@code this} was an implicit
+         * first argument.
+         * </p>
+         *
+         * @param method The method to invoke instead of interacting with any of the matched byte code elements.
+         * @return A member substitution that replaces any matched byte code element with an invocation of the specified method.
+         */
+        public MemberSubstitution replaceWith(Method method) {
+            return replaceWith(new MethodDescription.ForLoadedMethod(method));
+        }
+
+        /**
+         * <p>
+         * Replaces any interaction with a matched byte code element by an invocation of the specified method. If a method
+         * is replacing a field access, it is treated as if it was replacing an invocation of the field's getter or setter respectively.
+         * </p>
+         * <p>
+         * A replacement can only be applied if the method is compatible to the original byte code element, i.e. consumes compatible
+         * arguments and returns a compatible value. If the method is not {@code static}, it is treated as if {@code this} was an implicit
+         * first argument.
+         * </p>
+         * <p>
+         * <b>Important</b>: It is not allowed to specify a constructor or the static type initializer as a replacement.
+         * </p>
+         *
+         * @param methodDescription The method to invoke instead of interacting with any of the matched byte code elements.
+         * @return A member substitution that replaces any matched byte code element with an invocation of the specified method.
+         */
+        public MemberSubstitution replaceWith(MethodDescription methodDescription) {
+            if (!methodDescription.isMethod()) {
+                throw new IllegalArgumentException("Cannot use " + methodDescription + " as a replacement");
+            }
+            return replaceWith(new Substitution.ForMethodInvocation.OfGivenMethod(methodDescription));
+        }
+
+        /**
+         * Replaces any interaction with a matched byte code element with a non-static method access on the first
+         * parameter of the matched element. When matching a non-static field access or method invocation, the
+         * substituted method is located on the same receiver type as the original access. For static access, the
+         * first argument is used as a receiver.
+         *
+         * @param matcher A matcher for locating a method on the original interaction's receiver type.
+         * @return A member substitution that replaces any matched byte code element with an access of the matched method.
+         */
+        public MemberSubstitution replaceWithMethod(ElementMatcher<? super MethodDescription> matcher) {
+            return replaceWithMethod(matcher, methodGraphCompiler);
+        }
+
+        /**
+         * Replaces any interaction with a matched byte code element with a non-static method access on the first
+         * parameter of the matched element. When matching a non-static field access or method invocation, the
+         * substituted method is located on the same receiver type as the original access. For static access, the
+         * first argument is used as a receiver.
+         *
+         * @param matcher             A matcher for locating a method on the original interaction's receiver type.
+         * @param methodGraphCompiler The method graph compiler to use for locating a method.
+         * @return A member substitution that replaces any matched byte code element with an access of the matched method.
+         */
+        public MemberSubstitution replaceWithMethod(ElementMatcher<? super MethodDescription> matcher, MethodGraph.Compiler methodGraphCompiler) {
+            return replaceWith(new Substitution.ForMethodInvocation.OfMatchedMethod(matcher, methodGraphCompiler));
+        }
+
+        /**
+         * Replaces any interaction with a matched byte code element with an invocation of the instrumented
+         * method. This can cause an infinite recursive call if the arguments to the method are not altered.
+         *
+         * @return A member substitution that replaces any matched byte code element with an invocation of the
+         * instrumented method.
+         */
+        public MemberSubstitution replaceWithInstrumentedMethod() {
+            return replaceWith(Substitution.ForMethodInvocation.OfInstrumentedMethod.INSTANCE);
+        }
+
+        /**
+         * Replaces the matched byte code elements with a chain of substitutions that can operate on the same values as the substituted element. This is a
+         * shortcut for creating a substitution chain with a default assigner.
+         *
+         * @param step The steps to apply for a substitution.
+         * @return A member substitution that replaces any matched byte code element with the provided substitution chain.
+         */
+        @SafeVarargsPlugin.Enhance
+        @SuppressWarnings("unchecked") // In absence of @SafeVarargs
+        public final MemberSubstitution replaceWithChain(Substitution.Chain.Step.Factory<? super T>... step) {
+
+exec
+/bin/bash -lc "sed -n '1600,1775p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+                if (!methodDescription.isAccessibleTo(instrumentedType)) {
+                    throw new IllegalStateException(instrumentedType + " cannot access " + methodDescription);
+                }
+                TypeList.Generic mapped = methodDescription.isStatic()
+                        ? methodDescription.getParameters().asTypeList()
+                        : new TypeList.Generic.Explicit(CompoundList.of(methodDescription.getDeclaringType(), methodDescription.getParameters().asTypeList()));
+                if (!methodDescription.getReturnType().asErasure().isAssignableTo(result.asErasure())) {
+                    throw new IllegalStateException("Cannot assign return value of " + methodDescription + " to " + result);
+                } else if (mapped.size() != parameters.size()) {
+                    throw new IllegalStateException("Cannot invoke " + methodDescription + " on " + parameters.size() + " parameters");
+                }
+                for (int index = 0; index < mapped.size(); index++) {
+                    if (!parameters.get(index).asErasure().isAssignableTo(mapped.get(index).asErasure())) {
+                        throw new IllegalStateException("Cannot invoke " + methodDescription + " on parameter " + index + " of type " + parameters.get(index));
+                    }
+                }
+                return methodDescription.isVirtual() ? MethodInvocation.invoke(methodDescription).virtual(mapped.get(THIS_REFERENCE).asErasure()) : MethodInvocation.invoke(methodDescription);
+            }
+
+            /**
+             * A method resolver for locating a method for a substitute.
+             */
+            public interface MethodResolver {
+
+                /**
+                 * Resolves the method to substitute with.
+                 *
+                 * @param target     The target member of invokedynamic invocation.
+                 * @param parameters All parameters that serve as input to this access.
+                 * @param result     The result that is expected from the interaction or {@code void} if no result is expected.
+                 * @return The field to substitute with.
+                 */
+                MethodDescription resolve(Target target, TypeList.Generic parameters, TypeDescription.Generic result);
+
+                /**
+                 * A simple method resolver that returns a given method.
+                 */
+                @HashCodeAndEqualsPlugin.Enhance
+                class Simple implements MethodResolver {
+
+                    /**
+                     * The method to substitute with.
+                     */
+                    private final MethodDescription methodDescription;
+
+                    /**
+                     * Creates a new simple method resolver.
+                     *
+                     * @param methodDescription The method to substitute with.
+                     */
+                    public Simple(MethodDescription methodDescription) {
+                        this.methodDescription = methodDescription;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public MethodDescription resolve(Target target, TypeList.Generic parameters, TypeDescription.Generic result) {
+                        return methodDescription;
+                    }
+                }
+
+                /**
+                 * A method resolver that locates a non-static method by locating it from the receiver type.
+                 */
+                @HashCodeAndEqualsPlugin.Enhance
+                class Matching implements MethodResolver {
+
+                    /**
+                     * The instrumented type.
+                     */
+                    private final TypeDescription instrumentedType;
+
+                    /**
+                     * The method graph compiler to use.
+                     */
+                    private final MethodGraph.Compiler methodGraphCompiler;
+
+                    /**
+                     * The matcher to use for locating the method to substitute with.
+                     */
+                    private final ElementMatcher<? super MethodDescription> matcher;
+
+                    /**
+                     * Creates a new matching method resolver.
+                     *
+                     * @param instrumentedType    The instrumented type.
+                     * @param methodGraphCompiler The method graph compiler to use.
+                     * @param matcher             The matcher to use for locating the method to substitute with.
+                     */
+                    public Matching(TypeDescription instrumentedType, MethodGraph.Compiler methodGraphCompiler, ElementMatcher<? super MethodDescription> matcher) {
+                        this.instrumentedType = instrumentedType;
+                        this.methodGraphCompiler = methodGraphCompiler;
+                        this.matcher = matcher;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public MethodDescription resolve(Target target, TypeList.Generic parameters, TypeDescription.Generic result) {
+                        if (parameters.isEmpty()) {
+                            throw new IllegalStateException("Cannot substitute parameterless instruction with " + parameters);
+                        } else if (parameters.get(0).isPrimitive() || parameters.get(0).isArray()) {
+                            throw new IllegalStateException("Cannot invoke method on primitive or array type for " + parameters.get(0));
+                        }
+                        TypeDefinition typeDefinition = parameters.get(0).accept(new TypeDescription.Generic.Visitor.Substitutor.ForReplacement(instrumentedType));
+                        List<MethodDescription> candidates = CompoundList.<MethodDescription>of(methodGraphCompiler.compile(typeDefinition, instrumentedType).listNodes()
+                                .asMethodList()
+                                .filter(matcher), typeDefinition.getDeclaredMethods().filter(isPrivate().<MethodDescription>and(isVisibleTo(instrumentedType)).and(matcher)));
+                        if (candidates.size() == 1) {
+                            return candidates.get(0);
+                        } else {
+                            throw new IllegalStateException("Not exactly one method that matches " + matcher + ": " + candidates);
+                        }
+                    }
+                }
+            }
+
+            /**
+             * A factory for a substitution that invokes the instrumented method.
+             */
+            enum OfInstrumentedMethod implements Factory<Target> {
+
+                /**
+                 * The singleton instance.
+                 */
+                INSTANCE;
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                    return new ForMethodInvocation(instrumentedType, new MethodResolver.Simple(instrumentedMethod));
+                }
+            }
+
+            /**
+             * A factory for a substitution that invokes a given method.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            public static class OfGivenMethod implements Factory<Target> {
+
+                /**
+                 * The method to invoke.
+                 */
+                private final MethodDescription methodDescription;
+
+                /**
+                 * Creates a new factory for a substitution that invokes a given method.
+                 *
+                 * @param methodDescription The method to invoke.
+                 */
+                public OfGivenMethod(MethodDescription methodDescription) {
+                    this.methodDescription = methodDescription;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                    return new ForMethodInvocation(instrumentedType, new MethodResolver.Simple(methodDescription));
+                }
+            }
+
+            /**
+             * A factory for a substitution that locates a method on the receiver type using a matcher.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            public static class OfMatchedMethod implements Factory<Target> {
+
+                /**
+                 * The matcher for locating the method to substitute with.
+                 */
+                private final ElementMatcher<? super MethodDescription> matcher;
+
+                /**
+
+exec
+/bin/bash -lc 'rg -n "class Substitution|class ForMethodInvocation|interface Factory|enum OfInstrumentedMethod|enum OfGivenMethod|class OfMatchedMethod" byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+1249:        interface Factory<S extends Target> {
+1567:        class ForMethodInvocation implements Substitution<Target> {
+1721:            enum OfInstrumentedMethod implements Factory<Target> {
+1768:            public static class OfMatchedMethod implements Factory<Target> {
+1952:                interface Factory<V extends Target> {
+2462:                    protected enum OfInstrumentedMethodThis implements Factory<Target> {
+3215:                        interface Factory<T extends Annotation> {
+6312:                        interface Factory {
+6571:                        interface Factory {
+7557:        interface Factory {
+
+codex
+I’ve confirmed the factory lives under `MemberSubstitution.Substitution.ForMethodInvocation`. I’m now checking whether the task’s requested name is a shorthand or whether the repository exposes that nested type directly in the source structure.
+exec
+/bin/bash -lc "sed -n '1220,1605p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+     * A substitution replaces or enhances an interaction with a field or method within an instrumented method.
+     *
+     * @param <T> The type of the matched target.
+     */
+    public interface Substitution<T extends Target> {
+
+        /**
+         * Resolves this substitution into a stack manipulation.
+         *
+         * @param target            The targeted member that is substituted.
+         * @param parameters        All parameters that serve as input to this access.
+         * @param result            The result that is expected from the interaction or {@code void} if no result is expected.
+         * @param methodHandle      A method handle describing the substituted expression.
+         * @param stackManipulation The original byte code expression that is being executed.
+         * @param freeOffset        The first free offset of the local variable array that can be used for storing values.
+         * @return A stack manipulation that represents the access.
+         */
+        StackManipulation resolve(T target,
+                                  TypeList.Generic parameters,
+                                  TypeDescription.Generic result,
+                                  JavaConstant.MethodHandle methodHandle,
+                                  StackManipulation stackManipulation,
+                                  int freeOffset);
+
+        /**
+         * A factory for creating a substitution for an instrumented method.
+         *
+         * @param <S> The type of the matched target.
+         */
+        interface Factory<S extends Target> {
+
+            /**
+             * Creates a substitution for an instrumented method.
+             *
+             * @param instrumentedType   The instrumented type.
+             * @param instrumentedMethod The instrumented method.
+             * @param typePool           The type pool being used.
+             * @return The substitution to apply within the instrumented method.
+             */
+            Substitution<? super S> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool);
+        }
+
+        /**
+         * A substitution that drops any field or method access and returns the expected return
+         * type's default value, i.e {@code null} or zero for primitive types.
+         */
+        enum Stubbing implements Substitution<Target>, Factory<Target> {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                return this;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation resolve(Target target,
+                                             TypeList.Generic parameters,
+                                             TypeDescription.Generic result,
+                                             JavaConstant.MethodHandle methodHandle,
+                                             StackManipulation stackManipulation,
+                                             int freeOffset) {
+                List<StackManipulation> stackManipulations = new ArrayList<StackManipulation>(parameters.size());
+                for (int index = parameters.size() - 1; index >= 0; index--) {
+                    stackManipulations.add(Removal.of(parameters.get(index)));
+                }
+                return new StackManipulation.Compound(CompoundList.of(stackManipulations, DefaultValue.of(result.asErasure())));
+            }
+        }
+
+        /**
+         * A substitution that loads a fixed value.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForValue implements Substitution<Target>, Factory<Target> {
+
+            /**
+             * The stack manipulation to load the value that represents the substitution.
+             */
+            private final StackManipulation stackManipulation;
+
+            /**
+             * The type of the represented stack manipulation.
+             */
+            private final TypeDescription.Generic typeDescription;
+
+            /**
+             * Creates a new substitution for loading a constant value.
+             *
+             * @param stackManipulation The stack manipulation to load the value that represents the substitution.
+             * @param typeDescription   The type of the represented stack manipulation.
+             */
+            public ForValue(StackManipulation stackManipulation, TypeDescription.Generic typeDescription) {
+                this.stackManipulation = stackManipulation;
+                this.typeDescription = typeDescription;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                return this;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation resolve(Target target,
+                                             TypeList.Generic parameters,
+                                             TypeDescription.Generic result,
+                                             JavaConstant.MethodHandle methodHandle,
+                                             StackManipulation stackManipulation,
+                                             int freeOffset) {
+                List<StackManipulation> stackManipulations = new ArrayList<StackManipulation>(parameters.size());
+                for (int index = parameters.size() - 1; index >= 0; index--) {
+                    stackManipulations.add(Removal.of(parameters.get(index)));
+                }
+                if (!typeDescription.asErasure().isAssignableTo(result.asErasure())) {
+                    throw new IllegalStateException("Cannot assign " + typeDescription + " to " + result);
+                }
+                return new StackManipulation.Compound(CompoundList.of(stackManipulations, this.stackManipulation));
+            }
+        }
+
+        /**
+         * A substitution with a field access.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForFieldAccess implements Substitution<Target> {
+
+            /**
+             * The instrumented type.
+             */
+            private final TypeDescription instrumentedType;
+
+            /**
+             * A resolver to locate the field to access.
+             */
+            private final FieldResolver fieldResolver;
+
+            /**
+             * Creates a new substitution with a field access.
+             *
+             * @param instrumentedType The instrumented type.
+             * @param fieldResolver    A resolver to locate the field to access.
+             */
+            public ForFieldAccess(TypeDescription instrumentedType, FieldResolver fieldResolver) {
+                this.instrumentedType = instrumentedType;
+                this.fieldResolver = fieldResolver;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "Assuming declaring type for type member.")
+            public StackManipulation resolve(Target target,
+                                             TypeList.Generic parameters,
+                                             TypeDescription.Generic result,
+                                             JavaConstant.MethodHandle methodHandle,
+                                             StackManipulation stackManipulation,
+                                             int freeOffset) {
+                FieldDescription fieldDescription = fieldResolver.resolve(target, parameters, result);
+                if (!fieldDescription.isAccessibleTo(instrumentedType)) {
+                    throw new IllegalStateException(instrumentedType + " cannot access " + fieldDescription);
+                } else if (result.represents(void.class)) {
+                    if (parameters.size() != (fieldDescription.isStatic() ? 1 : 2)) {
+                        throw new IllegalStateException("Cannot set " + fieldDescription + " with " + parameters);
+                    } else if (!fieldDescription.isStatic() && !parameters.get(0).asErasure().isAssignableTo(fieldDescription.getDeclaringType().asErasure())) {
+                        throw new IllegalStateException("Cannot set " + fieldDescription + " on " + parameters.get(0));
+                    } else if (!parameters.get(fieldDescription.isStatic() ? 0 : 1).asErasure().isAssignableTo(fieldDescription.getType().asErasure())) {
+                        throw new IllegalStateException("Cannot set " + fieldDescription + " to " + parameters.get(fieldDescription.isStatic() ? 0 : 1));
+                    }
+                    return FieldAccess.forField(fieldDescription).write();
+                } else {
+                    if (parameters.size() != (fieldDescription.isStatic() ? 0 : 1)) {
+                        throw new IllegalStateException("Cannot set " + fieldDescription + " with " + parameters);
+                    } else if (!fieldDescription.isStatic() && !parameters.get(0).asErasure().isAssignableTo(fieldDescription.getDeclaringType().asErasure())) {
+                        throw new IllegalStateException("Cannot get " + fieldDescription + " on " + parameters.get(0));
+                    } else if (!fieldDescription.getType().asErasure().isAssignableTo(result.asErasure())) {
+                        throw new IllegalStateException("Cannot get " + fieldDescription + " as " + result);
+                    }
+                    return FieldAccess.forField(fieldDescription).read();
+                }
+            }
+
+            /**
+             * A method resolver for locating a field for a substitute.
+             */
+            public interface FieldResolver {
+
+                /**
+                 * Resolves the field to substitute with.
+                 *
+                 * @param target     The target member of invokedynamic invocation.
+                 * @param parameters All parameters that serve as input to this access.
+                 * @param result     The result that is expected from the interaction or {@code void} if no result is expected.
+                 * @return The field to substitute with.
+                 */
+                FieldDescription resolve(Target target, TypeList.Generic parameters, TypeDescription.Generic result);
+
+                /**
+                 * A simple field resolver that returns a specific field.
+                 */
+                @HashCodeAndEqualsPlugin.Enhance
+                class Simple implements FieldResolver {
+
+                    /**
+                     * The field to access.
+                     */
+                    private final FieldDescription fieldDescription;
+
+                    /**
+                     * Creates a simple field resolver.
+                     *
+                     * @param fieldDescription The field to access.
+                     */
+                    public Simple(FieldDescription fieldDescription) {
+                        this.fieldDescription = fieldDescription;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public FieldDescription resolve(Target target, TypeList.Generic parameters, TypeDescription.Generic result) {
+                        return fieldDescription;
+                    }
+                }
+
+                /**
+                 * A field matcher that resolves a non-static field on the first parameter type of the substituted member usage.
+                 */
+                @HashCodeAndEqualsPlugin.Enhance
+                class ForElementMatcher implements FieldResolver {
+
+                    /**
+                     * The instrumented type.
+                     */
+                    private final TypeDescription instrumentedType;
+
+                    /**
+                     * The matcher to use for locating the field to substitute with.
+                     */
+                    private final ElementMatcher<? super FieldDescription> matcher;
+
+                    /**
+                     * Creates a new field resolver that locates a field on the receiver type using a matcher.
+                     *
+                     * @param instrumentedType The instrumented type.
+                     * @param matcher          The matcher to use for locating the field to substitute with.
+                     */
+                    protected ForElementMatcher(TypeDescription instrumentedType, ElementMatcher<? super FieldDescription> matcher) {
+                        this.instrumentedType = instrumentedType;
+                        this.matcher = matcher;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public FieldDescription resolve(Target target, TypeList.Generic parameters, TypeDescription.Generic result) {
+                        if (parameters.isEmpty()) {
+                            throw new IllegalStateException("Cannot substitute parameterless instruction with " + parameters);
+                        } else if (parameters.get(0).isPrimitive() || parameters.get(0).isArray()) {
+                            throw new IllegalStateException("Cannot access field on primitive or array type for " + parameters.get(0));
+                        }
+                        TypeDefinition current = parameters.get(0).accept(new TypeDescription.Generic.Visitor.Substitutor.ForReplacement(instrumentedType));
+                        do {
+                            FieldList<?> fields = current.getDeclaredFields().filter(not(isStatic()).<FieldDescription>and(isVisibleTo(instrumentedType)).and(matcher));
+                            if (fields.size() == 1) {
+                                return fields.getOnly();
+                            } else if (fields.size() > 1) {
+                                throw new IllegalStateException("Ambiguous field location of " + fields);
+                            }
+                            current = current.getSuperClass();
+                        } while (current != null);
+                        throw new IllegalStateException("Cannot locate field matching " + matcher + " on " + target);
+                    }
+                }
+            }
+
+            /**
+             * A factory for a substitution that substitutes with a given field.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            public static class OfGivenField implements Factory<Target> {
+
+                /**
+                 * The field to substitute with.
+                 */
+                private final FieldDescription fieldDescription;
+
+                /**
+                 * Creates a new factory that substitues with a given field.
+                 *
+                 * @param fieldDescription The field to substitute with.
+                 */
+                public OfGivenField(FieldDescription fieldDescription) {
+                    this.fieldDescription = fieldDescription;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                    return new ForFieldAccess(instrumentedType, new FieldResolver.Simple(fieldDescription));
+                }
+            }
+
+            /**
+             * A factory for a substitution that locates a field on the receiver type using a matcher.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            public static class OfMatchedField implements Factory<Target> {
+
+                /**
+                 * The matcher to apply.
+                 */
+                private final ElementMatcher<? super FieldDescription> matcher;
+
+                /**
+                 * Creates a new substitution factory that locates a field by applying a matcher on the receiver type.
+                 *
+                 * @param matcher The matcher to apply.
+                 */
+                public OfMatchedField(ElementMatcher<? super FieldDescription> matcher) {
+                    this.matcher = matcher;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                    return new ForFieldAccess(instrumentedType, new FieldResolver.ForElementMatcher(instrumentedType, matcher));
+                }
+            }
+        }
+
+        /**
+         * A substitution with a method invocation.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForMethodInvocation implements Substitution<Target> {
+
+            /**
+             * The instrumented type.
+             */
+            private final TypeDescription instrumentedType;
+
+            /**
+             * The method resolver to use.
+             */
+            private final MethodResolver methodResolver;
+
+            /**
+             * Creates a new method-resolving substitution.
+             *
+             * @param instrumentedType The instrumented type.
+             * @param methodResolver   The method resolver to use.
+             */
+            public ForMethodInvocation(TypeDescription instrumentedType, MethodResolver methodResolver) {
+                this.instrumentedType = instrumentedType;
+                this.methodResolver = methodResolver;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation resolve(Target target,
+                                             TypeList.Generic parameters,
+                                             TypeDescription.Generic result,
+                                             JavaConstant.MethodHandle methodHandle,
+                                             StackManipulation stackManipulation,
+                                             int freeOffset) {
+                MethodDescription methodDescription = methodResolver.resolve(target, parameters, result);
+                if (!methodDescription.isAccessibleTo(instrumentedType)) {
+                    throw new IllegalStateException(instrumentedType + " cannot access " + methodDescription);
+                }
+                TypeList.Generic mapped = methodDescription.isStatic()
+                        ? methodDescription.getParameters().asTypeList()
+                        : new TypeList.Generic.Explicit(CompoundList.of(methodDescription.getDeclaringType(), methodDescription.getParameters().asTypeList()));
+
+exec
+/bin/bash -lc "sed -n '1,120p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.asm;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.build.SafeVarargsPlugin;
+import net.bytebuddy.description.ByteCodeElement;
+import net.bytebuddy.description.annotation.AnnotationDescription;
+import net.bytebuddy.description.annotation.AnnotationValue;
+import net.bytebuddy.description.enumeration.EnumerationDescription;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.field.FieldList;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.MethodList;
+import net.bytebuddy.description.method.ParameterDescription;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.description.type.TypeList;
+import net.bytebuddy.description.type.TypeVariableToken;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.TargetType;
+import net.bytebuddy.dynamic.scaffold.FieldLocator;
+import net.bytebuddy.dynamic.scaffold.MethodGraph;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.bytecode.Duplication;
+import net.bytebuddy.implementation.bytecode.Removal;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.StackSize;
+import net.bytebuddy.implementation.bytecode.TypeCreation;
+import net.bytebuddy.implementation.bytecode.assign.Assigner;
+import net.bytebuddy.implementation.bytecode.collection.ArrayFactory;
+import net.bytebuddy.implementation.bytecode.constant.ClassConstant;
+import net.bytebuddy.implementation.bytecode.constant.DefaultValue;
+import net.bytebuddy.implementation.bytecode.constant.FieldConstant;
+import net.bytebuddy.implementation.bytecode.constant.IntegerConstant;
+import net.bytebuddy.implementation.bytecode.constant.JavaConstantValue;
+import net.bytebuddy.implementation.bytecode.constant.MethodConstant;
+import net.bytebuddy.implementation.bytecode.constant.NullConstant;
+import net.bytebuddy.implementation.bytecode.constant.SerializedConstant;
+import net.bytebuddy.implementation.bytecode.constant.TextConstant;
+import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+import net.bytebuddy.implementation.bytecode.member.Invokedynamic;
+import net.bytebuddy.implementation.bytecode.member.MethodInvocation;
+import net.bytebuddy.implementation.bytecode.member.MethodVariableAccess;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.matcher.ElementMatchers;
+import net.bytebuddy.pool.TypePool;
+import net.bytebuddy.utility.CompoundList;
+import net.bytebuddy.utility.ConstantValue;
+import net.bytebuddy.utility.JavaConstant;
+import net.bytebuddy.utility.JavaType;
+import net.bytebuddy.utility.OpenedClassReader;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import net.bytebuddy.utility.visitor.LocalVariableAwareMethodVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import java.io.Serializable;
+import java.lang.annotation.Annotation;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import static net.bytebuddy.matcher.ElementMatchers.hasDescriptor;
+import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
+import static net.bytebuddy.matcher.ElementMatchers.isStatic;
+import static net.bytebuddy.matcher.ElementMatchers.isVirtual;
+import static net.bytebuddy.matcher.ElementMatchers.isVisibleTo;
+import static net.bytebuddy.matcher.ElementMatchers.named;
+import static net.bytebuddy.matcher.ElementMatchers.none;
+import static net.bytebuddy.matcher.ElementMatchers.not;
+
+/**
+ * <p>
+ * Substitutes field access, method invocations or constructor calls within a method's body.
+ * </p>
+ * <p>
+ * <b>Note</b>: This substitution must not be used to match constructor calls to an instrumented class's super constructor invocation from
+ * within a constructor. Matching such constructors will result in an invalid stack and a verification error.
+ * </p>
+ * <p>
+ * <b>Note</b>: This visitor will compute the required stack size on a best effort basis. For allocating an optimal stack size, ASM needs
+ * to be configured to compute the stack size.
+ * </p>
+ * <p>
+ * <b>Important</b>: This component relies on using a {@link TypePool} for locating types within method bodies. Within a redefinition
+ * or a rebasement, this type pool normally resolved correctly by Byte Buddy. When subclassing a type, the type pool must be set
+ * explicitly, using {@link net.bytebuddy.dynamic.DynamicType.Builder#make(TypePool)} or any similar method. It is however not normally
+ * necessary to use this component when subclassing a type where methods are only defined explicitly.
+ * </p>
+
+codex
+I have enough evidence for the structural verdict, but I’m grabbing exact line numbers so the final justification is precise and audit-friendly.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java | sed -n '500,520p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   500	         * <b>Important</b>: It is not allowed to specify a constructor or the static type initializer as a replacement.
+   501	         * </p>
+   502	         *
+   503	         * @param methodDescription The method to invoke instead of interacting with any of the matched byte code elements.
+   504	         * @return A member substitution that replaces any matched byte code element with an invocation of the specified method.
+   505	         */
+   506	        public MemberSubstitution replaceWith(MethodDescription methodDescription) {
+   507	            if (!methodDescription.isMethod()) {
+   508	                throw new IllegalArgumentException("Cannot use " + methodDescription + " as a replacement");
+   509	            }
+   510	            return replaceWith(new Substitution.ForMethodInvocation.OfGivenMethod(methodDescription));
+   511	        }
+   512	
+   513	        /**
+   514	         * Replaces any interaction with a matched byte code element with a non-static method access on the first
+   515	         * parameter of the matched element. When matching a non-static field access or method invocation, the
+   516	         * substituted method is located on the same receiver type as the original access. For static access, the
+   517	         * first argument is used as a receiver.
+   518	         *
+   519	         * @param matcher A matcher for locating a method on the original interaction's receiver type.
+   520	         * @return A member substitution that replaces any matched byte code element with an access of the matched method.
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java | sed -n '1732,1778p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+  1732	                    return new ForMethodInvocation(instrumentedType, new MethodResolver.Simple(instrumentedMethod));
+  1733	                }
+  1734	            }
+  1735	
+  1736	            /**
+  1737	             * A factory for a substitution that invokes a given method.
+  1738	             */
+  1739	            @HashCodeAndEqualsPlugin.Enhance
+  1740	            public static class OfGivenMethod implements Factory<Target> {
+  1741	
+  1742	                /**
+  1743	                 * The method to invoke.
+  1744	                 */
+  1745	                private final MethodDescription methodDescription;
+  1746	
+  1747	                /**
+  1748	                 * Creates a new factory for a substitution that invokes a given method.
+  1749	                 *
+  1750	                 * @param methodDescription The method to invoke.
+  1751	                 */
+  1752	                public OfGivenMethod(MethodDescription methodDescription) {
+  1753	                    this.methodDescription = methodDescription;
+  1754	                }
+  1755	
+  1756	                /**
+  1757	                 * {@inheritDoc}
+  1758	                 */
+  1759	                public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+  1760	                    return new ForMethodInvocation(instrumentedType, new MethodResolver.Simple(methodDescription));
+  1761	                }
+  1762	            }
+  1763	
+  1764	            /**
+  1765	             * A factory for a substitution that locates a method on the receiver type using a matcher.
+  1766	             */
+  1767	            @HashCodeAndEqualsPlugin.Enhance
+  1768	            public static class OfMatchedMethod implements Factory<Target> {
+  1769	
+  1770	                /**
+  1771	                 * The matcher for locating the method to substitute with.
+  1772	                 */
+  1773	                private final ElementMatcher<? super MethodDescription> matcher;
+  1774	
+  1775	                /**
+  1776	                 * The method graph compiler to use.
+  1777	                 */
+  1778	                private final MethodGraph.Compiler methodGraphCompiler;
+
+exec
+/bin/bash -lc "rg -n \"OfGivenMethod\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java . -g'*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:510:            return replaceWith(new Substitution.ForMethodInvocation.OfGivenMethod(methodDescription));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1740:            public static class OfGivenMethod implements Factory<Target> {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1752:                public OfGivenMethod(MethodDescription methodDescription) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:510:            return replaceWith(new Substitution.ForMethodInvocation.OfGivenMethod(methodDescription));
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1740:            public static class OfGivenMethod implements Factory<Target> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1752:                public OfGivenMethod(MethodDescription methodDescription) {
+
+codex
+{"target":"net.bytebuddy.asm.MemberSubstitution.OfGivenMethod","detection":false,"justification":"In `byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java`, `OfGivenMethod` is a small nested factory under `Substitution.ForMethodInvocation` (lines 1740-1760) with only one internal creation site, `replaceWith(MethodDescription)` at line 510. A repo-wide search for `OfGivenMethod` found no other references beyond the declaration and that single call, so fan-in/fan-out are both very low and the class is not a dependency hub."}
+tokens used
+24,828

@@ -1,0 +1,82 @@
+experiment:
+  name: commons-io-HM-0038
+  output_dir: data/outputs/agent_outputs
+  run_dir: data/outputs/prompts
+task:
+  repo_path: data/repositories/apache/commons-io
+  smell: HM
+  unit: org.apache.commons.io.input.MessageDigestCalculatingInputStream.Builder
+agent:
+  system_template: 'You are a software-architecture analyst. You inspect a Java repository
+
+    to decide whether ONE specific architectural smell affects ONE specific
+
+    software unit: either a Java class or a Java package.
+
+
+    Operating constraints:
+
+    - Do not modify files.
+
+    - Do not create commits.
+
+    - Do not create patches.
+
+    - Do not install dependencies.
+
+    - Do not use external network access.
+
+    - Do not invoke static-analysis, metrics, or smell-detection tools.
+
+    - Base your verdict only on evidence observed in the repository.
+
+
+    Work step by step:
+
+    1. Locate the target unit.
+
+    2. Inspect relevant source files.
+
+    3. Gather concrete structural evidence.
+
+    4. Decide whether the smell is present.
+
+    5. Write a valid verdict.json file.
+
+    '
+  instance_template: "## Architectural smell definition\n\n{{ smell_definition }}\n\
+    \n## Task\n\nDecide whether the smell {{ smell }} affects the {{ target_type }}\n\
+    `{{ unit }}` in the repository located at:\n\n`{{ repo_path }}`\n\n{% if target_type\
+    \ == \"Java package\" -%}\nThe unit is a fully-qualified Java package name. Analyze\
+    \ only classes\nwhose package declaration exactly matches `{{ unit }}`. Do not\
+    \ include\nsubpackages unless they are explicitly needed as dependency evidence.\n\
+    {%- else -%}\nThe unit is a fully-qualified Java class name. Locate the corresponding\n\
+    Java source file and analyze that class. Use other files only as\nsupporting evidence.\n\
+    {%- endif %}\n\n## Required output\n\nReturn only a valid JSON object using EXACTLY\
+    \ this JSON schema:\n\n{\n  \"target\": \"{{ unit }}\",\n  \"detection\": true,\n\
+    \  \"justification\": \"Concise evidence: the files you read and the concrete\
+    \ metrics/observations that justify the decision\"\n}\n\nRules:\n- `target` must\
+    \ be exactly `{{ unit }}`.\n- `detection` must be a JSON boolean: true or false.\n\
+    - `justification` must be concise and evidence-based.\n- The justification must\
+    \ mention the files inspected and the concrete observations used in the decision.\n\
+    - Do not add extra keys.\n- Print only the JSON object. Do not write files.\n"
+  max_verdict_retries: 1
+model:
+  provider: codex
+  name: gpt-5.4-mini
+  temperature: 0.0
+codex:
+  timeout: 300
+  cwd_mode: repo
+  command:
+  - npx
+  - -y
+  - '@openai/codex'
+  - exec
+  - --model
+  - '{model}'
+  - --sandbox
+  - read-only
+  - '-'
+runtime:
+  keep_prompts: true

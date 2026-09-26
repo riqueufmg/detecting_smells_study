@@ -1,0 +1,1304 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f70-ac2f-78f2-b338-a8d75b7a2c80
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.auxiliary.TypeProxy.InvocationFactory` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.auxiliary.TypeProxy.InvocationFactory",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.auxiliary.TypeProxy.InvocationFactory`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and tracing its dependencies and usages so I can judge fan-in and fan-out from the source tree, then I’ll return a verdict JSON only.
+exec
+/bin/bash -lc "rg -n \"class\\s+InvocationFactory|interface\\s+InvocationFactory|enum\\s+InvocationFactory|InvocationFactory\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files . | rg \"TypeProxy\\.java|InvocationFactory\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 315ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyInvocationFactoryDefaultTest.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java
+
+ succeeded in 357ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:86:    private final InvocationFactory invocationFactory;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:109:                     InvocationFactory invocationFactory,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:345:    public interface InvocationFactory {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:362:         * {@link net.bytebuddy.implementation.auxiliary.TypeProxy.InvocationFactory}.
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:364:        enum Default implements InvocationFactory {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:452:                        InvocationFactory.Default.SUPER_METHOD,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:527:                    InvocationFactory.Default.SUPER_METHOD,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:582:                    InvocationFactory.Default.DEFAULT_METHOD,
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyInvocationFactoryDefaultTest.java:19:public class TypeProxyInvocationFactoryDefaultTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyInvocationFactoryDefaultTest.java:52:        assertThat(TypeProxy.InvocationFactory.Default.SUPER_METHOD.invoke(implementationTarget, typeDescription, methodDescription),
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyInvocationFactoryDefaultTest.java:61:        assertThat(TypeProxy.InvocationFactory.Default.DEFAULT_METHOD.invoke(implementationTarget, typeDescription, methodDescription),
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyCreationTest.java:56:    private TypeProxy.InvocationFactory invocationFactory;
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyCreationTest.java:345:                mock(TypeProxy.InvocationFactory.class),
+
+codex
+I found the target as an inner interface in `TypeProxy.java`. Next I’m checking how many classes depend on it and how many dependencies it itself pulls in, to see whether it behaves like a dependency hub or just a narrow extension point.
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '260,760p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"TypeProxy\\.InvocationFactory|InvocationFactory\\.Default|InvocationFactory\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 203ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation.auxiliary;
+
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.modifier.Ownership;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.dynamic.TargetType;
+import net.bytebuddy.dynamic.scaffold.InstrumentedType;
+import net.bytebuddy.dynamic.scaffold.TypeValidation;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.MethodAccessorFactory;
+import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+import net.bytebuddy.implementation.bytecode.Duplication;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.Throw;
+import net.bytebuddy.implementation.bytecode.TypeCreation;
+import net.bytebuddy.implementation.bytecode.constant.DefaultValue;
+import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+import net.bytebuddy.implementation.bytecode.member.MethodInvocation;
+import net.bytebuddy.implementation.bytecode.member.MethodReturn;
+import net.bytebuddy.implementation.bytecode.member.MethodVariableAccess;
+import net.bytebuddy.matcher.ElementMatchers;
+import net.bytebuddy.utility.RandomString;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+
+import java.io.Serializable;
+
+import static net.bytebuddy.matcher.ElementMatchers.any;
+import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+import static net.bytebuddy.matcher.ElementMatchers.isFinalizer;
+import static net.bytebuddy.matcher.ElementMatchers.named;
+import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+
+/**
+ * A type proxy creates accessor methods for all overridable methods of a given type by subclassing the given type and
+ * delegating all method calls to accessor methods of the instrumented type it was created for.
+ */
+@HashCodeAndEqualsPlugin.Enhance
+public class TypeProxy implements AuxiliaryType {
+
+    /**
+     * The name of the {@code static} method that is added to this auxiliary type for creating instances by using the
+     * Oracle JDK's {@link sun.reflect.ReflectionFactory}.
+     */
+    public static final String REFLECTION_METHOD = "make";
+
+    /**
+     * The name of the field that stores the delegation instance.
+     */
+    public static final String INSTANCE_FIELD = "target";
+
+    /**
+     * The type that is proxied, i.e. the original instrumented type this proxy is created for.
+     */
+    private final TypeDescription proxiedType;
+
+    /**
+     * The implementation target of the proxied type.
+     */
+    private final Implementation.Target implementationTarget;
+
+    /**
+     * The invocation factory for creating special method invocations.
+     */
+    private final InvocationFactory invocationFactory;
+
+    /**
+     * {@code true} if the finalizer method should not be instrumented.
+     */
+    private final boolean ignoreFinalizer;
+
+    /**
+     * Determines if the proxy should be serializable.
+     */
+    private final boolean serializableProxy;
+
+    /**
+     * Creates a new type proxy.
+     *
+     * @param proxiedType          The type this proxy should implement which can either be a non-final class or an interface.
+     * @param implementationTarget The implementation target this type proxy is created for.
+     * @param invocationFactory    The invocation factory for creating special method invocations.
+     * @param ignoreFinalizer      {@code true} if any finalizer methods should be ignored for proxying.
+     * @param serializableProxy    Determines if the proxy should be serializable.
+     */
+    public TypeProxy(TypeDescription proxiedType,
+                     Implementation.Target implementationTarget,
+                     InvocationFactory invocationFactory,
+                     boolean ignoreFinalizer,
+                     boolean serializableProxy) {
+        this.proxiedType = proxiedType;
+        this.implementationTarget = implementationTarget;
+        this.invocationFactory = invocationFactory;
+        this.ignoreFinalizer = ignoreFinalizer;
+        this.serializableProxy = serializableProxy;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getSuffix() {
+        return RandomString.hashOf(proxiedType.hashCode())
+                + (ignoreFinalizer ? "I" : "0")
+                + (serializableProxy ? "S" : "0");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public DynamicType make(String auxiliaryTypeName,
+                            ClassFileVersion classFileVersion,
+                            MethodAccessorFactory methodAccessorFactory) {
+        return new ByteBuddy(classFileVersion)
+                .with(TypeValidation.DISABLED)
+                .ignore(ignoreFinalizer ? isFinalizer() : ElementMatchers.<MethodDescription>none())
+                .subclass(proxiedType)
+                .name(auxiliaryTypeName)
+                .modifiers(DEFAULT_TYPE_MODIFIER)
+                .implement(serializableProxy ? new Class<?>[]{Serializable.class} : new Class<?>[0])
+                .method(any()).intercept(new MethodCall(methodAccessorFactory))
+                .defineMethod(REFLECTION_METHOD, TargetType.class, Ownership.STATIC).intercept(SilentConstruction.INSTANCE)
+                .make();
+    }
+
+    /**
+     * A stack manipulation that throws an abstract method error in case that a given super method cannot be invoked.
+     */
+    protected enum AbstractMethodErrorThrow implements StackManipulation {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * The stack manipulation that throws the abstract method error.
+         */
+        private final transient StackManipulation implementation;
+
+        /**
+         * Creates the singleton instance.
+         */
+        AbstractMethodErrorThrow() {
+            TypeDescription abstractMethodError = TypeDescription.ForLoadedType.of(AbstractMethodError.class);
+            MethodDescription constructor = abstractMethodError.getDeclaredMethods()
+                    .filter(isConstructor().and(takesArguments(0))).getOnly();
+            implementation = new Compound(TypeCreation.of(abstractMethodError),
+                    Duplication.SINGLE,
+                    MethodInvocation.invoke(constructor),
+                    Throw.INSTANCE);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return implementation.isValid();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            return implementation.apply(methodVisitor, implementationContext);
+        }
+    }
+
+    /**
+     * An implementation of a <i>silent construction</i> of a given type by using the non-standardized
+     * {@link sun.reflect.ReflectionFactory}. This way, a constructor invocation can be avoided. However, this comes
+     * at the cost of potentially breaking compatibility as the reflection factory is not standardized.
+     */
+    protected enum SilentConstruction implements Implementation {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * {@inheritDoc}
+         */
+        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+            return instrumentedType;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ByteCodeAppender appender(Target implementationTarget) {
+            return new Appender(implementationTarget.getInstrumentedType());
+        }
+
+        /**
+         * The appender for implementing a {@link net.bytebuddy.implementation.auxiliary.TypeProxy.SilentConstruction}.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class Appender implements ByteCodeAppender {
+
+            /**
+             * The internal name of the reflection factory class.
+             */
+            public static final String REFLECTION_FACTORY_INTERNAL_NAME = "sun/reflect/ReflectionFactory";
+
+            /**
+             * The name of the factory method for getting hold of an instance of the reflection factory class.
+             */
+            public static final String GET_REFLECTION_FACTORY_METHOD_NAME = "getReflectionFactory";
+
+            /**
+             * The descriptor of the factory method for getting hold of an instance of the reflection factory class.
+             */
+            public static final String GET_REFLECTION_FACTORY_METHOD_DESCRIPTOR = "()Lsun/reflect/ReflectionFactory;";
+
+            /**
+             * The name of the method for creating a new serialization constructor.
+             */
+            public static final String NEW_CONSTRUCTOR_FOR_SERIALIZATION_METHOD_NAME = "newConstructorForSerialization";
+
+            /**
+             * The descriptor of the method for creating a new serialization constructor.
+             */
+            public static final String NEW_CONSTRUCTOR_FOR_SERIALIZATION_METHOD_DESCRIPTOR =
+                    "(Ljava/lang/Class;Ljava/lang/reflect/Constructor;)Ljava/lang/reflect/Constructor;";
+
+            /**
+             * The descriptor of the {@link java.lang.Object} class.
+             */
+            public static final String JAVA_LANG_OBJECT_DESCRIPTOR = "Ljava/lang/Object;";
+
+            /**
+             * The internal name of the {@link java.lang.Object} class.
+             */
+            public static final String JAVA_LANG_OBJECT_INTERNAL_NAME = "java/lang/Object";
+
+            /**
+             * The internal name of the {@link java.lang.reflect.Constructor} class.
+             */
+            public static final String JAVA_LANG_CONSTRUCTOR_INTERNAL_NAME = "java/lang/reflect/Constructor";
+
+ succeeded in 200ms:
+            public static final String JAVA_LANG_CONSTRUCTOR_INTERNAL_NAME = "java/lang/reflect/Constructor";
+
+            /**
+             * The internal name of the {@link java.lang.reflect.Constructor#newInstance(Object...)} method.
+             */
+            public static final String NEW_INSTANCE_METHOD_NAME = "newInstance";
+
+            /**
+             * The descriptor of the {@link java.lang.reflect.Constructor#newInstance(Object...)} method.
+             */
+            public static final String NEW_INSTANCE_METHOD_DESCRIPTOR = "([Ljava/lang/Object;)Ljava/lang/Object;";
+
+            /**
+             * The internal name of the {@link java.lang.Class} class.
+             */
+            public static final String JAVA_LANG_CLASS_INTERNAL_NAME = "java/lang/Class";
+
+            /**
+             * The internal name of the {@link Class#getDeclaredClasses()} method.
+             */
+            public static final String GET_DECLARED_CONSTRUCTOR_METHOD_NAME = "getDeclaredConstructor";
+
+            /**
+             * The descriptor of the {@link Class#getDeclaredClasses()} method.
+             */
+            public static final String GET_DECLARED_CONSTRUCTOR_METHOD_DESCRIPTOR =
+                    "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;";
+
+            /**
+             * The instrumented type that this factory method is created for.
+             */
+            private final TypeDescription instrumentedType;
+
+            /**
+             * Creates a new appender.
+             *
+             * @param instrumentedType The instrumented type that the factory method is created for.
+             */
+            private Appender(TypeDescription instrumentedType) {
+                this.instrumentedType = instrumentedType;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+                methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC,
+                        REFLECTION_FACTORY_INTERNAL_NAME,
+                        GET_REFLECTION_FACTORY_METHOD_NAME,
+                        GET_REFLECTION_FACTORY_METHOD_DESCRIPTOR,
+                        false);
+                methodVisitor.visitLdcInsn(Type.getType(instrumentedType.getDescriptor()));
+                methodVisitor.visitLdcInsn(Type.getType(JAVA_LANG_OBJECT_DESCRIPTOR));
+                methodVisitor.visitInsn(Opcodes.ICONST_0);
+                methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY, JAVA_LANG_CLASS_INTERNAL_NAME);
+                methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                        JAVA_LANG_CLASS_INTERNAL_NAME,
+                        GET_DECLARED_CONSTRUCTOR_METHOD_NAME,
+                        GET_DECLARED_CONSTRUCTOR_METHOD_DESCRIPTOR,
+                        false);
+                methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                        REFLECTION_FACTORY_INTERNAL_NAME,
+                        NEW_CONSTRUCTOR_FOR_SERIALIZATION_METHOD_NAME,
+                        NEW_CONSTRUCTOR_FOR_SERIALIZATION_METHOD_DESCRIPTOR,
+                        false);
+                methodVisitor.visitInsn(Opcodes.ICONST_0);
+                methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY, JAVA_LANG_OBJECT_INTERNAL_NAME);
+                methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, JAVA_LANG_CONSTRUCTOR_INTERNAL_NAME,
+                        NEW_INSTANCE_METHOD_NAME,
+                        NEW_INSTANCE_METHOD_DESCRIPTOR,
+                        false);
+                methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, instrumentedType.getInternalName());
+                methodVisitor.visitInsn(Opcodes.ARETURN);
+                return new Size(4, 0);
+            }
+        }
+    }
+
+    /**
+     * An invocation factory is responsible for creating a special method invocation for any method that is to be
+     * invoked. These special method invocations are then implemented by the
+     * {@link net.bytebuddy.implementation.auxiliary.TypeProxy}.
+     * Illegal {@link Implementation.SpecialMethodInvocation} are implemented by
+     * throwing an {@link java.lang.AbstractMethodError}.
+     */
+    public interface InvocationFactory {
+
+        /**
+         * Creates a special method invocation to implement for a given method.
+         *
+         * @param implementationTarget The implementation target the type proxy is created for.
+         * @param proxiedType          The type for the type proxy to subclass or implement.
+         * @param instrumentedMethod   The instrumented method that is to be invoked.
+         * @return A special method invocation of the given method or an illegal invocation if the proxy should
+         * throw an {@link java.lang.AbstractMethodError} when the instrumented method is invoked.
+         */
+        Implementation.SpecialMethodInvocation invoke(Implementation.Target implementationTarget,
+                                                      TypeDescription proxiedType,
+                                                      MethodDescription instrumentedMethod);
+
+        /**
+         * Default implementations of the
+         * {@link net.bytebuddy.implementation.auxiliary.TypeProxy.InvocationFactory}.
+         */
+        enum Default implements InvocationFactory {
+
+            /**
+             * Invokes the super method of the instrumented method.
+             */
+            SUPER_METHOD {
+                /** {@inheritDoc} */
+                public Implementation.SpecialMethodInvocation invoke(Implementation.Target implementationTarget,
+                                                                     TypeDescription proxiedType,
+                                                                     MethodDescription instrumentedMethod) {
+                    return implementationTarget.invokeDominant(instrumentedMethod.asSignatureToken());
+                }
+            },
+
+            /**
+             * Invokes the default method of the instrumented method if it exists and is not ambiguous.
+             */
+            DEFAULT_METHOD {
+                /** {@inheritDoc} */
+                public Implementation.SpecialMethodInvocation invoke(Implementation.Target implementationTarget,
+                                                                     TypeDescription proxiedType,
+                                                                     MethodDescription instrumentedMethod) {
+                    return implementationTarget.invokeDefault(instrumentedMethod.asSignatureToken(), proxiedType);
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads a type proxy onto the operand stack which is created by calling one of its constructors. When this
+     * stack manipulation is applied, an instance of the instrumented type must lie on top of the operand stack.
+     * All constructor parameters will be assigned their default values when this stack operation is applied.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    public static class ForSuperMethodByConstructor extends StackManipulation.AbstractBase {
+
+        /**
+         * The type for the type proxy to subclass or implement.
+         */
+        private final TypeDescription proxiedType;
+
+        /**
+         * The constructor to invoke to create the proxy.
+         */
+        private final MethodDescription.InDefinedShape constructor;
+
+        /**
+         * The implementation target this type proxy is created for.
+         */
+        private final Implementation.Target implementationTarget;
+
+        /**
+         * {@code true} if any finalizers should be ignored for the delegation.
+         */
+        private final boolean ignoreFinalizer;
+
+        /**
+         * Determines if the proxy should be serializable.
+         */
+        private final boolean serializableProxy;
+
+        /**
+         * Creates a new stack operation for creating a type proxy by calling one of its constructors.
+         *
+         * @param proxiedType           The type for the type proxy to subclass or implement.
+         * @param constructor           The constructor to invoke to create the proxy.
+         * @param implementationTarget  The implementation target this type proxy is created for.
+         * @param ignoreFinalizer       {@code true} if any finalizers should be ignored for the delegation.
+         * @param serializableProxy     Determines if the proxy should be serializable.
+         */
+        public ForSuperMethodByConstructor(TypeDescription proxiedType,
+                                           MethodDescription.InDefinedShape constructor,
+                                           Implementation.Target implementationTarget,
+                                           boolean ignoreFinalizer,
+                                           boolean serializableProxy) {
+            this.proxiedType = proxiedType;
+            this.constructor = constructor;
+            this.implementationTarget = implementationTarget;
+            this.ignoreFinalizer = ignoreFinalizer;
+            this.serializableProxy = serializableProxy;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            TypeDescription proxyType = implementationContext.register(new TypeProxy(proxiedType,
+                        implementationTarget,
+                        InvocationFactory.Default.SUPER_METHOD,
+                        ignoreFinalizer,
+                        serializableProxy));
+            StackManipulation[] constructorValue = new StackManipulation[constructor.getParameters().size()];
+            int index = 0;
+            for (TypeDescription parameterType : constructor.getParameters().asTypeList().asErasures()) {
+                constructorValue[index++] = DefaultValue.of(parameterType);
+            }
+            return new Compound(
+                    TypeCreation.of(proxyType),
+                    Duplication.SINGLE,
+                    new Compound(constructorValue),
+                    MethodInvocation.invoke(proxyType.getDeclaredMethods()
+                            .filter(isConstructor().and(takesArguments(constructor.getParameters().asTypeList().asErasures())))
+                            .getOnly()),
+                    Duplication.SINGLE,
+                    MethodVariableAccess.loadThis(),
+                    FieldAccess.forField(proxyType.getDeclaredFields().filter((named(INSTANCE_FIELD))).getOnly()).write()
+            ).apply(methodVisitor, implementationContext);
+        }
+    }
+
+    /**
+     * Loads a type proxy onto the operand stack which is created by constructing a serialization constructor using
+     * the Oracle JDK's {@link sun.reflect.ReflectionFactory#newConstructorForSerialization(Class, java.lang.reflect.Constructor)}
+     * method which might not be available in any Java runtime. When this stack manipulation is applied, an instance of
+     * the instrumented type must lie on top of the operand stack.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    public static class ForSuperMethodByReflectionFactory extends StackManipulation.AbstractBase {
+
+        /**
+         * The type for which a proxy type is created.
+         */
+        private final TypeDescription proxiedType;
+
+        /**
+         * The implementation target of the proxied type.
+         */
+        private final Implementation.Target implementationTarget;
+
+        /**
+         * {@code true} {@code true} if any finalizer methods should be ignored for proxying.
+         */
+        private final boolean ignoreFinalizer;
+
+        /**
+         * Determines if the proxy should be serializable.
+         */
+        private final boolean serializableProxy;
+
+        /**
+         * Creates a new stack operation for reflectively creating a type proxy for the given arguments.
+         *
+         * @param proxiedType          The type for the type proxy to subclass or implement.
+         * @param implementationTarget The implementation target this type proxy is created for.
+         * @param ignoreFinalizer      {@code true} if any finalizer methods should be ignored for proxying.
+         * @param serializableProxy    Determines if the proxy should be serializable.
+         */
+        public ForSuperMethodByReflectionFactory(TypeDescription proxiedType,
+                                                 Implementation.Target implementationTarget,
+                                                 boolean ignoreFinalizer,
+                                                 boolean serializableProxy) {
+            this.proxiedType = proxiedType;
+            this.implementationTarget = implementationTarget;
+            this.ignoreFinalizer = ignoreFinalizer;
+            this.serializableProxy = serializableProxy;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            TypeDescription proxyType = implementationContext.register(new TypeProxy(proxiedType,
+                    implementationTarget,
+                    InvocationFactory.Default.SUPER_METHOD,
+                    ignoreFinalizer,
+                    serializableProxy));
+            return new Compound(
+                    MethodInvocation.invoke(proxyType.getDeclaredMethods().filter(named(REFLECTION_METHOD).and(takesArguments(0))).getOnly()),
+                    Duplication.SINGLE,
+                    MethodVariableAccess.loadThis(),
+                    FieldAccess.forField(proxyType.getDeclaredFields().filter((named(INSTANCE_FIELD))).getOnly()).write()
+            ).apply(methodVisitor, implementationContext);
+        }
+    }
+
+    /**
+     * Creates a type proxy which delegates its super method calls to any invokable default method of
+     * a given interface and loads an instance of this proxy onto the operand stack.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    public static class ForDefaultMethod extends StackManipulation.AbstractBase {
+
+        /**
+         * The proxied interface type.
+         */
+        private final TypeDescription proxiedType;
+
+        /**
+         * The implementation target for the original instrumentation.
+         */
+        private final Implementation.Target implementationTarget;
+
+        /**
+         * {@code true} if the proxy should be {@link java.io.Serializable}.
+         */
+        private final boolean serializableProxy;
+
+        /**
+         * Creates a new proxy creation for a default interface type proxy.
+         *
+         * @param proxiedType          The proxied interface type.
+         * @param implementationTarget The implementation target for the original implementation.
+         * @param serializableProxy    {@code true} if the proxy should be {@link java.io.Serializable}.
+         */
+        public ForDefaultMethod(TypeDescription proxiedType,
+                                Implementation.Target implementationTarget,
+                                boolean serializableProxy) {
+            this.proxiedType = proxiedType;
+            this.implementationTarget = implementationTarget;
+            this.serializableProxy = serializableProxy;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            TypeDescription proxyType = implementationContext.register(new TypeProxy(proxiedType,
+                    implementationTarget,
+                    InvocationFactory.Default.DEFAULT_METHOD,
+                    true,
+                    serializableProxy));
+            return new Compound(
+                    TypeCreation.of(proxyType),
+                    Duplication.SINGLE,
+                    MethodInvocation.invoke(proxyType.getDeclaredMethods().filter(isConstructor()).getOnly()),
+                    Duplication.SINGLE,
+                    MethodVariableAccess.loadThis(),
+                    FieldAccess.forField(proxyType.getDeclaredFields().filter((named(INSTANCE_FIELD))).getOnly()).write()
+            ).apply(methodVisitor, implementationContext);
+        }
+    }
+
+    /**
+     * An implementation for a method call of a {@link net.bytebuddy.implementation.auxiliary.TypeProxy}.
+     */
+    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+    protected class MethodCall implements Implementation {
+
+        /**
+         * The method accessor factory to query for the super method invocation.
+         */
+        private final MethodAccessorFactory methodAccessorFactory;
+
+        /**
+         * Creates a new method call implementation.
+         *
+         * @param methodAccessorFactory The method accessor factory to query for the super method invocation.
+         */
+        protected MethodCall(MethodAccessorFactory methodAccessorFactory) {
+            this.methodAccessorFactory = methodAccessorFactory;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+            return instrumentedType.withField(new FieldDescription.Token(INSTANCE_FIELD,
+                    Opcodes.ACC_PUBLIC | Opcodes.ACC_VOLATILE,
+                    implementationTarget.getInstrumentedType().asGenericType()));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ByteCodeAppender appender(Target implementationTarget) {
+            return new Appender(implementationTarget.getInstrumentedType());
+        }
+
+        /**
+         * Implementation of a byte code appender for a {@link net.bytebuddy.implementation.auxiliary.TypeProxy.MethodCall}.
+         */
+        @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+        protected class Appender implements ByteCodeAppender {
+
+            /**
+             * The stack manipulation for loading the proxied instance onto the stack.
+             */
+            private final StackManipulation fieldLoadingInstruction;
+
+            /**
+             * Creates a new appender.
+             *
+             * @param instrumentedType The instrumented type that is proxied by the enclosing instrumentation.
+             */
+            protected Appender(TypeDescription instrumentedType) {
+                fieldLoadingInstruction = FieldAccess.forField(instrumentedType.getDeclaredFields().filter((named(INSTANCE_FIELD))).getOnly()).read();
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+                SpecialMethodInvocation specialMethodInvocation = invocationFactory.invoke(implementationTarget, proxiedType, instrumentedMethod);
+                StackManipulation.Size size = (specialMethodInvocation.isValid()
+                        ? new AccessorMethodInvocation(instrumentedMethod, specialMethodInvocation)
+                        : AbstractMethodErrorThrow.INSTANCE).apply(methodVisitor, implementationContext);
+                return new Size(size.getMaximalSize(), instrumentedMethod.getStackSize());
+            }
+
+            /**
+             * Stack manipulation for invoking an accessor method.
+             */
+            @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+            protected class AccessorMethodInvocation implements StackManipulation {
+
+                /**
+                 * The instrumented method that is implemented.
+                 */
+                private final MethodDescription instrumentedMethod;
+
+                /**
+                 * The special method invocation that is invoked by this accessor method invocation.
+                 */
+                private final SpecialMethodInvocation specialMethodInvocation;
+
+                /**
+                 * Creates a new accessor method invocation.
+                 *
+                 * @param instrumentedMethod      The instrumented method that is implemented.
+                 * @param specialMethodInvocation The special method invocation that is invoked by this accessor
+                 *                                method invocation.
+                 */
+                protected AccessorMethodInvocation(MethodDescription instrumentedMethod,
+                                                   SpecialMethodInvocation specialMethodInvocation) {
+                    this.instrumentedMethod = instrumentedMethod;
+                    this.specialMethodInvocation = specialMethodInvocation;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public boolean isValid() {
+                    return specialMethodInvocation.isValid();
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+                    MethodDescription.InDefinedShape proxyMethod = methodAccessorFactory.registerAccessorFor(specialMethodInvocation, MethodAccessorFactory.AccessType.DEFAULT);
+                    return new StackManipulation.Compound(
+                            MethodVariableAccess.loadThis(),
+                            fieldLoadingInstruction,
+                            MethodVariableAccess.allArgumentsOf(instrumentedMethod).asBridgeOf(proxyMethod),
+                            MethodInvocation.invoke(proxyMethod),
+                            MethodReturn.of(instrumentedMethod.getReturnType())
+                    ).apply(methodVisitor, implementationContext);
+                }
+            }
+        }
+    }
+}
+
+ succeeded in 230ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:86:    private final InvocationFactory invocationFactory;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:109:                     InvocationFactory invocationFactory,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:345:    public interface InvocationFactory {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:362:         * {@link net.bytebuddy.implementation.auxiliary.TypeProxy.InvocationFactory}.
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:364:        enum Default implements InvocationFactory {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:452:                        InvocationFactory.Default.SUPER_METHOD,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:527:                    InvocationFactory.Default.SUPER_METHOD,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:582:                    InvocationFactory.Default.DEFAULT_METHOD,
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyInvocationFactoryDefaultTest.java:52:        assertThat(TypeProxy.InvocationFactory.Default.SUPER_METHOD.invoke(implementationTarget, typeDescription, methodDescription),
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyInvocationFactoryDefaultTest.java:61:        assertThat(TypeProxy.InvocationFactory.Default.DEFAULT_METHOD.invoke(implementationTarget, typeDescription, methodDescription),
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyCreationTest.java:56:    private TypeProxy.InvocationFactory invocationFactory;
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyCreationTest.java:345:                mock(TypeProxy.InvocationFactory.class),
+
+codex
+The repository-wide search is small so far: the interface is referenced in one production class and two tests, with no other call sites. I’m reading the test files now to confirm this is an isolated helper strategy rather than a widely shared dependency hub.
+exec
+/bin/bash -lc "sed -n '1,420p' byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyCreationTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,140p' byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyInvocationFactoryDefaultTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -l \"TypeProxy\\.InvocationFactory|InvocationFactory\\.Default\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 209ms:
+package net.bytebuddy.implementation.auxiliary;
+
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.implementation.Implementation;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+public class TypeProxyInvocationFactoryDefaultTest {
+
+    @Rule
+    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+
+    @Mock
+    private Implementation.Target implementationTarget;
+
+    @Mock
+    private TypeDescription typeDescription;
+
+    @Mock
+    private MethodDescription methodDescription;
+
+    @Mock
+    private MethodDescription.SignatureToken token;
+
+    @Mock
+    private MethodDescription.TypeToken typeToken;
+
+    @Mock
+    private Implementation.SpecialMethodInvocation specialMethodInvocation;
+
+    @Before
+    public void setUp() throws Exception {
+        when(methodDescription.asSignatureToken()).thenReturn(token);
+        when(methodDescription.asTypeToken()).thenReturn(typeToken);
+        when(specialMethodInvocation.withCheckedCompatibilityTo(typeToken)).thenReturn(specialMethodInvocation);
+    }
+
+    @Test
+    public void testSuperMethod() throws Exception {
+        when(implementationTarget.invokeDominant(token)).thenReturn(specialMethodInvocation);
+        assertThat(TypeProxy.InvocationFactory.Default.SUPER_METHOD.invoke(implementationTarget, typeDescription, methodDescription),
+                is(specialMethodInvocation));
+        verify(implementationTarget).invokeDominant(token);
+        verifyNoMoreInteractions(implementationTarget);
+    }
+
+    @Test
+    public void testDefaultMethod() throws Exception {
+        when(implementationTarget.invokeDefault(token, typeDescription)).thenReturn(specialMethodInvocation);
+        assertThat(TypeProxy.InvocationFactory.Default.DEFAULT_METHOD.invoke(implementationTarget, typeDescription, methodDescription),
+                is(specialMethodInvocation));
+        verify(implementationTarget).invokeDefault(token, typeDescription);
+        verifyNoMoreInteractions(implementationTarget);
+    }
+}
+
+ succeeded in 253ms:
+package net.bytebuddy.implementation.auxiliary;
+
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.field.FieldList;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.MethodList;
+import net.bytebuddy.description.method.ParameterList;
+import net.bytebuddy.description.modifier.ModifierContributor;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.description.type.TypeList;
+import net.bytebuddy.dynamic.scaffold.MethodGraph;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.MethodAccessorFactory;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.matcher.ElementMatcher;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+
+import java.io.Serializable;
+
+import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+import static net.bytebuddy.matcher.ElementMatchers.isDefaultFinalizer;
+import static net.bytebuddy.matcher.ElementMatchers.isFinal;
+import static net.bytebuddy.matcher.ElementMatchers.isVirtual;
+import static net.bytebuddy.matcher.ElementMatchers.not;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+public class TypeProxyCreationTest {
+
+    private static final String FOO = "foo", BAR = "bar";
+
+    @Rule
+    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+
+    @Mock
+    private Implementation.Target implementationTarget;
+
+    @Mock
+    private TypeProxy.InvocationFactory invocationFactory;
+
+    @Mock
+    private MethodAccessorFactory methodAccessorFactory;
+
+    @Mock
+    private Implementation.SpecialMethodInvocation specialMethodInvocation;
+
+    @Mock
+    private MethodDescription.InDefinedShape proxyMethod;
+
+    private TypeDescription foo;
+
+    private MethodList<?> fooMethods;
+
+    private int modifiers;
+
+    @Before
+    public void setUp() throws Exception {
+        for (ModifierContributor modifierContributor : AuxiliaryType.DEFAULT_TYPE_MODIFIER) {
+            modifiers = modifiers | modifierContributor.getMask();
+        }
+        foo = TypeDescription.ForLoadedType.of(Foo.class);
+        fooMethods = MethodGraph.Compiler.DEFAULT.compile((TypeDefinition) foo)
+                .listNodes()
+                .asMethodList()
+                .filter(isVirtual().and(not(isFinal())).and(not(isDefaultFinalizer())));
+        when(proxyMethod.getParameters()).thenReturn(new ParameterList.Explicit.ForTypes(proxyMethod, foo, foo, foo));
+        when(proxyMethod.getDeclaringType()).thenReturn(foo);
+        when(proxyMethod.getInternalName()).thenReturn(FOO);
+        when(proxyMethod.getDescriptor()).thenReturn("()L" + FOO + ";");
+        when(proxyMethod.getReturnType()).thenReturn(TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(Object.class));
+        when(proxyMethod.asDefined()).thenReturn(proxyMethod);
+    }
+
+    @Test
+    public void testSuffix() {
+        assertThat(new TypeProxy(foo,
+                implementationTarget,
+                invocationFactory,
+                true,
+                false).getSuffix(), is("4b944o3I0"));
+    }
+
+    @Test
+    public void testAllIllegal() throws Exception {
+        when(implementationTarget.getInstrumentedType()).thenReturn(foo);
+        when(invocationFactory.invoke(eq(implementationTarget), eq(foo), any(MethodDescription.class)))
+                .thenReturn(specialMethodInvocation);
+        TypeDescription dynamicType = new TypeProxy(foo,
+                implementationTarget,
+                invocationFactory,
+                true,
+                false)
+                .make(BAR, ClassFileVersion.ofThisVm(), methodAccessorFactory)
+                .getTypeDescription();
+        assertThat(dynamicType.getModifiers(), is(modifiers));
+        assertThat(dynamicType.getSuperClass().asErasure(), is(foo));
+        assertThat(dynamicType.getInterfaces(), is((TypeList.Generic) new TypeList.Generic.Empty()));
+        assertThat(dynamicType.getName(), is(BAR));
+        assertThat(dynamicType.getDeclaredMethods().size(), is(2));
+        assertThat(dynamicType.isAssignableTo(Serializable.class), is(false));
+        verifyNoMoreInteractions(methodAccessorFactory);
+        for (MethodDescription methodDescription : fooMethods) {
+            verify(invocationFactory).invoke(implementationTarget, foo, methodDescription);
+        }
+        verifyNoMoreInteractions(invocationFactory);
+        verify(specialMethodInvocation, times(fooMethods.size())).isValid();
+        verifyNoMoreInteractions(specialMethodInvocation);
+    }
+
+    @Test
+    public void testAllLegal() throws Exception {
+        when(implementationTarget.getInstrumentedType()).thenReturn(foo);
+        when(invocationFactory.invoke(eq(implementationTarget), eq(foo), any(MethodDescription.class)))
+                .thenReturn(specialMethodInvocation);
+        when(specialMethodInvocation.isValid()).thenReturn(true);
+        when(specialMethodInvocation.apply(any(MethodVisitor.class), any(Implementation.Context.class)))
+                .thenReturn(new StackManipulation.Size(0, 0));
+        when(methodAccessorFactory.registerAccessorFor(specialMethodInvocation, MethodAccessorFactory.AccessType.DEFAULT)).thenReturn(proxyMethod);
+        TypeDescription dynamicType = new TypeProxy(foo,
+                implementationTarget,
+                invocationFactory,
+                true,
+                false)
+                .make(BAR, ClassFileVersion.ofThisVm(), methodAccessorFactory)
+                .getTypeDescription();
+        assertThat(dynamicType.getModifiers(), is(modifiers));
+        assertThat(dynamicType.getSuperClass().asErasure(), is(foo));
+        assertThat(dynamicType.getInterfaces(), is((TypeList.Generic) new TypeList.Generic.Empty()));
+        assertThat(dynamicType.getName(), is(BAR));
+        assertThat(dynamicType.getDeclaredMethods().size(), is(2));
+        assertThat(dynamicType.isAssignableTo(Serializable.class), is(false));
+        verify(methodAccessorFactory, times(fooMethods.size())).registerAccessorFor(specialMethodInvocation, MethodAccessorFactory.AccessType.DEFAULT);
+        for (MethodDescription methodDescription : fooMethods) {
+            verify(invocationFactory).invoke(implementationTarget, foo, methodDescription);
+        }
+        verifyNoMoreInteractions(invocationFactory);
+        verify(specialMethodInvocation, times(fooMethods.size())).isValid();
+        verifyNoMoreInteractions(specialMethodInvocation);
+    }
+
+    @Test
+    public void testAllLegalSerializable() throws Exception {
+        when(implementationTarget.getInstrumentedType()).thenReturn(foo);
+        when(invocationFactory.invoke(eq(implementationTarget), eq(foo), any(MethodDescription.class)))
+                .thenReturn(specialMethodInvocation);
+        when(specialMethodInvocation.isValid()).thenReturn(true);
+        when(specialMethodInvocation.apply(any(MethodVisitor.class), any(Implementation.Context.class)))
+                .thenReturn(new StackManipulation.Size(0, 0));
+        when(methodAccessorFactory.registerAccessorFor(specialMethodInvocation, MethodAccessorFactory.AccessType.DEFAULT)).thenReturn(proxyMethod);
+        TypeDescription dynamicType = new TypeProxy(foo,
+                implementationTarget,
+                invocationFactory,
+                true,
+                true)
+                .make(BAR, ClassFileVersion.ofThisVm(), methodAccessorFactory)
+                .getTypeDescription();
+        assertThat(dynamicType.getModifiers(), is(modifiers));
+        assertThat(dynamicType.getSuperClass().asErasure(), is(foo));
+        assertThat(dynamicType.getInterfaces(), is((TypeList.Generic) new TypeList.Generic.ForLoadedTypes(Serializable.class)));
+        assertThat(dynamicType.getName(), is(BAR));
+        assertThat(dynamicType.getDeclaredMethods().size(), is(2));
+        assertThat(dynamicType.isAssignableTo(Serializable.class), is(true));
+        verify(methodAccessorFactory, times(fooMethods.size())).registerAccessorFor(specialMethodInvocation, MethodAccessorFactory.AccessType.DEFAULT);
+        for (MethodDescription methodDescription : fooMethods) {
+            verify(invocationFactory).invoke(implementationTarget, foo, methodDescription);
+        }
+        verifyNoMoreInteractions(invocationFactory);
+        verify(specialMethodInvocation, times(fooMethods.size())).isValid();
+        verifyNoMoreInteractions(specialMethodInvocation);
+    }
+
+    @Test
+    public void testAllLegalNotIgnoreFinalizer() throws Exception {
+        when(implementationTarget.getInstrumentedType()).thenReturn(foo);
+        when(invocationFactory.invoke(eq(implementationTarget), eq(foo), any(MethodDescription.class)))
+                .thenReturn(specialMethodInvocation);
+        when(specialMethodInvocation.isValid()).thenReturn(true);
+        when(specialMethodInvocation.apply(any(MethodVisitor.class), any(Implementation.Context.class)))
+                .thenReturn(new StackManipulation.Size(0, 0));
+        when(methodAccessorFactory.registerAccessorFor(specialMethodInvocation, MethodAccessorFactory.AccessType.DEFAULT)).thenReturn(proxyMethod);
+        TypeDescription dynamicType = new TypeProxy(foo,
+                implementationTarget,
+                invocationFactory,
+                false,
+                false)
+                .make(BAR, ClassFileVersion.ofThisVm(), methodAccessorFactory)
+                .getTypeDescription();
+        assertThat(dynamicType.getModifiers(), is(modifiers));
+        assertThat(dynamicType.getSuperClass().asErasure(), is(foo));
+        assertThat(dynamicType.getInterfaces(), is((TypeList.Generic) new TypeList.Generic.Empty()));
+        assertThat(dynamicType.getName(), is(BAR));
+        assertThat(dynamicType.getDeclaredMethods().size(), is(2));
+        assertThat(dynamicType.isAssignableTo(Serializable.class), is(false));
+        verify(methodAccessorFactory, times(fooMethods.size() + 1)).registerAccessorFor(specialMethodInvocation, MethodAccessorFactory.AccessType.DEFAULT);
+        for (MethodDescription methodDescription : fooMethods) {
+            verify(invocationFactory).invoke(implementationTarget, foo, methodDescription);
+        }
+        verify(invocationFactory).invoke(implementationTarget, foo,
+                new MethodDescription.ForLoadedMethod(Object.class.getDeclaredMethod("finalize")));
+        verifyNoMoreInteractions(invocationFactory);
+        verify(specialMethodInvocation, times(fooMethods.size() + 1)).isValid();
+        verifyNoMoreInteractions(specialMethodInvocation);
+    }
+
+    @Test
+    @SuppressWarnings("cast")
+    public void testForConstructorConstruction() throws Exception {
+        when(implementationTarget.getInstrumentedType()).thenReturn(foo);
+        when(invocationFactory.invoke(eq(implementationTarget), eq(foo), any(MethodDescription.class)))
+                .thenReturn(specialMethodInvocation);
+        when(specialMethodInvocation.isValid()).thenReturn(true);
+        when(specialMethodInvocation.apply(any(MethodVisitor.class), any(Implementation.Context.class)))
+                .thenReturn(new StackManipulation.Size(0, 0));
+        when(methodAccessorFactory.registerAccessorFor(specialMethodInvocation, MethodAccessorFactory.AccessType.DEFAULT)).thenReturn(proxyMethod);
+        StackManipulation stackManipulation = new TypeProxy.ForSuperMethodByConstructor(foo,
+                new MethodDescription.ForLoadedConstructor(Foo.class.getConstructor(Void.class)),
+                implementationTarget,
+                true,
+                false);
+        MethodVisitor methodVisitor = mock(MethodVisitor.class);
+        Implementation.Context implementationContext = mock(Implementation.Context.class);
+        when(implementationContext.register(any(AuxiliaryType.class))).thenReturn(foo);
+        assertThat(stackManipulation.isValid(), is(true));
+        StackManipulation.Size size = stackManipulation.apply(methodVisitor, implementationContext);
+        assertThat(size.getSizeImpact(), is(1));
+        assertThat(size.getMaximalSize(), is(3));
+        verify(implementationContext).register(any(AuxiliaryType.class));
+        verifyNoMoreInteractions(implementationContext);
+        verify(methodVisitor).visitTypeInsn(Opcodes.NEW, Type.getInternalName(Foo.class));
+        verify(methodVisitor, times(2)).visitInsn(Opcodes.DUP);
+        verify(methodVisitor).visitInsn(Opcodes.ACONST_NULL);
+        verify(methodVisitor).visitMethodInsn(Opcodes.INVOKESPECIAL,
+                foo.getInternalName(),
+                MethodDescription.CONSTRUCTOR_INTERNAL_NAME,
+                foo.getDeclaredMethods().filter(isConstructor()).getOnly().getDescriptor(),
+                false);
+        verify(methodVisitor).visitFieldInsn(Opcodes.PUTFIELD,
+                foo.getInternalName(),
+                TypeProxy.INSTANCE_FIELD,
+                Type.getDescriptor(Void.class));
+        verify(methodVisitor).visitVarInsn(Opcodes.ALOAD, 0);
+        verifyNoMoreInteractions(methodVisitor);
+    }
+
+    @Test
+    public void testForDefaultMethodConstruction() throws Exception {
+        when(implementationTarget.getInstrumentedType()).thenReturn(foo);
+        when(invocationFactory.invoke(eq(implementationTarget), eq(foo), any(MethodDescription.class)))
+                .thenReturn(specialMethodInvocation);
+        when(specialMethodInvocation.isValid()).thenReturn(true);
+        when(specialMethodInvocation.apply(any(MethodVisitor.class), any(Implementation.Context.class)))
+                .thenReturn(new StackManipulation.Size(0, 0));
+        when(methodAccessorFactory.registerAccessorFor(specialMethodInvocation, MethodAccessorFactory.AccessType.DEFAULT)).thenReturn(proxyMethod);
+        StackManipulation stackManipulation = new TypeProxy.ForDefaultMethod(foo,
+                implementationTarget,
+                false);
+        MethodVisitor methodVisitor = mock(MethodVisitor.class);
+        Implementation.Context implementationContext = mock(Implementation.Context.class);
+        when(implementationContext.register(any(AuxiliaryType.class))).thenReturn(foo);
+        assertThat(stackManipulation.isValid(), is(true));
+        StackManipulation.Size size = stackManipulation.apply(methodVisitor, implementationContext);
+        assertThat(size.getSizeImpact(), is(0));
+        assertThat(size.getMaximalSize(), is(2));
+        verify(implementationContext).register(any(AuxiliaryType.class));
+        verifyNoMoreInteractions(implementationContext);
+        verify(methodVisitor).visitTypeInsn(Opcodes.NEW, Type.getInternalName(Foo.class));
+        verify(methodVisitor, times(2)).visitInsn(Opcodes.DUP);
+        verify(methodVisitor).visitMethodInsn(Opcodes.INVOKESPECIAL,
+                foo.getInternalName(),
+                MethodDescription.CONSTRUCTOR_INTERNAL_NAME,
+                foo.getDeclaredMethods().filter(isConstructor()).getOnly().getDescriptor(),
+                false);
+        verify(methodVisitor).visitFieldInsn(Opcodes.PUTFIELD,
+                foo.getInternalName(),
+                TypeProxy.INSTANCE_FIELD,
+                Type.getDescriptor(Void.class));
+        verify(methodVisitor).visitVarInsn(Opcodes.ALOAD, 0);
+        verifyNoMoreInteractions(methodVisitor);
+    }
+
+    @Test
+    public void testForReflectionFactoryConstruction() throws Exception {
+        when(implementationTarget.getInstrumentedType()).thenReturn(foo);
+        when(invocationFactory.invoke(eq(implementationTarget), eq(foo), any(MethodDescription.class)))
+                .thenReturn(specialMethodInvocation);
+        when(specialMethodInvocation.isValid()).thenReturn(true);
+        when(specialMethodInvocation.apply(any(MethodVisitor.class), any(Implementation.Context.class)))
+                .thenReturn(new StackManipulation.Size(0, 0));
+        when(methodAccessorFactory.registerAccessorFor(specialMethodInvocation, MethodAccessorFactory.AccessType.DEFAULT)).thenReturn(proxyMethod);
+        StackManipulation stackManipulation = new TypeProxy.ForSuperMethodByReflectionFactory(foo,
+                implementationTarget,
+                true,
+                false);
+        MethodVisitor methodVisitor = mock(MethodVisitor.class);
+        Implementation.Context implementationContext = mock(Implementation.Context.class);
+        when(implementationContext.register(any(AuxiliaryType.class)))
+                .thenReturn(TypeDescription.ForLoadedType.of(FooProxyMake.class));
+        assertThat(stackManipulation.isValid(), is(true));
+        StackManipulation.Size size = stackManipulation.apply(methodVisitor, implementationContext);
+        assertThat(size.getSizeImpact(), is(1));
+        assertThat(size.getMaximalSize(), is(3));
+        verify(implementationContext).register(any(AuxiliaryType.class));
+        verifyNoMoreInteractions(implementationContext);
+        verify(methodVisitor).visitMethodInsn(Opcodes.INVOKESTATIC,
+                Type.getInternalName(FooProxyMake.class),
+                TypeProxy.REFLECTION_METHOD,
+                Type.getMethodDescriptor(FooProxyMake.class.getDeclaredMethod("make")),
+                false);
+        verify(methodVisitor).visitInsn(Opcodes.DUP);
+        verify(methodVisitor).visitFieldInsn(Opcodes.PUTFIELD,
+                Type.getInternalName(FooProxyMake.class),
+                TypeProxy.INSTANCE_FIELD,
+                Type.getDescriptor(Void.class));
+        verify(methodVisitor).visitVarInsn(Opcodes.ALOAD, 0);
+        verifyNoMoreInteractions(methodVisitor);
+    }
+
+    @Test
+    public void testImplementationIsValid() throws Exception {
+        assertThat(TypeProxy.AbstractMethodErrorThrow.INSTANCE.isValid(), is(true));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testAccessorIsValid() throws Exception {
+        TypeProxy typeProxy = new TypeProxy(mock(TypeDescription.class),
+                mock(Implementation.Target.class),
+                mock(TypeProxy.InvocationFactory.class),
+                false,
+                false);
+        TypeProxy.MethodCall methodCall = typeProxy.new MethodCall(mock(MethodAccessorFactory.class));
+        TypeDescription instrumentedType = mock(TypeDescription.class);
+        FieldList<FieldDescription.InDefinedShape> fieldList = mock(FieldList.class);
+        when(fieldList.filter(any(ElementMatcher.class))).thenReturn(fieldList);
+        when(fieldList.getOnly()).thenReturn(mock(FieldDescription.InDefinedShape.class));
+        when(instrumentedType.getDeclaredFields()).thenReturn(fieldList);
+        TypeProxy.MethodCall.Appender appender = methodCall.new Appender(instrumentedType);
+        Implementation.SpecialMethodInvocation specialMethodInvocation = mock(Implementation.SpecialMethodInvocation.class);
+        when(specialMethodInvocation.isValid()).thenReturn(true);
+        StackManipulation stackManipulation = appender.new AccessorMethodInvocation(mock(MethodDescription.class), specialMethodInvocation);
+        assertThat(stackManipulation.isValid(), is(true));
+        verify(specialMethodInvocation).isValid();
+        verifyNoMoreInteractions(specialMethodInvocation);
+    }
+
+    @SuppressWarnings("unused")
+    public static class Foo {
+
+        private Void target;
+
+        public Foo(Void argument) {
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class FooProxyMake {
+
+        private Void target;
+
+        public static FooProxyMake make() {
+            return null;
+        }
+    }
+}
+
+ succeeded in 268ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyInvocationFactoryDefaultTest.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyCreationTest.java
+
+codex
+{"target":"net.bytebuddy.implementation.auxiliary.TypeProxy.InvocationFactory","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java, byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyInvocationFactoryDefaultTest.java, and byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TypeProxyCreationTest.java. The interface is a small inner strategy with one method and one nested enum implementation (SUPER_METHOD, DEFAULT_METHOD); in the production code it is only used inside TypeProxy itself at three call sites, and the only external references are two tests. This shows low fan-in and low fan-out, not a dependency hub."}
+tokens used
+13,757

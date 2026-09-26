@@ -1,0 +1,580 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f05-fb41-75b3-b63e-5cd5b4ae9fbd
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.InvokeDynamic.ForNullValue` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.InvokeDynamic.ForNullValue",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.InvokeDynamic.ForNullValue`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’ll locate the target class, inspect its source and surrounding references, then decide from the dependency pattern whether it behaves like a hub.
+exec
+/bin/bash -lc 'rg -n "class ForNullValue|ForNullValue" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:186:        return ForNullValue.INSTANCE;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:247:    protected enum ForNullValue implements Implementation, ByteCodeAppender {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:663:            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForNullValue(aTypeDescription));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2120:            class ForNullValue implements ArgumentProvider {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2132:                protected ForNullValue(TypeDescription typeDescription) {
+
+exec
+/bin/bash -lc "rg -n \"InvokeDynamic\\.ForNullValue|ForNullValue\" byte-buddy-dep* byte-buddy-*/src/main/java ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:186:        return ForNullValue.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:247:    protected enum ForNullValue implements Implementation, ByteCodeAppender {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:663:            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForNullValue(aTypeDescription));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2120:            class ForNullValue implements ArgumentProvider {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2132:                protected ForNullValue(TypeDescription typeDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:663:            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForNullValue(aTypeDescription));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2120:            class ForNullValue implements ArgumentProvider {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2132:                protected ForNullValue(TypeDescription typeDescription) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:663:            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForNullValue(aTypeDescription));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2120:            class ForNullValue implements ArgumentProvider {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2132:                protected ForNullValue(TypeDescription typeDescription) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:186:        return ForNullValue.INSTANCE;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:247:    protected enum ForNullValue implements Implementation, ByteCodeAppender {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:186:        return ForNullValue.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:247:    protected enum ForNullValue implements Implementation, ByteCodeAppender {
+
+codex
+I found the target as a nested class in `InvokeDynamic.java`. Next I’m reading the class body and the nearby call sites to check whether it has broad fan-in or fan-out, not just one-off usage.
+exec
+/bin/bash -lc "sed -n '620,690p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+        }
+        return new InvokeDynamic(bootstrap,
+                arguments,
+                invocationProvider.appendArguments(argumentProviders),
+                terminationHandler,
+                assigner,
+                typing);
+    }
+
+    /**
+     * Hands the provided Java instance to the dynamically bound method. The instance is stored in the generated class's
+     * constant pool and is loaded at invocation time. For this to be possible, the created class's class loader must
+     * be able to create the provided Java instance.
+     *
+     * @param constant The constants to provide to the bound method as an argument.
+     * @return This invoke dynamic implementation where the bootstrapped method is passed the specified Java instance.
+     */
+    public InvokeDynamic withInstance(JavaConstant... constant) {
+        return withInstance((ConstantValue[]) constant);
+    }
+
+    /**
+     * Passes {@code null} values of the given types to the bootstrapped method.
+     *
+     * @param type The type that the {@code null} values should represent.
+     * @return This invoke dynamic implementation where the bootstrapped method is passed the specified arguments.
+     */
+    public InvokeDynamic withNullValue(Class<?>... type) {
+        return withNullValue(new TypeList.ForLoadedTypes(type).toArray(new TypeDescription[0]));
+    }
+
+    /**
+     * Passes {@code null} values of the given types to the bootstrapped method.
+     *
+     * @param typeDescription The type that the {@code null} values should represent.
+     * @return This invoke dynamic implementation where the bootstrapped method is passed the specified arguments.
+     */
+    public InvokeDynamic withNullValue(TypeDescription... typeDescription) {
+        List<InvocationProvider.ArgumentProvider> argumentProviders = new ArrayList<InvocationProvider.ArgumentProvider>(typeDescription.length);
+        for (TypeDescription aTypeDescription : typeDescription) {
+            if (aTypeDescription.isPrimitive()) {
+                throw new IllegalArgumentException("Cannot assign null to primitive type: " + aTypeDescription);
+            }
+            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForNullValue(aTypeDescription));
+        }
+        return new InvokeDynamic(bootstrap,
+                arguments,
+                invocationProvider.appendArguments(argumentProviders),
+                terminationHandler,
+                assigner,
+                typing);
+    }
+
+    /**
+     * Passes parameters of the instrumented method to the bootstrapped method.
+     *
+     * @param index The indices of the parameters that should be passed to the bootstrapped method.
+     * @return This invoke dynamic implementation where the bootstrapped method is passed the specified arguments.
+     */
+    public InvokeDynamic withArgument(int... index) {
+        List<InvocationProvider.ArgumentProvider> argumentProviders = new ArrayList<InvocationProvider.ArgumentProvider>(index.length);
+        for (int anIndex : index) {
+            if (anIndex < 0) {
+                throw new IllegalArgumentException("Method parameter indices cannot be negative: " + anIndex);
+            }
+            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForMethodParameter(anIndex));
+        }
+        return new InvokeDynamic(bootstrap,
+                arguments,
+                invocationProvider.appendArguments(argumentProviders),
+                terminationHandler,
+
+exec
+/bin/bash -lc "sed -n '2080,2185p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+
+            /**
+             * An argument provider for an {@link java.lang.Enum} constant.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            class ForEnumerationValue implements ArgumentProvider {
+
+                /**
+                 * A description of the enumeration to represent.
+                 */
+                private final EnumerationDescription enumerationDescription;
+
+                /**
+                 * Creates a new argument provider for an enumeration value.
+                 *
+                 * @param enumerationDescription A description of the enumeration to represent.
+                 */
+                protected ForEnumerationValue(EnumerationDescription enumerationDescription) {
+                    this.enumerationDescription = enumerationDescription;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Resolved resolve(TypeDescription instrumentedType, MethodDescription instrumentedMethod, Assigner assigner, Assigner.Typing typing) {
+                    return new Resolved.Simple(FieldAccess.forEnumeration(enumerationDescription), enumerationDescription.getEnumerationType());
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                    return instrumentedType;
+                }
+            }
+
+            /**
+             * An argument provider for the {@code null} value.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            class ForNullValue implements ArgumentProvider {
+
+                /**
+                 * The type to be represented by the {@code null} value.
+                 */
+                private final TypeDescription typeDescription;
+
+                /**
+                 * Creates a new argument provider for the {@code null} value.
+                 *
+                 * @param typeDescription The type to be represented by the {@code null} value.
+                 */
+                protected ForNullValue(TypeDescription typeDescription) {
+                    this.typeDescription = typeDescription;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Resolved resolve(TypeDescription instrumentedType, MethodDescription instrumentedMethod, Assigner assigner, Assigner.Typing typing) {
+                    return new Resolved.Simple(NullConstant.INSTANCE, typeDescription);
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                    return instrumentedType;
+                }
+            }
+
+            /**
+             * An argument provider for a Java instance.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            class ForJavaConstant implements ArgumentProvider {
+
+                /**
+                 * The Java instance to provide to the bootstrapped method.
+                 */
+                private final ConstantValue constant;
+
+                /**
+                 * Creates a new argument provider for the given Java instance.
+                 *
+                 * @param constant The Java instance to provide to the bootstrapped method.
+                 */
+                protected ForJavaConstant(ConstantValue constant) {
+                    this.constant = constant;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Resolved resolve(TypeDescription instrumentedType, MethodDescription instrumentedMethod, Assigner assigner, Assigner.Typing typing) {
+                    return new Resolved.Simple(constant.toStackManipulation(), constant.getTypeDescription());
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                    return instrumentedType;
+                }
+            }
+        }
+
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.annotation.AnnotationDescription;
+import net.bytebuddy.description.annotation.AnnotationValue;
+import net.bytebuddy.description.enumeration.EnumerationDescription;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.MethodList;
+import net.bytebuddy.description.method.ParameterDescription;
+import net.bytebuddy.description.method.ParameterList;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.description.type.TypeList;
+import net.bytebuddy.description.type.TypeVariableToken;
+import net.bytebuddy.dynamic.scaffold.FieldLocator;
+import net.bytebuddy.dynamic.scaffold.InstrumentedType;
+import net.bytebuddy.dynamic.scaffold.MethodGraph;
+import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+import net.bytebuddy.implementation.bytecode.Removal;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.assign.Assigner;
+import net.bytebuddy.implementation.bytecode.constant.ClassConstant;
+import net.bytebuddy.implementation.bytecode.constant.DoubleConstant;
+import net.bytebuddy.implementation.bytecode.constant.FloatConstant;
+import net.bytebuddy.implementation.bytecode.constant.IntegerConstant;
+import net.bytebuddy.implementation.bytecode.constant.LongConstant;
+import net.bytebuddy.implementation.bytecode.constant.NullConstant;
+import net.bytebuddy.implementation.bytecode.constant.TextConstant;
+import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+import net.bytebuddy.implementation.bytecode.member.MethodInvocation;
+import net.bytebuddy.implementation.bytecode.member.MethodReturn;
+import net.bytebuddy.implementation.bytecode.member.MethodVariableAccess;
+import net.bytebuddy.utility.CompoundList;
+import net.bytebuddy.utility.ConstantValue;
+import net.bytebuddy.utility.JavaConstant;
+import net.bytebuddy.utility.JavaType;
+import net.bytebuddy.utility.RandomString;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+import static net.bytebuddy.matcher.ElementMatchers.named;
+
+/**
+ * An implementation that applies a
+ * <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/invoke/package-summary.html">dynamic method invocation</a>.
+ */
+@HashCodeAndEqualsPlugin.Enhance
+public class InvokeDynamic implements Implementation.Composable {
+
+    /**
+     * The bootstrap method.
+     */
+    protected final MethodDescription.InDefinedShape bootstrap;
+
+    /**
+     * The arguments that are provided to the bootstrap method.
+     */
+    protected final List<? extends JavaConstant> arguments;
+
+    /**
+     * The target provided that identifies the method to be bootstrapped.
+     */
+    protected final InvocationProvider invocationProvider;
+
+    /**
+     * A handler that handles the method return.
+     */
+    protected final TerminationHandler terminationHandler;
+
+    /**
+     * The assigner to be used.
+     */
+    protected final Assigner assigner;
+
+    /**
+     * Indicates if dynamic type castings should be attempted for incompatible assignments.
+     */
+    protected final Assigner.Typing typing;
+
+    /**
+     * Creates a new invoke dynamic implementation.
+     *
+     * @param bootstrap          The bootstrap method.
+     * @param arguments          The arguments that are provided to the bootstrap method.
+     * @param invocationProvider The target provided that identifies the method to be bootstrapped.
+     * @param terminationHandler A handler that handles the method return.
+     * @param assigner           The assigner to be used.
+     * @param typing             Indicates if dynamic type castings should be attempted for incompatible assignments.
+     */
+    protected InvokeDynamic(MethodDescription.InDefinedShape bootstrap,
+                            List<? extends JavaConstant> arguments,
+                            InvocationProvider invocationProvider,
+                            TerminationHandler terminationHandler,
+                            Assigner assigner,
+                            Assigner.Typing typing) {
+        this.bootstrap = bootstrap;
+        this.arguments = arguments;
+        this.invocationProvider = invocationProvider;
+        this.terminationHandler = terminationHandler;
+        this.assigner = assigner;
+        this.typing = typing;
+    }
+
+    /**
+     * Implements the instrumented method with a dynamic method invocation which is linked at runtime using the
+     * specified bootstrap method.
+     *
+     * @param method   The bootstrap method that is used to link the instrumented method.
+     * @param constant The constant values passed to the bootstrap method. Values can be represented either
+     *                 as {@link TypeDescription}, as {@link JavaConstant}, as {@link String} or a primitive
+     *                 {@code int}, {@code long}, {@code float} or {@code double} represented as wrapper type.
+     * @return An implementation where a {@code this} reference, if available, and all arguments of the
+     * instrumented method are passed to the bootstrapped method unless explicit parameters are specified.
+     */
+    public static WithImplicitTarget bootstrap(Method method, Object... constant) {
+        return bootstrap(new MethodDescription.ForLoadedMethod(method), constant);
+    }
+
+    /**
+     * Implements the instrumented method with a dynamic method invocation which is linked at runtime using the
+     * specified bootstrap method.
+     *
+     * @param method    The bootstrap method that is used to link the instrumented method.
+     * @param constants The constant values passed to the bootstrap method. Values can be represented either
+     *                  as {@link TypeDescription}, as {@link JavaConstant}, as {@link String} or a primitive
+     *                  {@code int}, {@code long}, {@code float} or {@code double} represented as wrapper type.
+     * @return An implementation where a {@code this} reference, if available, and all arguments of the
+     * instrumented method are passed to the bootstrapped method unless explicit parameters are specified.
+     */
+    public static WithImplicitTarget bootstrap(Method method, List<?> constants) {
+        return bootstrap(new MethodDescription.ForLoadedMethod(method), constants);
+    }
+
+    /**
+     * Implements the instrumented method with a dynamic method invocation which is linked at runtime using the
+     * specified bootstrap constructor.
+     *
+     * @param constructor The bootstrap constructor that is used to link the instrumented method.
+     * @param constant    The constant values passed to the bootstrap method. Values can be represented either
+     *                    as {@link TypeDescription}, as {@link JavaConstant}, as {@link String} or a primitive
+     *                    {@code int}, {@code long}, {@code float} or {@code double} represented as wrapper type.
+     * @return An implementation where a {@code this} reference, if available, and all arguments of the
+     * instrumented method are passed to the bootstrapped method unless explicit parameters are specified.
+     */
+    public static WithImplicitTarget bootstrap(Constructor<?> constructor, Object... constant) {
+        return bootstrap(new MethodDescription.ForLoadedConstructor(constructor), constant);
+    }
+
+    /**
+     * Implements the instrumented method with a dynamic method invocation which is linked at runtime using the
+     * specified bootstrap constructor.
+     *
+     * @param constructor The bootstrap constructor that is used to link the instrumented method.
+     * @param constants   The constant values passed to the bootstrap method. Values can be represented either
+     *                    as {@link TypeDescription}, as {@link JavaConstant}, as {@link String} or a primitive
+     *                    {@code int}, {@code long}, {@code float} or {@code double} represented as wrapper type.
+     * @return An implementation where a {@code this} reference, if available, and all arguments of the
+     * instrumented method are passed to the bootstrapped method unless explicit parameters are specified.
+     */
+    public static WithImplicitTarget bootstrap(Constructor<?> constructor, List<?> constants) {
+        return bootstrap(new MethodDescription.ForLoadedConstructor(constructor), constants);
+    }
+
+    /**
+     * Implements the instrumented method with a dynamic method invocation which is linked at runtime using the
+     * specified bootstrap method or constructor.
+     *
+     * @param bootstrap The bootstrap method or constructor that is used to link the instrumented method.
+     * @param constant  The constant values passed to the bootstrap method. Values can be represented either
+     *                  as {@link TypeDescription}, as {@link JavaConstant}, as {@link String} or a primitive
+     *                  {@code int}, {@code long}, {@code float} or {@code double} represented as wrapper type.
+     * @return An implementation where a {@code this} reference, if available, and all arguments of the
+     * instrumented method are passed to the bootstrapped method unless explicit parameters are specified.
+     */
+    public static WithImplicitTarget bootstrap(MethodDescription.InDefinedShape bootstrap, Object... constant) {
+        return bootstrap(bootstrap, Arrays.asList(constant));
+    }
+
+    /**
+     * Implements the instrumented method with a dynamic method invocation which is linked at runtime using the
+     * specified bootstrap method or constructor.
+     *
+     * @param bootstrap The bootstrap method or constructor that is used to link the instrumented method.
+     * @param constants The constant values passed to the bootstrap method. Values can be represented either
+     *                  as {@link TypeDescription}, as {@link JavaConstant}, as {@link String} or a primitive
+     *                  {@code int}, {@code long}, {@code float} or {@code double} represented as wrapper type.
+     * @return An implementation where a {@code this} reference, if available, and all arguments of the
+     * instrumented method are passed to the bootstrapped method unless explicit parameters are specified.
+     */
+    public static WithImplicitTarget bootstrap(MethodDescription.InDefinedShape bootstrap, List<?> constants) {
+        List<JavaConstant> arguments = JavaConstant.Simple.wrap(constants);
+        if (!bootstrap.isInvokeBootstrap(TypeList.Explicit.of(arguments))) {
+            throw new IllegalArgumentException("Not a valid bootstrap method " + bootstrap + " for " + arguments);
+        }
+        return new WithImplicitTarget(bootstrap,
+                arguments,
+                new InvocationProvider.Default(),
+                TerminationHandler.RETURNING,
+                Assigner.DEFAULT,
+                Assigner.Typing.STATIC);
+    }
+
+    /**
+     * <p>
+     * Creates a lambda expression using the JVM's lambda meta factory. The method that is implementing the lambda expression is provided
+     * the explicit arguments first and the functional interface's method second.
+     * </p>
+     * <p>
+     * <b>Important</b>: Byte Buddy does not validate that the provided arguments are correct considering the required arguments of the bound
+     * functional interface. Binding an incorrect number of arguments or arguments of incompatible types does not create illegal byte code
+     * but yields a runtime error when the call site is first used. This is done to support future extensions or alternative implementations
+     * of the Java virtual machine.
+     * </p>
+     *
+     * @param method              The method that implements the lambda expression.
+     * @param functionalInterface The functional interface that is an instance of the lambda expression.
+     * @return A builder for creating a lambda expression.
+     */
+    public static WithImplicitArguments lambda(Method method, Type functionalInterface) {
+        return lambda(new MethodDescription.ForLoadedMethod(method), TypeDefinition.Sort.describe(functionalInterface));
+    }
+
+    /**
+     * <p>
+     * Creates a lambda expression using the JVM's lambda meta factory. The method that is implementing the lambda expression is provided
+     * the explicit arguments first and the functional interface's method second.
+     * </p>
+     * <p>
+     * <b>Important</b>: Byte Buddy does not validate that the provided arguments are correct considering the required arguments of the bound
+     * functional interface. Binding an incorrect number of arguments or arguments of incompatible types does not create illegal byte code
+     * but yields a runtime error when the call site is first used. This is done to support future extensions or alternative implementations
+     * of the Java virtual machine.
+     * </p>
+     *
+
+codex
+I’ve confirmed the nested class is tiny and only constructed from one method in the same outer class. I’m checking whether there is any broader fan-in through public APIs before I finalize the verdict.
+exec
+/bin/bash -lc 'rg -n "class InvocationProvider|interface ArgumentProvider|class ForNullValue" byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+1083:        interface ArgumentProvider {
+2120:            class ForNullValue implements ArgumentProvider {
+
+exec
+/bin/bash -lc "rg -n \"withNullValue\\(\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:647:    public InvokeDynamic withNullValue(Class<?>... type) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:648:        return withNullValue(new TypeList.ForLoadedTypes(type).toArray(new TypeDescription[0]));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:657:    public InvokeDynamic withNullValue(TypeDescription... typeDescription) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2654:        public InvokeDynamic withNullValue(Class<?>... type) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2655:            return materialize().withNullValue(type);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2661:        public InvokeDynamic withNullValue(TypeDescription... typeDescription) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2662:            return materialize().withNullValue(typeDescription);
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/InvokeDynamicTest.java:373:                        .withNullValue(String.class))
+
+exec
+/bin/bash -lc "rg -n \"new InvocationProvider\\.ArgumentProvider\\.ForNullValue|ArgumentProvider\\.ForNullValue\\(\" byte-buddy-dep/src/main/java ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:663:            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForNullValue(aTypeDescription));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:663:            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForNullValue(aTypeDescription));
+
+codex
+{"target":"net.bytebuddy.implementation.InvokeDynamic.ForNullValue","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java` and `byte-buddy-dep/src/test/java/net/bytebuddy/implementation/InvokeDynamicTest.java`. The nested class `ForNullValue` is a small helper with minimal fan-out: it stores one `TypeDescription`, resolves to `NullConstant.INSTANCE`, and `prepare()` returns the input unchanged. Repo-wide searches found only one instantiation of `InvocationProvider.ArgumentProvider.ForNullValue` in `InvokeDynamic.java:663`, with no other direct references outside that file. That is not the high fan-in/high fan-out pattern required for hub-like modularization."}
+tokens used
+8,006

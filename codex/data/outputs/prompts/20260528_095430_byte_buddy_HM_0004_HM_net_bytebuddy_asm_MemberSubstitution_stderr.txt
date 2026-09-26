@@ -1,0 +1,1687 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ea6-9742-7c63-99a6-43132aee4ce2
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.asm.MemberSubstitution` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.asm.MemberSubstitution",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.asm.MemberSubstitution`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct dependencies and references first, then I’ll decide whether the fan-in/fan-out is strong enough to count as hub-like modularization.
+exec
+/bin/bash -lc 'rg -n "class MemberSubstitution|interface MemberSubstitution|enum MemberSubstitution" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionDynamicConstant.java:10:public class MemberSubstitutionDynamicConstant {
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodType.java:23:public class MemberSubstitutionOriginMethodType {
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandlesLookup.java:22:public class MemberSubstitutionOriginMethodHandlesLookup {
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandle.java:22:public class MemberSubstitutionOriginMethodHandle {
+./byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionBootstrap.java:23:public class MemberSubstitutionBootstrap {
+./byte-buddy-dep/src/test/java/net/bytebuddy/test/packaging/MemberSubstitutionTestHelper.java:3:public class MemberSubstitutionTestHelper {
+./byte-buddy-dep/src/test/java/net/bytebuddy/asm/MemberSubstitutionChainWithAnnotationTest.java:30:public class MemberSubstitutionChainWithAnnotationTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/asm/MemberSubstitutionTest.java:36:public class MemberSubstitutionTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/asm/MemberSubstitutionTypeTest.java:18:public class MemberSubstitutionTypeTest {
+./byte-buddy-dep/src/test/java-11/net/bytebuddy/test/precompiled/v11/MemberSubstitutionDynamicConstant.java:8:public class MemberSubstitutionDynamicConstant {
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:123:public class MemberSubstitution implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
+
+exec
+/bin/bash -lc "rg --files | rg \"MemberSubstitution\\.java"'$"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java
+
+codex
+I found the class and am now collecting two kinds of evidence: how many types depend on it, and how many distinct collaborators it depends on itself. That will let me judge whether it behaves like a dependency hub or just a central feature class.
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.asm;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.build.SafeVarargsPlugin;
+import net.bytebuddy.description.ByteCodeElement;
+import net.bytebuddy.description.annotation.AnnotationDescription;
+import net.bytebuddy.description.annotation.AnnotationValue;
+import net.bytebuddy.description.enumeration.EnumerationDescription;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.field.FieldList;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.MethodList;
+import net.bytebuddy.description.method.ParameterDescription;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.description.type.TypeList;
+import net.bytebuddy.description.type.TypeVariableToken;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.TargetType;
+import net.bytebuddy.dynamic.scaffold.FieldLocator;
+import net.bytebuddy.dynamic.scaffold.MethodGraph;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.bytecode.Duplication;
+import net.bytebuddy.implementation.bytecode.Removal;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.StackSize;
+import net.bytebuddy.implementation.bytecode.TypeCreation;
+import net.bytebuddy.implementation.bytecode.assign.Assigner;
+import net.bytebuddy.implementation.bytecode.collection.ArrayFactory;
+import net.bytebuddy.implementation.bytecode.constant.ClassConstant;
+import net.bytebuddy.implementation.bytecode.constant.DefaultValue;
+import net.bytebuddy.implementation.bytecode.constant.FieldConstant;
+import net.bytebuddy.implementation.bytecode.constant.IntegerConstant;
+import net.bytebuddy.implementation.bytecode.constant.JavaConstantValue;
+import net.bytebuddy.implementation.bytecode.constant.MethodConstant;
+import net.bytebuddy.implementation.bytecode.constant.NullConstant;
+import net.bytebuddy.implementation.bytecode.constant.SerializedConstant;
+import net.bytebuddy.implementation.bytecode.constant.TextConstant;
+import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+import net.bytebuddy.implementation.bytecode.member.Invokedynamic;
+import net.bytebuddy.implementation.bytecode.member.MethodInvocation;
+import net.bytebuddy.implementation.bytecode.member.MethodVariableAccess;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.matcher.ElementMatchers;
+import net.bytebuddy.pool.TypePool;
+import net.bytebuddy.utility.CompoundList;
+import net.bytebuddy.utility.ConstantValue;
+import net.bytebuddy.utility.JavaConstant;
+import net.bytebuddy.utility.JavaType;
+import net.bytebuddy.utility.OpenedClassReader;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import net.bytebuddy.utility.visitor.LocalVariableAwareMethodVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import java.io.Serializable;
+import java.lang.annotation.Annotation;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import static net.bytebuddy.matcher.ElementMatchers.hasDescriptor;
+import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
+import static net.bytebuddy.matcher.ElementMatchers.isStatic;
+import static net.bytebuddy.matcher.ElementMatchers.isVirtual;
+import static net.bytebuddy.matcher.ElementMatchers.isVisibleTo;
+import static net.bytebuddy.matcher.ElementMatchers.named;
+import static net.bytebuddy.matcher.ElementMatchers.none;
+import static net.bytebuddy.matcher.ElementMatchers.not;
+
+/**
+ * <p>
+ * Substitutes field access, method invocations or constructor calls within a method's body.
+ * </p>
+ * <p>
+ * <b>Note</b>: This substitution must not be used to match constructor calls to an instrumented class's super constructor invocation from
+ * within a constructor. Matching such constructors will result in an invalid stack and a verification error.
+ * </p>
+ * <p>
+ * <b>Note</b>: This visitor will compute the required stack size on a best effort basis. For allocating an optimal stack size, ASM needs
+ * to be configured to compute the stack size.
+ * </p>
+ * <p>
+ * <b>Important</b>: This component relies on using a {@link TypePool} for locating types within method bodies. Within a redefinition
+ * or a rebasement, this type pool normally resolved correctly by Byte Buddy. When subclassing a type, the type pool must be set
+ * explicitly, using {@link net.bytebuddy.dynamic.DynamicType.Builder#make(TypePool)} or any similar method. It is however not normally
+ * necessary to use this component when subclassing a type where methods are only defined explicitly.
+ * </p>
+ */
+@HashCodeAndEqualsPlugin.Enhance
+public class MemberSubstitution implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
+
+    /**
+     * The index of the this reference within a non-static method.
+     */
+    protected static final int THIS_REFERENCE = 0;
+
+    /**
+     * The method graph compiler to use.
+     */
+    private final MethodGraph.Compiler methodGraphCompiler;
+
+    /**
+     * The type pool resolver to use.
+     */
+    private final TypePoolResolver typePoolResolver;
+
+    /**
+     * {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+     */
+    private final boolean strict;
+
+    /**
+     * {@code true} if the instrumentation should fail if applied to a method without match.
+     */
+    private final boolean failIfNoMatch;
+
+    /**
+     * The replacement factory to use.
+     */
+    private final Replacement.Factory replacementFactory;
+
+    /**
+     * Creates a default member substitution.
+     *
+     * @param strict {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+     */
+    protected MemberSubstitution(boolean strict) {
+        this(MethodGraph.Compiler.DEFAULT, TypePoolResolver.OfImplicitPool.INSTANCE, strict, false, Replacement.NoOp.INSTANCE);
+    }
+
+    /**
+     * Creates a new member substitution.
+     *
+     * @param methodGraphCompiler The method graph compiler to use.
+     * @param typePoolResolver    The type pool resolver to use.
+     * @param strict              {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+     * @param failIfNoMatch       {@code true} if the instrumentation should fail if applied to a method without match.
+     * @param replacementFactory  The replacement factory to use.
+     */
+    protected MemberSubstitution(MethodGraph.Compiler methodGraphCompiler,
+                                 TypePoolResolver typePoolResolver,
+                                 boolean strict,
+                                 boolean failIfNoMatch,
+                                 Replacement.Factory replacementFactory) {
+        this.methodGraphCompiler = methodGraphCompiler;
+        this.typePoolResolver = typePoolResolver;
+        this.failIfNoMatch = failIfNoMatch;
+        this.strict = strict;
+        this.replacementFactory = replacementFactory;
+    }
+
+    /**
+     * Creates a member substitution that requires the resolution of all fields and methods that are referenced within a method body. Doing so,
+     * this component raises an exception if any member cannot be resolved what makes this component unusable when facing optional types.
+     *
+     * @return A strict member substitution.
+     */
+    public static MemberSubstitution strict() {
+        return new MemberSubstitution(true);
+    }
+
+    /**
+     * Creates a member substitution that skips any unresolvable fields or methods that are referenced within a method body. Using a relaxed
+     * member substitution, methods containing optional types are supported. In the process, it is however possible that misconfigurations
+     * of this component remain undiscovered.
+     *
+     * @return A relaxed member substitution.
+     */
+    public static MemberSubstitution relaxed() {
+        return new MemberSubstitution(false);
+    }
+
+    /**
+     * Substitutes any interaction with a field or method that matches the given matcher.
+     *
+     * @param matcher The matcher to determine what access to byte code elements to substitute.
+     * @return A specification that allows to determine how to substitute any interaction with byte code elements that match the supplied matcher.
+     */
+    public WithoutSpecification<Target.ForMember> element(ElementMatcher<? super ByteCodeElement.Member> matcher) {
+        return new WithoutSpecification.ForMatchedByteCodeElement(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory, matcher);
+    }
+
+    /**
+     * Substitutes any field access that matches the given matcher.
+     *
+     * @param matcher The matcher to determine what fields to substitute.
+     * @return A specification that allows to determine how to substitute any field access that match the supplied matcher.
+     */
+    public WithoutSpecification.ForMatchedField field(ElementMatcher<? super FieldDescription> matcher) {
+        return new WithoutSpecification.ForMatchedField(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory, matcher);
+    }
+
+    /**
+     * Substitutes any method invocation that matches the given matcher.
+     *
+     * @param matcher The matcher to determine what methods to substitute.
+     * @return A specification that allows to determine how to substitute any method invocations that match the supplied matcher.
+     */
+    public WithoutSpecification.ForMatchedMethod method(ElementMatcher<? super MethodDescription> matcher) {
+        return new WithoutSpecification.ForMatchedMethod(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory, matcher);
+    }
+
+    /**
+     * Substitutes any constructor invocation that matches the given matcher.
+     *
+     * @param matcher The matcher to determine what constructors to substitute.
+     * @return A specification that allows to determine how to substitute any constructor invocations that match the supplied matcher.
+     */
+    public WithoutSpecification<Target.ForMember> constructor(ElementMatcher<? super MethodDescription> matcher) {
+        return invokable(isConstructor().and(matcher));
+    }
+
+    /**
+     * Substitutes any method or constructor invocation that matches the given matcher.
+     *
+     * @param matcher The matcher to determine what method or constructors to substitute.
+     * @return A specification that allows to determine how to substitute any constructor invocations that match the supplied matcher.
+     */
+    public WithoutSpecification<Target.ForMember> invokable(ElementMatcher<? super MethodDescription> matcher) {
+        return new WithoutSpecification.ForMatchedMethod(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory, matcher);
+    }
+
+    /**
+     * Matches invokedynamic instructions which represents Java lambda expressions.
+     *
+     * @return A member substitution for Java lambda expressions.
+     */
+
+exec
+/bin/bash -lc "rg -n \"\\bMemberSubstitution\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java byte-buddy-dep/src/test/java-7 byte-buddy-dep/src/test/java-11" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 116ms:
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandlesLookup.java:18:import net.bytebuddy.asm.MemberSubstitution;
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandlesLookup.java:30:    private Object lookup(@MemberSubstitution.Origin MethodHandles.Lookup lookup) {
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandle.java:18:import net.bytebuddy.asm.MemberSubstitution;
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandle.java:30:    private Object handleElement(@MemberSubstitution.Origin MethodHandle handle) {
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandle.java:34:    private Object handleMethod(@MemberSubstitution.Origin(source = MemberSubstitution.Source.ENCLOSING_METHOD) MethodHandle handle) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:123:public class MemberSubstitution implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:160:    protected MemberSubstitution(boolean strict) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:173:    protected MemberSubstitution(MethodGraph.Compiler methodGraphCompiler,
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:191:    public static MemberSubstitution strict() {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:192:        return new MemberSubstitution(true);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:202:    public static MemberSubstitution relaxed() {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:203:        return new MemberSubstitution(false);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:289:    public MemberSubstitution with(MethodGraph.Compiler methodGraphCompiler) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:290:        return new MemberSubstitution(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:299:    public MemberSubstitution with(TypePoolResolver typePoolResolver) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:300:        return new MemberSubstitution(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:309:    public MemberSubstitution failIfNoMatch(boolean failIfNoMatch) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:310:        return new MemberSubstitution(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:407:        public MemberSubstitution stub() {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:417:        public MemberSubstitution replaceWithConstant(Object value) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:436:        public MemberSubstitution replaceWith(Field field) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:454:        public MemberSubstitution replaceWith(FieldDescription fieldDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:467:        public MemberSubstitution replaceWithField(ElementMatcher<? super FieldDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:485:        public MemberSubstitution replaceWith(Method method) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:506:        public MemberSubstitution replaceWith(MethodDescription methodDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:522:        public MemberSubstitution replaceWithMethod(ElementMatcher<? super MethodDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:536:        public MemberSubstitution replaceWithMethod(ElementMatcher<? super MethodDescription> matcher, MethodGraph.Compiler methodGraphCompiler) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:547:        public MemberSubstitution replaceWithInstrumentedMethod() {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:560:        public final MemberSubstitution replaceWithChain(Substitution.Chain.Step.Factory<? super T>... step) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:571:        public MemberSubstitution replaceWithChain(List<? extends Substitution.Chain.Step.Factory<? super T>> steps) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:581:        public abstract MemberSubstitution replaceWith(Substitution.Factory<? super T> factory);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:693:            public MemberSubstitution replaceWith(Substitution.Factory<? super Target.ForDynamicInvocation> substitutionFactory) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:694:                return new MemberSubstitution(methodGraphCompiler,
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:740:            public MemberSubstitution replaceWith(Substitution.Factory<? super Target.ForMember> substitutionFactory) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:741:                return new MemberSubstitution(methodGraphCompiler,
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:836:            public MemberSubstitution replaceWith(Substitution.Factory<? super Target.ForMember> substitutionFactory) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:837:                return new MemberSubstitution(methodGraphCompiler,
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:946:            public MemberSubstitution replaceWith(Substitution.Factory<? super Target.ForMember> substitutionFactory) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:947:                return new MemberSubstitution(methodGraphCompiler,
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:12797:     * {@link net.bytebuddy.asm.MemberSubstitution.This}. This annotation should be used only in combination with {@link Advice}.
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:12845:     * {@link net.bytebuddy.asm.MemberSubstitution.Argument}. This annotation should be used only in combination with {@link Advice}.
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:12902:     * {@link net.bytebuddy.asm.MemberSubstitution.AllArguments}. This annotation should be used only in combination with {@link Advice}.
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13042:     * {@link net.bytebuddy.asm.MemberSubstitution.SelfCallHandle}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13069:     * <b>Important</b>: Don't confuse this annotation with {@link net.bytebuddy.asm.MemberSubstitution.Handle} or
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13125:     * <b>Important</b>: Don't confuse this annotation with {@link net.bytebuddy.asm.MemberSubstitution.DynamicConstant}
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13210:     * {@link net.bytebuddy.asm.MemberSubstitution.FieldValue}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13277:     * {@link net.bytebuddy.asm.MemberSubstitution.FieldGetterHandle}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13323:     * {@link net.bytebuddy.asm.MemberSubstitution.FieldSetterHandle}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13369:     * {@link net.bytebuddy.asm.MemberSubstitution.Origin}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13507:     * {@link MemberSubstitution.StubValue}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13529:     * {@link net.bytebuddy.asm.MemberSubstitution.Unused}. This annotation should be
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldValue.java:53: * {@link net.bytebuddy.asm.MemberSubstitution.FieldValue}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/This.java:45: * {@link net.bytebuddy.asm.MemberSubstitution.This}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DynamicConstant.java:48: * {@link net.bytebuddy.asm.MemberSubstitution.DynamicConstant}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldGetterHandle.java:56: * {@link net.bytebuddy.asm.MemberSubstitution.FieldSetterHandle}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Handle.java:46: * {@link net.bytebuddy.asm.MemberSubstitution.Handle}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Origin.java:79: * {@link net.bytebuddy.asm.MemberSubstitution.Origin}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/StubValue.java:46: * {@link net.bytebuddy.asm.MemberSubstitution.StubValue}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Argument.java:52: * {@link net.bytebuddy.asm.MemberSubstitution.Argument}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldSetterHandle.java:56: * {@link net.bytebuddy.asm.MemberSubstitution.FieldSetterHandle}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Empty.java:39: * {@link net.bytebuddy.asm.MemberSubstitution.Unused}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/AllArguments.java:57: * {@link net.bytebuddy.asm.MemberSubstitution.AllArguments}. This annotation should be used with
+
+codex
+The target is a large public API class, so I’m checking whether its complexity is just breadth of functionality or actual dependency-hub behavior. I’m now sampling the rest of the class definition and counting how broadly it is referenced across production code, tests, and API docs.
+exec
+/bin/bash -lc "sed -n '260,620p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+     */
+    public WithoutSpecification.ForMatchedDynamicInvocation lambdaExpression() {
+        return dynamic(new LambdaMetaFactoryMatcher());
+    }
+
+    /**
+     * Matches invokedynamic instructions that are dispatched for the supplied method handle.
+     *
+     * @param matcher A matcher for the invokedynamic's bootstrap method.
+     * @return A member substitution for invokedynamic instructions that are dispatched by any matched bootstrap method.
+     */
+    public WithoutSpecification.ForMatchedDynamicInvocation dynamic(ElementMatcher<? super JavaConstant.MethodHandle> matcher) {
+        return new WithoutSpecification.ForMatchedDynamicInvocation(methodGraphCompiler,
+                typePoolResolver,
+                strict,
+                failIfNoMatch,
+                replacementFactory,
+                matcher,
+                ElementMatchers.<String>any(),
+                ElementMatchers.<JavaConstant.MethodType>any(),
+                ElementMatchers.<List<? extends JavaConstant>>any());
+    }
+
+    /**
+     * Specifies the use of a specific method graph compiler for the resolution of virtual methods.
+     *
+     * @param methodGraphCompiler The method graph compiler to use.
+     * @return A new member substitution that is equal to this but uses the specified method graph compiler.
+     */
+    public MemberSubstitution with(MethodGraph.Compiler methodGraphCompiler) {
+        return new MemberSubstitution(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory);
+    }
+
+    /**
+     * Specifies a type pool resolver to be used for locating members.
+     *
+     * @param typePoolResolver The type pool resolver to use.
+     * @return A new instance of this member substitution that uses the supplied type pool resolver.
+     */
+    public MemberSubstitution with(TypePoolResolver typePoolResolver) {
+        return new MemberSubstitution(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory);
+    }
+
+    /**
+     * Specifies if this substitution should fail if applied on a method without a match.
+     *
+     * @param failIfNoMatch {@code true} if the instrumentation should fail if applied to a method without match.
+     * @return A new instance of this member substitution that fails if applied on a method without a match.
+     */
+    public MemberSubstitution failIfNoMatch(boolean failIfNoMatch) {
+        return new MemberSubstitution(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory);
+    }
+
+    /**
+     * Applies this member substitution to any method that matches the supplied matcher.
+     *
+     * @param matcher The matcher to determine this substitutions application.
+     * @return An ASM visitor wrapper that applies all specified substitutions for any matched method.
+     */
+    public AsmVisitorWrapper.ForDeclaredMethods on(ElementMatcher<? super MethodDescription> matcher) {
+        return new AsmVisitorWrapper.ForDeclaredMethods().invokable(matcher, this);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public MethodVisitor wrap(TypeDescription instrumentedType,
+                              MethodDescription instrumentedMethod,
+                              MethodVisitor methodVisitor,
+                              Implementation.Context implementationContext,
+                              TypePool typePool,
+                              int writerFlags,
+                              int readerFlags) {
+        typePool = typePoolResolver.resolve(instrumentedType, instrumentedMethod, typePool);
+        return new SubstitutingMethodVisitor(methodVisitor,
+                instrumentedType,
+                instrumentedMethod,
+                methodGraphCompiler,
+                strict,
+                failIfNoMatch,
+                replacementFactory.make(instrumentedType, instrumentedMethod, typePool),
+                implementationContext,
+                typePool,
+                implementationContext.getClassFileVersion().isAtLeast(ClassFileVersion.JAVA_V11));
+    }
+
+    /**
+     * A member substitution that lacks a specification for how to substitute the matched members references within a method body.
+     *
+     * @param <T> The type of the matched target.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    public abstract static class WithoutSpecification<T extends Target> {
+
+        /**
+         * The method graph compiler to use.
+         */
+        protected final MethodGraph.Compiler methodGraphCompiler;
+
+        /**
+         * The type pool resolver to use.
+         */
+        protected final TypePoolResolver typePoolResolver;
+
+        /**
+         * {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+         */
+        protected final boolean strict;
+
+        /**
+         * {@code true} if the instrumentation should fail if applied to a method without match.
+         */
+        protected final boolean failIfNoMatch;
+
+        /**
+         * The replacement factory to use for creating substitutions.
+         */
+        protected final Replacement.Factory replacementFactory;
+
+        /**
+         * Creates a new member substitution that requires a specification for how to perform a substitution.
+         *
+         * @param methodGraphCompiler The method graph compiler to use.
+         * @param typePoolResolver    The type pool resolver to use.
+         * @param strict              {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+         * @param failIfNoMatch       {@code true} if the instrumentation should fail if applied to a method without match.
+         * @param replacementFactory  The replacement factory to use for creating substitutions.
+         */
+        protected WithoutSpecification(MethodGraph.Compiler methodGraphCompiler,
+                                       TypePoolResolver typePoolResolver,
+                                       boolean strict,
+                                       boolean failIfNoMatch,
+                                       Replacement.Factory replacementFactory) {
+            this.methodGraphCompiler = methodGraphCompiler;
+            this.typePoolResolver = typePoolResolver;
+            this.strict = strict;
+            this.failIfNoMatch = failIfNoMatch;
+            this.replacementFactory = replacementFactory;
+        }
+
+        /**
+         * Subs any interaction with a matched byte code element. Any value read from the element will be replaced with the stubbed
+         * value's default, i.e. {@code null} for reference types and the specific {@code 0} value for primitive types. Any written
+         * value will simply be discarded.
+         *
+         * @return A member substitution that stubs any interaction with a matched byte code element.
+         */
+        public MemberSubstitution stub() {
+            return replaceWith(Substitution.Stubbing.INSTANCE);
+        }
+
+        /**
+         * Replaces any interaction with a matched byte code element with the provided compile-time constant.
+         *
+         * @param value The compile-time constant to set.
+         * @return A member substitution that replaces any interaction with the supplied compile-time constant.
+         */
+        public MemberSubstitution replaceWithConstant(Object value) {
+            ConstantValue constant = ConstantValue.Simple.wrap(value);
+            return replaceWith(new Substitution.ForValue(constant.toStackManipulation(), constant.getTypeDescription().asGenericType()));
+        }
+
+        /**
+         * <p>
+         * Replaces any interaction with a matched byte code element by an interaction with the specified field. If a field
+         * is replacing a method or constructor invocation, it is treated as if it was a field getter or setter respectively.
+         * </p>
+         * <p>
+         * A replacement can only be applied if the field is compatible to the original byte code element, i.e. consumes an
+         * instance of the declaring type if it is not {@code static} as an argument and consumes or produces an instance of
+         * the field's type.
+         * </p>
+         *
+         * @param field The field to access instead of interacting with any of the matched byte code elements.
+         * @return A member substitution that replaces any matched byte code element with an access of the specified field.
+         */
+        public MemberSubstitution replaceWith(Field field) {
+            return replaceWith(new FieldDescription.ForLoadedField(field));
+        }
+
+        /**
+         * <p>
+         * Replaces any interaction with a matched byte code element by an interaction with the specified field. If a field
+         * is replacing a method or constructor invocation, it is treated as if it was a field getter or setter respectively.
+         * </p>
+         * <p>
+         * A replacement can only be applied if the field is compatible to the original byte code element, i.e. consumes an
+         * instance of the declaring type if it is not {@code static} as an argument and consumes or produces an instance of
+         * the field's type.
+         * </p>
+         *
+         * @param fieldDescription The field to access instead of interacting with any of the matched byte code elements.
+         * @return A member substitution that replaces any matched byte code element with an access of the specified field.
+         */
+        public MemberSubstitution replaceWith(FieldDescription fieldDescription) {
+            return replaceWith(new Substitution.ForFieldAccess.OfGivenField(fieldDescription));
+        }
+
+        /**
+         * Replaces any interaction with a matched byte code element with a non-static field access on the first
+         * parameter of the matched element. When matching a non-static field access or method invocation, the
+         * substituted field is located on the same receiver type as the original access. For static access, the
+         * first argument is used as a receiver.
+         *
+         * @param matcher A matcher for locating a field on the original interaction's receiver type.
+         * @return A member substitution that replaces any matched byte code element with an access of the matched field.
+         */
+        public MemberSubstitution replaceWithField(ElementMatcher<? super FieldDescription> matcher) {
+            return replaceWith(new Substitution.ForFieldAccess.OfMatchedField(matcher));
+        }
+
+        /**
+         * <p>
+         * Replaces any interaction with a matched byte code element by an invocation of the specified method. If a method
+         * is replacing a field access, it is treated as if it was replacing an invocation of the field's getter or setter respectively.
+         * </p>
+         * <p>
+         * A replacement can only be applied if the method is compatible to the original byte code element, i.e. consumes compatible
+         * arguments and returns a compatible value. If the method is not {@code static}, it is treated as if {@code this} was an implicit
+         * first argument.
+         * </p>
+         *
+         * @param method The method to invoke instead of interacting with any of the matched byte code elements.
+         * @return A member substitution that replaces any matched byte code element with an invocation of the specified method.
+         */
+        public MemberSubstitution replaceWith(Method method) {
+            return replaceWith(new MethodDescription.ForLoadedMethod(method));
+        }
+
+        /**
+         * <p>
+         * Replaces any interaction with a matched byte code element by an invocation of the specified method. If a method
+         * is replacing a field access, it is treated as if it was replacing an invocation of the field's getter or setter respectively.
+         * </p>
+         * <p>
+         * A replacement can only be applied if the method is compatible to the original byte code element, i.e. consumes compatible
+         * arguments and returns a compatible value. If the method is not {@code static}, it is treated as if {@code this} was an implicit
+         * first argument.
+         * </p>
+         * <p>
+         * <b>Important</b>: It is not allowed to specify a constructor or the static type initializer as a replacement.
+         * </p>
+         *
+         * @param methodDescription The method to invoke instead of interacting with any of the matched byte code elements.
+         * @return A member substitution that replaces any matched byte code element with an invocation of the specified method.
+         */
+        public MemberSubstitution replaceWith(MethodDescription methodDescription) {
+            if (!methodDescription.isMethod()) {
+                throw new IllegalArgumentException("Cannot use " + methodDescription + " as a replacement");
+            }
+            return replaceWith(new Substitution.ForMethodInvocation.OfGivenMethod(methodDescription));
+        }
+
+        /**
+         * Replaces any interaction with a matched byte code element with a non-static method access on the first
+         * parameter of the matched element. When matching a non-static field access or method invocation, the
+         * substituted method is located on the same receiver type as the original access. For static access, the
+         * first argument is used as a receiver.
+         *
+         * @param matcher A matcher for locating a method on the original interaction's receiver type.
+         * @return A member substitution that replaces any matched byte code element with an access of the matched method.
+         */
+        public MemberSubstitution replaceWithMethod(ElementMatcher<? super MethodDescription> matcher) {
+            return replaceWithMethod(matcher, methodGraphCompiler);
+        }
+
+        /**
+         * Replaces any interaction with a matched byte code element with a non-static method access on the first
+         * parameter of the matched element. When matching a non-static field access or method invocation, the
+         * substituted method is located on the same receiver type as the original access. For static access, the
+         * first argument is used as a receiver.
+         *
+         * @param matcher             A matcher for locating a method on the original interaction's receiver type.
+         * @param methodGraphCompiler The method graph compiler to use for locating a method.
+         * @return A member substitution that replaces any matched byte code element with an access of the matched method.
+         */
+        public MemberSubstitution replaceWithMethod(ElementMatcher<? super MethodDescription> matcher, MethodGraph.Compiler methodGraphCompiler) {
+            return replaceWith(new Substitution.ForMethodInvocation.OfMatchedMethod(matcher, methodGraphCompiler));
+        }
+
+        /**
+         * Replaces any interaction with a matched byte code element with an invocation of the instrumented
+         * method. This can cause an infinite recursive call if the arguments to the method are not altered.
+         *
+         * @return A member substitution that replaces any matched byte code element with an invocation of the
+         * instrumented method.
+         */
+        public MemberSubstitution replaceWithInstrumentedMethod() {
+            return replaceWith(Substitution.ForMethodInvocation.OfInstrumentedMethod.INSTANCE);
+        }
+
+        /**
+         * Replaces the matched byte code elements with a chain of substitutions that can operate on the same values as the substituted element. This is a
+         * shortcut for creating a substitution chain with a default assigner.
+         *
+         * @param step The steps to apply for a substitution.
+         * @return A member substitution that replaces any matched byte code element with the provided substitution chain.
+         */
+        @SafeVarargsPlugin.Enhance
+        @SuppressWarnings("unchecked") // In absence of @SafeVarargs
+        public final MemberSubstitution replaceWithChain(Substitution.Chain.Step.Factory<? super T>... step) {
+            return replaceWithChain(Arrays.asList(step));
+        }
+
+        /**
+         * Replaces the matched byte code elements with a chain of substitutions that can operate on the same values as the substituted element. This is a
+         * shortcut for creating a substitution chain with a default assigner.
+         *
+         * @param steps The steps to apply for a substitution.
+         * @return A member substitution that replaces any matched byte code element with the provided substitution chain.
+         */
+        public MemberSubstitution replaceWithChain(List<? extends Substitution.Chain.Step.Factory<? super T>> steps) {
+            return replaceWith(Substitution.Chain.<T>withDefaultAssigner().executing(steps));
+        }
+
+        /**
+         * Replaces any interaction with the supplied substitution.
+         *
+         * @param factory The substitution factory to use for creating the applied substitution.
+         * @return A member substitution that replaces any matched byte code element with the supplied substitution.
+         */
+        public abstract MemberSubstitution replaceWith(Substitution.Factory<? super T> factory);
+
+        /**
+         * A member substitution for an invokedynamic instruction.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        public static class ForMatchedDynamicInvocation extends WithoutSpecification<Target.ForDynamicInvocation> {
+
+            /**
+             * A matcher for an invokedynamic bootstrap method.
+             */
+            private final ElementMatcher<? super JavaConstant.MethodHandle> handleMatcher;
+
+            /**
+             * A matcher for an invokedynamic instruction's name.
+             */
+            private final ElementMatcher.Junction<? super String> nameMatcher;
+
+            /**
+             * A matcher for an invokedynamic instruction's result type.
+             */
+            private final ElementMatcher.Junction<? super JavaConstant.MethodType> typeMatcher;
+
+            /**
+             * A matcher for an invokedynamic instruction's constant arguments.
+             */
+            private final ElementMatcher.Junction<? super List<? extends JavaConstant>> argumentsMatcher;
+
+            /**
+             * Creates a member substitution for an invokedynamic instruction.
+             *
+             * @param methodGraphCompiler The method graph compiler to use.
+             * @param typePoolResolver    The type pool resolver to use.
+             * @param strict              {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+             * @param failIfNoMatch       {@code true} if the instrumentation should fail if applied to a method without match.
+             * @param replacementFactory  The replacement factory to use for creating substitutions.
+             * @param handleMatcher       A matcher for an invokedynamic bootstrap method.
+             * @param nameMatcher         A matcher for an invokedynamic instruction's name.
+             * @param typeMatcher         A matcher for an invokedynamic instruction's result type.
+             * @param argumentsMatcher    A matcher for an invokedynamic instruction's constant arguments.
+
+exec
+/bin/bash -lc "sed -n '620,980p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+             * @param argumentsMatcher    A matcher for an invokedynamic instruction's constant arguments.
+             */
+            protected ForMatchedDynamicInvocation(MethodGraph.Compiler methodGraphCompiler,
+                                                  TypePoolResolver typePoolResolver,
+                                                  boolean strict,
+                                                  boolean failIfNoMatch,
+                                                  Replacement.Factory replacementFactory,
+                                                  ElementMatcher<? super JavaConstant.MethodHandle> handleMatcher,
+                                                  ElementMatcher.Junction<? super String> nameMatcher,
+                                                  ElementMatcher.Junction<? super JavaConstant.MethodType> typeMatcher,
+                                                  ElementMatcher.Junction<? super List<? extends JavaConstant>> argumentsMatcher) {
+                super(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory);
+                this.handleMatcher = handleMatcher;
+                this.nameMatcher = nameMatcher;
+                this.typeMatcher = typeMatcher;
+                this.argumentsMatcher = argumentsMatcher;
+            }
+
+            /**
+             * Reduces matched invokedynamic instructions to such instructions that declare a name which is matched by the supplied matcher.
+             *
+             * @param nameMatcher A matcher for an invokedynamic instruction's name.
+             * @return A member substitution for an invokedynamic instruction with a name that is matched by the given matcher.
+             */
+            public ForMatchedDynamicInvocation withName(ElementMatcher<? super String> nameMatcher) {
+                return new ForMatchedDynamicInvocation(methodGraphCompiler,
+                        typePoolResolver,
+                        strict,
+                        failIfNoMatch,
+                        replacementFactory,
+                        handleMatcher,
+                        this.nameMatcher.<String>and(nameMatcher),
+                        typeMatcher,
+                        argumentsMatcher);
+            }
+
+            /**
+             * Reduces matched invokedynamic instructions to such instructions that require a type which is matched by the supplied matcher.
+             *
+             * @param typeMatcher A matcher for an invokedynamic instruction's required type.
+             * @return A member substitution for an invokedynamic instruction with a required type that is matched by the given matcher.
+             */
+            public ForMatchedDynamicInvocation withType(ElementMatcher<? super JavaConstant.MethodType> typeMatcher) {
+                return new ForMatchedDynamicInvocation(methodGraphCompiler,
+                        typePoolResolver,
+                        strict,
+                        failIfNoMatch,
+                        replacementFactory,
+                        handleMatcher,
+                        nameMatcher,
+                        this.typeMatcher.<JavaConstant.MethodType>and(typeMatcher),
+                        argumentsMatcher);
+            }
+
+            /**
+             * Reduces matched invokedynamic instructions to such instructions that is provided with constant arguments which are matched by the supplied matcher.
+             *
+             * @param argumentsMatcher A matcher for an invokedynamic instruction's constant arguments.
+             * @return A member substitution for an invokedynamic instruction with constant arguments that are matched by the given matcher.
+             */
+            public ForMatchedDynamicInvocation withArguments(ElementMatcher<? super List<? extends JavaConstant>> argumentsMatcher) {
+                return new ForMatchedDynamicInvocation(methodGraphCompiler,
+                        typePoolResolver,
+                        strict,
+                        failIfNoMatch,
+                        replacementFactory,
+                        handleMatcher,
+                        nameMatcher,
+                        typeMatcher,
+                        this.argumentsMatcher.<List<? extends JavaConstant>>and(argumentsMatcher));
+            }
+
+            @Override
+            public MemberSubstitution replaceWith(Substitution.Factory<? super Target.ForDynamicInvocation> substitutionFactory) {
+                return new MemberSubstitution(methodGraphCompiler,
+                        typePoolResolver,
+                        strict,
+                        failIfNoMatch,
+                        new Replacement.Factory.Compound(this.replacementFactory, new Replacement.ForDynamicInvocation.Factory(handleMatcher,
+                                nameMatcher,
+                                typeMatcher,
+                                argumentsMatcher,
+                                substitutionFactory)));
+            }
+        }
+
+        /**
+         * Describes a member substitution that requires a specification for how to replace a byte code element.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class ForMatchedByteCodeElement extends WithoutSpecification<Target.ForMember> {
+
+            /**
+             * A matcher for any byte code elements that should be substituted.
+             */
+            private final ElementMatcher<? super ByteCodeElement.Member> matcher;
+
+            /**
+             * Creates a new member substitution for a matched byte code element that requires a specification for how to perform a substitution.
+             *
+             * @param methodGraphCompiler The method graph compiler to use.
+             * @param typePoolResolver    The type pool resolver to use.
+             * @param strict              {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+             * @param failIfNoMatch       {@code true} if the instrumentation should fail if applied to a method without match.
+             * @param replacementFactory  The replacement factory to use.
+             * @param matcher             A matcher for any byte code elements that should be substituted.
+             */
+            protected ForMatchedByteCodeElement(MethodGraph.Compiler methodGraphCompiler,
+                                                TypePoolResolver typePoolResolver,
+                                                boolean strict,
+                                                boolean failIfNoMatch,
+                                                Replacement.Factory replacementFactory,
+                                                ElementMatcher<? super ByteCodeElement.Member> matcher) {
+                super(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory);
+                this.matcher = matcher;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MemberSubstitution replaceWith(Substitution.Factory<? super Target.ForMember> substitutionFactory) {
+                return new MemberSubstitution(methodGraphCompiler,
+                        typePoolResolver,
+                        strict,
+                        failIfNoMatch,
+                        new Replacement.Factory.Compound(this.replacementFactory, Replacement.ForElementMatchers.Factory.of(matcher, substitutionFactory)));
+            }
+        }
+
+        /**
+         * Describes a member substitution that requires a specification for how to replace a field.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        public static class ForMatchedField extends WithoutSpecification<Target.ForMember> {
+
+            /**
+             * A matcher for any field that should be substituted.
+             */
+            private final ElementMatcher<? super FieldDescription> matcher;
+
+            /**
+             * {@code true} if read access to a field should be substituted.
+             */
+            private final boolean matchRead;
+
+            /**
+             * {@code true} if write access to a field should be substituted.
+             */
+            private final boolean matchWrite;
+
+            /**
+             * Creates a new member substitution for a matched field that requires a specification for how to perform a substitution.
+             *
+             * @param methodGraphCompiler The method graph compiler to use.
+             * @param typePoolResolver    The type pool resolver to use.
+             * @param strict              {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+             * @param failIfNoMatch       {@code true} if the instrumentation should fail if applied to a method without match.
+             * @param replacementFactory  The replacement factory to use.
+             * @param matcher             A matcher for any field that should be substituted.
+             */
+            protected ForMatchedField(MethodGraph.Compiler methodGraphCompiler,
+                                      TypePoolResolver typePoolResolver,
+                                      boolean strict,
+                                      boolean failIfNoMatch,
+                                      Replacement.Factory replacementFactory,
+                                      ElementMatcher<? super FieldDescription> matcher) {
+                this(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory, matcher, true, true);
+            }
+
+            /**
+             * Creates a new member substitution for a matched field that requires a specification for how to perform a substitution.
+             *
+             * @param methodGraphCompiler The method graph compiler to use.
+             * @param typePoolResolver    The type pool resolver to use.
+             * @param strict              {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+             * @param failIfNoMatch       {@code true} if the instrumentation should fail if applied to a method without match.
+             * @param replacementFactory  The replacement factory to use.
+             * @param matcher             A matcher for any field that should be substituted.
+             * @param matchRead           {@code true} if read access to a field should be substituted.
+             * @param matchWrite          {@code true} if write access to a field should be substituted.
+             */
+            protected ForMatchedField(MethodGraph.Compiler methodGraphCompiler,
+                                      TypePoolResolver typePoolResolver,
+                                      boolean strict,
+                                      boolean failIfNoMatch,
+                                      Replacement.Factory replacementFactory,
+                                      ElementMatcher<? super FieldDescription> matcher,
+                                      boolean matchRead,
+                                      boolean matchWrite) {
+                super(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory);
+                this.matcher = matcher;
+                this.matchRead = matchRead;
+                this.matchWrite = matchWrite;
+            }
+
+            /**
+             * When invoked, only read access of the previously matched field is substituted.
+             *
+             * @return This instance with the limitation that only read access to the matched field is substituted.
+             */
+            public WithoutSpecification<Target.ForMember> onRead() {
+                return new ForMatchedField(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory, matcher, true, false);
+            }
+
+            /**
+             * When invoked, only write access of the previously matched field is substituted.
+             *
+             * @return This instance with the limitation that only write access to the matched field is substituted.
+             */
+            public WithoutSpecification<Target.ForMember> onWrite() {
+                return new ForMatchedField(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory, matcher, false, true);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MemberSubstitution replaceWith(Substitution.Factory<? super Target.ForMember> substitutionFactory) {
+                return new MemberSubstitution(methodGraphCompiler,
+                        typePoolResolver,
+                        strict,
+                        failIfNoMatch,
+                        new Replacement.Factory.Compound(this.replacementFactory, Replacement.ForElementMatchers.Factory.ofField(matcher, matchRead, matchWrite, substitutionFactory)));
+            }
+        }
+
+        /**
+         * Describes a member substitution that requires a specification for how to replace a method or constructor.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        public static class ForMatchedMethod extends WithoutSpecification<Target.ForMember> {
+
+            /**
+             * A matcher for any method or constructor that should be substituted.
+             */
+            private final ElementMatcher<? super MethodDescription> matcher;
+
+            /**
+             * {@code true} if this specification includes virtual invocations.
+             */
+            private final boolean includeVirtualCalls;
+
+            /**
+             * {@code true} if this specification includes {@code super} invocations.
+             */
+            private final boolean includeSuperCalls;
+
+            /**
+             * Creates a new member substitution for a matched method that requires a specification for how to perform a substitution.
+             *
+             * @param methodGraphCompiler The method graph compiler to use.
+             * @param typePoolResolver    The type pool resolver to use.
+             * @param strict              {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+             * @param failIfNoMatch       {@code true} if the instrumentation should fail if applied to a method without match.
+             * @param replacementFactory  The replacement factory to use.
+             * @param matcher             A matcher for any method or constructor that should be substituted.
+             */
+            protected ForMatchedMethod(MethodGraph.Compiler methodGraphCompiler,
+                                       TypePoolResolver typePoolResolver,
+                                       boolean strict,
+                                       boolean failIfNoMatch,
+                                       Replacement.Factory replacementFactory,
+                                       ElementMatcher<? super MethodDescription> matcher) {
+                this(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory, matcher, true, true);
+            }
+
+            /**
+             * Creates a new member substitution for a matched method that requires a specification for how to perform a substitution.
+             *
+             * @param methodGraphCompiler The method graph compiler to use.
+             * @param typePoolResolver    The type pool resolver to use.
+             * @param strict              {@code true} if the method processing should be strict where an exception is raised if a member cannot be found.
+             * @param failIfNoMatch       {@code true} if the instrumentation should fail if applied to a method without match.
+             * @param replacementFactory  The replacement factory to use.
+             * @param matcher             A matcher for any method or constructor that should be substituted.
+             * @param includeVirtualCalls {@code true} if this specification includes virtual invocations.
+             * @param includeSuperCalls   {@code true} if this specification includes {@code super} invocations.
+             */
+            protected ForMatchedMethod(MethodGraph.Compiler methodGraphCompiler,
+                                       TypePoolResolver typePoolResolver,
+                                       boolean strict,
+                                       boolean failIfNoMatch,
+                                       Replacement.Factory replacementFactory,
+                                       ElementMatcher<? super MethodDescription> matcher,
+                                       boolean includeVirtualCalls,
+                                       boolean includeSuperCalls) {
+                super(methodGraphCompiler, typePoolResolver, strict, failIfNoMatch, replacementFactory);
+                this.matcher = matcher;
+                this.includeVirtualCalls = includeVirtualCalls;
+                this.includeSuperCalls = includeSuperCalls;
+            }
+
+            /**
+             * Limits the substituted method calls to method calls that invoke a method virtually (as opposed to a {@code super} invocation).
+             *
+             * @return This specification where only virtual methods are matched if they are not invoked as a virtual call.
+             */
+            public WithoutSpecification<Target.ForMember> onVirtualCall() {
+                return new ForMatchedMethod(methodGraphCompiler,
+                        typePoolResolver,
+                        strict,
+                        failIfNoMatch,
+                        replacementFactory,
+                        isVirtual().and(matcher),
+                        true,
+                        false);
+            }
+
+            /**
+             * Limits the substituted method calls to method calls that invoke a method as a {@code super} call.
+             *
+             * @return This specification where only virtual methods are matched if they are not invoked as a super call.
+             */
+            public WithoutSpecification<Target.ForMember> onSuperCall() {
+                return new ForMatchedMethod(methodGraphCompiler,
+                        typePoolResolver,
+                        strict,
+                        failIfNoMatch,
+                        replacementFactory,
+                        isVirtual().and(matcher),
+                        false,
+                        true);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MemberSubstitution replaceWith(Substitution.Factory<? super Target.ForMember> substitutionFactory) {
+                return new MemberSubstitution(methodGraphCompiler,
+                        typePoolResolver,
+                        strict,
+                        failIfNoMatch,
+                        new Replacement.Factory.Compound(this.replacementFactory, Replacement.ForElementMatchers.Factory.ofMethod(matcher, includeVirtualCalls, includeSuperCalls, substitutionFactory)));
+            }
+        }
+    }
+
+    /**
+     * A type pool resolver is responsible for resolving a {@link TypePool} for locating substituted members.
+     */
+    public interface TypePoolResolver {
+
+        /**
+         * Resolves a type pool to use for locating substituted members.
+         *
+         * @param instrumentedType   The instrumented type.
+         * @param instrumentedMethod The instrumented method.
+         * @param typePool           The type pool implicit to the instrumentation.
+         * @return The type pool to use.
+         */
+        TypePool resolve(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool);
+
+        /**
+         * Returns the implicit type pool.
+         */
+        enum OfImplicitPool implements TypePoolResolver {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+
+exec
+/bin/bash -lc "sed -n '980,1400p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypePool resolve(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                return typePool;
+            }
+        }
+
+        /**
+         * A type pool resolver that returns a specific type pool.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForExplicitPool implements TypePoolResolver {
+
+            /**
+             * The type pool to return.
+             */
+            private final TypePool typePool;
+
+            /**
+             * Creates a resolver for an explicit type pool.
+             *
+             * @param typePool The type pool to return.
+             */
+            public ForExplicitPool(TypePool typePool) {
+                this.typePool = typePool;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypePool resolve(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                return this.typePool;
+            }
+        }
+
+        /**
+         * A type pool resolver that resolves the implicit pool but additionally checks another class file locator.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForClassFileLocator implements TypePoolResolver {
+
+            /**
+             * The class file locator to use.
+             */
+            private final ClassFileLocator classFileLocator;
+
+            /**
+             * The reader mode to apply.
+             */
+            private final TypePool.Default.ReaderMode readerMode;
+
+            /**
+             * Creates a new type pool resolver for a class file locator as a supplement of the implicit type pool.
+             *
+             * @param classFileLocator The class file locator to use.
+             */
+            public ForClassFileLocator(ClassFileLocator classFileLocator) {
+                this(classFileLocator, TypePool.Default.ReaderMode.FAST);
+            }
+
+            /**
+             * Creates a new type pool resolver for a class file locator as a supplement of the implicit type pool.
+             *
+             * @param classFileLocator The class file locator to use.
+             * @param readerMode       The reader mode to apply.
+             */
+            public ForClassFileLocator(ClassFileLocator classFileLocator, TypePool.Default.ReaderMode readerMode) {
+                this.classFileLocator = classFileLocator;
+                this.readerMode = readerMode;
+            }
+
+            /**
+             * Creates a new type pool resolver that supplements the supplied class loader to the implicit type pool.
+             *
+             * @param classLoader The class loader to use as a supplement which can be {@code null} to represent the bootstrap loader.
+             * @return An appropriate type pool resolver.
+             */
+            public static TypePoolResolver of(@MaybeNull ClassLoader classLoader) {
+                return new ForClassFileLocator(ClassFileLocator.ForClassLoader.of(classLoader));
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypePool resolve(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                return new TypePool.Default(new TypePool.CacheProvider.Simple(), classFileLocator, readerMode, typePool);
+            }
+        }
+    }
+
+    /**
+     * Representation of a substitution target within a method body.
+     */
+    public interface Target {
+
+        /**
+         * Returns the (internal) name of the target.
+         *
+         * @return The name of the target.
+         */
+        String getName();
+
+        /**
+         * Determines if the target is dispatched statically.
+         *
+         * @return {@code true} if the target is dispatched statically.
+         */
+        boolean isStaticDispatch();
+
+        /**
+         * Represents a member that is the target of a substitution.
+         */
+        class ForMember implements Target {
+
+            /**
+             * The actual (sub-)type on which the member is accessed.
+             */
+            private final TypeDescription receiverType;
+
+            /**
+             * The member that is being accessed.
+             */
+            private final ByteCodeElement.Member member;
+
+            /**
+             * Creates a new target for a member that is being accessed.
+             *
+             * @param receiverType The actual (sub-)type on which the member is accessed.
+             * @param member       The member that is being accessed.
+             */
+            protected ForMember(TypeDescription receiverType, ByteCodeElement.Member member) {
+                this.receiverType = receiverType;
+                this.member = member;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public String getName() {
+                return member.getInternalName();
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public boolean isStaticDispatch() {
+                return member.isStatic()
+                        || member instanceof MethodDescription
+                        && ((MethodDescription) member).isConstructor();
+            }
+
+            /**
+             * Returns the actual (sub-)type on which the member is accessed.
+             *
+             * @return The actual (sub-)type on which the member is accessed.
+             */
+            public TypeDescription getReceiverType() {
+                return receiverType;
+            }
+
+            /**
+             * Returns the member that is being accessed.
+             *
+             * @return The member that is being accessed.
+             */
+            public ByteCodeElement.Member getMember() {
+                return member;
+            }
+        }
+
+        /**
+         * Represents an invokedynamic instruction that is the target of a substitution.
+         */
+        class ForDynamicInvocation implements Target {
+
+            /**
+             * The requested type of the target for the invokedynamic instruction.
+             */
+            private final JavaConstant.MethodType methodType;
+
+            /**
+             * The name that is expected for the bound target.
+             */
+            private final String name;
+
+            /**
+             * The constant arguments that are provided to the invokedynamic instruction.
+             */
+            private final List<? extends JavaConstant> arguments;
+
+            /**
+             * Creates a new target for an invokedynamic instruction.
+             *
+             * @param methodType The requested type of the target for the invokedynamic instruction.
+             * @param name       The name that is expected for the bound target.
+             * @param arguments  The constant arguments that are provided to the invokedynamic instruction.
+             */
+            protected ForDynamicInvocation(JavaConstant.MethodType methodType, String name, List<? extends JavaConstant> arguments) {
+                this.methodType = methodType;
+                this.name = name;
+                this.arguments = arguments;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public boolean isStaticDispatch() {
+                return true;
+            }
+
+            /**
+             * Returns the requested type of the target for the invokedynamic instruction.
+             *
+             * @return The requested type of the target for the invokedynamic instruction.
+             */
+            public JavaConstant.MethodType getMethodType() {
+                return methodType;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public String getName() {
+                return name;
+            }
+
+            /**
+             * Returns the constant arguments that are provided to the invokedynamic instruction.
+             *
+             * @return The constant arguments that are provided to the invokedynamic instruction.
+             */
+            public List<? extends JavaConstant> getArguments() {
+                return arguments;
+            }
+        }
+    }
+
+    /**
+     * A substitution replaces or enhances an interaction with a field or method within an instrumented method.
+     *
+     * @param <T> The type of the matched target.
+     */
+    public interface Substitution<T extends Target> {
+
+        /**
+         * Resolves this substitution into a stack manipulation.
+         *
+         * @param target            The targeted member that is substituted.
+         * @param parameters        All parameters that serve as input to this access.
+         * @param result            The result that is expected from the interaction or {@code void} if no result is expected.
+         * @param methodHandle      A method handle describing the substituted expression.
+         * @param stackManipulation The original byte code expression that is being executed.
+         * @param freeOffset        The first free offset of the local variable array that can be used for storing values.
+         * @return A stack manipulation that represents the access.
+         */
+        StackManipulation resolve(T target,
+                                  TypeList.Generic parameters,
+                                  TypeDescription.Generic result,
+                                  JavaConstant.MethodHandle methodHandle,
+                                  StackManipulation stackManipulation,
+                                  int freeOffset);
+
+        /**
+         * A factory for creating a substitution for an instrumented method.
+         *
+         * @param <S> The type of the matched target.
+         */
+        interface Factory<S extends Target> {
+
+            /**
+             * Creates a substitution for an instrumented method.
+             *
+             * @param instrumentedType   The instrumented type.
+             * @param instrumentedMethod The instrumented method.
+             * @param typePool           The type pool being used.
+             * @return The substitution to apply within the instrumented method.
+             */
+            Substitution<? super S> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool);
+        }
+
+        /**
+         * A substitution that drops any field or method access and returns the expected return
+         * type's default value, i.e {@code null} or zero for primitive types.
+         */
+        enum Stubbing implements Substitution<Target>, Factory<Target> {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                return this;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation resolve(Target target,
+                                             TypeList.Generic parameters,
+                                             TypeDescription.Generic result,
+                                             JavaConstant.MethodHandle methodHandle,
+                                             StackManipulation stackManipulation,
+                                             int freeOffset) {
+                List<StackManipulation> stackManipulations = new ArrayList<StackManipulation>(parameters.size());
+                for (int index = parameters.size() - 1; index >= 0; index--) {
+                    stackManipulations.add(Removal.of(parameters.get(index)));
+                }
+                return new StackManipulation.Compound(CompoundList.of(stackManipulations, DefaultValue.of(result.asErasure())));
+            }
+        }
+
+        /**
+         * A substitution that loads a fixed value.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForValue implements Substitution<Target>, Factory<Target> {
+
+            /**
+             * The stack manipulation to load the value that represents the substitution.
+             */
+            private final StackManipulation stackManipulation;
+
+            /**
+             * The type of the represented stack manipulation.
+             */
+            private final TypeDescription.Generic typeDescription;
+
+            /**
+             * Creates a new substitution for loading a constant value.
+             *
+             * @param stackManipulation The stack manipulation to load the value that represents the substitution.
+             * @param typeDescription   The type of the represented stack manipulation.
+             */
+            public ForValue(StackManipulation stackManipulation, TypeDescription.Generic typeDescription) {
+                this.stackManipulation = stackManipulation;
+                this.typeDescription = typeDescription;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Substitution<Target> make(TypeDescription instrumentedType, MethodDescription instrumentedMethod, TypePool typePool) {
+                return this;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation resolve(Target target,
+                                             TypeList.Generic parameters,
+                                             TypeDescription.Generic result,
+                                             JavaConstant.MethodHandle methodHandle,
+                                             StackManipulation stackManipulation,
+                                             int freeOffset) {
+                List<StackManipulation> stackManipulations = new ArrayList<StackManipulation>(parameters.size());
+                for (int index = parameters.size() - 1; index >= 0; index--) {
+                    stackManipulations.add(Removal.of(parameters.get(index)));
+                }
+                if (!typeDescription.asErasure().isAssignableTo(result.asErasure())) {
+                    throw new IllegalStateException("Cannot assign " + typeDescription + " to " + result);
+                }
+                return new StackManipulation.Compound(CompoundList.of(stackManipulations, this.stackManipulation));
+            }
+        }
+
+        /**
+         * A substitution with a field access.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForFieldAccess implements Substitution<Target> {
+
+            /**
+             * The instrumented type.
+             */
+            private final TypeDescription instrumentedType;
+
+            /**
+             * A resolver to locate the field to access.
+             */
+            private final FieldResolver fieldResolver;
+
+            /**
+             * Creates a new substitution with a field access.
+             *
+             * @param instrumentedType The instrumented type.
+             * @param fieldResolver    A resolver to locate the field to access.
+             */
+            public ForFieldAccess(TypeDescription instrumentedType, FieldResolver fieldResolver) {
+                this.instrumentedType = instrumentedType;
+                this.fieldResolver = fieldResolver;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "Assuming declaring type for type member.")
+            public StackManipulation resolve(Target target,
+                                             TypeList.Generic parameters,
+                                             TypeDescription.Generic result,
+                                             JavaConstant.MethodHandle methodHandle,
+                                             StackManipulation stackManipulation,
+                                             int freeOffset) {
+                FieldDescription fieldDescription = fieldResolver.resolve(target, parameters, result);
+                if (!fieldDescription.isAccessibleTo(instrumentedType)) {
+                    throw new IllegalStateException(instrumentedType + " cannot access " + fieldDescription);
+                } else if (result.represents(void.class)) {
+                    if (parameters.size() != (fieldDescription.isStatic() ? 1 : 2)) {
+                        throw new IllegalStateException("Cannot set " + fieldDescription + " with " + parameters);
+                    } else if (!fieldDescription.isStatic() && !parameters.get(0).asErasure().isAssignableTo(fieldDescription.getDeclaringType().asErasure())) {
+                        throw new IllegalStateException("Cannot set " + fieldDescription + " on " + parameters.get(0));
+                    } else if (!parameters.get(fieldDescription.isStatic() ? 0 : 1).asErasure().isAssignableTo(fieldDescription.getType().asErasure())) {
+                        throw new IllegalStateException("Cannot set " + fieldDescription + " to " + parameters.get(fieldDescription.isStatic() ? 0 : 1));
+                    }
+                    return FieldAccess.forField(fieldDescription).write();
+                } else {
+
+exec
+/bin/bash -lc "python - <<'PY'
+from pathlib import Path
+p=Path('byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java')
+text=p.read_text()
+imports=[line for line in text.splitlines() if line.startswith('import ') or line.startswith('from ')]
+print('import_count', sum(1 for line in text.splitlines() if line.startswith('import ')))
+print('field_count', text.count('\\n    private final ')+text.count('\\n    protected static final '))
+print('public_methods', sum(1 for line in text.splitlines() if line.startswith('    public ')))
+print('nested_class_mentions', text.count(' class ')+text.count(' interface ')+text.count(' enum '))
+PY" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+import_count 82
+field_count 6
+public_methods 32
+nested_class_mentions 166
+
+codex
+I have enough of the class shape: it imports a lot and contains many nested API types. I’m now quantifying how many other files point at it so I can distinguish “large API surface” from “hub-like” behavior.
+exec
+/bin/bash -lc "rg -l \"\\bMemberSubstitution\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java byte-buddy-dep/src/test/java-7 byte-buddy-dep/src/test/java-11 | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+21
+
+exec
+/bin/bash -lc "rg -n \"\\bMemberSubstitution\\.(This|Argument|AllArguments|Handle|DynamicConstant|FieldValue|FieldGetterHandle|FieldSetterHandle|Origin|StubValue|Unused)\\b\" byte-buddy-dep/src/main/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldValue.java:53: * {@link net.bytebuddy.asm.MemberSubstitution.FieldValue}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldGetterHandle.java:56: * {@link net.bytebuddy.asm.MemberSubstitution.FieldSetterHandle}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Argument.java:52: * {@link net.bytebuddy.asm.MemberSubstitution.Argument}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Empty.java:39: * {@link net.bytebuddy.asm.MemberSubstitution.Unused}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldSetterHandle.java:56: * {@link net.bytebuddy.asm.MemberSubstitution.FieldSetterHandle}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/AllArguments.java:57: * {@link net.bytebuddy.asm.MemberSubstitution.AllArguments}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/This.java:45: * {@link net.bytebuddy.asm.MemberSubstitution.This}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Origin.java:79: * {@link net.bytebuddy.asm.MemberSubstitution.Origin}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DynamicConstant.java:48: * {@link net.bytebuddy.asm.MemberSubstitution.DynamicConstant}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Handle.java:46: * {@link net.bytebuddy.asm.MemberSubstitution.Handle}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/StubValue.java:46: * {@link net.bytebuddy.asm.MemberSubstitution.StubValue}. This annotation should be used with
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:12797:     * {@link net.bytebuddy.asm.MemberSubstitution.This}. This annotation should be used only in combination with {@link Advice}.
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:12845:     * {@link net.bytebuddy.asm.MemberSubstitution.Argument}. This annotation should be used only in combination with {@link Advice}.
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:12902:     * {@link net.bytebuddy.asm.MemberSubstitution.AllArguments}. This annotation should be used only in combination with {@link Advice}.
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13069:     * <b>Important</b>: Don't confuse this annotation with {@link net.bytebuddy.asm.MemberSubstitution.Handle} or
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13125:     * <b>Important</b>: Don't confuse this annotation with {@link net.bytebuddy.asm.MemberSubstitution.DynamicConstant}
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13210:     * {@link net.bytebuddy.asm.MemberSubstitution.FieldValue}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13277:     * {@link net.bytebuddy.asm.MemberSubstitution.FieldGetterHandle}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13323:     * {@link net.bytebuddy.asm.MemberSubstitution.FieldSetterHandle}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13369:     * {@link net.bytebuddy.asm.MemberSubstitution.Origin}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13507:     * {@link MemberSubstitution.StubValue}. This annotation should
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:13529:     * {@link net.bytebuddy.asm.MemberSubstitution.Unused}. This annotation should be
+
+exec
+/bin/bash -lc "rg -l \"\\bMemberSubstitution\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java byte-buddy-dep/src/test/java-7 byte-buddy-dep/src/test/java-11 | sort | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/AllArguments.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Argument.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DynamicConstant.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Empty.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldGetterHandle.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldSetterHandle.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldValue.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Handle.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Origin.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/StubValue.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/This.java
+byte-buddy-dep/src/test/java-11/net/bytebuddy/test/precompiled/v11/MemberSubstitutionDynamicConstant.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionDynamicConstant.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandle.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandlesLookup.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodType.java
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/MemberSubstitutionChainWithAnnotationTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/MemberSubstitutionTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/MemberSubstitutionTypeTest.java
+
+codex
+I have the raw reference set. I’m splitting it into production and test usage now, because production fan-in is more convincing than test-only usage for a smell verdict.
+exec
+/bin/bash -lc "rg -l \"\\bMemberSubstitution\\b\" byte-buddy-dep/src/main/java | sort | grep -v 'MemberSubstitution.java' | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+12
+
+exec
+/bin/bash -lc "rg -l \"\\bMemberSubstitution\\b\" byte-buddy-dep/src/main/java | sort | grep -v 'MemberSubstitution.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/AllArguments.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Argument.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DynamicConstant.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Empty.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldGetterHandle.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldSetterHandle.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldValue.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Handle.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Origin.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/StubValue.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/This.java
+
+exec
+/bin/bash -lc "rg -l \"\\bMemberSubstitution\\b\" byte-buddy-dep/src/test/java byte-buddy-dep/src/test/java-7 byte-buddy-dep/src/test/java-11 | sort | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+8
+
+codex
+{"target":"net.bytebuddy.asm.MemberSubstitution","detection":true,"justification":"Yes: `byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java` is a heavily connected API class with 82 imports, 32 public methods, and many nested helper types (`WithoutSpecification`, `TypePoolResolver`, `Target`, `Substitution` and their subtypes), showing broad fan-out. It is also referenced from 21 other files in the repo, including 12 production sources outside itself (`Advice.java` and 11 `net.bytebuddy.implementation.bind.annotation` classes) plus 8 test files, showing strong fan-in."}
+tokens used
+29,568

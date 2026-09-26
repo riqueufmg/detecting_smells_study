@@ -1,0 +1,541 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f01-570e-74d0-8154-6873995781c9
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`foo.bar.AnInterface.ListChangeType` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "foo.bar.AnInterface.ListChangeType",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `foo.bar.AnInterface.ListChangeType`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target type and reading the surrounding source to establish its incoming and outgoing dependencies before deciding whether it functions as a hub.
+exec
+/bin/bash -lc "rg --files . | rg \"AnInterface|ListChangeType|foo/bar|foo\\.bar\"" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+./javaparser-symbol-solver-testing/src/test/resources/enumLiteralsInAnnotatedClass/foo/bar/AClass.java
+./javaparser-symbol-solver-testing/src/test/resources/enumLiteralsInAnnotatedClass/foo/bar/BinaryExpr.java
+./javaparser-symbol-solver-testing/src/test/resources/enumLiteralsInAnnotatedClass/foo/bar/differentpackage/AClass2.java
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AClass.java
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/differentpackage/AClass2.java
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AnInterface.java
+./javaparser-symbol-solver-testing/src/test/resources/AnInterface.java.txt
+
+exec
+/bin/bash -lc "rg -n --hidden --glob '"'!target'"' --glob '"'!**/target/**'"' --glob '"'!**/.git/**'"' \"class ListChangeType|enum ListChangeType|interface ListChangeType|ListChangeType\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+./javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:545:                NodeList<?> changedList, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+./javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:548:            if (type == AstObserver.ListChangeType.REMOVAL) {
+./javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:551:            } else if (type == AstObserver.ListChangeType.ADDITION) {
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeListTest.java:197:                        NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/ObservationTest.java:266:            public void listChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/ObservationTest.java:289:            public void listChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/ObservationTest.java:314:            public void listChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/ListObservationTest.java:61:            public void listChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/ListObservationTest.java:67:                changes.add(String.format("'%s' %s in list at %d", oldNode, ListChangeType.REMOVAL, index));
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/ListObservationTest.java:68:                changes.add(String.format("'%s' %s in list at %d", newNode, ListChangeType.ADDITION, index));
+./javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:487:        this.observers.forEach(o -> o.listChange(this, AstObserver.ListChangeType.ADDITION, index, nodeAddedOrRemoved));
+./javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:491:        this.observers.forEach(o -> o.listChange(this, AstObserver.ListChangeType.REMOVAL, index, nodeAddedOrRemoved));
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserverAdapter.java:39:    public void listChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserver.java:34:    enum ListChangeType {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserver.java:66:    void listChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved);
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:49:                    NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:68:    public final void listChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:69:        if (type == ListChangeType.REMOVAL) {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:71:        } else if (type == ListChangeType.ADDITION) {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:92:    public void concreteListChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:66:                n -> n.toString().equals("AnInterface.ListChangeType.ADDITION")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:72:                "foo.bar.AnInterface.ListChangeType",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:97:                n -> n.toString().equals("foo.bar.AnInterface.ListChangeType.ADDITION")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:103:                "foo.bar.AnInterface.ListChangeType",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:128:                n -> n.toString().equals("AnInterface.ListChangeType.ADDITION")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:134:                "foo.bar.AnInterface.ListChangeType",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:160:                n -> n.toString().equals("foo.bar.AnInterface.ListChangeType.ADDITION")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:166:                "foo.bar.AnInterface.ListChangeType",
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AClass.java:4:    static Object field1 = AnInterface.ListChangeType.ADDITION;
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AClass.java:5:    static Object field2 = foo.bar.AnInterface.ListChangeType.ADDITION;
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/differentpackage/AClass2.java:6:    static Object field1 = AnInterface.ListChangeType.ADDITION;
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/differentpackage/AClass2.java:7:    static Object field2 = foo.bar.AnInterface.ListChangeType.ADDITION;
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AnInterface.java:5:    enum ListChangeType {
+
+codex
+I found the target in a test resource interface, not production code. I’m reading that interface and the tests that exercise it to measure how many classes depend on it and how many external types it depends on itself.
+exec
+/bin/bash -lc "sed -n '1,120p' javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AnInterface.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+package foo.bar;
+
+public interface AnInterface {
+
+    enum ListChangeType {
+        ADDITION,
+        REMOVAL
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.resolution;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseStart;
+import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.StreamProvider;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.expr.FieldAccessExpr;
+import com.github.javaparser.symbolsolver.JavaSymbolSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+
+class InternalClassInInterfaceTest {
+
+    @Test
+    void resolveFieldOfEnumAsInternalClassOfInterfaceUnqualifiedSamePackage() throws IOException {
+        File src = new File("src/test/resources/internalClassInInterface");
+        File aClass = new File(
+                src.getPath() + File.separator + "foo" + File.separator + "bar" + File.separator + "AClass.java");
+
+        CombinedTypeSolver localCts = new CombinedTypeSolver();
+        localCts.add(new ReflectionTypeSolver());
+        localCts.add(new JavaParserTypeSolver(src));
+
+        ParserConfiguration parserConfiguration =
+                new ParserConfiguration().setSymbolResolver(new JavaSymbolSolver(localCts));
+        JavaParser parser = new JavaParser(parserConfiguration);
+        StreamProvider classProvider = new StreamProvider(new FileInputStream(aClass), StandardCharsets.UTF_8.name());
+
+        CompilationUnit cu = parser.parse(ParseStart.COMPILATION_UNIT, classProvider)
+                .getResult()
+                .get();
+        Optional<FieldAccessExpr> fae = cu.findFirst(
+                FieldAccessExpr.class,
+                n -> n.toString().equals("AnInterface.ListChangeType.ADDITION")
+                        && n.getRange().get().begin.line == 4);
+
+        assertTrue(fae.isPresent());
+
+        assertEquals(
+                "foo.bar.AnInterface.ListChangeType",
+                fae.get().resolve().getType().describe());
+        assertEquals("ADDITION", fae.get().resolve().getName());
+    }
+
+    @Test
+    void resolveFieldOfEnumAsInternalClassOfInterfaceQualifiedSamePackage() throws IOException {
+        File src = new File("src/test/resources/internalClassInInterface");
+        File aClass = new File(
+                src.getPath() + File.separator + "foo" + File.separator + "bar" + File.separator + "AClass.java");
+
+        CombinedTypeSolver localCts = new CombinedTypeSolver();
+        localCts.add(new ReflectionTypeSolver());
+        localCts.add(new JavaParserTypeSolver(src));
+
+        ParserConfiguration parserConfiguration =
+                new ParserConfiguration().setSymbolResolver(new JavaSymbolSolver(localCts));
+        JavaParser parser = new JavaParser(parserConfiguration);
+        StreamProvider classProvider = new StreamProvider(new FileInputStream(aClass), StandardCharsets.UTF_8.name());
+
+        CompilationUnit cu = parser.parse(ParseStart.COMPILATION_UNIT, classProvider)
+                .getResult()
+                .get();
+        Optional<FieldAccessExpr> fae = cu.findFirst(
+                FieldAccessExpr.class,
+                n -> n.toString().equals("foo.bar.AnInterface.ListChangeType.ADDITION")
+                        && n.getRange().get().begin.line == 5);
+
+        assertTrue(fae.isPresent());
+
+        assertEquals(
+                "foo.bar.AnInterface.ListChangeType",
+                fae.get().resolve().getType().describe());
+        assertEquals("ADDITION", fae.get().resolve().getName());
+    }
+
+    @Test
+    void resolveFieldOfEnumAsInternalClassOfInterfaceUnqualifiedDifferentPackage() throws IOException {
+        File src = new File("src/test/resources/internalClassInInterface");
+        File aClass = new File(src.getPath() + File.separator + "foo" + File.separator + "bar" + File.separator
+                + "differentpackage" + File.separator + "AClass2.java");
+
+        CombinedTypeSolver localCts = new CombinedTypeSolver();
+        localCts.add(new ReflectionTypeSolver());
+        localCts.add(new JavaParserTypeSolver(src));
+
+        ParserConfiguration parserConfiguration =
+                new ParserConfiguration().setSymbolResolver(new JavaSymbolSolver(localCts));
+        JavaParser parser = new JavaParser(parserConfiguration);
+        StreamProvider classProvider = new StreamProvider(new FileInputStream(aClass), StandardCharsets.UTF_8.name());
+
+        CompilationUnit cu = parser.parse(ParseStart.COMPILATION_UNIT, classProvider)
+                .getResult()
+                .get();
+        Optional<FieldAccessExpr> fae = cu.findFirst(
+                FieldAccessExpr.class,
+                n -> n.toString().equals("AnInterface.ListChangeType.ADDITION")
+                        && n.getRange().get().begin.line == 6);
+
+        assertTrue(fae.isPresent());
+
+        assertEquals(
+                "foo.bar.AnInterface.ListChangeType",
+                fae.get().resolve().getType().describe());
+        assertEquals("ADDITION", fae.get().resolve().getName());
+    }
+
+    @Test
+    void resolveFieldOfEnumAsInternalClassOfInterfaceQualifiedDifferentPackage() throws IOException {
+        File src = new File("src/test/resources/internalClassInInterface");
+        File aClass = new File(src.getPath() + File.separator + "foo" + File.separator + "bar" + File.separator
+                + "differentpackage" + File.separator + "AClass2.java");
+
+        CombinedTypeSolver localCts = new CombinedTypeSolver();
+        localCts.add(new ReflectionTypeSolver());
+        localCts.add(new JavaParserTypeSolver(src));
+
+        ParserConfiguration parserConfiguration =
+                new ParserConfiguration().setSymbolResolver(new JavaSymbolSolver(localCts));
+        JavaParser parser = new JavaParser(parserConfiguration);
+        StreamProvider classProvider = new StreamProvider(new FileInputStream(aClass), StandardCharsets.UTF_8.name());
+
+        CompilationUnit cu = parser.parse(ParseStart.COMPILATION_UNIT, classProvider)
+                .getResult()
+                .get();
+
+        Optional<FieldAccessExpr> fae = cu.findFirst(
+                FieldAccessExpr.class,
+                n -> n.toString().equals("foo.bar.AnInterface.ListChangeType.ADDITION")
+                        && n.getRange().get().begin.line == 7);
+
+        assertTrue(fae.isPresent());
+
+        assertEquals(
+                "foo.bar.AnInterface.ListChangeType",
+                fae.get().resolve().getType().describe());
+        assertEquals("ADDITION", fae.get().resolve().getName());
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,120p' javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AClass.java && printf '\\n---\\n' && sed -n '1,120p' javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/differentpackage/AClass2.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+package foo.bar;
+
+class AClass {
+    static Object field1 = AnInterface.ListChangeType.ADDITION;
+    static Object field2 = foo.bar.AnInterface.ListChangeType.ADDITION;
+}
+
+---
+package foo.bar.differentpackage;
+
+import foo.bar.AnInterface;
+
+class AClass {
+    static Object field1 = AnInterface.ListChangeType.ADDITION;
+    static Object field2 = foo.bar.AnInterface.ListChangeType.ADDITION;
+}
+
+codex
+I’ve confirmed the definition is a tiny nested enum. Next I’m checking repository-wide references so the verdict is based on observed fan-in, not just the local example tests.
+exec
+/bin/bash -lc "rg -n \"foo\\.bar\\.AnInterface\\.ListChangeType|AnInterface\\.ListChangeType|ListChangeType\\.ADDITION|ListChangeType\\.REMOVAL\" javaparser-* ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:548:            if (type == AstObserver.ListChangeType.REMOVAL) {
+javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:551:            } else if (type == AstObserver.ListChangeType.ADDITION) {
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/ListObservationTest.java:67:                changes.add(String.format("'%s' %s in list at %d", oldNode, ListChangeType.REMOVAL, index));
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/ListObservationTest.java:68:                changes.add(String.format("'%s' %s in list at %d", newNode, ListChangeType.ADDITION, index));
+javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:487:        this.observers.forEach(o -> o.listChange(this, AstObserver.ListChangeType.ADDITION, index, nodeAddedOrRemoved));
+javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:491:        this.observers.forEach(o -> o.listChange(this, AstObserver.ListChangeType.REMOVAL, index, nodeAddedOrRemoved));
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:69:        if (type == ListChangeType.REMOVAL) {
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:71:        } else if (type == ListChangeType.ADDITION) {
+./javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:548:            if (type == AstObserver.ListChangeType.REMOVAL) {
+./javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:551:            } else if (type == AstObserver.ListChangeType.ADDITION) {
+./javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:487:        this.observers.forEach(o -> o.listChange(this, AstObserver.ListChangeType.ADDITION, index, nodeAddedOrRemoved));
+./javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:491:        this.observers.forEach(o -> o.listChange(this, AstObserver.ListChangeType.REMOVAL, index, nodeAddedOrRemoved));
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:69:        if (type == ListChangeType.REMOVAL) {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:71:        } else if (type == ListChangeType.ADDITION) {
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/ListObservationTest.java:67:                changes.add(String.format("'%s' %s in list at %d", oldNode, ListChangeType.REMOVAL, index));
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/ListObservationTest.java:68:                changes.add(String.format("'%s' %s in list at %d", newNode, ListChangeType.ADDITION, index));
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AClass.java:4:    static Object field1 = AnInterface.ListChangeType.ADDITION;
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AClass.java:5:    static Object field2 = foo.bar.AnInterface.ListChangeType.ADDITION;
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/differentpackage/AClass2.java:6:    static Object field1 = AnInterface.ListChangeType.ADDITION;
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/differentpackage/AClass2.java:7:    static Object field2 = foo.bar.AnInterface.ListChangeType.ADDITION;
+javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AClass.java:4:    static Object field1 = AnInterface.ListChangeType.ADDITION;
+javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AClass.java:5:    static Object field2 = foo.bar.AnInterface.ListChangeType.ADDITION;
+javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/differentpackage/AClass2.java:6:    static Object field1 = AnInterface.ListChangeType.ADDITION;
+javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/differentpackage/AClass2.java:7:    static Object field2 = foo.bar.AnInterface.ListChangeType.ADDITION;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:66:                n -> n.toString().equals("AnInterface.ListChangeType.ADDITION")
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:72:                "foo.bar.AnInterface.ListChangeType",
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:97:                n -> n.toString().equals("foo.bar.AnInterface.ListChangeType.ADDITION")
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:103:                "foo.bar.AnInterface.ListChangeType",
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:128:                n -> n.toString().equals("AnInterface.ListChangeType.ADDITION")
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:134:                "foo.bar.AnInterface.ListChangeType",
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:160:                n -> n.toString().equals("foo.bar.AnInterface.ListChangeType.ADDITION")
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:166:                "foo.bar.AnInterface.ListChangeType",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:66:                n -> n.toString().equals("AnInterface.ListChangeType.ADDITION")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:72:                "foo.bar.AnInterface.ListChangeType",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:97:                n -> n.toString().equals("foo.bar.AnInterface.ListChangeType.ADDITION")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:103:                "foo.bar.AnInterface.ListChangeType",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:128:                n -> n.toString().equals("AnInterface.ListChangeType.ADDITION")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:134:                "foo.bar.AnInterface.ListChangeType",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:160:                n -> n.toString().equals("foo.bar.AnInterface.ListChangeType.ADDITION")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java:166:                "foo.bar.AnInterface.ListChangeType",
+
+exec
+/bin/bash -lc 'rg -n "enum ListChangeType" javaparser-* .' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserver.java:34:    enum ListChangeType {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserver.java:34:    enum ListChangeType {
+./javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AnInterface.java:5:    enum ListChangeType {
+javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AnInterface.java:5:    enum ListChangeType {
+
+codex
+The repository-wide search shows the target is only used in a small test fixture and a single resolution test. I’m grabbing line numbers now so the final justification can cite exact evidence.
+exec
+/bin/bash -lc 'nl -ba javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AnInterface.java' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	package foo.bar;
+     2	
+     3	public interface AnInterface {
+     4	
+     5	    enum ListChangeType {
+     6	        ADDITION,
+     7	        REMOVAL
+     8	    }
+     9	}
+
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java | sed -n '55,175p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+    55	
+    56	        ParserConfiguration parserConfiguration =
+    57	                new ParserConfiguration().setSymbolResolver(new JavaSymbolSolver(localCts));
+    58	        JavaParser parser = new JavaParser(parserConfiguration);
+    59	        StreamProvider classProvider = new StreamProvider(new FileInputStream(aClass), StandardCharsets.UTF_8.name());
+    60	
+    61	        CompilationUnit cu = parser.parse(ParseStart.COMPILATION_UNIT, classProvider)
+    62	                .getResult()
+    63	                .get();
+    64	        Optional<FieldAccessExpr> fae = cu.findFirst(
+    65	                FieldAccessExpr.class,
+    66	                n -> n.toString().equals("AnInterface.ListChangeType.ADDITION")
+    67	                        && n.getRange().get().begin.line == 4);
+    68	
+    69	        assertTrue(fae.isPresent());
+    70	
+    71	        assertEquals(
+    72	                "foo.bar.AnInterface.ListChangeType",
+    73	                fae.get().resolve().getType().describe());
+    74	        assertEquals("ADDITION", fae.get().resolve().getName());
+    75	    }
+    76	
+    77	    @Test
+    78	    void resolveFieldOfEnumAsInternalClassOfInterfaceQualifiedSamePackage() throws IOException {
+    79	        File src = new File("src/test/resources/internalClassInInterface");
+    80	        File aClass = new File(
+    81	                src.getPath() + File.separator + "foo" + File.separator + "bar" + File.separator + "AClass.java");
+    82	
+    83	        CombinedTypeSolver localCts = new CombinedTypeSolver();
+    84	        localCts.add(new ReflectionTypeSolver());
+    85	        localCts.add(new JavaParserTypeSolver(src));
+    86	
+    87	        ParserConfiguration parserConfiguration =
+    88	                new ParserConfiguration().setSymbolResolver(new JavaSymbolSolver(localCts));
+    89	        JavaParser parser = new JavaParser(parserConfiguration);
+    90	        StreamProvider classProvider = new StreamProvider(new FileInputStream(aClass), StandardCharsets.UTF_8.name());
+    91	
+    92	        CompilationUnit cu = parser.parse(ParseStart.COMPILATION_UNIT, classProvider)
+    93	                .getResult()
+    94	                .get();
+    95	        Optional<FieldAccessExpr> fae = cu.findFirst(
+    96	                FieldAccessExpr.class,
+    97	                n -> n.toString().equals("foo.bar.AnInterface.ListChangeType.ADDITION")
+    98	                        && n.getRange().get().begin.line == 5);
+    99	
+   100	        assertTrue(fae.isPresent());
+   101	
+   102	        assertEquals(
+   103	                "foo.bar.AnInterface.ListChangeType",
+   104	                fae.get().resolve().getType().describe());
+   105	        assertEquals("ADDITION", fae.get().resolve().getName());
+   106	    }
+   107	
+   108	    @Test
+   109	    void resolveFieldOfEnumAsInternalClassOfInterfaceUnqualifiedDifferentPackage() throws IOException {
+   110	        File src = new File("src/test/resources/internalClassInInterface");
+   111	        File aClass = new File(src.getPath() + File.separator + "foo" + File.separator + "bar" + File.separator
+   112	                + "differentpackage" + File.separator + "AClass2.java");
+   113	
+   114	        CombinedTypeSolver localCts = new CombinedTypeSolver();
+   115	        localCts.add(new ReflectionTypeSolver());
+   116	        localCts.add(new JavaParserTypeSolver(src));
+   117	
+   118	        ParserConfiguration parserConfiguration =
+   119	                new ParserConfiguration().setSymbolResolver(new JavaSymbolSolver(localCts));
+   120	        JavaParser parser = new JavaParser(parserConfiguration);
+   121	        StreamProvider classProvider = new StreamProvider(new FileInputStream(aClass), StandardCharsets.UTF_8.name());
+   122	
+   123	        CompilationUnit cu = parser.parse(ParseStart.COMPILATION_UNIT, classProvider)
+   124	                .getResult()
+   125	                .get();
+   126	        Optional<FieldAccessExpr> fae = cu.findFirst(
+   127	                FieldAccessExpr.class,
+   128	                n -> n.toString().equals("AnInterface.ListChangeType.ADDITION")
+   129	                        && n.getRange().get().begin.line == 6);
+   130	
+   131	        assertTrue(fae.isPresent());
+   132	
+   133	        assertEquals(
+   134	                "foo.bar.AnInterface.ListChangeType",
+   135	                fae.get().resolve().getType().describe());
+   136	        assertEquals("ADDITION", fae.get().resolve().getName());
+   137	    }
+   138	
+   139	    @Test
+   140	    void resolveFieldOfEnumAsInternalClassOfInterfaceQualifiedDifferentPackage() throws IOException {
+   141	        File src = new File("src/test/resources/internalClassInInterface");
+   142	        File aClass = new File(src.getPath() + File.separator + "foo" + File.separator + "bar" + File.separator
+   143	                + "differentpackage" + File.separator + "AClass2.java");
+   144	
+   145	        CombinedTypeSolver localCts = new CombinedTypeSolver();
+   146	        localCts.add(new ReflectionTypeSolver());
+   147	        localCts.add(new JavaParserTypeSolver(src));
+   148	
+   149	        ParserConfiguration parserConfiguration =
+   150	                new ParserConfiguration().setSymbolResolver(new JavaSymbolSolver(localCts));
+   151	        JavaParser parser = new JavaParser(parserConfiguration);
+   152	        StreamProvider classProvider = new StreamProvider(new FileInputStream(aClass), StandardCharsets.UTF_8.name());
+   153	
+   154	        CompilationUnit cu = parser.parse(ParseStart.COMPILATION_UNIT, classProvider)
+   155	                .getResult()
+   156	                .get();
+   157	
+   158	        Optional<FieldAccessExpr> fae = cu.findFirst(
+   159	                FieldAccessExpr.class,
+   160	                n -> n.toString().equals("foo.bar.AnInterface.ListChangeType.ADDITION")
+   161	                        && n.getRange().get().begin.line == 7);
+   162	
+   163	        assertTrue(fae.isPresent());
+   164	
+   165	        assertEquals(
+   166	                "foo.bar.AnInterface.ListChangeType",
+   167	                fae.get().resolve().getType().describe());
+   168	        assertEquals("ADDITION", fae.get().resolve().getName());
+   169	    }
+   170	}
+
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AClass.java && printf '\\n---\\n' && nl -ba javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/differentpackage/AClass2.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	package foo.bar;
+     2	
+     3	class AClass {
+     4	    static Object field1 = AnInterface.ListChangeType.ADDITION;
+     5	    static Object field2 = foo.bar.AnInterface.ListChangeType.ADDITION;
+     6	}
+
+---
+     1	package foo.bar.differentpackage;
+     2	
+     3	import foo.bar.AnInterface;
+     4	
+     5	class AClass {
+     6	    static Object field1 = AnInterface.ListChangeType.ADDITION;
+     7	    static Object field2 = foo.bar.AnInterface.ListChangeType.ADDITION;
+     8	}
+
+codex
+{"target":"foo.bar.AnInterface.ListChangeType","detection":false,"justification":"Inspected [javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AnInterface.java](javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AnInterface.java#L1-L9), which defines only a nested enum with two constants and no internal type dependencies. Repository-wide search found only two fixture classes using it ([AClass.java](javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/AClass.java#L1-L6) and [AClass2.java](javaparser-symbol-solver-testing/src/test/resources/internalClassInInterface/foo/bar/differentpackage/AClass2.java#L1-L7)) plus one test class with four resolution checks ([InternalClassInInterfaceTest.java](javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/InternalClassInInterfaceTest.java#L55-L169)). That is limited fan-in/fan-out, not a dependency hub."}
+tokens used
+14,423

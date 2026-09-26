@@ -1,0 +1,1866 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f60-f0e5-7200-9f54-9f8259a05718
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.apache.commons.io.channels.ByteArraySeekableByteChannel` in the repository located at:
+
+`data/repositories/apache/commons-io`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.apache.commons.io.channels.ByteArraySeekableByteChannel",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.apache.commons.io.channels.ByteArraySeekableByteChannel`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and checking its dependency footprint in the source tree, then I’ll decide whether it acts as a hub based on concrete inbound and outbound references.
+exec
+/bin/bash -lc 'rg -n "ByteArraySeekableByteChannel" .' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc "rg --files | rg 'ByteArraySeekableByteChannel\\.java|\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 306ms:
+./RELEASE-NOTES.txt:26:o          Add org.apache.commons.io.channels.ByteArraySeekableByteChannel. Thanks to Gary Gregory. 
+./src/conf/spotbugs-exclude-filter.xml:116:    <Class name="org.apache.commons.io.channels.ByteArraySeekableByteChannel" />
+./src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:39: * accessed via {@link ByteArraySeekableByteChannel#array()}.
+./src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:44:public class ByteArraySeekableByteChannel implements SeekableByteChannel {
+./src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:64:    public static ByteArraySeekableByteChannel wrap(final byte[] bytes) {
+./src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:66:        return new ByteArraySeekableByteChannel(bytes);
+./src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:83:    public ByteArraySeekableByteChannel() {
+./src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:87:    private ByteArraySeekableByteChannel(final byte[] data) {
+./src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:102:    public ByteArraySeekableByteChannel(final int size) {
+./src/changes/changes.xml:51:      <action type="fix" dev="ggregory" due-to="Gary Gregory, Piotr P. Karwasz">ByteArraySeekableByteChannel.position|truncate(long) shouldn't throw an IllegalArgumentException for a new positive position that's too large #817.</action>
+./src/changes/changes.xml:84:      <action dev="ggregory" type="add"                due-to="Gary Gregory">Add org.apache.commons.io.channels.ByteArraySeekableByteChannel.</action>
+./src/main/java/org/apache/commons/io/build/AbstractOrigin.java:54:import org.apache.commons.io.channels.ByteArraySeekableByteChannel;
+./src/main/java/org/apache/commons/io/build/AbstractOrigin.java:467:            return ByteArraySeekableByteChannel.wrap(getByteArray());
+./src/main/java/org/apache/commons/io/build/AbstractOrigin.java:588:            return ByteArraySeekableByteChannel.wrap(getByteArray());
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:42:public class ByteArraySeekableByteChannelTest extends AbstractSeekableByteChannelTest {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:48:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) ByteArraySeekableByteChannel::new, EMPTY_BYTE_ARRAY, IOUtils.DEFAULT_BUFFER_SIZE),
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:49:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> new ByteArraySeekableByteChannel(8), EMPTY_BYTE_ARRAY, 8),
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:50:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> new ByteArraySeekableByteChannel(16), EMPTY_BYTE_ARRAY, 16),
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:51:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> ByteArraySeekableByteChannel.wrap(EMPTY_BYTE_ARRAY), EMPTY_BYTE_ARRAY, 0),
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:52:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> ByteArraySeekableByteChannel.wrap(testData), testData, testData.length));
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:67:        return new ByteArraySeekableByteChannel();
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:72:    void testConstructor(final IOSupplier<ByteArraySeekableByteChannel> supplier, final byte[] expected, final int capacity) throws IOException {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:73:        try (ByteArraySeekableByteChannel channel = supplier.get()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:83:        assertThrows(IllegalArgumentException.class, () -> new ByteArraySeekableByteChannel(-1));
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:84:        assertThrows(NullPointerException.class, () -> ByteArraySeekableByteChannel.wrap(null));
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:96:        // ByteArraySeekableByteChannel has a hard boundary at Integer.MAX_VALUE, files don't.
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:106:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(data)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:40: * Tests {@link ByteArraySeekableByteChannel} in the same way Apache Commons Compress tests {@code SeekableInMemoryByteChannel}.
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:42:class ByteArraySeekableByteChannelCompressTest {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:57:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:72:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(new byte[size])) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:84:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:95:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:106:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:118:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:130:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:140:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:152:        final ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel();
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:159:        final ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel();
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:166:        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:189:        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:203:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:214:        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:226:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData.clone())) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:243:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:255:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:265:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:275:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:288:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:302:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:315:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:328:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:343:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:358:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:369:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:380:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+./src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:392:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+
+ succeeded in 308ms:
+src/test/java/org/apache/commons/io/ByteOrderParserTest.java
+src/test/java/org/apache/commons/io/FileUtilsCopyToFileTest.java
+src/test/java/org/apache/commons/io/IOUtilsWriteTest.java
+src/test/java/org/apache/commons/io/RandomAccessFilesTest.java
+src/test/java/org/apache/commons/io/FileSystemUtilsTest.java
+src/test/java/org/apache/commons/io/StreamIteratorTest.java
+src/test/java/org/apache/commons/io/BrokenTestFactories.java
+src/test/java/org/apache/commons/io/FileUtilsDirectoryContainsTest.java
+src/test/java/org/apache/commons/io/UncheckedIOExceptionsTest.java
+src/test/java/org/apache/commons/io/jmh/PathUtilsContentEqualsBenchmark.java
+src/test/java/org/apache/commons/io/jmh/IOUtilsContentEqualsReadersBenchmark_2_22_0.java
+src/test/java/org/apache/commons/io/jmh/IOUtilsContentEqualsInputStreamsBenchmark.java
+src/test/java/org/apache/commons/io/jmh/QueueStreamBenchmark.java
+src/test/java/org/apache/commons/io/jmh/IOUtilsContentEqualsReadersBenchmark_2_9_0.java
+src/test/java/org/apache/commons/io/filefilter/FileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/DirectoryFileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/SymbolicLinkFileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/NameFileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/AgeFileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/OrFileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/AbstractConditionalFileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/AndFileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/RegexFileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/PathMatcherFileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/WildcardFileFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/AbstractFilterTest.java
+src/test/java/org/apache/commons/io/filefilter/AbstractIOFileFilterTest.java
+src/test/java/org/apache/commons/io/FilenameUtilsTest.java
+src/test/java/org/apache/commons/io/FileCleaningTrackerTest.java
+src/test/java/org/apache/commons/io/serialization/ProxyTest.java
+src/test/java/org/apache/commons/io/serialization/AbstractCloseableListTest.java
+src/test/java/org/apache/commons/io/serialization/WildcardClassNameMatcherTest.java
+src/test/java/org/apache/commons/io/serialization/MockSerializedClass.java
+src/test/java/org/apache/commons/io/serialization/MoreComplexObject.java
+src/test/java/org/apache/commons/io/serialization/MoreComplexObjectTest.java
+src/test/java/org/apache/commons/io/serialization/ValidatingObjectInputStreamTest.java
+src/test/java/org/apache/commons/io/serialization/RegexpClassNameMatcherTest.java
+src/test/java/org/apache/commons/io/serialization/FullClassNameMatcherTest.java
+src/test/java/org/apache/commons/io/IOExceptionListTest.java
+src/test/java/org/apache/commons/io/IOUtilsConcurrentTest.java
+src/test/java/org/apache/commons/io/EndianUtilsTest.java
+src/test/java/org/apache/commons/io/CharsetsTest.java
+src/test/java/org/apache/commons/io/CopyUtilsTest.java
+src/test/java/org/apache/commons/io/build/FileOriginTest.java
+src/test/java/org/apache/commons/io/build/AbstractRandomAccessFileOriginTest.java
+src/test/java/org/apache/commons/io/build/URIOriginTest.java
+src/test/java/org/apache/commons/io/build/CharSequenceOriginTest.java
+src/test/java/org/apache/commons/io/build/AbstractOriginTest.java
+src/test/java/org/apache/commons/io/build/PathOriginTest.java
+src/test/java/org/apache/commons/io/build/OutputStreamOriginTest.java
+src/test/java/org/apache/commons/io/build/WriterStreamOriginTest.java
+src/test/java/org/apache/commons/io/build/InputStreamOriginTest.java
+src/test/java/org/apache/commons/io/build/AbstractSupplierTest.java
+src/test/java/org/apache/commons/io/build/RandomAccessFileOriginTest.java
+src/test/java/org/apache/commons/io/build/IORandomAccessFileOriginTest.java
+src/test/java/org/apache/commons/io/build/ChannelOriginTest.java
+src/test/java/org/apache/commons/io/build/ReaderOriginTest.java
+src/test/java/org/apache/commons/io/build/AbstractStreamBuilderTest.java
+src/test/java/org/apache/commons/io/build/ByteArrayOriginTest.java
+src/test/java/org/apache/commons/io/test/ThrowOnCloseInputStream.java
+src/test/java/org/apache/commons/io/test/ThrowOnCloseReader.java
+src/test/java/org/apache/commons/io/test/ThrowOnFlushAndCloseOutputStream.java
+src/test/java/org/apache/commons/io/test/ThrowOnCloseWriter.java
+src/test/java/org/apache/commons/io/test/TestUtils.java
+src/test/java/org/apache/commons/io/test/CustomIOException.java
+src/test/java/org/apache/commons/io/test/ThrowOnCloseOutputStream.java
+src/test/java/org/apache/commons/io/charset/CharsetDecodersTest.java
+src/test/java/org/apache/commons/io/charset/CharsetEncodersTest.java
+src/test/java/org/apache/commons/io/TaggedIOExceptionTest.java
+src/test/java/org/apache/commons/io/channels/NonBlockingFileChannelProxy.java
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java
+src/test/java/org/apache/commons/io/channels/FixedReadSizeFileChannelProxy.java
+src/test/java/org/apache/commons/io/channels/FileChannelsTest.java
+src/test/java/org/apache/commons/io/channels/AbstractSeekableByteChannelTest.java
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java
+src/test/java/org/apache/commons/io/channels/CloseShieldChannelTest.java
+src/test/java/org/apache/commons/io/channels/FileChannelProxy.java
+src/test/java/org/apache/commons/io/channels/FileSeekableByteChannelTest.java
+src/test/java/org/apache/commons/io/DemuxInputStreamTest.java
+src/test/java/org/apache/commons/io/IOUtilsMultithreadedSkipTest.java
+src/test/java/org/apache/commons/io/DeleteDirectoryTest.java
+src/test/java/org/apache/commons/io/FileUtilsWaitForTest.java
+src/test/java/org/apache/commons/io/ByteOrderMarkTest.java
+src/test/java/org/apache/commons/io/FileUtilsCleanDirectoryTest.java
+src/test/java/org/apache/commons/io/FileUtilsDeleteDirectoryLinuxTest.java
+src/test/java/org/apache/commons/io/AbstractFileUtilsDeleteDirectoryTest.java
+src/test/java/org/apache/commons/io/IOExceptionWithCauseTest.java
+src/test/java/org/apache/commons/io/IOUtilsTest.java
+src/test/java/org/apache/commons/io/IOIndexedExceptionTest.java
+src/test/java/org/apache/commons/io/FileUtilsListFilesTest.java
+src/test/java/org/apache/commons/io/FileUtilsTest.java
+src/test/java/org/apache/commons/io/LineIteratorTest.java
+src/test/java/org/apache/commons/io/FileUtilsCleanSymlinksTest.java
+src/test/java/org/apache/commons/io/HexDumpTest.java
+src/test/java/org/apache/commons/io/output/WriterOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/BrokenOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/AppendableOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/AppendableWriterTest.java
+src/test/java/org/apache/commons/io/output/UncheckedFilterOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/ProxyOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/ClosedWriterTest.java
+src/test/java/org/apache/commons/io/output/ClosedOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/UncheckedAppendableTest.java
+src/test/java/org/apache/commons/io/output/ThresholdingOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/BrokenWriterTest.java
+src/test/java/org/apache/commons/io/output/ChunkedWriterTest.java
+src/test/java/org/apache/commons/io/output/NullPrintStreamTest.java
+src/test/java/org/apache/commons/io/output/CloseShieldWriterTest.java
+src/test/java/org/apache/commons/io/output/ProxyCollectionWriterTest.java
+src/test/java/org/apache/commons/io/output/StringBuilderWriterTest.java
+src/test/java/org/apache/commons/io/output/RandomAccessFileOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/ByteArrayOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/NullAppendableTest.java
+src/test/java/org/apache/commons/io/output/UncheckedFilterWriterTest.java
+src/test/java/org/apache/commons/io/output/DeferredFileOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/NullWriterTest.java
+src/test/java/org/apache/commons/io/output/FileWriterWithEncodingTest.java
+src/test/java/org/apache/commons/io/output/XmlStreamWriterTest.java
+src/test/java/org/apache/commons/io/output/LockableFileWriterTest.java
+src/test/java/org/apache/commons/io/output/TaggedWriterTest.java
+src/test/java/org/apache/commons/io/output/TaggedOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/NullOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/ProxyWriterTest.java
+src/test/java/org/apache/commons/io/output/CountingOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/CloseShieldOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/TeeWriterTest.java
+src/test/java/org/apache/commons/io/output/TeeOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/QueueOutputStreamTest.java
+src/test/java/org/apache/commons/io/output/ChunkedOutputStreamTest.java
+src/test/java/org/apache/commons/io/DirectoryWalkerTest.java
+src/test/java/org/apache/commons/io/SelectorAdapter.java
+src/test/java/org/apache/commons/io/FileUtilsCopyDirectoryToDirectoryTest.java
+src/test/java/org/apache/commons/io/IOUtilsCopyTest.java
+src/test/java/org/apache/commons/io/comparator/ExtensionFileComparatorTest.java
+src/test/java/org/apache/commons/io/comparator/SizeFileComparatorTest.java
+src/test/java/org/apache/commons/io/comparator/DirectoryFileComparatorTest.java
+src/test/java/org/apache/commons/io/comparator/PathFileComparatorTest.java
+src/test/java/org/apache/commons/io/comparator/NameFileComparatorTest.java
+src/test/java/org/apache/commons/io/comparator/DefaultFileComparatorTest.java
+src/test/java/org/apache/commons/io/comparator/ComparatorAbstractTest.java
+src/test/java/org/apache/commons/io/comparator/LastModifiedFileComparatorTest.java
+src/test/java/org/apache/commons/io/comparator/CompositeFileComparatorTest.java
+src/test/java/org/apache/commons/io/monitor/FileAlterationMonitorTest.java
+src/test/java/org/apache/commons/io/monitor/AbstractMonitorTest.java
+src/test/java/org/apache/commons/io/monitor/FileEntryTest.java
+src/test/java/org/apache/commons/io/monitor/FileAlterationObserverTest.java
+src/test/java/org/apache/commons/io/monitor/SerializableFileTimeTest.java
+src/test/java/org/apache/commons/io/monitor/CollectionFileListener.java
+src/test/java/org/apache/commons/io/ThreadMonitorTest.java
+src/test/java/org/apache/commons/io/FileUtilsDeleteDirectoryWindowsTest.java
+src/test/java/org/apache/commons/io/FileUtilsFileNewerTest.java
+src/test/java/org/apache/commons/io/FilenameUtilsWildcardTest.java
+src/test/java/org/apache/commons/io/file/AccumulatorPathVisitorTest.java
+src/test/java/org/apache/commons/io/file/FilesUncheckTest.java
+src/test/java/org/apache/commons/io/file/PathUtilsDeleteTest.java
+src/test/java/org/apache/commons/io/file/PathUtilsTest.java
+src/test/java/org/apache/commons/io/file/CounterAssertions.java
+src/test/java/org/apache/commons/io/file/PathUtilsCleanDirectoryTest.java
+src/test/java/org/apache/commons/io/file/PathUtilsIsEmptyTest.java
+src/test/java/org/apache/commons/io/file/TempFileTest.java
+src/test/java/org/apache/commons/io/file/AbstractTempDirTest.java
+src/test/java/org/apache/commons/io/file/CopyDirectoryVisitorTest.java
+src/test/java/org/apache/commons/io/file/TempDirectoryTest.java
+src/test/java/org/apache/commons/io/file/CountersEqualsAndHashCodeTest.java
+src/test/java/org/apache/commons/io/file/CountersTest.java
+src/test/java/org/apache/commons/io/file/CleaningPathVisitorTest.java
+src/test/java/org/apache/commons/io/file/PathUtilsDeleteFileTest.java
+src/test/java/org/apache/commons/io/file/PathUtilsVisitorTest.java
+src/test/java/org/apache/commons/io/file/PathUtilsContentEqualsTest.java
+src/test/java/org/apache/commons/io/file/attribute/FileTimesTest.java
+src/test/java/org/apache/commons/io/file/TempFile.java
+src/test/java/org/apache/commons/io/file/DirectoryStreamFilterTest.java
+src/test/java/org/apache/commons/io/file/AbstractPathWrapper.java
+src/test/java/org/apache/commons/io/file/spi/FileSystemProvidersTest.java
+src/test/java/org/apache/commons/io/file/DeletablePath.java
+src/test/java/org/apache/commons/io/file/TempDirectory.java
+src/test/java/org/apache/commons/io/file/DeletingPathVisitorTest.java
+src/test/java/org/apache/commons/io/file/CountingPathVisitorTest.java
+src/test/java/org/apache/commons/io/file/PathUtilsDeleteDirectoryTest.java
+src/test/java/org/apache/commons/io/file/PathUtilsCountingTest.java
+src/test/java/org/apache/commons/io/file/TestArguments.java
+src/test/java/org/apache/commons/io/FileCleanerTest.java
+src/test/java/org/apache/commons/io/IOCaseTest.java
+src/test/java/org/apache/commons/io/FileDeleteStrategyTest.java
+src/test/java/org/apache/commons/io/StandardLineSeparatorTest.java
+src/test/java/org/apache/commons/io/RandomAccessFileModeTest.java
+src/test/java/org/apache/commons/io/IORandomAccessFileTest.java
+src/test/java/org/apache/commons/io/TestResources.java
+src/test/java/org/apache/commons/io/input/buffer/PeekableInputStreamTest.java
+src/test/java/org/apache/commons/io/input/buffer/CircularByteBufferTest.java
+src/test/java/org/apache/commons/io/input/buffer/CircularBufferInputStreamTest.java
+src/test/java/org/apache/commons/io/input/SequenceReaderTest.java
+src/test/java/org/apache/commons/io/input/MessageDigestInputStreamTest.java
+src/test/java/org/apache/commons/io/input/ByteBufferCleanerTest.java
+src/test/java/org/apache/commons/io/input/UnsynchronizedByteArrayInputStreamTest.java
+src/test/java/org/apache/commons/io/input/CharacterFilterReaderIntPredicateTest.java
+src/test/java/org/apache/commons/io/input/CloseShieldReaderTest.java
+src/test/java/org/apache/commons/io/input/TaggedReaderTest.java
+src/test/java/org/apache/commons/io/input/CharSequenceInputStreamTest.java
+src/test/java/org/apache/commons/io/input/NullInputStreamTest.java
+src/test/java/org/apache/commons/io/input/TaggedInputStreamTest.java
+src/test/java/org/apache/commons/io/input/ThrottledInputStreamTest.java
+src/test/java/org/apache/commons/io/input/BoundedInputStreamTest.java
+src/test/java/org/apache/commons/io/input/ReversedLinesFileReaderSimpleTest.java
+src/test/java/org/apache/commons/io/input/ClosedReaderTest.java
+src/test/java/org/apache/commons/io/input/AbstractInputStreamTest.java
+src/test/java/org/apache/commons/io/input/CharSequenceReaderTest.java
+src/test/java/org/apache/commons/io/input/ChecksumInputStreamTest.java
+src/test/java/org/apache/commons/io/input/ReversedLinesFileReaderParamBlockSizeTest.java
+src/test/java/org/apache/commons/io/input/compatibility/XmlStreamReaderException.java
+src/test/java/org/apache/commons/io/input/compatibility/XmlStreamReaderUtilitiesCompatibilityTest.java
+src/test/java/org/apache/commons/io/input/compatibility/XmlStreamReader.java
+src/test/java/org/apache/commons/io/input/CountingInputStreamTest.java
+src/test/java/org/apache/commons/io/input/CharacterSetFilterReaderTest.java
+src/test/java/org/apache/commons/io/input/XmlStreamReaderTest.java
+src/test/java/org/apache/commons/io/input/UncheckedFilterInputStreamTest.java
+src/test/java/org/apache/commons/io/input/ReversedLinesFileReaderParamFileTest.java
+src/test/java/org/apache/commons/io/input/TeeReaderTest.java
+src/test/java/org/apache/commons/io/input/SwappedDataInputStreamTest.java
+src/test/java/org/apache/commons/io/input/UnsynchronizedBufferedInputStreamTest.java
+src/test/java/org/apache/commons/io/input/ProxyReaderTest.java
+src/test/java/org/apache/commons/io/input/BrokenReaderTest.java
+src/test/java/org/apache/commons/io/input/ClassLoaderObjectInputStreamTest.java
+src/test/java/org/apache/commons/io/input/MarkShieldInputStreamTest.java
+src/test/java/org/apache/commons/io/input/UnixLineEndingInputStreamTest.java
+src/test/java/org/apache/commons/io/input/BufferedFileChannelInputStreamTest.java
+src/test/java/org/apache/commons/io/input/MemoryMappedFileInputStreamTest.java
+src/test/java/org/apache/commons/io/input/AutoCloseInputStreamTest.java
+src/test/java/org/apache/commons/io/input/CircularInputStreamTest.java
+src/test/java/org/apache/commons/io/input/NullReaderTest.java
+src/test/java/org/apache/commons/io/input/TimestampedObserverTest.java
+src/test/java/org/apache/commons/io/input/XmlStreamReaderUtilitiesTest.java
+src/test/java/org/apache/commons/io/input/TeeInputStreamTest.java
+src/test/java/org/apache/commons/io/input/UncheckedFilterReaderTest.java
+src/test/java/org/apache/commons/io/input/UnsynchronizedBufferedReaderTest.java
+src/test/java/org/apache/commons/io/input/UncheckedBufferedReaderTest.java
+src/test/java/org/apache/commons/io/input/TailerTest.java
+src/test/java/org/apache/commons/io/input/ReadAheadInputStreamTest.java
+src/test/java/org/apache/commons/io/input/CloseShieldInputStreamTest.java
+src/test/java/org/apache/commons/io/input/CharacterFilterReaderTest.java
+src/test/java/org/apache/commons/io/input/InfiniteCircularInputStreamTest.java
+src/test/java/org/apache/commons/io/input/QueueInputStreamTest.java
+src/test/java/org/apache/commons/io/input/ObservableInputStreamTest.java
+src/test/java/org/apache/commons/io/input/BrokenInputStreamTest.java
+src/test/java/org/apache/commons/io/input/BoundedReaderTest.java
+src/test/java/org/apache/commons/io/input/UnsynchronizedFilterInputStreamTest.java
+src/test/java/org/apache/commons/io/input/WindowsLineEndingInputStreamTest.java
+src/test/java/org/apache/commons/io/input/ProxyInputStreamTest.java
+src/test/java/org/apache/commons/io/input/ClosedInputStreamTest.java
+src/test/java/org/apache/commons/io/input/ReaderInputStreamTest.java
+src/test/java/org/apache/commons/io/input/MessageDigestCalculatingInputStreamTest.java
+src/test/java/org/apache/commons/io/input/RandomAccessFileInputStreamTest.java
+src/test/java/org/apache/commons/io/input/BOMInputStreamTest.java
+src/test/java/org/apache/commons/io/function/IOIntStreamAdapter.java
+src/test/java/org/apache/commons/io/function/IOUnaryOperatorTest.java
+src/test/java/org/apache/commons/io/function/IOIteratorAdapterTest.java
+src/test/java/org/apache/commons/io/function/IOBiConsumerTest.java
+src/test/java/org/apache/commons/io/function/IOSpliteratorTest.java
+src/test/java/org/apache/commons/io/function/IOBinaryOperatorStreamTest.java
+src/test/java/org/apache/commons/io/function/IOBaseStreamTest.java
+src/test/java/org/apache/commons/io/function/UncheckTest.java
+src/test/java/org/apache/commons/io/function/IORunnableTest.java
+src/test/java/org/apache/commons/io/function/IOStreamTest.java
+src/test/java/org/apache/commons/io/function/IOPredicateTest.java
+src/test/java/org/apache/commons/io/function/IOIntSupplierTest.java
+src/test/java/org/apache/commons/io/function/IOTriConsumerTest.java
+src/test/java/org/apache/commons/io/function/IOIterableTest.java
+src/test/java/org/apache/commons/io/function/TestUtils.java
+src/test/java/org/apache/commons/io/function/IOBiFunctionTest.java
+src/test/java/org/apache/commons/io/function/IOLongSupplierTest.java
+src/test/java/org/apache/commons/io/function/PathBaseStream.java
+src/test/java/org/apache/commons/io/function/IOIntStream.java
+src/test/java/org/apache/commons/io/function/IOIteratorTest.java
+src/test/java/org/apache/commons/io/function/IOSupplierTest.java
+src/test/java/org/apache/commons/io/function/IOTriFunctionTest.java
+src/test/java/org/apache/commons/io/function/IOIntConsumerTest.java
+src/test/java/org/apache/commons/io/function/PathStream.java
+src/test/java/org/apache/commons/io/function/IOBooleanSupplierTest.java
+src/test/java/org/apache/commons/io/function/IOQuadFunctionTest.java
+src/test/java/org/apache/commons/io/function/IOConsumerTest.java
+src/test/java/org/apache/commons/io/function/TestConstants.java
+src/test/java/org/apache/commons/io/function/IOComparatorTest.java
+src/test/java/org/apache/commons/io/function/IOFunctionTest.java
+src/test/java/org/apache/commons/io/function/EraseTest.java
+src/test/java/org/apache/commons/io/FileSystemTest.java
+src/main/java/org/apache/commons/io/RandomAccessFiles.java
+src/main/java/org/apache/commons/io/FileCleaner.java
+src/main/java/org/apache/commons/io/CopyUtils.java
+src/main/java/org/apache/commons/io/StreamIterator.java
+src/main/java/org/apache/commons/io/CloseableURLConnection.java
+src/main/java/org/apache/commons/io/FilenameUtils.java
+src/main/java/org/apache/commons/io/StandardLineSeparator.java
+src/main/java/org/apache/commons/io/FileCleaningTracker.java
+src/main/java/org/apache/commons/io/filefilter/PathMatcherFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/CanWriteFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/NotFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/CanReadFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/NameFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/WildcardFilter.java
+src/main/java/org/apache/commons/io/filefilter/FileFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/DelegateFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/RegexFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/OrFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/CanExecuteFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/PrefixFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/AndFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/SymbolicLinkFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/ConditionalFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/DirectoryFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/IOFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/PathEqualsFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/FileEqualsFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/AgeFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/HiddenFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/PathVisitorFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/WildcardFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/AbstractFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/TrueFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/SizeFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/package-info.java
+src/main/java/org/apache/commons/io/filefilter/EmptyFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/FileFilterUtils.java
+src/main/java/org/apache/commons/io/filefilter/SuffixFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/FalseFileFilter.java
+src/main/java/org/apache/commons/io/filefilter/MagicNumberFileFilter.java
+src/main/java/org/apache/commons/io/serialization/FullClassNameMatcher.java
+src/main/java/org/apache/commons/io/serialization/RegexpClassNameMatcher.java
+src/main/java/org/apache/commons/io/serialization/ObjectStreamClassPredicate.java
+src/main/java/org/apache/commons/io/serialization/ValidatingObjectInputStream.java
+src/main/java/org/apache/commons/io/serialization/package-info.java
+src/main/java/org/apache/commons/io/serialization/WildcardClassNameMatcher.java
+src/main/java/org/apache/commons/io/serialization/ClassNameMatcher.java
+src/main/java/org/apache/commons/io/HexDump.java
+src/main/java/org/apache/commons/io/EndianUtils.java
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java
+src/main/java/org/apache/commons/io/build/AbstractSupplier.java
+src/main/java/org/apache/commons/io/build/AbstractStreamBuilder.java
+src/main/java/org/apache/commons/io/build/AbstractOriginSupplier.java
+src/main/java/org/apache/commons/io/build/package-info.java
+src/main/java/org/apache/commons/io/charset/CharsetDecoders.java
+src/main/java/org/apache/commons/io/charset/CharsetEncoders.java
+src/main/java/org/apache/commons/io/charset/package-info.java
+src/main/java/org/apache/commons/io/ThreadMonitor.java
+src/main/java/org/apache/commons/io/IORandomAccessFile.java
+src/main/java/org/apache/commons/io/IOCase.java
+src/main/java/org/apache/commons/io/FileSystemUtils.java
+src/main/java/org/apache/commons/io/IOExceptionList.java
+src/main/java/org/apache/commons/io/FileUtils.java
+src/main/java/org/apache/commons/io/IOUtils.java
+src/main/java/org/apache/commons/io/LineIterator.java
+src/main/java/org/apache/commons/io/function/IOBiConsumer.java
+src/main/java/org/apache/commons/io/function/IOQuadFunction.java
+src/main/java/org/apache/commons/io/function/IOSpliteratorAdapter.java
+src/main/java/org/apache/commons/io/function/Erase.java
+src/main/java/org/apache/commons/io/function/UncheckedIOSpliterator.java
+src/main/java/org/apache/commons/io/function/IOUnaryOperator.java
+src/main/java/org/apache/commons/io/function/IOComparator.java
+src/main/java/org/apache/commons/io/function/IOBinaryOperator.java
+src/main/java/org/apache/commons/io/function/IOIntConsumer.java
+src/main/java/org/apache/commons/io/function/UncheckedIOIterable.java
+src/main/java/org/apache/commons/io/function/IOBiFunction.java
+src/main/java/org/apache/commons/io/function/IOConsumer.java
+src/main/java/org/apache/commons/io/function/IOIteratorAdapter.java
+src/main/java/org/apache/commons/io/function/IOStream.java
+src/main/java/org/apache/commons/io/function/UncheckedIOBaseStream.java
+src/main/java/org/apache/commons/io/function/IOStreamAdapter.java
+src/main/java/org/apache/commons/io/function/Uncheck.java
+src/main/java/org/apache/commons/io/function/IOIterable.java
+src/main/java/org/apache/commons/io/function/IOTriConsumer.java
+src/main/java/org/apache/commons/io/function/IOBaseStreamAdapter.java
+src/main/java/org/apache/commons/io/function/UncheckedIOIterator.java
+src/main/java/org/apache/commons/io/function/IOLongSupplier.java
+src/main/java/org/apache/commons/io/function/Constants.java
+src/main/java/org/apache/commons/io/function/IOIntSupplier.java
+src/main/java/org/apache/commons/io/function/IORunnable.java
+src/main/java/org/apache/commons/io/function/IOPredicate.java
+src/main/java/org/apache/commons/io/function/IOSupplier.java
+src/main/java/org/apache/commons/io/function/IOBooleanSupplier.java
+src/main/java/org/apache/commons/io/function/IOTriFunction.java
+src/main/java/org/apache/commons/io/function/IOIterator.java
+src/main/java/org/apache/commons/io/function/IOBaseStream.java
+src/main/java/org/apache/commons/io/function/package-info.java
+src/main/java/org/apache/commons/io/function/IOSpliterator.java
+src/main/java/org/apache/commons/io/function/IOFunction.java
+src/main/java/org/apache/commons/io/function/IOStreams.java
+src/main/java/org/apache/commons/io/RandomAccessFileMode.java
+src/main/java/org/apache/commons/io/FileExistsException.java
+src/main/java/org/apache/commons/io/ThreadUtils.java
+src/main/java/org/apache/commons/io/IOIndexedException.java
+src/main/java/org/apache/commons/io/input/MessageDigestCalculatingInputStream.java
+src/main/java/org/apache/commons/io/FileDeleteStrategy.java
+src/main/java/org/apache/commons/io/input/Input.java
+src/main/java/org/apache/commons/io/ByteOrderParser.java
+src/main/java/org/apache/commons/io/file/Counters.java
+src/main/java/org/apache/commons/io/file/StandardDeleteOption.java
+src/main/java/org/apache/commons/io/file/AccumulatorPathVisitor.java
+src/main/java/org/apache/commons/io/file/PathUtils.java
+src/main/java/org/apache/commons/io/file/DirectoryStreamFilter.java
+src/main/java/org/apache/commons/io/file/PathFilter.java
+src/main/java/org/apache/commons/io/file/DeleteOption.java
+src/main/java/org/apache/commons/io/file/CountingPathVisitor.java
+src/main/java/org/apache/commons/io/file/CleaningPathVisitor.java
+src/main/java/org/apache/commons/io/file/NoopPathVisitor.java
+src/main/java/org/apache/commons/io/file/CopyDirectoryVisitor.java
+src/main/java/org/apache/commons/io/file/SimplePathVisitor.java
+src/main/java/org/apache/commons/io/file/FilesUncheck.java
+src/main/java/org/apache/commons/io/file/PathVisitor.java
+src/main/java/org/apache/commons/io/file/attribute/FileTimes.java
+src/main/java/org/apache/commons/io/file/attribute/package-info.java
+src/main/java/org/apache/commons/io/file/spi/package-info.java
+src/main/java/org/apache/commons/io/file/spi/FileSystemProviders.java
+src/main/java/org/apache/commons/io/file/DeletingPathVisitor.java
+src/main/java/org/apache/commons/io/file/package-info.java
+src/main/java/org/apache/commons/io/ByteOrderMark.java
+src/main/java/org/apache/commons/io/package-info.java
+src/main/java/org/apache/commons/io/ByteBuffers.java
+src/main/java/org/apache/commons/io/comparator/ReverseFileComparator.java
+src/main/java/org/apache/commons/io/comparator/CompositeFileComparator.java
+src/main/java/org/apache/commons/io/comparator/DirectoryFileComparator.java
+src/main/java/org/apache/commons/io/comparator/DefaultFileComparator.java
+src/main/java/org/apache/commons/io/comparator/NameFileComparator.java
+src/main/java/org/apache/commons/io/comparator/AbstractFileComparator.java
+src/main/java/org/apache/commons/io/comparator/LastModifiedFileComparator.java
+src/main/java/org/apache/commons/io/comparator/SizeFileComparator.java
+src/main/java/org/apache/commons/io/comparator/ExtensionFileComparator.java
+src/main/java/org/apache/commons/io/comparator/PathFileComparator.java
+src/main/java/org/apache/commons/io/comparator/package-info.java
+src/main/java/org/apache/commons/io/monitor/FileAlterationListener.java
+src/main/java/org/apache/commons/io/monitor/SerializableFileTime.java
+src/main/java/org/apache/commons/io/monitor/FileAlterationListenerAdaptor.java
+src/main/java/org/apache/commons/io/monitor/package-info.java
+src/main/java/org/apache/commons/io/monitor/FileAlterationMonitor.java
+src/main/java/org/apache/commons/io/monitor/FileAlterationObserver.java
+src/main/java/org/apache/commons/io/monitor/FileEntry.java
+src/main/java/org/apache/commons/io/Charsets.java
+src/main/java/org/apache/commons/io/DirectoryWalker.java
+src/main/java/org/apache/commons/io/FileSystem.java
+src/main/java/org/apache/commons/io/output/FilterCollectionWriter.java
+src/main/java/org/apache/commons/io/output/ProxyCollectionWriter.java
+src/main/java/org/apache/commons/io/output/UncheckedAppendableImpl.java
+src/main/java/org/apache/commons/io/output/TaggedWriter.java
+src/main/java/org/apache/commons/io/output/AppendableOutputStream.java
+src/main/java/org/apache/commons/io/output/FileWriterWithEncoding.java
+src/main/java/org/apache/commons/io/output/ClosedWriter.java
+src/main/java/org/apache/commons/io/output/LockableFileWriter.java
+src/main/java/org/apache/commons/io/output/TeeOutputStream.java
+src/main/java/org/apache/commons/io/output/NullOutputStream.java
+src/main/java/org/apache/commons/io/output/UncheckedFilterOutputStream.java
+src/main/java/org/apache/commons/io/output/BrokenOutputStream.java
+src/main/java/org/apache/commons/io/output/NullPrintStream.java
+src/main/java/org/apache/commons/io/output/UncheckedFilterWriter.java
+src/main/java/org/apache/commons/io/output/WriterOutputStream.java
+src/main/java/org/apache/commons/io/output/RandomAccessFileOutputStream.java
+src/main/java/org/apache/commons/io/output/ClosedOutputStream.java
+src/main/java/org/apache/commons/io/output/DemuxOutputStream.java
+src/main/java/org/apache/commons/io/output/ProxyWriter.java
+src/main/java/org/apache/commons/io/output/NullAppendable.java
+src/main/java/org/apache/commons/io/output/CloseShieldOutputStream.java
+src/main/java/org/apache/commons/io/output/TeeWriter.java
+src/main/java/org/apache/commons/io/output/AbstractByteArrayOutputStream.java
+src/main/java/org/apache/commons/io/output/CloseShieldWriter.java
+src/main/java/org/apache/commons/io/output/QueueOutputStream.java
+src/main/java/org/apache/commons/io/output/XmlStreamWriter.java
+src/main/java/org/apache/commons/io/output/StringBuilderWriter.java
+src/main/java/org/apache/commons/io/output/NullWriter.java
+src/main/java/org/apache/commons/io/output/AppendableWriter.java
+src/main/java/org/apache/commons/io/output/TaggedOutputStream.java
+src/main/java/org/apache/commons/io/output/ChunkedWriter.java
+src/main/java/org/apache/commons/io/output/UncheckedAppendable.java
+src/main/java/org/apache/commons/io/output/ThresholdingOutputStream.java
+src/main/java/org/apache/commons/io/output/BrokenWriter.java
+src/main/java/org/apache/commons/io/output/DeferredFileOutputStream.java
+src/main/java/org/apache/commons/io/output/ByteArrayOutputStream.java
+src/main/java/org/apache/commons/io/output/package-info.java
+src/main/java/org/apache/commons/io/output/CountingOutputStream.java
+src/main/java/org/apache/commons/io/output/ProxyOutputStream.java
+src/main/java/org/apache/commons/io/output/UnsynchronizedByteArrayOutputStream.java
+src/main/java/org/apache/commons/io/output/ChunkedOutputStream.java
+src/main/java/org/apache/commons/io/IO.java
+src/main/java/org/apache/commons/io/TaggedIOException.java
+src/main/java/org/apache/commons/io/UncheckedIOExceptions.java
+src/main/java/org/apache/commons/io/IOExceptionWithCause.java
+src/main/java/org/apache/commons/io/input/CircularInputStream.java
+src/main/java/org/apache/commons/io/input/XmlStreamReader.java
+src/main/java/org/apache/commons/io/input/ObservableInputStream.java
+src/main/java/org/apache/commons/io/input/CloseShieldReader.java
+src/main/java/org/apache/commons/io/input/TaggedInputStream.java
+src/main/java/org/apache/commons/io/input/package-info.java
+src/main/java/org/apache/commons/io/input/ReaderInputStream.java
+src/main/java/org/apache/commons/io/input/CharSequenceInputStream.java
+src/main/java/org/apache/commons/io/input/CloseShieldInputStream.java
+src/main/java/org/apache/commons/io/input/SequenceReader.java
+src/main/java/org/apache/commons/io/input/ClassLoaderObjectInputStream.java
+src/main/java/org/apache/commons/io/input/AbstractCharacterFilterReader.java
+src/main/java/org/apache/commons/io/input/ReversedLinesFileReader.java
+src/main/java/org/apache/commons/io/input/MemoryMappedFileInputStream.java
+src/main/java/org/apache/commons/io/input/TailerListenerAdapter.java
+src/main/java/org/apache/commons/io/input/CharSequenceReader.java
+src/main/java/org/apache/commons/io/input/Tailer.java
+src/main/java/org/apache/commons/io/channels/CloseShieldChannelHandler.java
+src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java
+src/main/java/org/apache/commons/io/channels/CloseShieldChannel.java
+src/main/java/org/apache/commons/io/channels/package-info.java
+src/main/java/org/apache/commons/io/channels/FileChannels.java
+src/main/java/org/apache/commons/io/input/RandomAccessFileInputStream.java
+src/main/java/org/apache/commons/io/input/AbstractInputStream.java
+src/main/java/org/apache/commons/io/input/DemuxInputStream.java
+src/main/java/org/apache/commons/io/input/ProxyReader.java
+src/main/java/org/apache/commons/io/input/CharacterSetFilterReader.java
+src/main/java/org/apache/commons/io/input/TimestampedObserver.java
+src/main/java/org/apache/commons/io/input/ChecksumInputStream.java
+src/main/java/org/apache/commons/io/input/ByteBufferCleaner.java
+src/main/java/org/apache/commons/io/input/ThrottledInputStream.java
+src/main/java/org/apache/commons/io/input/InfiniteCircularInputStream.java
+src/main/java/org/apache/commons/io/input/UncheckedBufferedReader.java
+src/main/java/org/apache/commons/io/input/NullInputStream.java
+src/main/java/org/apache/commons/io/input/CountingInputStream.java
+src/main/java/org/apache/commons/io/input/BoundedInputStream.java
+src/main/java/org/apache/commons/io/input/UncheckedFilterReader.java
+src/main/java/org/apache/commons/io/input/BrokenReader.java
+src/main/java/org/apache/commons/io/input/UnsupportedOperationExceptions.java
+src/main/java/org/apache/commons/io/input/UnsynchronizedReader.java
+src/main/java/org/apache/commons/io/input/WindowsLineEndingInputStream.java
+src/main/java/org/apache/commons/io/input/BOMInputStream.java
+src/main/java/org/apache/commons/io/input/UnixLineEndingInputStream.java
+src/main/java/org/apache/commons/io/input/UnsynchronizedFilterInputStream.java
+src/main/java/org/apache/commons/io/input/TeeInputStream.java
+src/main/java/org/apache/commons/io/input/XmlStreamReaderException.java
+src/main/java/org/apache/commons/io/input/ProxyInputStream.java
+src/main/java/org/apache/commons/io/input/ClosedReader.java
+src/main/java/org/apache/commons/io/input/BoundedReader.java
+src/main/java/org/apache/commons/io/input/ClosedInputStream.java
+src/main/java/org/apache/commons/io/input/BufferedFileChannelInputStream.java
+src/main/java/org/apache/commons/io/input/TaggedReader.java
+src/main/java/org/apache/commons/io/input/TailerListener.java
+src/main/java/org/apache/commons/io/input/MarkShieldInputStream.java
+src/main/java/org/apache/commons/io/input/MessageDigestInputStream.java
+src/main/java/org/apache/commons/io/input/BrokenInputStream.java
+src/main/java/org/apache/commons/io/input/CharacterFilterReader.java
+src/main/java/org/apache/commons/io/input/AutoCloseInputStream.java
+src/main/java/org/apache/commons/io/input/TeeReader.java
+src/main/java/org/apache/commons/io/input/ReadAheadInputStream.java
+src/main/java/org/apache/commons/io/input/UncheckedFilterInputStream.java
+src/main/java/org/apache/commons/io/input/SwappedDataInputStream.java
+src/main/java/org/apache/commons/io/input/UnsynchronizedBufferedInputStream.java
+src/main/java/org/apache/commons/io/input/NullReader.java
+src/main/java/org/apache/commons/io/input/QueueInputStream.java
+src/main/java/org/apache/commons/io/input/UnsynchronizedByteArrayInputStream.java
+src/main/java/org/apache/commons/io/input/UnsynchronizedBufferedReader.java
+src/main/java/org/apache/commons/io/input/buffer/package-info.java
+src/main/java/org/apache/commons/io/input/buffer/CircularBufferInputStream.java
+src/main/java/org/apache/commons/io/input/buffer/CircularByteBuffer.java
+src/main/java/org/apache/commons/io/input/buffer/PeekableInputStream.java
+
+codex
+I found the target class and the main external references. Next I’m reading the class itself and the few files that depend on it to measure whether the dependency pattern is actually hub-like or just a normal utility type.
+exec
+/bin/bash -lc "sed -n '1,240p' src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc "sed -n '430,620p' src/main/java/org/apache/commons/io/build/AbstractOrigin.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc "sed -n '1,220p' src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.io.channels;
+
+import static org.apache.commons.lang3.ArrayUtils.EMPTY_BYTE_ARRAY;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.util.stream.Stream;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.function.IOSupplier;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+/**
+ * A sanity test to make sure {@link AbstractSeekableByteChannelTest} works for files.
+ */
+public class ByteArraySeekableByteChannelTest extends AbstractSeekableByteChannelTest {
+
+    private static final byte[] testData = "Some data".getBytes(StandardCharsets.UTF_8);
+
+    static Stream<Arguments> testConstructor() {
+        return Stream.of(
+                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) ByteArraySeekableByteChannel::new, EMPTY_BYTE_ARRAY, IOUtils.DEFAULT_BUFFER_SIZE),
+                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> new ByteArraySeekableByteChannel(8), EMPTY_BYTE_ARRAY, 8),
+                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> new ByteArraySeekableByteChannel(16), EMPTY_BYTE_ARRAY, 16),
+                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> ByteArraySeekableByteChannel.wrap(EMPTY_BYTE_ARRAY), EMPTY_BYTE_ARRAY, 0),
+                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> ByteArraySeekableByteChannel.wrap(testData), testData, testData.length));
+    }
+
+    static Stream<Arguments> testShouldResizeWhenWritingMoreDataThanCapacity() {
+        return Stream.of(
+                // Resize from 0
+                Arguments.of(EMPTY_BYTE_ARRAY, 1),
+                // Resize less than double
+                Arguments.of(new byte[8], 1),
+                // Resize more that double
+                Arguments.of(new byte[8], 20));
+    }
+
+    @Override
+    protected SeekableByteChannel createChannel() throws IOException {
+        return new ByteArraySeekableByteChannel();
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void testConstructor(final IOSupplier<ByteArraySeekableByteChannel> supplier, final byte[] expected, final int capacity) throws IOException {
+        try (ByteArraySeekableByteChannel channel = supplier.get()) {
+            assertEquals(0, channel.position());
+            assertEquals(expected.length, channel.size());
+            assertEquals(capacity, channel.array().length);
+            assertArrayEquals(expected, channel.toByteArray());
+        }
+    }
+
+    @Test
+    void testConstructorInvalid() {
+        assertThrows(IllegalArgumentException.class, () -> new ByteArraySeekableByteChannel(-1));
+        assertThrows(NullPointerException.class, () -> ByteArraySeekableByteChannel.wrap(null));
+    }
+
+    @Test
+    void testPositionBeyondSizeReadWrite() throws IOException {
+        final ByteBuffer buffer = ByteBuffer.allocate(1);
+        channel.position(channel.size() + 1);
+        assertEquals(channel.size() + 1, channel.position());
+        assertEquals(-1, channel.read(buffer));
+        channel.position(Integer.MAX_VALUE + 1L);
+        assertEquals(Integer.MAX_VALUE + 1L, channel.position());
+        assertEquals(-1, channel.read(buffer));
+        // ByteArraySeekableByteChannel has a hard boundary at Integer.MAX_VALUE, files don't.
+        assertThrows(IOException.class, () -> channel.write(buffer));
+        assertThrows(IllegalArgumentException.class, () -> channel.position(-1));
+        assertThrows(IllegalArgumentException.class, () -> channel.position(Integer.MIN_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> channel.position(Long.MIN_VALUE));
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void testShouldResizeWhenWritingMoreDataThanCapacity(final byte[] data, final int wanted) throws IOException {
+        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(data)) {
+            c.position(data.length);
+            final ByteBuffer inData = ByteBuffer.wrap(new byte[wanted]);
+            final int writeCount = c.write(inData);
+            assertEquals(wanted, writeCount);
+            assertTrue(c.array().length >= data.length + wanted, "Capacity not increased sufficiently");
+        }
+    }
+
+}
+
+exec
+/bin/bash -lc "sed -n '1,260p' src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 168ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.commons.io.channels;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.SeekableByteChannel;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.apache.commons.io.IOUtils;
+
+/**
+ * A {@link SeekableByteChannel} implementation backed by a byte array.
+ * <p>
+ * When used for writing, the internal buffer grows to accommodate incoming data. The natural size limit is the value of {@link IOUtils#SOFT_MAX_ARRAY_LENGTH}
+ * and it's not possible to {@link #position(long) set the position} or {@link #truncate(long) truncate} to a value bigger than that. The raw internal buffer is
+ * accessed via {@link ByteArraySeekableByteChannel#array()}.
+ * </p>
+ *
+ * @since 2.21.0
+ */
+public class ByteArraySeekableByteChannel implements SeekableByteChannel {
+
+    private static final int RESIZE_LIMIT = Integer.MAX_VALUE >> 1;
+
+    /**
+     * Constructs a new channel backed directly by the given byte array.
+     *
+     * <p>The channel initially contains the full contents of the array, with its
+     * size set to {@code bytes.length} and its position set to {@code 0}.</p>
+     *
+     * <p>Reads and writes operate on the shared array.
+     * If a write operation extends beyond the current capacity, the channel will
+     * automatically allocate a larger backing array and copy the existing contents.</p>
+     *
+     * @param bytes The byte array to wrap, must not be {@code null}
+     * @return A new channel that uses the given array as its initial backing store.
+     * @throws NullPointerException If {@code bytes} is {@code null}
+     * @see #array()
+     * @see ByteArrayInputStream#ByteArrayInputStream(byte[])
+     */
+    public static ByteArraySeekableByteChannel wrap(final byte[] bytes) {
+        Objects.requireNonNull(bytes, "bytes");
+        return new ByteArraySeekableByteChannel(bytes);
+    }
+
+    private byte[] data;
+    private volatile boolean closed;
+    private long position;
+    private int size;
+    private final ReentrantLock lock = new ReentrantLock();
+
+    /**
+     * Constructs a new instance, with a default internal buffer capacity.
+     * <p>
+     * The initial size and position of the channel are 0.
+     * </p>
+     *
+     * @see ByteArrayOutputStream#ByteArrayOutputStream()
+     */
+    public ByteArraySeekableByteChannel() {
+        this(IOUtils.DEFAULT_BUFFER_SIZE);
+    }
+
+    private ByteArraySeekableByteChannel(final byte[] data) {
+        this.data = data;
+        this.position = 0;
+        this.size = data.length;
+    }
+
+    /**
+     * Constructs a new instance, with an internal buffer of the given capacity, in bytes.
+     * <p>
+     * The initial size and position of the channel are 0.
+     * </p>
+     *
+     * @param size Capacity of the internal buffer to allocate, in bytes.
+     * @see ByteArrayOutputStream#ByteArrayOutputStream(int)
+     */
+    public ByteArraySeekableByteChannel(final int size) {
+        if (size < 0) {
+            throw new IllegalArgumentException("Size must be non-negative");
+        }
+        this.data = new byte[size];
+        this.position = 0;
+        this.size = 0;
+    }
+
+    /**
+     * Gets the raw byte array backing this channel, <em>this is not a copy</em>.
+     * <p>
+     * NOTE: The returned buffer is not aligned with containing data, use {@link #size()} to obtain the size of data stored in the buffer.
+     * </p>
+     *
+     * @return internal byte array.
+     */
+    public byte[] array() {
+        return data;
+    }
+
+    private void checkOpen() throws ClosedChannelException {
+        if (!isOpen()) {
+            throw new ClosedChannelException();
+        }
+    }
+
+    private void checkRange(final long newSize, final String method) {
+        if (newSize < 0L) {
+            throw new IllegalArgumentException(String.format("%s must be positive: %,d", method, newSize));
+        }
+    }
+
+    @Override
+    public void close() {
+        closed = true;
+    }
+
+    /**
+     * Like {@link #size()} but never throws {@link ClosedChannelException}.
+     *
+     * @return See {@link #size()}.
+     */
+    public long getSize() {
+        return size;
+    }
+
+    @Override
+    public boolean isOpen() {
+        return !closed;
+    }
+
+    @Override
+    public long position() throws ClosedChannelException {
+        checkOpen();
+        lock.lock();
+        try {
+            return position;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public SeekableByteChannel position(final long newPosition) throws IOException {
+        checkOpen();
+        checkRange(newPosition, "position()");
+        lock.lock();
+        try {
+            position = newPosition;
+        } finally {
+            lock.unlock();
+        }
+        return this;
+    }
+
+    @Override
+    public int read(final ByteBuffer buf) throws IOException {
+        checkOpen();
+        lock.lock();
+        try {
+            if (position > Integer.MAX_VALUE) {
+                return IOUtils.EOF;
+            }
+            int wanted = buf.remaining();
+            final int possible = size - (int) position;
+            if (possible <= 0) {
+                return IOUtils.EOF;
+            }
+            if (wanted > possible) {
+                wanted = possible;
+            }
+            buf.put(data, (int) position, wanted);
+            position += wanted;
+            return wanted;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void resize(final int newLength) {
+        int len = data.length;
+        if (len == 0) {
+            len = 1;
+        }
+        if (newLength < RESIZE_LIMIT) {
+            while (len < newLength) {
+                len <<= 1;
+            }
+        } else { // avoid overflow
+            len = newLength;
+        }
+        data = Arrays.copyOf(data, len);
+    }
+
+    @Override
+    public long size() throws ClosedChannelException {
+        checkOpen();
+        lock.lock();
+        try {
+            return size;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Gets a copy of the data stored in this channel.
+     * <p>
+     * The returned array is a copy of the internal buffer, sized to the actual data stored in this channel.
+     * </p>
+     *
+     * @return a new byte array containing the data stored in this channel.
+     */
+    public byte[] toByteArray() {
+        return Arrays.copyOf(data, size);
+    }
+
+    @Override
+
+ succeeded in 139ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.commons.io.channels;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+/**
+ * Tests {@link ByteArraySeekableByteChannel} in the same way Apache Commons Compress tests {@code SeekableInMemoryByteChannel}.
+ */
+class ByteArraySeekableByteChannelCompressTest {
+
+    private static final byte[] testData = "Some data".getBytes(StandardCharsets.UTF_8);
+
+    @AfterEach
+    void afterEach() {
+        // Reading tests don't modify the data
+        assertArrayEquals("Some data".getBytes(StandardCharsets.UTF_8), testData);
+    }
+
+    /*
+     * <q>If the stream is already closed then invoking this method has no effect.</q>
+     */
+    @Test
+    void testCloseIsIdempotent() throws Exception {
+        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+            c.close();
+            assertFalse(c.isOpen());
+            c.close();
+            assertFalse(c.isOpen());
+        }
+    }
+
+    /*
+     * <q>Setting the position to a value that is greater than the current size is legal but does not change the size of the entity. A later attempt to read
+     * bytes at such a position will immediately return an end-of-file indication</q>
+     */
+    @ParameterizedTest
+    @ValueSource(ints = { 0, 1, 2, 3, 4, 5, 6 })
+    void testReadingFromAPositionAfterEndReturnsEOF(final int size) throws Exception {
+        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(new byte[size])) {
+            final int position = 2;
+            c.position(position);
+            assertEquals(position, c.position());
+            final int readSize = 5;
+            final ByteBuffer readBuffer = ByteBuffer.allocate(readSize);
+            assertEquals(position >= size ? -1 : size - position, c.read(readBuffer));
+        }
+    }
+
+    @Test
+    void testShouldReadContentsProperly() throws IOException {
+        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+            final ByteBuffer readBuffer = ByteBuffer.allocate(testData.length);
+            final int readCount = c.read(readBuffer);
+            assertEquals(testData.length, readCount);
+            assertArrayEquals(testData, readBuffer.array());
+            assertEquals(testData.length, c.position());
+        }
+    }
+
+    @Test
+    void testShouldReadContentsWhenBiggerBufferSupplied() throws IOException {
+        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+            final ByteBuffer readBuffer = ByteBuffer.allocate(testData.length + 1);
+            final int readCount = c.read(readBuffer);
+            assertEquals(testData.length, readCount);
+            assertArrayEquals(testData, Arrays.copyOf(readBuffer.array(), testData.length));
+            assertEquals(testData.length, c.position());
+        }
+    }
+
+    @Test
+    void testShouldReadDataFromSetPosition() throws IOException {
+        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+            final ByteBuffer readBuffer = ByteBuffer.allocate(4);
+            c.position(5L);
+            final int readCount = c.read(readBuffer);
+            assertEquals(4L, readCount);
+            assertEquals("data", new String(readBuffer.array(), StandardCharsets.UTF_8));
+            assertEquals(testData.length, c.position());
+        }
+    }
+
+    @Test
+    void testShouldSetProperPosition() throws IOException {
+        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+            final long posAtFour = c.position(4L).position();
+            final long posAtTheEnd = c.position(testData.length).position();
+            final long posPastTheEnd = c.position(testData.length + 1L).position();
+            assertEquals(4L, posAtFour);
+            assertEquals(c.size(), posAtTheEnd);
+            assertEquals(testData.length + 1L, posPastTheEnd);
+        }
+    }
+
+    @Test
+    void testShouldSetProperPositionOnTruncate() throws IOException {
+        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+            c.position(testData.length);
+            c.truncate(4L);
+            assertEquals(4L, c.position());
+            assertEquals(4L, c.size());
+        }
+    }
+
+    @Test
+    void testShouldSignalEOFWhenPositionAtTheEnd() throws IOException {
+        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+            final ByteBuffer readBuffer = ByteBuffer.allocate(testData.length);
+            c.position(testData.length + 1);
+            final int readCount = c.read(readBuffer);
+            assertEquals(0L, readBuffer.position());
+            assertEquals(-1, readCount);
+            assertEquals(-1, c.read(readBuffer));
+        }
+    }
+
+    @Test
+    void testShouldThrowExceptionOnReadingClosedChannel() {
+        final ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel();
+        c.close();
+        assertThrows(ClosedChannelException.class, () -> c.read(ByteBuffer.allocate(1)));
+    }
+
+    @Test
+    void testShouldThrowExceptionOnWritingToClosedChannel() {
+        final ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel();
+        c.close();
+        assertThrows(ClosedChannelException.class, () -> c.write(ByteBuffer.allocate(1)));
+    }
+
+    @Test
+    void testThrowWhenSettingIncorrectPosition() throws IOException {
+        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+            final ByteBuffer buffer = ByteBuffer.allocate(1);
+            // write
+            c.write(buffer);
+            assertEquals(1, c.position());
+            // bad pos A
+            c.position(c.size() + 1);
+            assertEquals(c.size() + 1, c.position());
+            assertEquals(-1, c.read(buffer));
+            // bad pos B
+            c.position(Integer.MAX_VALUE + 1L);
+            assertEquals(Integer.MAX_VALUE + 1L, c.position());
+            assertEquals(-1, c.read(buffer));
+            assertThrows(IOException.class, () -> c.write(buffer));
+            // negative input is the only illegal input
+            assertThrows(IllegalArgumentException.class, () -> c.position(-1));
+            assertThrows(IllegalArgumentException.class, () -> c.position(Integer.MIN_VALUE));
+            assertThrows(IllegalArgumentException.class, () -> c.position(Long.MIN_VALUE));
+        }
+    }
+
+    @Test
+    void testThrowWhenTruncatingToIncorrectSize() throws IOException {
+        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+            final ByteBuffer buffer = ByteBuffer.allocate(1);
+            c.truncate(c.size() + 1);
+            assertEquals(-1, c.read(buffer));
+            c.truncate(Integer.MAX_VALUE + 1L);
+            assertEquals(-1, c.read(buffer));
+            assertThrows(IllegalArgumentException.class, () -> c.truncate(-1));
+            assertThrows(IllegalArgumentException.class, () -> c.truncate(Integer.MIN_VALUE));
+            assertThrows(IllegalArgumentException.class, () -> c.truncate(Long.MIN_VALUE));
+        }
+    }
+
+    @Test
+    void testShouldTruncateContentsProperly() throws ClosedChannelException {
+        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+            c.truncate(4);
+            final byte[] bytes = Arrays.copyOf(c.array(), (int) c.size());
+            assertEquals("Some", new String(bytes, StandardCharsets.UTF_8));
+        }
+    }
+    // Contract Tests added in response to https://issues.apache.org/jira/browse/COMPRESS-499
+    // https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html#close()
+
+    @Test
+    void testShouldWriteDataProperly() throws IOException {
+        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+            final ByteBuffer inData = ByteBuffer.wrap(testData);
+            final int writeCount = c.write(inData);
+            assertEquals(testData.length, writeCount);
+            assertEquals(testData.length, c.position());
+            assertArrayEquals(testData, Arrays.copyOf(c.array(), (int) c.position()));
+        }
+    }
+    // https://docs.oracle.com/javase/8/docs/api/java/nio/channels/SeekableByteChannel.html#position()
+
+    @Test
+    void testShouldWriteDataProperlyAfterPositionSet() throws IOException {
+        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData.clone())) {
+            final ByteBuffer inData = ByteBuffer.wrap(testData);
+            final ByteBuffer expectedData = ByteBuffer.allocate(testData.length + 5).put(testData, 0, 5).put(testData);
+            c.position(5L);
+            final int writeCount = c.write(inData);
+            assertEquals(testData.length, writeCount);
+            assertArrayEquals(expectedData.array(), Arrays.copyOf(c.array(), (int) c.size()));
+            assertEquals(testData.length + 5, c.position());
+        }
+    }
+    // https://docs.oracle.com/javase/8/docs/api/java/nio/channels/SeekableByteChannel.html#size()
+
+    /*
+     * <q>ClosedChannelException - If this channel is closed</q>
+     */
+    @Test
+    void testThrowsClosedChannelExceptionWhenPositionIsSetOnClosedChannel() throws Exception {
+        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+            c.close();
+            assertThrows(ClosedChannelException.class, () -> c.position(0));
+        }
+    }
+    // https://docs.oracle.com/javase/8/docs/api/java/nio/channels/SeekableByteChannel.html#position(long)
+
+    /*
+     * <q>IllegalArgumentException - If the new position is negative</q>
+     */
+    @Test
+    void testThrowsIllegalArgumentExceptionWhenTruncatingToANegativeSize() throws Exception {
+        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+            assertThrows(IllegalArgumentException.class, () -> c.truncate(-1));
+        }
+    }
+
+    /*
+
+ succeeded in 287ms:
+    }
+
+    /**
+     * A {@code byte[]} origin.
+     */
+    public static class ByteArrayOrigin extends AbstractOrigin<byte[], ByteArrayOrigin> {
+
+        /**
+         * Constructs a new instance for the given origin.
+         *
+         * @param origin The origin, not null.
+         * @throws NullPointerException if {@code origin} is {@code null}.
+         */
+        public ByteArrayOrigin(final byte[] origin) {
+            super(origin);
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * <p>
+         * No conversion should occur when calling this method.
+         * </p>
+         */
+        @Override
+        public byte[] getByteArray() {
+            // No conversion
+            return get();
+        }
+
+        @Override
+        protected Channel getChannel(final OpenOption... options) throws IOException {
+            for (final OpenOption option : options) {
+                if (option == StandardOpenOption.WRITE) {
+                    throw new UnsupportedOperationException("Only READ is supported for byte[] origins: " + Arrays.toString(options));
+                }
+            }
+            return ByteArraySeekableByteChannel.wrap(getByteArray());
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * The {@code options} parameter is ignored since a {@code byte[]} does not need an {@link OpenOption} to be read.
+         * </p>
+         */
+        @Override
+        public InputStream getInputStream(final OpenOption... options) throws IOException {
+            return new ByteArrayInputStream(origin);
+        }
+
+        @Override
+        public Reader getReader(final Charset charset) throws IOException {
+            return new InputStreamReader(getInputStream(), Charsets.toCharset(charset));
+        }
+
+        @Override
+        public long size() throws IOException {
+            return origin.length;
+        }
+
+    }
+
+    /**
+     * A {@link Channel} origin.
+     *
+     * @since 2.21.0
+     */
+    public static class ChannelOrigin extends AbstractOrigin<Channel, ChannelOrigin> {
+
+        /**
+         * Constructs a new instance for the given origin.
+         *
+         * @param origin The origin, not null.
+         * @throws NullPointerException if {@code origin} is {@code null}.
+         */
+        public ChannelOrigin(final Channel origin) {
+            super(origin);
+        }
+
+        @Override
+        public byte[] getByteArray() throws IOException {
+            return IOUtils.toByteArray(getInputStream());
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * <p>
+         * No conversion should occur when calling this method.
+         * </p>
+         */
+        @Override
+        protected Channel getChannel(final OpenOption... options) throws IOException {
+            // No conversion
+            return get();
+        }
+
+        @Override
+        public InputStream getInputStream(final OpenOption... options) throws IOException {
+            return Channels.newInputStream(getChannel(ReadableByteChannel.class, options));
+        }
+
+        @Override
+        public OutputStream getOutputStream(final OpenOption... options) throws IOException {
+            return Channels.newOutputStream(getChannel(WritableByteChannel.class, options));
+        }
+
+        @Override
+        public Reader getReader(final Charset charset) throws IOException {
+            return Channels.newReader(
+                    getChannel(ReadableByteChannel.class),
+                    Charsets.toCharset(charset).newDecoder(),
+                    -1);
+        }
+
+        @Override
+        public Writer getWriter(final Charset charset, final OpenOption... options) throws IOException {
+            return Channels.newWriter(getChannel(WritableByteChannel.class, options), Charsets.toCharset(charset).newEncoder(), -1);
+        }
+
+        @Override
+        public long size() throws IOException {
+            if (origin instanceof SeekableByteChannel) {
+                return ((SeekableByteChannel) origin).size();
+            }
+            throw unsupportedOperation("size");
+        }
+    }
+
+    /**
+     * A {@link CharSequence} origin.
+     */
+    public static class CharSequenceOrigin extends AbstractOrigin<CharSequence, CharSequenceOrigin> {
+
+        /**
+         * Constructs a new instance for the given origin.
+         *
+         * @param origin The origin, not null.
+         * @throws NullPointerException if {@code origin} is {@code null}.
+         */
+        public CharSequenceOrigin(final CharSequence origin) {
+            super(origin);
+        }
+
+        @Override
+        public byte[] getByteArray() {
+            // TODO Pass in a Charset? Consider if call sites actually need this.
+            return origin.toString().getBytes(Charset.defaultCharset());
+        }
+
+        @Override
+        protected Channel getChannel(final OpenOption... options) throws IOException {
+            for (final OpenOption option : options) {
+                if (option == StandardOpenOption.WRITE) {
+                    throw new UnsupportedOperationException("Only READ is supported for CharSequence origins: " + Arrays.toString(options));
+                }
+            }
+            return ByteArraySeekableByteChannel.wrap(getByteArray());
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * The {@code charset} parameter is ignored since a {@link CharSequence} does not need a {@link Charset} to be read.
+         * </p>
+         * <p>
+         * No conversion should occur when calling this method.
+         * </p>
+         */
+        @Override
+        public CharSequence getCharSequence(final Charset charset) {
+            // No conversion
+            return get();
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * The {@code options} parameter is ignored since a {@link CharSequence} does not need an {@link OpenOption} to be read.
+         * </p>
+         */
+        @Override
+        public InputStream getInputStream(final OpenOption... options) throws IOException {
+            // TODO Pass in a Charset? Consider if call sites actually need this.
+            return CharSequenceInputStream.builder().setCharSequence(getCharSequence(Charset.defaultCharset())).get();
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+
+codex
+The class itself looks small and focused so far. I’m checking the rest of its methods and counting who uses it, because hub-like modularization needs both meaningful fan-out and a nontrivial fan-in footprint.
+exec
+/bin/bash -lc "sed -n '240,420p' src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc 'rg -n "ByteArraySeekableByteChannel" src/main/java src/test/java | wc -l' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc "rg -n \"ByteArraySeekableByteChannel\" src/main/java src/test/java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/apache/commons/io/channels/FileChannels.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 122ms:
+    @Override
+    public SeekableByteChannel truncate(final long newSize) throws ClosedChannelException {
+        checkOpen();
+        checkRange(newSize, "truncate()");
+        lock.lock();
+        try {
+            if (size > newSize) {
+                size = (int) newSize;
+            }
+            if (position > newSize) {
+                position = newSize;
+            }
+        } finally {
+            lock.unlock();
+        }
+        return this;
+    }
+
+    @Override
+    public int write(final ByteBuffer b) throws IOException {
+        checkOpen();
+        if (position > Integer.MAX_VALUE) {
+            throw new IOException("position > Integer.MAX_VALUE");
+        }
+        lock.lock();
+        try {
+            final int wanted = b.remaining();
+            // intPos <= Integer.MAX_VALUE
+            final int intPos = (int) position;
+            final long newPosition = position + wanted;
+            if (newPosition > IOUtils.SOFT_MAX_ARRAY_LENGTH) {
+                throw new IOException(String.format("Requested array size %,d is too large.", newPosition));
+            }
+            if (newPosition > size) {
+                final int newPositionInt = (int) newPosition;
+                // Ensure that newPositionInt ≤ data.length
+                resize(newPositionInt);
+                size = newPositionInt;
+            }
+            b.get(data, intPos, wanted);
+            position = newPosition;
+            if (size < intPos) {
+                size = intPos;
+            }
+            return wanted;
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+
+ succeeded in 104ms:
+53
+
+ succeeded in 163ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.io.channels;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.SeekableByteChannel;
+import java.util.Objects;
+
+import org.apache.commons.io.IOUtils;
+
+/**
+ * Works with {@link FileChannel}.
+ *
+ * @since 2.15.0
+ */
+public final class FileChannels {
+
+    /**
+     * Tests if two file channel contents are equal starting at their respective current positions.
+     *
+     * @param channel1       A file channel.
+     * @param channel2       Another file channel.
+     * @param bufferCapacity The two internal buffer capacities, in bytes.
+     * @return true if the contents of both RandomAccessFiles are equal, false otherwise.
+     * @throws IOException if an I/O error occurs.
+     * @deprecated Use {@link #contentEquals(SeekableByteChannel, SeekableByteChannel, int)}.
+     */
+    @Deprecated
+    public static boolean contentEquals(final FileChannel channel1, final FileChannel channel2, final int bufferCapacity) throws IOException {
+        return contentEquals((SeekableByteChannel) channel1, channel2, bufferCapacity);
+    }
+
+    /**
+     * Tests if two readable byte channel contents are equal starting at their respective current positions.
+     *
+     * @param channel1       A readable byte channel.
+     * @param channel2       Another readable byte channel.
+     * @param bufferCapacity The two internal buffer capacities, in bytes.
+     * @return true if the contents of both RandomAccessFiles are equal, false otherwise.
+     * @throws IOException if an I/O error occurs or the timeout is met.
+     * @since 2.19.0
+     */
+    public static boolean contentEquals(final ReadableByteChannel channel1, final ReadableByteChannel channel2, final int bufferCapacity) throws IOException {
+        // Before making any changes, please test with org.apache.commons.io.jmh.IOUtilsContentEqualsInputStreamsBenchmark
+        // Short-circuit test
+        if (Objects.equals(channel1, channel2)) {
+            return true;
+        }
+        // Don't use ByteBuffer#compact() to avoid extra copying.
+        final ByteBuffer c1Buffer = ByteBuffer.allocateDirect(bufferCapacity);
+        final ByteBuffer c2Buffer = ByteBuffer.allocateDirect(bufferCapacity);
+        int c1NumRead = 0;
+        int c2NumRead = 0;
+        boolean c1Read0 = false;
+        boolean c2Read0 = false;
+        // If a channel is a non-blocking channel, it may return 0 bytes read for any given call.
+        while (true) {
+            if (!c2Read0) {
+                c1NumRead = readToLimit(channel1, c1Buffer);
+                c1Buffer.clear();
+                c1Read0 = c1NumRead == 0;
+            }
+            if (!c1Read0) {
+                c2NumRead = readToLimit(channel2, c2Buffer);
+                c2Buffer.clear();
+                c2Read0 = c2NumRead == 0;
+            }
+            if (c1NumRead == IOUtils.EOF && c2NumRead == IOUtils.EOF) {
+                return c1Buffer.equals(c2Buffer);
+            }
+            if (c1NumRead == 0 || c2NumRead == 0) {
+                // 0 may be returned from a non-blocking channel.
+                Thread.yield();
+                continue;
+            }
+            if (c1NumRead != c2NumRead) {
+                return false;
+            }
+            if (!c1Buffer.equals(c2Buffer)) {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Tests if two seekable byte channel contents are equal starting at their respective current positions.
+     * <p>
+     * If the two channels have different sizes, no content comparison takes place, and this method returns false.
+     * </p>
+     *
+     * @param channel1       A seekable byte channel.
+     * @param channel2       Another seekable byte channel.
+     * @param bufferCapacity The two internal buffer capacities, in bytes.
+     * @return true if the contents of both RandomAccessFiles are equal, false otherwise.
+     * @throws IOException if an I/O error occurs or the timeout is met.
+     * @since 2.19.0
+     */
+    public static boolean contentEquals(final SeekableByteChannel channel1, final SeekableByteChannel channel2, final int bufferCapacity) throws IOException {
+        // Short-circuit test
+        if (Objects.equals(channel1, channel2)) {
+            return true;
+        }
+        // Short-circuit test
+        final long size1 = size(channel1);
+        final long size2 = size(channel2);
+        if (size1 != size2) {
+            return false;
+        }
+        return size1 == 0 && size2 == 0 || contentEquals((ReadableByteChannel) channel1, channel2, bufferCapacity);
+    }
+
+    /**
+     * Reads a sequence of bytes from a channel into the given buffer until the buffer reaches its limit or the channel has reaches end-of-stream.
+     * <p>
+     * The buffer's limit is not changed.
+     * </p>
+     *
+     * @param channel The source channel.
+     * @param dst     The buffer into which bytes are to be transferred.
+     * @return The number of bytes read, <em>never</em> zero, or {@code -1} if the channel has reached end-of-stream.
+     * @throws IOException              If some other I/O error occurs.
+     * @throws IllegalArgumentException If there is room in the given buffer.
+     */
+    private static int readToLimit(final ReadableByteChannel channel, final ByteBuffer dst) throws IOException {
+        if (!dst.hasRemaining()) {
+            throw new IllegalArgumentException();
+        }
+        int totalRead = 0;
+        while (dst.hasRemaining()) {
+            final int numRead;
+            if ((numRead = channel.read(dst)) == IOUtils.EOF) {
+                break;
+            }
+            if (numRead == 0) {
+                // 0 may be returned from a non-blocking channel.
+                Thread.yield();
+            } else {
+                totalRead += numRead;
+            }
+        }
+        return totalRead != 0 ? totalRead : IOUtils.EOF;
+    }
+
+    private static long size(final SeekableByteChannel channel) throws IOException {
+        return channel != null ? channel.size() : 0;
+    }
+
+    /**
+     * Don't instantiate.
+     */
+    private FileChannels() {
+        // no-op
+    }
+}
+
+ succeeded in 237ms:
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java:54:import org.apache.commons.io.channels.ByteArraySeekableByteChannel;
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java:467:            return ByteArraySeekableByteChannel.wrap(getByteArray());
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java:588:            return ByteArraySeekableByteChannel.wrap(getByteArray());
+src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:39: * accessed via {@link ByteArraySeekableByteChannel#array()}.
+src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:44:public class ByteArraySeekableByteChannel implements SeekableByteChannel {
+src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:64:    public static ByteArraySeekableByteChannel wrap(final byte[] bytes) {
+src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:66:        return new ByteArraySeekableByteChannel(bytes);
+src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:83:    public ByteArraySeekableByteChannel() {
+src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:87:    private ByteArraySeekableByteChannel(final byte[] data) {
+src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:102:    public ByteArraySeekableByteChannel(final int size) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:42:public class ByteArraySeekableByteChannelTest extends AbstractSeekableByteChannelTest {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:48:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) ByteArraySeekableByteChannel::new, EMPTY_BYTE_ARRAY, IOUtils.DEFAULT_BUFFER_SIZE),
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:49:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> new ByteArraySeekableByteChannel(8), EMPTY_BYTE_ARRAY, 8),
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:50:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> new ByteArraySeekableByteChannel(16), EMPTY_BYTE_ARRAY, 16),
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:51:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> ByteArraySeekableByteChannel.wrap(EMPTY_BYTE_ARRAY), EMPTY_BYTE_ARRAY, 0),
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:52:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> ByteArraySeekableByteChannel.wrap(testData), testData, testData.length));
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:67:        return new ByteArraySeekableByteChannel();
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:72:    void testConstructor(final IOSupplier<ByteArraySeekableByteChannel> supplier, final byte[] expected, final int capacity) throws IOException {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:73:        try (ByteArraySeekableByteChannel channel = supplier.get()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:83:        assertThrows(IllegalArgumentException.class, () -> new ByteArraySeekableByteChannel(-1));
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:84:        assertThrows(NullPointerException.class, () -> ByteArraySeekableByteChannel.wrap(null));
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:96:        // ByteArraySeekableByteChannel has a hard boundary at Integer.MAX_VALUE, files don't.
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:106:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(data)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:40: * Tests {@link ByteArraySeekableByteChannel} in the same way Apache Commons Compress tests {@code SeekableInMemoryByteChannel}.
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:42:class ByteArraySeekableByteChannelCompressTest {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:57:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:72:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(new byte[size])) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:84:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:95:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:106:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:118:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:130:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:140:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:152:        final ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel();
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:159:        final ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel();
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:166:        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:189:        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:203:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:214:        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:226:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData.clone())) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:243:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:255:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:265:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:275:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:288:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:302:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:315:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:328:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:343:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:358:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:369:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:380:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:392:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+
+codex
+I have enough structure to decide, but I want one more concrete count: how many distinct source files depend on this class. That gives a cleaner fan-in picture than raw match count, which is inflated by repeated mentions inside tests.
+exec
+/bin/bash -lc 'rg -l "ByteArraySeekableByteChannel" src/main/java src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+exec
+/bin/bash -lc "rg -n \"import org\\.apache\\.commons\\.io\\.channels\\.ByteArraySeekableByteChannel|ByteArraySeekableByteChannel\\.wrap|new ByteArraySeekableByteChannel|ByteArraySeekableByteChannel::new\" src/main/java src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 226ms:
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java:54:import org.apache.commons.io.channels.ByteArraySeekableByteChannel;
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java:467:            return ByteArraySeekableByteChannel.wrap(getByteArray());
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java:588:            return ByteArraySeekableByteChannel.wrap(getByteArray());
+src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java:66:        return new ByteArraySeekableByteChannel(bytes);
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:57:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:72:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(new byte[size])) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:84:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:95:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:106:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:118:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:130:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:140:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:152:        final ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel();
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:159:        final ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel();
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:166:        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:189:        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:203:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:214:        try (ByteArraySeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:226:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData.clone())) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:243:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:255:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:265:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:275:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:288:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:302:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:315:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:328:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:343:        try (SeekableByteChannel c = ByteArraySeekableByteChannel.wrap(testData)) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:358:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:369:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:380:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java:392:        try (SeekableByteChannel c = new ByteArraySeekableByteChannel()) {
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:48:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) ByteArraySeekableByteChannel::new, EMPTY_BYTE_ARRAY, IOUtils.DEFAULT_BUFFER_SIZE),
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:49:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> new ByteArraySeekableByteChannel(8), EMPTY_BYTE_ARRAY, 8),
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:50:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> new ByteArraySeekableByteChannel(16), EMPTY_BYTE_ARRAY, 16),
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:51:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> ByteArraySeekableByteChannel.wrap(EMPTY_BYTE_ARRAY), EMPTY_BYTE_ARRAY, 0),
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:52:                Arguments.of((IOSupplier<ByteArraySeekableByteChannel>) () -> ByteArraySeekableByteChannel.wrap(testData), testData, testData.length));
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:67:        return new ByteArraySeekableByteChannel();
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:83:        assertThrows(IllegalArgumentException.class, () -> new ByteArraySeekableByteChannel(-1));
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:84:        assertThrows(NullPointerException.class, () -> ByteArraySeekableByteChannel.wrap(null));
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java:106:        try (ByteArraySeekableByteChannel c = ByteArraySeekableByteChannel.wrap(data)) {
+
+ succeeded in 288ms:
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java
+src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java
+src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java
+
+codex
+{"target":"org.apache.commons.io.channels.ByteArraySeekableByteChannel","detection":false,"justification":"Inspected src/main/java/org/apache/commons/io/channels/ByteArraySeekableByteChannel.java, src/main/java/org/apache/commons/io/build/AbstractOrigin.java, src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelTest.java, and src/test/java/org/apache/commons/io/channels/ByteArraySeekableByteChannelCompressTest.java. The class has limited fan-out: it only uses JDK channel/buffer/lock types plus org.apache.commons.io.IOUtils. Fan-in is also small: only one production class (AbstractOrigin.ByteArrayOrigin and ByteArrayOrigin/CharSequenceOrigin channel creation) imports and calls it, and only two dedicated test classes reference it. This is not the high incoming/outgoing dependency pattern expected for a hub-like modularization smell."}
+tokens used
+33,612

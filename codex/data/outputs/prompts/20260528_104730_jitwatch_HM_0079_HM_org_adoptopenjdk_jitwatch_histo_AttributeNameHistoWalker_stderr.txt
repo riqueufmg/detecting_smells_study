@@ -1,0 +1,859 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ed7-195e-7e31-ab09-2be723ea6c1e
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.histo.AttributeNameHistoWalker` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.histo.AttributeNameHistoWalker",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.histo.AttributeNameHistoWalker`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and then checking its direct dependencies and the places that reference it so I can judge fan-in/fan-out from the repository itself.
+exec
+/bin/bash -lc "rg --files | rg 'AttributeNameHistoWalker\\.java|AttributeNameHistoWalker'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/histo/AttributeNameHistoWalker.java
+
+exec
+/bin/bash -lc 'rg -n "AttributeNameHistoWalker" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/HistoStage.java:12:import org.adoptopenjdk.jitwatch.histo.AttributeNameHistoWalker;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/HistoStage.java:51:        attrMap.put("Bytes per Compiled Method", new AttributeNameHistoWalker(model, true, ATTR_BYTES, 1));
+./core/src/main/java/org/adoptopenjdk/jitwatch/histo/AttributeNameHistoWalker.java:11:public class AttributeNameHistoWalker extends AbstractHistoVisitable
+./core/src/main/java/org/adoptopenjdk/jitwatch/histo/AttributeNameHistoWalker.java:16:	public AttributeNameHistoWalker(IReadOnlyJITDataModel model, boolean isCompileAttribute, String attributeName, long resolution)
+
+codex
+I found one direct caller so far. Next I’m reading the target class and its immediate context to count its own outgoing dependencies and confirm whether the incoming side is actually thin.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/histo/AttributeNameHistoWalker.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2015 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.histo;
+
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+
+public class AttributeNameHistoWalker extends AbstractHistoVisitable
+{
+	private boolean isCompileAttribute;
+	private String attributeName;
+	
+	public AttributeNameHistoWalker(IReadOnlyJITDataModel model, boolean isCompileAttribute, String attributeName, long resolution)
+	{
+		super(model, resolution);
+
+		this.isCompileAttribute = isCompileAttribute;
+		this.attributeName = attributeName;
+	}	
+	
+	@Override
+	public void visit(IMetaMember mm)
+	{		
+		String attrValue = null;
+
+		if (isCompileAttribute)
+		{
+			attrValue = mm.getCompiledAttribute(attributeName);
+		}
+		else
+		{
+			attrValue = mm.getQueuedAttribute(attributeName);
+		}
+
+		if (attrValue != null)
+		{
+			long val = Long.valueOf(attrValue);
+
+			histo.addValue(val);
+		}		
+	}
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/histo/AbstractHistoVisitable.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2015 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.histo;
+
+import org.adoptopenjdk.jitwatch.compilation.AbstractCompilationVisitable;
+import org.adoptopenjdk.jitwatch.model.IParseDictionary;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.model.LogParseException;
+import org.adoptopenjdk.jitwatch.model.Tag;
+import org.adoptopenjdk.jitwatch.treevisitor.TreeVisitor;
+
+public abstract class AbstractHistoVisitable extends AbstractCompilationVisitable implements IHistoVisitable
+{
+	protected Histo histo;
+	protected IReadOnlyJITDataModel model;
+	protected long resolution;
+
+	public AbstractHistoVisitable(IReadOnlyJITDataModel model, long resolution)
+	{
+		this.model = model;
+		this.resolution = resolution;
+	}
+
+	@Override
+	public Histo buildHistogram()
+	{
+		histo = new Histo(resolution);
+
+		TreeVisitor.walkTree(model, this);
+
+		return histo;
+	}
+
+	@Override
+	public void reset()
+	{
+	}
+
+	@Override
+	public void visitTag(Tag toVisit, IParseDictionary parseDictionary) throws LogParseException
+	{
+	}	
+}
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/HistoStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2016 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.graphing;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.adoptopenjdk.jitwatch.histo.AttributeNameHistoWalker;
+import org.adoptopenjdk.jitwatch.histo.CompileTimeHistoWalker;
+import org.adoptopenjdk.jitwatch.histo.Histo;
+import org.adoptopenjdk.jitwatch.histo.IHistoVisitable;
+import org.adoptopenjdk.jitwatch.histo.InlineSizeHistoVisitable;
+import org.adoptopenjdk.jitwatch.histo.NativeSizeHistoWalker;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.fix;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.*;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.ComboBox;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+
+public class HistoStage extends AbstractGraphStage
+{
+    private Histo histo;
+
+    private IHistoVisitable histoVisitable;
+
+    public HistoStage(final JITWatchUI parent)
+    {
+        super(parent, JITWatchUI.WINDOW_WIDTH, JITWatchUI.WINDOW_HEIGHT, false);
+        
+        IReadOnlyJITDataModel model = parent.getJITDataModel();
+
+		final Map<String, IHistoVisitable> attrMap = new HashMap<>();
+
+		attrMap.put("JIT Compilation Times", new CompileTimeHistoWalker(model, 1));
+        attrMap.put("Bytes per Compiled Method", new AttributeNameHistoWalker(model, true, ATTR_BYTES, 1));
+        attrMap.put("Native Bytes per Compiled Method", new NativeSizeHistoWalker(model, 1));
+        attrMap.put("Inlined Method Sizes", new InlineSizeHistoVisitable(model, 1));
+
+        VBox vbox = new VBox();
+
+        ObservableList<String> options = FXCollections.observableArrayList(attrMap.keySet());
+
+        histoVisitable = attrMap.get(options.get(0));
+
+        final ComboBox<String> comboBox = new ComboBox<>(options);
+        comboBox.setValue(options.get(0));
+
+        comboBox.valueProperty().addListener(new ChangeListener<String>()
+        {
+            @Override
+            public void changed(ObservableValue<? extends String> ov, String oldVal, String newVal)
+            {
+            	histoVisitable = attrMap.get(newVal);
+                                
+                histo = histoVisitable.buildHistogram();
+                redraw();
+            }
+        });
+        
+        HBox hbox = new HBox();
+        hbox.setPadding(new Insets(4, 0, 0, graphGapLeft));
+        hbox.getChildren().add(comboBox);
+        hbox.setMinHeight(30); // prevent combo clipping when highlighted
+
+        vbox.getChildren().add(hbox);
+        vbox.getChildren().add(canvas);
+
+        Scene scene = UserInterfaceUtil.getScene(vbox, width, height);
+
+        canvas.widthProperty().bind(scene.widthProperty());
+        canvas.heightProperty().bind(scene.heightProperty().subtract(30));
+
+        setTitle("JITWatch Histogram");
+        
+        histo = histoVisitable.buildHistogram();
+
+        setScene(scene);
+        show();
+
+        redraw();
+    }
+
+    @Override
+    public final void redraw()
+    {
+        super.baseRedraw();
+        
+        if (histo == null)
+        {
+            return;
+        }
+
+        List<Map.Entry<Long, Integer>> result = histo.getSortedData();
+
+        if (result.size() > 0)
+        {
+            minX = 0;
+            maxX = histo.getLastTime();
+
+            minY = 0;
+            maxY = histo.getMaxCount();
+
+            gc.setStroke(Color.BLACK);
+            gc.setFont(new Font("monospace", 10));
+
+            drawAxes();
+
+            Color colourLine = Color.RED;
+
+            for (Map.Entry<Long, Integer> entry : result)
+            {
+                long key = entry.getKey();
+                int value = entry.getValue();
+
+                double x = graphGapLeft + normaliseX(key);
+
+                gc.setLineWidth(2.0);
+                gc.setStroke(colourLine);
+
+                double y = graphGapTop + normaliseY(value);
+                gc.strokeLine(fix(x), fix(graphGapTop + chartHeight), fix(x), fix(y));
+
+            }
+
+            double legendWidth = 100;
+            double legendHeight = 220;
+            double xPos = canvas.getWidth() - graphGapRight - legendWidth - 5;
+            double yPos = graphGapTop + 5;
+
+            gc.setFill(Color.WHITE);
+            gc.setStroke(Color.BLACK);
+
+            gc.fillRect(fix(xPos), fix(yPos), fix(legendWidth), fix(legendHeight));
+            gc.strokeRect(fix(xPos), fix(yPos), fix(legendWidth), fix(legendHeight));
+
+            xPos += 5;
+            yPos += 5;
+
+            for (double percent : new double[] { 50, 90, 95, 99, 99.9, 99.99, 99.999, 100 })
+            {
+        		setStrokeForText();
+                gc.fillText(percent + "% : " + histo.getPercentile(percent), fix(xPos), fix(yPos));
+                yPos += 20;
+            }
+        }
+        else
+        {
+			setStrokeForText();
+            gc.fillText("No data for histogram.", fix(graphGapLeft + 8), fix(graphGapTop + 16));
+        }
+    }
+}
+codex
+The target class itself is small and mostly a thin specialization. I’m checking whether it is reused anywhere else and how it compares to neighboring walkers, because hub-like modularization needs both heavy fan-in and heavy fan-out.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/histo/CompileTimeHistoWalker.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2016-2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.histo;
+
+import org.adoptopenjdk.jitwatch.model.Compilation;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+
+public class CompileTimeHistoWalker extends AbstractHistoVisitable
+{
+	public CompileTimeHistoWalker(IReadOnlyJITDataModel model, long resolution) // TODO filter by compile level?
+	{
+		super(model, resolution);
+	}
+
+	@Override
+	public void visit(IMetaMember mm)
+	{
+		for (Compilation compilation : mm.getCompilations())
+		{
+			if (!compilation.isC2N())
+			{
+				histo.addValue(compilation.getCompilationDuration());
+			}
+		}
+	}
+}
+exec
+/bin/bash -lc "rg -n \"new AttributeNameHistoWalker\\(|AttributeNameHistoWalker\\b\" core ui -S" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/HistoStage.java:12:import org.adoptopenjdk.jitwatch.histo.AttributeNameHistoWalker;
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/HistoStage.java:51:        attrMap.put("Bytes per Compiled Method", new AttributeNameHistoWalker(model, true, ATTR_BYTES, 1));
+core/src/main/java/org/adoptopenjdk/jitwatch/histo/AttributeNameHistoWalker.java:11:public class AttributeNameHistoWalker extends AbstractHistoVisitable
+core/src/main/java/org/adoptopenjdk/jitwatch/histo/AttributeNameHistoWalker.java:16:	public AttributeNameHistoWalker(IReadOnlyJITDataModel model, boolean isCompileAttribute, String attributeName, long resolution)
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/histo/NativeSizeHistoWalker.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/histo/InlineSizeHistoVisitable.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2016 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.histo;
+
+import org.adoptopenjdk.jitwatch.model.Compilation;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+
+public class NativeSizeHistoWalker extends AbstractHistoVisitable
+{
+	public NativeSizeHistoWalker(IReadOnlyJITDataModel model, long resolution)
+	{
+		super(model, resolution);
+	}
+
+	@Override
+	public void visit(IMetaMember mm)
+	{
+		for (Compilation compilation : mm.getCompilations())
+		{
+			long nativeSize = compilation.getNativeSize();
+	
+			if (nativeSize != 0)
+			{
+				histo.addValue(nativeSize);
+			}
+		}
+	}
+}
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2021 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.histo;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_BYTES;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_HOLDER;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_NAME;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_SLASH;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_PARSE_HIR;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_BC;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_BRANCH;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INLINE_FAIL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INLINE_SUCCESS;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_KLASS;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_METHOD;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PARSE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PARSE_DONE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PHASE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_TYPE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_UNCOMMON_TRAP;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_CALL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_DEPENDENCY;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_DIRECT_CALL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PREDICTED_CALL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_OBSERVE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_VIRTUAL_CALL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INTRINSIC;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_CAST_UP;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_ASSERT_NULL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PHASE_DONE;
+
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import org.adoptopenjdk.jitwatch.compilation.CompilationUtil;
+import org.adoptopenjdk.jitwatch.model.Compilation;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IParseDictionary;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.model.LogParseException;
+import org.adoptopenjdk.jitwatch.model.Tag;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+public class InlineSizeHistoVisitable extends AbstractHistoVisitable
+{
+	private static final Logger logger = LoggerFactory.getLogger(InlineSizeHistoVisitable.class);
+
+	private Set<String> inlinedCounted = new HashSet<>();
+
+	public InlineSizeHistoVisitable(IReadOnlyJITDataModel model, long resolution)
+	{
+		super(model, resolution);
+		
+		ignoreTags.add(TAG_CALL);
+		ignoreTags.add(TAG_DEPENDENCY);	
+		ignoreTags.add(TAG_BC);
+		ignoreTags.add(TAG_KLASS);
+		ignoreTags.add(TAG_PARSE_DONE);
+		ignoreTags.add(TAG_UNCOMMON_TRAP);
+		ignoreTags.add(TAG_TYPE);
+		ignoreTags.add(TAG_BRANCH);
+		ignoreTags.add(TAG_DIRECT_CALL);
+		ignoreTags.add(TAG_PREDICTED_CALL);
+		ignoreTags.add(TAG_OBSERVE);
+		ignoreTags.add(TAG_VIRTUAL_CALL);
+		ignoreTags.add(TAG_INTRINSIC);
+		ignoreTags.add(TAG_CAST_UP);
+		ignoreTags.add(TAG_ASSERT_NULL);
+		ignoreTags.add(TAG_PHASE_DONE);
+	}
+
+	@Override
+	public void reset()
+	{
+		inlinedCounted.clear();
+	}
+
+	@Override
+	public void visit(IMetaMember metaMember)
+	{
+		if (metaMember != null && metaMember.isCompiled())
+		{			
+			try
+			{
+				for (Compilation compilation : metaMember.getCompilations())
+				{
+					CompilationUtil.visitParseTagsOfCompilation(compilation, this);
+				}
+			}
+			catch (LogParseException e)
+			{
+				logger.error("Could not build histo for {}", metaMember.getMemberName(), e);
+			}
+		}
+	}
+
+	private void processParseTag(Tag parseTag, IParseDictionary parseDictionary)
+	{
+		String currentMethod = null;
+		String holder = null;
+		String attrInlineBytes = null;
+
+		for (Tag child : parseTag.getChildren())
+		{
+			String tagName = child.getName();
+			Map<String, String> attrs = child.getAttributes();
+
+			switch (tagName)
+			{
+			case TAG_METHOD:
+			{
+				currentMethod = attrs.get(ATTR_NAME);
+				holder = attrs.get(ATTR_HOLDER);
+				attrInlineBytes = attrs.get(ATTR_BYTES);
+				break;
+			}
+
+			case TAG_INLINE_FAIL:
+			{
+				// clear method to prevent incorrect pickup by next inline
+				// success
+				currentMethod = null;
+				holder = null;
+				attrInlineBytes = null;
+				
+				break;
+			}
+
+			case TAG_INLINE_SUCCESS:
+			{
+				if (holder != null && currentMethod != null && attrInlineBytes != null)
+				{
+					Tag klassTag = parseDictionary.getKlass(holder);
+
+					if (klassTag != null)
+					{
+						String fqName = klassTag.getAttributes().get(ATTR_NAME) + C_SLASH + currentMethod;
+
+						if (!inlinedCounted.contains(fqName))
+						{
+							long inlinedByteCount = Long.parseLong(attrInlineBytes);
+							histo.addValue(inlinedByteCount);
+
+							inlinedCounted.add(fqName);
+						}
+					}
+				}
+				
+				break;
+			}
+				
+			case TAG_PARSE:
+			{
+				processParseTag(child, parseDictionary);
+				break;
+			}
+				
+  			case TAG_PHASE:
+			{
+				String phaseName = attrs.get(ATTR_NAME);
+				
+				if (S_PARSE_HIR.equals(phaseName))
+				{
+					processParseTag(child, parseDictionary);
+				}
+				else
+				{
+					logger.warn("Don't know how to handle phase {}", phaseName);
+				}
+				
+				break;
+			}
+
+			default:
+				handleOther(child);
+				break;
+			}
+		}
+	}
+
+	@Override
+	public void visitTag(Tag parseTag, IParseDictionary parseDictionary) throws LogParseException
+	{
+		processParseTag(parseTag, parseDictionary);
+	}
+}
+
+codex
+I have enough context to decide directionally, but I’m grabbing line numbers now so the final justification can point to exact evidence rather than a vague summary.
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/histo/AttributeNameHistoWalker.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2015 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.histo;
+     7	
+     8	import org.adoptopenjdk.jitwatch.model.IMetaMember;
+     9	import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+    10	
+    11	public class AttributeNameHistoWalker extends AbstractHistoVisitable
+    12	{
+    13		private boolean isCompileAttribute;
+    14		private String attributeName;
+    15		
+    16		public AttributeNameHistoWalker(IReadOnlyJITDataModel model, boolean isCompileAttribute, String attributeName, long resolution)
+    17		{
+    18			super(model, resolution);
+    19	
+    20			this.isCompileAttribute = isCompileAttribute;
+    21			this.attributeName = attributeName;
+    22		}	
+    23		
+    24		@Override
+    25		public void visit(IMetaMember mm)
+    26		{		
+    27			String attrValue = null;
+    28	
+    29			if (isCompileAttribute)
+    30			{
+    31				attrValue = mm.getCompiledAttribute(attributeName);
+    32			}
+    33			else
+    34			{
+    35				attrValue = mm.getQueuedAttribute(attributeName);
+    36			}
+    37	
+    38			if (attrValue != null)
+    39			{
+    40				long val = Long.valueOf(attrValue);
+    41	
+    42				histo.addValue(val);
+    43			}		
+    44		}
+    45	}
+
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/HistoStage.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2016 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.ui.graphing;
+     7	
+     8	import java.util.HashMap;
+     9	import java.util.List;
+    10	import java.util.Map;
+    11	
+    12	import org.adoptopenjdk.jitwatch.histo.AttributeNameHistoWalker;
+    13	import org.adoptopenjdk.jitwatch.histo.CompileTimeHistoWalker;
+    14	import org.adoptopenjdk.jitwatch.histo.Histo;
+    15	import org.adoptopenjdk.jitwatch.histo.IHistoVisitable;
+    16	import org.adoptopenjdk.jitwatch.histo.InlineSizeHistoVisitable;
+    17	import org.adoptopenjdk.jitwatch.histo.NativeSizeHistoWalker;
+    18	import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+    19	import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+    20	import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+    21	import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.fix;
+    22	
+    23	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.*;
+    24	import javafx.beans.value.ChangeListener;
+    25	import javafx.beans.value.ObservableValue;
+    26	import javafx.collections.FXCollections;
+    27	import javafx.collections.ObservableList;
+    28	import javafx.geometry.Insets;
+    29	import javafx.scene.Scene;
+    30	import javafx.scene.control.ComboBox;
+    31	import javafx.scene.layout.HBox;
+    32	import javafx.scene.layout.VBox;
+    33	import javafx.scene.paint.Color;
+    34	import javafx.scene.text.Font;
+    35	
+    36	public class HistoStage extends AbstractGraphStage
+    37	{
+    38	    private Histo histo;
+    39	
+    40	    private IHistoVisitable histoVisitable;
+    41	
+    42	    public HistoStage(final JITWatchUI parent)
+    43	    {
+    44	        super(parent, JITWatchUI.WINDOW_WIDTH, JITWatchUI.WINDOW_HEIGHT, false);
+    45	        
+    46	        IReadOnlyJITDataModel model = parent.getJITDataModel();
+    47	
+    48			final Map<String, IHistoVisitable> attrMap = new HashMap<>();
+    49	
+    50			attrMap.put("JIT Compilation Times", new CompileTimeHistoWalker(model, 1));
+    51	        attrMap.put("Bytes per Compiled Method", new AttributeNameHistoWalker(model, true, ATTR_BYTES, 1));
+    52	        attrMap.put("Native Bytes per Compiled Method", new NativeSizeHistoWalker(model, 1));
+    53	        attrMap.put("Inlined Method Sizes", new InlineSizeHistoVisitable(model, 1));
+    54	
+    55	        VBox vbox = new VBox();
+    56	
+    57	        ObservableList<String> options = FXCollections.observableArrayList(attrMap.keySet());
+    58	
+    59	        histoVisitable = attrMap.get(options.get(0));
+    60	
+    61	        final ComboBox<String> comboBox = new ComboBox<>(options);
+    62	        comboBox.setValue(options.get(0));
+    63	
+    64	        comboBox.valueProperty().addListener(new ChangeListener<String>()
+    65	        {
+    66	            @Override
+    67	            public void changed(ObservableValue<? extends String> ov, String oldVal, String newVal)
+    68	            {
+    69	            	histoVisitable = attrMap.get(newVal);
+    70	                                
+    71	                histo = histoVisitable.buildHistogram();
+    72	                redraw();
+    73	            }
+    74	        });
+    75	        
+    76	        HBox hbox = new HBox();
+    77	        hbox.setPadding(new Insets(4, 0, 0, graphGapLeft));
+    78	        hbox.getChildren().add(comboBox);
+    79	        hbox.setMinHeight(30); // prevent combo clipping when highlighted
+    80	
+    81	        vbox.getChildren().add(hbox);
+    82	        vbox.getChildren().add(canvas);
+    83	
+    84	        Scene scene = UserInterfaceUtil.getScene(vbox, width, height);
+    85	
+    86	        canvas.widthProperty().bind(scene.widthProperty());
+    87	        canvas.heightProperty().bind(scene.heightProperty().subtract(30));
+    88	
+    89	        setTitle("JITWatch Histogram");
+    90	        
+    91	        histo = histoVisitable.buildHistogram();
+    92	
+    93	        setScene(scene);
+    94	        show();
+    95	
+    96	        redraw();
+    97	    }
+    98	
+    99	    @Override
+   100	    public final void redraw()
+   101	    {
+   102	        super.baseRedraw();
+   103	        
+   104	        if (histo == null)
+   105	        {
+   106	            return;
+   107	        }
+   108	
+   109	        List<Map.Entry<Long, Integer>> result = histo.getSortedData();
+   110	
+   111	        if (result.size() > 0)
+   112	        {
+   113	            minX = 0;
+   114	            maxX = histo.getLastTime();
+   115	
+   116	            minY = 0;
+   117	            maxY = histo.getMaxCount();
+   118	
+   119	            gc.setStroke(Color.BLACK);
+   120	            gc.setFont(new Font("monospace", 10));
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/histo/AbstractHistoVisitable.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2015 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.histo;
+     7	
+     8	import org.adoptopenjdk.jitwatch.compilation.AbstractCompilationVisitable;
+     9	import org.adoptopenjdk.jitwatch.model.IParseDictionary;
+    10	import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+    11	import org.adoptopenjdk.jitwatch.model.LogParseException;
+    12	import org.adoptopenjdk.jitwatch.model.Tag;
+    13	import org.adoptopenjdk.jitwatch.treevisitor.TreeVisitor;
+    14	
+    15	public abstract class AbstractHistoVisitable extends AbstractCompilationVisitable implements IHistoVisitable
+    16	{
+    17		protected Histo histo;
+    18		protected IReadOnlyJITDataModel model;
+    19		protected long resolution;
+    20	
+    21		public AbstractHistoVisitable(IReadOnlyJITDataModel model, long resolution)
+    22		{
+    23			this.model = model;
+    24			this.resolution = resolution;
+    25		}
+    26	
+    27		@Override
+    28		public Histo buildHistogram()
+    29		{
+    30			histo = new Histo(resolution);
+    31	
+    32			TreeVisitor.walkTree(model, this);
+    33	
+    34			return histo;
+    35		}
+    36	
+    37		@Override
+    38		public void reset()
+    39		{
+    40		}
+    41	
+    42		@Override
+    43		public void visitTag(Tag toVisit, IParseDictionary parseDictionary) throws LogParseException
+    44		{
+    45		}	
+    46	}
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.histo.AttributeNameHistoWalker","detection":false,"justification":"Inspected core/src/main/java/org/adoptopenjdk/jitwatch/histo/AttributeNameHistoWalker.java, ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/HistoStage.java, and core/src/main/java/org/adoptopenjdk/jitwatch/histo/AbstractHistoVisitable.java. The target class is a small specialization with only two direct imports (IMetaMember, IReadOnlyJITDataModel), one constructor, and one visit method; its behavior is limited to selecting one attribute and adding one value to the histogram. Repository-wide search found only one incoming reference: HistoStage creates it once in a histogram map. That is insufficient fan-in/fan-out for a dependency hub."}
+tokens used
+11,014

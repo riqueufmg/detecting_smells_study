@@ -1,0 +1,1650 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ef3-192b-7120-99b9-2a681645b563
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.jsoup.select.Evaluator.AttributeWithValueContaining` in the repository located at:
+
+`data/repositories/jhy/jsoup`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.jsoup.select.Evaluator.AttributeWithValueContaining",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.jsoup.select.Evaluator.AttributeWithValueContaining`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and reading the surrounding sources to measure incoming and outgoing dependencies before deciding whether the class acts like a dependency hub.
+exec
+/bin/bash -lc 'rg -n "class AttributeWithValueContaining|AttributeWithValueContaining" src' in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+src/main/java/org/jsoup/nodes/Element.java:1397:        return Collector.collect(new Evaluator.AttributeWithValueContaining(key, match), this);
+src/main/java/org/jsoup/select/QueryParser.java:371:                eval = new Evaluator.AttributeWithValueContaining(key, cq.remainder());
+src/test/java/org/jsoup/select/EvaluatorTest.java:70:    public void testAttributeWithValueContainingToString() {
+src/test/java/org/jsoup/select/EvaluatorTest.java:71:        Evaluator.AttributeWithValueContaining evaluator =
+src/test/java/org/jsoup/select/EvaluatorTest.java:72:            new Evaluator.AttributeWithValueContaining("example", "value");
+src/test/java/org/jsoup/select/QueryParserTest.java:181:        assertEquals("(Or (And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent')))(And (Class '.nested')(Ancestor (Class '.some-other-selector'))))", parsed);
+src/test/java/org/jsoup/select/QueryParserTest.java:183:        assertEquals("(Or (Class '.some-other-selector')(And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent'))))", sexpr("#parent [class*=child], .some-other-selector"));
+src/test/java/org/jsoup/select/QueryParserTest.java:184:        assertEquals("(Or (And (Id '#el')(AttributeWithValueContaining '[class*=child]'))(Class '.some-other-selector'))", sexpr("#el[class*=child], .some-other-selector"));
+src/test/java/org/jsoup/select/QueryParserTest.java:185:        assertEquals("(Or (And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent')))(And (Class '.nested')(Ancestor (Class '.some-other-selector'))))", sexpr("#parent [class*=child], .some-other-selector .nested"));
+src/main/java/org/jsoup/select/Evaluator.java:362:    public static final class AttributeWithValueContaining extends AttributeKeyPair {
+src/main/java/org/jsoup/select/Evaluator.java:363:        public AttributeWithValueContaining(String key, String value) {
+src/test/java/org/jsoup/select/SelectorTest.java:1309:        assertEquals("(Or (And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent')))(And (Class '.nested')(Ancestor (Class '.some-other-selector'))))", sexpr(q));
+
+exec
+/bin/bash -lc "rg --files src | rg \"Evaluator\\.java|Evaluator\"" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+src/test/java/org/jsoup/select/StructuralEvaluatorTest.java
+src/test/java/org/jsoup/select/EvaluatorTest.java
+src/test/java/org/jsoup/select/EvaluatorDebug.java
+src/main/java/org/jsoup/select/NodeEvaluator.java
+src/main/java/org/jsoup/select/CombiningEvaluator.java
+src/main/java/org/jsoup/select/StructuralEvaluator.java
+src/main/java/org/jsoup/select/Evaluator.java
+
+codex
+I found the target in `src/main/java/org/jsoup/select/Evaluator.java` and the main call sites. Next I’m checking the class body and its inheritance chain to see whether it depends on many types or is widely referenced enough to qualify as a hub.
+exec
+/bin/bash -lc "sed -n '1,260p' src/main/java/org/jsoup/select/Evaluator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+package org.jsoup.select;
+
+import org.jsoup.helper.Validate;
+import org.jsoup.nodes.Comment;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.DocumentType;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.LeafNode;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.PseudoTextElement;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.nodes.XmlDeclaration;
+import org.jsoup.parser.ParseSettings;
+import org.jsoup.helper.Regex;
+
+import java.util.List;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
+
+import static org.jsoup.internal.Normalizer.lowerCase;
+import static org.jsoup.internal.Normalizer.normalize;
+import static org.jsoup.internal.StringUtil.normaliseWhitespace;
+
+
+/**
+ An Evaluator tests if an element (or a node) meets the selector's requirements. Obtain an evaluator for a given CSS selector
+ with {@link Selector#evaluatorOf(String css)}. If you are executing the same selector on many elements (or documents), it
+ can be more efficient to compile and reuse an Evaluator than to reparse the selector on each invocation of select().
+ <p>Evaluators are thread-safe and may be used concurrently across multiple documents.</p>
+ */
+public abstract class Evaluator {
+    protected Evaluator() {
+    }
+
+    /**
+     Provides a Predicate for this Evaluator, matching the test Element.
+     * @param root the root Element, for match evaluation
+     * @return a predicate that accepts an Element to test for matches with this Evaluator
+     * @since 1.17.1
+     */
+    public Predicate<Element> asPredicate(Element root) {
+        return element -> matches(root, element);
+    }
+
+    Predicate<Node> asNodePredicate(Element root) {
+        return node -> matches(root, node);
+    }
+
+    /**
+     * Test if the element meets the evaluator's requirements.
+     *
+     * @param root    Root of the matching subtree
+     * @param element tested element
+     * @return Returns <tt>true</tt> if the requirements are met or
+     * <tt>false</tt> otherwise
+     */
+    public abstract boolean matches(Element root, Element element);
+
+    final boolean matches(Element root, Node node) {
+        if (node instanceof Element) {
+            return matches(root, (Element) node);
+        } else if (node instanceof LeafNode && wantsNodes()) {
+            return matches(root, (LeafNode) node);
+        }
+        return false;
+    }
+
+    boolean matches(Element root, LeafNode leafNode) {
+        return false;
+    }
+
+    boolean wantsNodes() {
+        return false;
+    }
+
+    /**
+     Reset any internal state in this Evaluator before executing a new Collector evaluation.
+     */
+    protected void reset() {
+    }
+
+    /**
+     A relative evaluator cost function. During evaluation, Evaluators are sorted by ascending cost as an optimization.
+     * @return the relative cost of this Evaluator
+     */
+    protected int cost() {
+        return 5; // a nominal default cost
+    }
+
+    /**
+     * Evaluator for tag name
+     */
+    public static final class Tag extends Evaluator {
+        private final String tagName;
+
+        public Tag(String tagName) {
+            this.tagName = tagName;
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return (element.nameIs(tagName));
+        }
+
+        @Override protected int cost() {
+            return 1;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s", tagName);
+        }
+    }
+
+    /**
+     * Evaluator for tag name that starts with prefix; used for ns|*
+     */
+    public static final class TagStartsWith extends Evaluator {
+        private final String tagName;
+
+        public TagStartsWith(String tagName) {
+            this.tagName = tagName;
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return (element.normalName().startsWith(tagName));
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s|*", tagName);
+        }
+    }
+
+
+    /**
+     * Evaluator for tag name that ends with suffix; used for *|el
+     */
+    public static final class TagEndsWith extends Evaluator {
+        private final String tagName;
+
+        public TagEndsWith(String tagName) {
+            this.tagName = tagName;
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return (element.normalName().endsWith(tagName));
+        }
+
+        @Override
+        public String toString() {
+            return String.format("*|%s", tagName);
+        }
+    }
+
+    /**
+     * Evaluator for element id
+     */
+    public static final class Id extends Evaluator {
+        private final String id;
+
+        public Id(String id) {
+            this.id = id;
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return (id.equals(element.id()));
+        }
+
+        @Override protected int cost() {
+            return 2;
+        }
+        @Override
+        public String toString() {
+            return String.format("#%s", id);
+        }
+    }
+
+    /**
+     * Evaluator for element class
+     */
+    public static final class Class extends Evaluator {
+        private final String className;
+
+        public Class(String className) {
+            this.className = className;
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return (element.hasClass(className));
+        }
+
+        @Override protected int cost() {
+            return 8; // does whitespace scanning; more than .contains()
+        }
+
+        @Override
+        public String toString() {
+            return String.format(".%s", className);
+        }
+
+    }
+
+    /**
+     * Evaluator for attribute name matching
+     */
+    public static final class Attribute extends Evaluator {
+        private final String key;
+
+        public Attribute(String key) {
+            this.key = key;
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.hasAttr(key);
+        }
+
+        @Override protected int cost() {
+            return 2;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[%s]", key);
+        }
+    }
+
+    /**
+     * Evaluator for attribute name prefix matching
+     */
+    public static final class AttributeStarting extends Evaluator {
+        private final String keyPrefix;
+
+        public AttributeStarting(String keyPrefix) {
+            Validate.notNull(keyPrefix); // OK to be empty - will find elements with any attributes
+            this.keyPrefix = lowerCase(keyPrefix);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            List<org.jsoup.nodes.Attribute> values = element.attributes().asList();
+            for (org.jsoup.nodes.Attribute attribute : values) {
+                if (lowerCase(attribute.getKey()).startsWith(keyPrefix))
+                    return true;
+            }
+            return false;
+        }
+
+        @Override protected int cost() {
+            return 6;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[^%s]", keyPrefix);
+
+exec
+/bin/bash -lc "sed -n '260,520p' src/main/java/org/jsoup/select/Evaluator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/jsoup/select/StructuralEvaluator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+            return String.format("[^%s]", keyPrefix);
+        }
+
+    }
+
+    /**
+     * Evaluator for attribute name/value matching
+     */
+    public static final class AttributeWithValue extends AttributeKeyPair {
+        public AttributeWithValue(String key, String value) {
+            super(key, value);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.hasAttr(key) && value.equalsIgnoreCase(element.attr(key));
+        }
+
+        @Override protected int cost() {
+            return 3;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[%s=%s]", key, value);
+        }
+
+    }
+
+    /**
+     * Evaluator for attribute name != value matching
+     */
+    public static final class AttributeWithValueNot extends AttributeKeyPair {
+        public AttributeWithValueNot(String key, String value) {
+            super(key, value);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return !value.equalsIgnoreCase(element.attr(key));
+        }
+
+        @Override protected int cost() {
+            return 3;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[%s!=%s]", key, value);
+        }
+
+    }
+
+    /**
+     * Evaluator for attribute name/value matching (value prefix)
+     */
+    public static final class AttributeWithValueStarting extends AttributeKeyPair {
+        public AttributeWithValueStarting(String key, String value) {
+            super(key, value);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.hasAttr(key) && lowerCase(element.attr(key)).startsWith(value); // value is lower case already
+        }
+
+        @Override protected int cost() {
+            return 4;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[%s^=%s]", key, value);
+        }
+    }
+
+    /**
+     * Evaluator for attribute name/value matching (value ending)
+     */
+    public static final class AttributeWithValueEnding extends AttributeKeyPair {
+        public AttributeWithValueEnding(String key, String value) {
+            super(key, value);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.hasAttr(key) && lowerCase(element.attr(key)).endsWith(value); // value is lower case
+        }
+
+        @Override protected int cost() {
+            return 4;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[%s$=%s]", key, value);
+        }
+    }
+
+    /**
+     * Evaluator for attribute name/value matching (value containing)
+     */
+    public static final class AttributeWithValueContaining extends AttributeKeyPair {
+        public AttributeWithValueContaining(String key, String value) {
+            super(key, value);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.hasAttr(key) && lowerCase(element.attr(key)).contains(value); // value is lower case
+        }
+
+        @Override protected int cost() {
+            return 6;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[%s*=%s]", key, value);
+        }
+
+    }
+
+    /**
+     * Evaluator for attribute name/value matching (value regex matching)
+     */
+    public static final class AttributeWithValueMatching extends Evaluator {
+        final String key;
+        final Regex pattern;
+
+        public AttributeWithValueMatching(String key, Regex pattern) {
+            this.key = normalize(key);
+            this.pattern = pattern;
+        }
+
+        public AttributeWithValueMatching(String key, Pattern pattern) {
+            this(key, Regex.fromPattern(pattern)); // api compat
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.hasAttr(key) && pattern.matcher(element.attr(key)).find();
+        }
+
+        @Override protected int cost() {
+            return 8;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[%s~=%s]", key, pattern.toString());
+        }
+
+    }
+
+    /**
+     * Abstract evaluator for attribute name/value matching
+     */
+    public abstract static class AttributeKeyPair extends Evaluator {
+        final String key;
+        final String value;
+
+        public AttributeKeyPair(String key, String value) {
+            Validate.notEmpty(key);
+            Validate.notNull(value);
+
+            this.key = normalize(key);
+            boolean quoted = value.startsWith("'") && value.endsWith("'")
+                || value.startsWith("\"") && value.endsWith("\"");
+            if (quoted) {
+                Validate.isTrue(value.length() > 1, "Quoted value must have content");
+                value = value.substring(1, value.length() - 1);
+            }
+
+            this.value = lowerCase(value); // case-insensitive match
+        }
+
+        /**
+         @deprecated since 1.22.1, use {@link #AttributeKeyPair(String, String)}; the previous trimQuoted parameter is no longer used.
+         This constructor will be removed in jsoup 1.24.1.
+         */
+        @Deprecated
+        public AttributeKeyPair(String key, String value, boolean ignored) {
+            this(key, value);
+        }
+
+
+    }
+
+    /**
+     * Evaluator for any / all element matching
+     */
+    public static final class AllElements extends Evaluator {
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return true;
+        }
+
+        @Override protected int cost() {
+            return 10;
+        }
+
+        @Override
+        public String toString() {
+            return "*";
+        }
+    }
+
+    /**
+     * Evaluator for matching by sibling index number (e {@literal <} idx)
+     */
+    public static final class IndexLessThan extends IndexEvaluator {
+        public IndexLessThan(int index) {
+            super(index);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return root != element && element.elementSiblingIndex() < index;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":lt(%d)", index);
+        }
+
+    }
+
+    /**
+     * Evaluator for matching by sibling index number (e {@literal >} idx)
+     */
+    public static final class IndexGreaterThan extends IndexEvaluator {
+        public IndexGreaterThan(int index) {
+            super(index);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.elementSiblingIndex() > index;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":gt(%d)", index);
+        }
+
+    }
+
+    /**
+     * Evaluator for matching by sibling index number (e = idx)
+     */
+    public static final class IndexEquals extends IndexEvaluator {
+        public IndexEquals(int index) {
+            super(index);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.elementSiblingIndex() == index;
+        }
+
+ succeeded in 0ms:
+package org.jsoup.select;
+
+import org.jsoup.internal.SoftPool;
+import org.jsoup.internal.StringUtil;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.LeafNode;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.NodeIterator;
+import org.jsoup.nodes.TextNode;
+
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.WeakHashMap;
+
+/**
+ * Base structural evaluator.
+ */
+abstract class StructuralEvaluator extends Evaluator {
+    final Evaluator evaluator;
+    boolean wantsNodes; // if the evaluator requested nodes, not just elements
+
+    public StructuralEvaluator(Evaluator evaluator) {
+        this.evaluator = evaluator;
+        wantsNodes = evaluator.wantsNodes();
+    }
+
+    @Override
+    boolean wantsNodes() {
+        return wantsNodes;
+    }
+
+    // Memoize inner matches, to save repeated re-evaluations of parent, sibling etc.
+    // root + element: Boolean matches. ThreadLocal in case the Evaluator is compiled then reused across multi threads
+    final ThreadLocal<Map<Node, Map<Node, Boolean>>> threadMemo = ThreadLocal.withInitial(WeakHashMap::new);
+
+    boolean memoMatches(final Element root, final Node node) {
+        Map<Node, Map<Node, Boolean>> rootMemo = threadMemo.get();
+        Map<Node, Boolean> memo = rootMemo.computeIfAbsent(root, r -> new WeakHashMap<>());
+        return memo.computeIfAbsent(node, test -> evaluator.matches(root, test));
+    }
+
+    @Override protected void reset() {
+        threadMemo.remove();
+        evaluator.reset();
+        super.reset();
+    }
+
+    @Override
+    public boolean matches(Element root, Element element) {
+        return evaluateMatch(root, element);
+    }
+
+    @Override
+    boolean matches(Element root, LeafNode leafNode) {
+        return evaluateMatch(root, leafNode);
+    }
+
+    abstract boolean evaluateMatch(Element root, Node node);
+
+    static class Root extends Evaluator {
+        @Override
+        public boolean matches(Element root, Element element) {
+            return root == element;
+        }
+
+        @Override protected int cost() {
+            return 1;
+        }
+
+        @Override public String toString() {
+            return ">";
+        }
+    }
+
+    static class Has extends StructuralEvaluator {
+        static final SoftPool<NodeIterator<Node>> NodeIterPool =
+            new SoftPool<>(() -> new NodeIterator<>(new TextNode(""), Node.class));
+        // the element here is just a placeholder so this can be final - gets set in restart()
+
+        private final boolean checkSiblings; // evaluating against siblings (or children)
+
+        public Has(Evaluator evaluator) {
+            super(evaluator);
+            checkSiblings = evalWantsSiblings(evaluator);
+        }
+
+        @Override public boolean matches(Element root, Element element) {
+            if (checkSiblings) { // evaluating against siblings
+                for (Element sib = element.firstElementSibling(); sib != null; sib = sib.nextElementSibling()) {
+                    if (sib != element && evaluator.matches(element, sib)) { // don't match against self
+                        return true;
+                    }
+                }
+            }
+            // otherwise we only want to match children (or below), and not the input element. And we want to minimize GCs so reusing the Iterator obj
+            NodeIterator<Node> it = NodeIterPool.borrow();
+            it.restart(element);
+            try {
+                while (it.hasNext()) {
+                    Node node = it.next();
+                    if (node == element) continue; // don't match self, only descendants
+                    if (evaluator.matches(element, node)) {
+                        return true;
+                    }
+                }
+            } finally {
+                NodeIterPool.release(it);
+            }
+            return false;
+        }
+
+        @Override
+        boolean evaluateMatch(Element root, Node node) {
+            return false; // unused; :has(::comment)) goes via implicit root combinator
+        }
+
+        /* Test if the :has sub-clause wants sibling elements (vs nested elements) - will be a Combining eval */
+        private static boolean evalWantsSiblings(Evaluator eval) {
+            if (eval instanceof CombiningEvaluator) {
+                CombiningEvaluator ce = (CombiningEvaluator) eval;
+                for (Evaluator innerEval : ce.evaluators) {
+                    if (innerEval instanceof PreviousSibling || innerEval instanceof ImmediatePreviousSibling)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        @Override protected int cost() {
+            return 10 * evaluator.cost();
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":has(%s)", evaluator);
+        }
+    }
+
+    /** Implements the :is(sub-query) pseudo-selector */
+    static class Is extends StructuralEvaluator {
+        public Is(Evaluator evaluator) {
+            super(evaluator);
+        }
+
+        @Override
+        boolean evaluateMatch(Element root, Node node) {
+            return evaluator.matches(root, node);
+        }
+
+        @Override protected int cost() {
+            return 2 + evaluator.cost();
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":is(%s)", evaluator);
+        }
+    }
+
+    static class Not extends StructuralEvaluator {
+        public Not(Evaluator evaluator) {
+            super(evaluator);
+        }
+
+        @Override
+        boolean evaluateMatch(Element root, Node node) {
+            return !memoMatches(root, node);
+        }
+
+        @Override protected int cost() {
+            return 2 + evaluator.cost();
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":not(%s)", evaluator);
+        }
+    }
+
+    /**
+     Any Ancestor (i.e., ascending parent chain.).
+     */
+    static class Ancestor extends StructuralEvaluator {
+        public Ancestor(Evaluator evaluator) {
+            super(evaluator);
+        }
+
+        @Override
+        boolean evaluateMatch(Element root, Node node) {
+            if (root == node)
+                return false;
+
+            for (Node parent = node.parent(); parent != null; parent = parent.parent()) {
+                if (memoMatches(root, parent))
+                    return true;
+                if (parent == root)
+                    break;
+            }
+            return false;
+        }
+
+        @Override
+        protected int cost() {
+            return 8 * evaluator.cost(); // probably lower than has(), but still significant, depending on doc and el depth.
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s ", evaluator);
+        }
+    }
+
+    /**
+     Holds a list of evaluators for one > two > three immediate parent matches, and the final direct evaluator under
+     test. To match, these are effectively ANDed together, starting from the last, matching up to the first.
+     */
+    static class ImmediateParentRun extends StructuralEvaluator {
+        final ArrayList<Evaluator> evaluators = new ArrayList<>();
+        int cost = 2;
+
+
+exec
+/bin/bash -lc "sed -n '1,240p' src/main/java/org/jsoup/select/NodeEvaluator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+package org.jsoup.select;
+
+import org.jsoup.internal.StringUtil;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.LeafNode;
+import org.jsoup.nodes.Node;
+import org.jsoup.helper.Regex;
+
+import static org.jsoup.internal.Normalizer.lowerCase;
+import static org.jsoup.internal.StringUtil.normaliseWhitespace;
+
+abstract class NodeEvaluator extends Evaluator {
+
+    @Override
+    public boolean matches(Element root, Element element) {
+        return evaluateMatch(element);
+    }
+
+    @Override boolean matches(Element root, LeafNode leaf) {
+        return evaluateMatch(leaf);
+    }
+
+    abstract boolean evaluateMatch(Node node);
+    
+    @Override boolean wantsNodes() {
+        return true;
+    }
+
+    static class InstanceType extends NodeEvaluator {
+        final java.lang.Class<? extends Node> type;
+        final String selector;
+
+        InstanceType(java.lang.Class<? extends Node> type, String selector) {
+            super();
+            this.type = type;
+            this.selector = "::" + selector;
+        }
+
+        @Override
+        boolean evaluateMatch(Node node) {
+            return type.isInstance(node);
+        }
+
+        @Override
+        protected int cost() {
+            return 1;
+        }
+
+        @Override
+        public String toString() {
+            return selector;
+        }
+    }
+
+    static class ContainsValue extends NodeEvaluator {
+        private final String searchText;
+
+        public ContainsValue(String searchText) {
+            this.searchText = lowerCase(normaliseWhitespace(searchText));
+        }
+
+        @Override
+        boolean evaluateMatch(Node node) {
+            return lowerCase(node.nodeValue()).contains(searchText);
+        }
+
+        @Override
+        protected int cost() {
+            return 6;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":contains(%s)", searchText);
+        }
+    }
+
+    /**
+     Matches nodes with no value or only whitespace.
+     */
+    static class BlankValue extends NodeEvaluator {
+
+        @Override
+        boolean evaluateMatch(Node node) {
+            return StringUtil.isBlank(node.nodeValue());
+        }
+
+        @Override
+        protected int cost() {
+            return 4;
+        }
+
+        @Override
+        public String toString() {
+            return ":blank";
+        }
+    }
+
+    static class MatchesValue extends NodeEvaluator {
+        private final Regex pattern;
+
+        protected MatchesValue(Regex pattern) {
+            this.pattern = pattern;
+        }
+
+        @Override
+        boolean evaluateMatch(Node node) {
+            return pattern.matcher(node.nodeValue()).find();
+        }
+
+        @Override
+        protected int cost() {
+            return 8;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":matches(%s)", pattern);
+        }
+    }
+}
+
+codex
+The first pass shows a small footprint: one constructor, one match method, and only a couple of production instantiations. I’m verifying the exact call sites in `Element` and `QueryParser` so the verdict is grounded in direct references rather than inference from the nested-class design.
+exec
+/bin/bash -lc "sed -n '1375,1410p' src/main/java/org/jsoup/nodes/Element.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+        return Collector.collect(new Evaluator.AttributeWithValueStarting(key, valuePrefix), this);
+    }
+
+    /**
+     * Find elements that have attributes that end with the value suffix. Case-insensitive.
+     *
+     * @param key name of the attribute
+     * @param valueSuffix end of the attribute value
+     * @return elements that have attributes that end with the value suffix
+     */
+    public Elements getElementsByAttributeValueEnding(String key, String valueSuffix) {
+        return Collector.collect(new Evaluator.AttributeWithValueEnding(key, valueSuffix), this);
+    }
+
+    /**
+     * Find elements that have attributes whose value contains the match string. Case-insensitive.
+     *
+     * @param key name of the attribute
+     * @param match substring of value to search for
+     * @return elements that have attributes containing this text
+     */
+    public Elements getElementsByAttributeValueContaining(String key, String match) {
+        return Collector.collect(new Evaluator.AttributeWithValueContaining(key, match), this);
+    }
+
+    /**
+     * Find elements that have an attribute whose value matches the supplied regular expression.
+     * @param key name of the attribute
+     * @param pattern compiled regular expression to match against attribute values
+     * @return elements that have attributes matching this regular expression
+     */
+    public Elements getElementsByAttributeValueMatching(String key, Pattern pattern) {
+        return Collector.collect(new Evaluator.AttributeWithValueMatching(key, pattern), this);
+    }
+
+    /**
+
+exec
+/bin/bash -lc "sed -n '345,385p' src/main/java/org/jsoup/select/QueryParser.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '1,230p' src/test/java/org/jsoup/select/QueryParserTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+
+    private Evaluator evaluatorForAttribute(TokenQueue cq) {
+        String key = cq.consumeToAny(AttributeEvals); // eq, not, start, end, contain, match, (no val)
+        key = normalize(key);
+        Validate.notEmpty(key);
+        Validate.isFalse(key.equals("abs:"), "Absolute attribute key must have a name");
+        cq.consumeWhitespace();
+        final Evaluator eval;
+
+        if (cq.isEmpty()) {
+            if (key.startsWith("^"))
+                eval = new Evaluator.AttributeStarting(key.substring(1));
+            else if (key.equals("*")) // any attribute
+                eval = new Evaluator.AttributeStarting("");
+            else
+                eval = new Evaluator.Attribute(key);
+        } else {
+            if (cq.matchChomp('='))
+                eval = new Evaluator.AttributeWithValue(key, cq.remainder());
+            else if (cq.matchChomp("!="))
+                eval = new Evaluator.AttributeWithValueNot(key, cq.remainder());
+            else if (cq.matchChomp("^="))
+                eval = new Evaluator.AttributeWithValueStarting(key, cq.remainder());
+            else if (cq.matchChomp("$="))
+                eval = new Evaluator.AttributeWithValueEnding(key, cq.remainder());
+            else if (cq.matchChomp("*="))
+                eval = new Evaluator.AttributeWithValueContaining(key, cq.remainder());
+            else if (cq.matchChomp("~="))
+                eval = new Evaluator.AttributeWithValueMatching(key, Regex.compile(cq.remainder()));
+            else
+                throw new Selector.SelectorParseException(
+                    "Could not parse attribute query '%s': unexpected token at '%s'", query, cq.remainder());
+        }
+        return eval;
+    }
+
+    //pseudo selectors :first-child, :last-child, :nth-child, ...
+    private static final Pattern NthStepOffset = Pattern.compile("(([+-])?(\\d+)?)n(\\s*([+-])?\\s*\\d+)?", Pattern.CASE_INSENSITIVE);
+    private static final Pattern NthOffset = Pattern.compile("([+-])?(\\d+)");
+
+    private Evaluator cssNthChild(boolean last, boolean ofType) {
+
+ succeeded in 0ms:
+package org.jsoup.select;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.junit.jupiter.api.Test;
+
+import static org.jsoup.select.EvaluatorDebug.asElement;
+import static org.jsoup.select.EvaluatorDebug.sexpr;
+import static org.jsoup.select.Selector.SelectorParseException;
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Tests for the Selector Query Parser.
+ *
+ * @author Jonathan Hedley
+ */
+public class QueryParserTest {
+    @Test public void testConsumeSubQuery() {
+        Document doc = Jsoup.parse("<html><head>h</head><body>" +
+                "<li><strong>l1</strong></li>" +
+                "<a><li><strong>l2</strong></li></a>" +
+                "<p><strong>yes</strong></p>" +
+                "</body></html>");
+        assertEquals("l1 yes", doc.body().select(">p>strong,>li>strong").text()); // selecting immediate from body
+        assertEquals("l1 yes", doc.body().select(" > p > strong , > li > strong").text()); // space variants
+        assertEquals("l2 yes", doc.select("body>p>strong,body>*>li>strong").text());
+        assertEquals("l2 yes", doc.select("body>*>li>strong,body>p>strong").text());
+        assertEquals("l2 yes", doc.select("body>p>strong,body>*>li>strong").text());
+    }
+
+    @Test public void testImmediateParentRun() {
+        String query = "div > p > bold.brass";
+        assertEquals("(ImmediateParentRun (Tag 'div')(Tag 'p')(And (Tag 'bold')(Class '.brass')))", sexpr(query));
+
+        /*
+        <ImmediateParentRun css="div > p > bold.brass" cost="11">
+          <Tag css="div" cost="1"></Tag>
+          <Tag css="p" cost="1"></Tag>
+          <And css="bold.brass" cost="7">
+            <Tag css="bold" cost="1"></Tag>
+            <Class css=".brass" cost="6"></Class>
+          </And>
+        </ImmediateParentRun>
+         */
+    }
+
+    @Test public void testOrGetsCorrectPrecedence() {
+        // tests that a selector "a b, c d, e f" evals to (a AND b) OR (c AND d) OR (e AND f)"
+        // top level or, three child ands
+        String query = "a b, c d, e f";
+        String parsed = sexpr(query);
+        assertEquals("(Or (And (Tag 'b')(Ancestor (Tag 'a')))(And (Tag 'd')(Ancestor (Tag 'c')))(And (Tag 'f')(Ancestor (Tag 'e'))))", parsed);
+
+        /*
+        <Or css="a b, c d, e f" cost="9">
+          <And css="a b" cost="3">
+            <Tag css="b" cost="1"></Tag>
+            <Parent css="a " cost="2">
+              <Tag css="a" cost="1"></Tag>
+            </Parent>
+          </And>
+          <And css="c d" cost="3">
+            <Tag css="d" cost="1"></Tag>
+            <Parent css="c " cost="2">
+              <Tag css="c" cost="1"></Tag>
+            </Parent>
+          </And>
+          <And css="e f" cost="3">
+            <Tag css="f" cost="1"></Tag>
+            <Parent css="e " cost="2">
+              <Tag css="e" cost="1"></Tag>
+            </Parent>
+          </And>
+        </Or>
+         */
+    }
+
+    @Test public void testParsesMultiCorrectly() {
+        String query = ".foo.qux[attr=bar] > ol.bar, ol > li + li";
+        String parsed = sexpr(query);
+        assertEquals("(Or (And (Tag 'li')(ImmediatePreviousSibling (ImmediateParentRun (Tag 'ol')(Tag 'li'))))(ImmediateParentRun (And (AttributeWithValue '[attr=bar]')(Class '.foo')(Class '.qux'))(And (Tag 'ol')(Class '.bar'))))", parsed);
+
+        /*
+        <Or css=".foo.qux[attr=bar] > ol.bar, ol > li + li" cost="31">
+          <And css="ol > li + li" cost="7">
+            <Tag css="li" cost="1"></Tag>
+            <ImmediatePreviousSibling css="ol > li + " cost="6">
+              <ImmediateParentRun css="ol > li" cost="4">
+                <Tag css="ol" cost="1"></Tag>
+                <Tag css="li" cost="1"></Tag>
+              </ImmediateParentRun>
+            </ImmediatePreviousSibling>
+          </And>
+          <ImmediateParentRun css=".foo.qux[attr=bar] > ol.bar" cost="24">
+            <And css=".foo.qux[attr=bar]" cost="15">
+              <AttributeWithValue css="[attr=bar]" cost="3"></AttributeWithValue>
+              <Class css=".foo" cost="6"></Class>
+              <Class css=".qux" cost="6"></Class>
+            </And>
+            <And css="ol.bar" cost="7">
+              <Tag css="ol" cost="1"></Tag>
+              <Class css=".bar" cost="6"></Class>
+            </And>
+          </ImmediateParentRun>
+        </Or>
+         */
+    }
+
+    @Test void idDescenderClassOrder() {
+        // https://github.com/jhy/jsoup/issues/2254
+        // '#id .class' cost
+        String query = "#id .class";
+        String parsed = sexpr(query);
+        assertEquals("(And (Class '.class')(Ancestor (Id '#id')))", parsed);
+
+        /*
+        <And css="#id .class" cost="22">
+         <Class css=".class" cost="6"></Class>
+         <Ancestor css="#id " cost="16">
+          <Id css="#id" cost="2"></Id>
+         </Ancestor>
+        </And>
+         */
+    }
+
+
+    @Test
+    public void exceptionOnUncloseAttribute() {
+        Selector.SelectorParseException exception =
+            assertThrows(Selector.SelectorParseException.class, () -> QueryParser.parse("section > a[href=\"]"));
+        assertEquals(
+            "Did not find balanced marker at 'href=\"]'",
+            exception.getMessage());
+    }
+
+    @Test
+    public void testParsesSingleQuoteInContains() {
+        Selector.SelectorParseException exception =
+            assertThrows(Selector.SelectorParseException.class, () -> QueryParser.parse("p:contains(One \" One)"));
+        assertEquals("Did not find balanced marker at 'One \" One)'",
+            exception.getMessage());
+    }
+
+    @Test
+    public void exceptOnEmptySelector() {
+        SelectorParseException exception = assertThrows(SelectorParseException.class, () -> QueryParser.parse(""));
+        assertEquals("String must not be empty", exception.getMessage());
+    }
+
+    @Test
+    public void exceptOnNullSelector() {
+        SelectorParseException exception = assertThrows(SelectorParseException.class, () -> QueryParser.parse(null));
+        assertEquals("String must not be empty", exception.getMessage());
+    }
+
+    @Test
+    public void exceptOnUnhandledEvaluator() {
+        SelectorParseException exception =
+            assertThrows(SelectorParseException.class, () -> QueryParser.parse("div / foo"));
+        assertEquals("Could not parse query 'div / foo': unexpected token at '/ foo'", exception.getMessage());
+    }
+
+    @Test public void okOnSpacesForeAndAft() {
+        Evaluator parse = QueryParser.parse(" span div  ");
+        assertEquals("span div", parse.toString());
+    }
+
+    @Test public void structuralEvaluatorsToString() {
+        String q = "a:not(:has(span.foo)) b d > e + f ~ g";
+        Evaluator parse = QueryParser.parse(q);
+        assertEquals(q, parse.toString());
+        String parsed = sexpr(q);
+        assertEquals("(And (Tag 'g')(PreviousSibling (And (Tag 'f')(ImmediatePreviousSibling (ImmediateParentRun (And (Tag 'd')(Ancestor (And (Tag 'b')(Ancestor (And (Tag 'a')(Not (Has (And (Tag 'span')(Class '.foo')))))))))(Tag 'e'))))))", parsed);
+    }
+
+    @Test public void parsesOrAfterAttribute() {
+        // https://github.com/jhy/jsoup/issues/2073
+        String q = "#parent [class*=child], .some-other-selector .nested";
+        String parsed = sexpr(q);
+        assertEquals("(Or (And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent')))(And (Class '.nested')(Ancestor (Class '.some-other-selector'))))", parsed);
+
+        assertEquals("(Or (Class '.some-other-selector')(And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent'))))", sexpr("#parent [class*=child], .some-other-selector"));
+        assertEquals("(Or (And (Id '#el')(AttributeWithValueContaining '[class*=child]'))(Class '.some-other-selector'))", sexpr("#el[class*=child], .some-other-selector"));
+        assertEquals("(Or (And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent')))(And (Class '.nested')(Ancestor (Class '.some-other-selector'))))", sexpr("#parent [class*=child], .some-other-selector .nested"));
+    }
+
+    @Test void parsesEscapedSubqueries() {
+        String html = "<div class='-4a'>One</div> <div id='-4a'>Two</div>";
+        Document doc = Jsoup.parse(html);
+
+        String classQ = "div.-\\34 a";
+        Element div1 = doc.expectFirst(classQ);
+        assertEquals("One", div1.wholeText());
+
+        String idQ = "#-\\34 a";
+        Element div2 = doc.expectFirst(idQ);
+        assertEquals("Two", div2.wholeText());
+
+        String genClassQ = "html > body > div.-\\34 a";
+        assertEquals(genClassQ, div1.cssSelector());
+        assertSame(div1, doc.expectFirst(genClassQ));
+
+        String deepIdQ = "html > body > #-\\34 a";
+        assertEquals(idQ, div2.cssSelector());
+        assertSame(div2, doc.expectFirst(deepIdQ));
+
+        assertEquals("(ImmediateParentRun (Tag 'html')(Tag 'body')(And (Tag 'div')(Class '.-4a')))", sexpr(genClassQ));
+        assertEquals("(ImmediateParentRun (Tag 'html')(Tag 'body')(Id '#-4a'))", sexpr(deepIdQ));
+    }
+
+    @Test void trailingParens() {
+        SelectorParseException exception =
+            assertThrows(SelectorParseException.class, () -> QueryParser.parse("div:has(p))"));
+        assertEquals("Could not parse query 'div:has(p))': unexpected token at ')'", exception.getMessage());
+    }
+
+    @Test void consecutiveCombinators() {
+        Selector.SelectorParseException exception1 =
+                assertThrows(Selector.SelectorParseException.class, () -> QueryParser.parse("div>>p"));
+        assertEquals(
+                "Could not parse query 'div>>p': unexpected token at '>p'",
+                exception1.getMessage());
+
+        Selector.SelectorParseException exception2 =
+                assertThrows(Selector.SelectorParseException.class, () -> QueryParser.parse("+ + div"));
+        assertEquals(
+                "Could not parse query '+ + div': unexpected token at '+ div'",
+                exception2.getMessage());
+    }
+
+exec
+/bin/bash -lc "sed -n '1,220p' src/test/java/org/jsoup/select/EvaluatorTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+package org.jsoup.select;
+
+import org.jsoup.Jsoup;
+import org.jsoup.helper.Regex;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.junit.jupiter.api.Test;
+
+import java.util.regex.Pattern;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class EvaluatorTest {
+
+    @Test
+    public void testTagToString() {
+        Evaluator.Tag evaluator = new Evaluator.Tag("div");
+        assertEquals("div", evaluator.toString());
+    }
+
+    @Test
+    public void testTagStartsWithToString() {
+        Evaluator.TagStartsWith evaluator = new Evaluator.TagStartsWith("ns");
+        assertEquals("ns|*", evaluator.toString());
+    }
+
+    @Test
+    public void testTagEndsWithToString() {
+        Evaluator.TagEndsWith evaluator = new Evaluator.TagEndsWith("div");
+        assertEquals("*|div", evaluator.toString());
+    }
+
+    @Test
+    public void testAttributeToString() {
+        Evaluator.Attribute evaluator = new Evaluator.Attribute("example");
+        assertEquals("[example]", evaluator.toString());
+    }
+
+    @Test
+    public void testAttributeStartingToString() {
+        Evaluator.AttributeStarting evaluator = new Evaluator.AttributeStarting("example");
+        assertEquals("[^example]", evaluator.toString());
+    }
+
+    @Test
+    public void testAttributeWithValueToString() {
+        Evaluator.AttributeWithValue evaluator = new Evaluator.AttributeWithValue("example", "value");
+        assertEquals("[example=value]", evaluator.toString());
+    }
+
+    @Test
+    public void testAttributeWithValueNotToString() {
+        Evaluator.AttributeWithValueNot evaluator = new Evaluator.AttributeWithValueNot("example", "value");
+        assertEquals("[example!=value]", evaluator.toString());
+    }
+
+    @Test
+    public void testAttributeWithValueStartingToString() {
+        Evaluator.AttributeWithValueStarting evaluator = new Evaluator.AttributeWithValueStarting("example", "value");
+        assertEquals("[example^=value]", evaluator.toString());
+    }
+
+    @Test
+    public void testAttributeWithValueEndingToString() {
+        Evaluator.AttributeWithValueEnding evaluator = new Evaluator.AttributeWithValueEnding("example", "value");
+        assertEquals("[example$=value]", evaluator.toString());
+    }
+
+    @Test
+    public void testAttributeWithValueContainingToString() {
+        Evaluator.AttributeWithValueContaining evaluator =
+            new Evaluator.AttributeWithValueContaining("example", "value");
+        assertEquals("[example*=value]", evaluator.toString());
+    }
+
+    @Test
+    public void testAttributeWithValueMatchingToString() {
+        Pattern pattern = Pattern.compile("value");
+        Evaluator.AttributeWithValueMatching evaluator = new Evaluator.AttributeWithValueMatching("example", pattern);
+        assertEquals("[example~=value]", evaluator.toString());
+    }
+
+    @Test
+    public void testIdToString() {
+        Evaluator.Id evaluator = new Evaluator.Id("exampleId");
+        assertEquals("#exampleId", evaluator.toString());
+    }
+
+    @Test
+    public void testClassToString() {
+        Evaluator.Class evaluator = new Evaluator.Class("exampleClass");
+        assertEquals(".exampleClass", evaluator.toString());
+    }
+
+    @Test
+    public void testAllElementsToString() {
+        Evaluator.AllElements evaluator = new Evaluator.AllElements();
+        assertEquals("*", evaluator.toString());
+    }
+
+    @Test
+    public void testIndexLessThanToString() {
+        Evaluator.IndexLessThan evaluator = new Evaluator.IndexLessThan(5);
+        assertEquals(":lt(5)", evaluator.toString());
+    }
+
+    @Test
+    public void testIndexGreaterThanToString() {
+        Evaluator.IndexGreaterThan evaluator = new Evaluator.IndexGreaterThan(5);
+        assertEquals(":gt(5)", evaluator.toString());
+    }
+
+    @Test
+    public void testIndexEqualsToString() {
+        Evaluator.IndexEquals evaluator = new Evaluator.IndexEquals(5);
+        assertEquals(":eq(5)", evaluator.toString());
+    }
+
+    @Test
+    public void testIsLastChildToString() {
+        Evaluator.IsLastChild evaluator = new Evaluator.IsLastChild();
+        assertEquals(":last-child", evaluator.toString());
+    }
+
+    @Test
+    public void testIsFirstOfTypeToString() {
+        Evaluator.IsFirstOfType evaluator = new Evaluator.IsFirstOfType();
+        assertEquals(":first-of-type", evaluator.toString());
+    }
+
+    @Test
+    public void testIsLastOfTypeToString() {
+        Evaluator.IsLastOfType evaluator = new Evaluator.IsLastOfType();
+        assertEquals(":last-of-type", evaluator.toString());
+    }
+
+    @Test
+    public void testIsNthChildToStringVariants() {
+        Evaluator.IsNthChild evaluator1 = new Evaluator.IsNthChild(0, 3);
+        assertEquals(":nth-child(3)", evaluator1.toString());
+
+        Evaluator.IsNthChild evaluator2 = new Evaluator.IsNthChild(2, 0);
+        assertEquals(":nth-child(2n)", evaluator2.toString());
+
+        Evaluator.IsNthChild evaluator3 = new Evaluator.IsNthChild(2, 3);
+        assertEquals(":nth-child(2n+3)", evaluator3.toString());
+    }
+
+    @Test
+    public void testIsNthChildToString() {
+        Evaluator.IsNthChild evaluator = new Evaluator.IsNthChild(2, 3);
+        assertEquals(":nth-child(2n+3)", evaluator.toString());
+    }
+
+    @Test
+    public void testIsNthLastChildToString() {
+        Evaluator.IsNthLastChild evaluator = new Evaluator.IsNthLastChild(2, 3);
+        assertEquals(":nth-last-child(2n+3)", evaluator.toString());
+    }
+
+    @Test
+    public void testIsNthOfTypeToString() {
+        Evaluator.IsNthOfType evaluator = new Evaluator.IsNthOfType(2, 3);
+        assertEquals(":nth-of-type(2n+3)", evaluator.toString());
+    }
+
+    @Test
+    public void testIsNthLastOfTypeToString() {
+        Evaluator.IsNthLastOfType evaluator = new Evaluator.IsNthLastOfType(2, 3);
+        assertEquals(":nth-last-of-type(2n+3)", evaluator.toString());
+    }
+
+    @Test
+    public void testIsFirstChildToString() {
+        Evaluator.IsFirstChild evaluator = new Evaluator.IsFirstChild();
+        assertEquals(":first-child", evaluator.toString());
+    }
+
+    @Test
+    public void testIsRootToString() {
+        Evaluator.IsRoot evaluator = new Evaluator.IsRoot();
+        assertEquals(":root", evaluator.toString());
+    }
+
+    @Test
+    public void testIsOnlyChildToString() {
+        Evaluator.IsOnlyChild evaluator = new Evaluator.IsOnlyChild();
+        assertEquals(":only-child", evaluator.toString());
+    }
+
+    @Test
+    public void testIsOnlyOfTypeToString() {
+        Evaluator.IsOnlyOfType evaluator = new Evaluator.IsOnlyOfType();
+        assertEquals(":only-of-type", evaluator.toString());
+    }
+
+    @Test
+    public void testIsEmptyToString() {
+        Evaluator.IsEmpty evaluator = new Evaluator.IsEmpty();
+        assertEquals(":empty", evaluator.toString());
+    }
+
+    @Test
+    public void testContainsTextToString() {
+        Evaluator.ContainsText evaluator = new Evaluator.ContainsText("example");
+        assertEquals(":contains(example)", evaluator.toString());
+    }
+
+    @Test
+    public void testContainsWholeTextToString() {
+        Evaluator.ContainsWholeText evaluator = new Evaluator.ContainsWholeText("example");
+        assertEquals(":containsWholeText(example)", evaluator.toString());
+    }
+
+    @Test
+    public void testContainsWholeOwnTextToString() {
+        Evaluator.ContainsWholeOwnText evaluator = new Evaluator.ContainsWholeOwnText("example");
+        assertEquals(":containsWholeOwnText(example)", evaluator.toString());
+    }
+
+
+codex
+I have enough structure to make the call, but I’m grabbing exact line numbers so the justification names the concrete evidence cleanly: the class definition, the two production constructors, and the matching tests.
+exec
+/bin/bash -lc "nl -ba src/main/java/org/jsoup/nodes/Element.java | sed -n '1390,1405p'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "nl -ba src/main/java/org/jsoup/select/Evaluator.java | sed -n '350,395p'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+  1390	     * Find elements that have attributes whose value contains the match string. Case-insensitive.
+  1391	     *
+  1392	     * @param key name of the attribute
+  1393	     * @param match substring of value to search for
+  1394	     * @return elements that have attributes containing this text
+  1395	     */
+  1396	    public Elements getElementsByAttributeValueContaining(String key, String match) {
+  1397	        return Collector.collect(new Evaluator.AttributeWithValueContaining(key, match), this);
+  1398	    }
+  1399	
+  1400	    /**
+  1401	     * Find elements that have an attribute whose value matches the supplied regular expression.
+  1402	     * @param key name of the attribute
+  1403	     * @param pattern compiled regular expression to match against attribute values
+  1404	     * @return elements that have attributes matching this regular expression
+  1405	     */
+
+ succeeded in 0ms:
+   350	            return 4;
+   351	        }
+   352	
+   353	        @Override
+   354	        public String toString() {
+   355	            return String.format("[%s$=%s]", key, value);
+   356	        }
+   357	    }
+   358	
+   359	    /**
+   360	     * Evaluator for attribute name/value matching (value containing)
+   361	     */
+   362	    public static final class AttributeWithValueContaining extends AttributeKeyPair {
+   363	        public AttributeWithValueContaining(String key, String value) {
+   364	            super(key, value);
+   365	        }
+   366	
+   367	        @Override
+   368	        public boolean matches(Element root, Element element) {
+   369	            return element.hasAttr(key) && lowerCase(element.attr(key)).contains(value); // value is lower case
+   370	        }
+   371	
+   372	        @Override protected int cost() {
+   373	            return 6;
+   374	        }
+   375	
+   376	        @Override
+   377	        public String toString() {
+   378	            return String.format("[%s*=%s]", key, value);
+   379	        }
+   380	
+   381	    }
+   382	
+   383	    /**
+   384	     * Evaluator for attribute name/value matching (value regex matching)
+   385	     */
+   386	    public static final class AttributeWithValueMatching extends Evaluator {
+   387	        final String key;
+   388	        final Regex pattern;
+   389	
+   390	        public AttributeWithValueMatching(String key, Regex pattern) {
+   391	            this.key = normalize(key);
+   392	            this.pattern = pattern;
+   393	        }
+   394	
+   395	        public AttributeWithValueMatching(String key, Pattern pattern) {
+
+exec
+/bin/bash -lc "nl -ba src/test/java/org/jsoup/select/EvaluatorTest.java | sed -n '65,78p'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+    65	        Evaluator.AttributeWithValueEnding evaluator = new Evaluator.AttributeWithValueEnding("example", "value");
+    66	        assertEquals("[example$=value]", evaluator.toString());
+    67	    }
+    68	
+    69	    @Test
+    70	    public void testAttributeWithValueContainingToString() {
+    71	        Evaluator.AttributeWithValueContaining evaluator =
+    72	            new Evaluator.AttributeWithValueContaining("example", "value");
+    73	        assertEquals("[example*=value]", evaluator.toString());
+    74	    }
+    75	
+    76	    @Test
+    77	    public void testAttributeWithValueMatchingToString() {
+    78	        Pattern pattern = Pattern.compile("value");
+
+exec
+/bin/bash -lc "nl -ba src/main/java/org/jsoup/select/QueryParser.java | sed -n '365,377p'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+   365	                eval = new Evaluator.AttributeWithValueNot(key, cq.remainder());
+   366	            else if (cq.matchChomp("^="))
+   367	                eval = new Evaluator.AttributeWithValueStarting(key, cq.remainder());
+   368	            else if (cq.matchChomp("$="))
+   369	                eval = new Evaluator.AttributeWithValueEnding(key, cq.remainder());
+   370	            else if (cq.matchChomp("*="))
+   371	                eval = new Evaluator.AttributeWithValueContaining(key, cq.remainder());
+   372	            else if (cq.matchChomp("~="))
+   373	                eval = new Evaluator.AttributeWithValueMatching(key, Regex.compile(cq.remainder()));
+   374	            else
+   375	                throw new Selector.SelectorParseException(
+   376	                    "Could not parse attribute query '%s': unexpected token at '%s'", query, cq.remainder());
+   377	        }
+
+exec
+/bin/bash -lc 'rg -n "AttributeWithValueContaining" src/main/java src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+src/main/java/org/jsoup/select/QueryParser.java:371:                eval = new Evaluator.AttributeWithValueContaining(key, cq.remainder());
+src/main/java/org/jsoup/select/Evaluator.java:362:    public static final class AttributeWithValueContaining extends AttributeKeyPair {
+src/main/java/org/jsoup/select/Evaluator.java:363:        public AttributeWithValueContaining(String key, String value) {
+src/test/java/org/jsoup/select/QueryParserTest.java:181:        assertEquals("(Or (And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent')))(And (Class '.nested')(Ancestor (Class '.some-other-selector'))))", parsed);
+src/test/java/org/jsoup/select/QueryParserTest.java:183:        assertEquals("(Or (Class '.some-other-selector')(And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent'))))", sexpr("#parent [class*=child], .some-other-selector"));
+src/test/java/org/jsoup/select/QueryParserTest.java:184:        assertEquals("(Or (And (Id '#el')(AttributeWithValueContaining '[class*=child]'))(Class '.some-other-selector'))", sexpr("#el[class*=child], .some-other-selector"));
+src/test/java/org/jsoup/select/QueryParserTest.java:185:        assertEquals("(Or (And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent')))(And (Class '.nested')(Ancestor (Class '.some-other-selector'))))", sexpr("#parent [class*=child], .some-other-selector .nested"));
+src/test/java/org/jsoup/select/SelectorTest.java:1309:        assertEquals("(Or (And (AttributeWithValueContaining '[class*=child]')(Ancestor (Id '#parent')))(And (Class '.nested')(Ancestor (Class '.some-other-selector'))))", sexpr(q));
+src/test/java/org/jsoup/select/EvaluatorTest.java:70:    public void testAttributeWithValueContainingToString() {
+src/test/java/org/jsoup/select/EvaluatorTest.java:71:        Evaluator.AttributeWithValueContaining evaluator =
+src/test/java/org/jsoup/select/EvaluatorTest.java:72:            new Evaluator.AttributeWithValueContaining("example", "value");
+src/main/java/org/jsoup/nodes/Element.java:1397:        return Collector.collect(new Evaluator.AttributeWithValueContaining(key, match), this);
+
+codex
+{"target":"org.jsoup.select.Evaluator.AttributeWithValueContaining","detection":false,"justification":"Inspected src/main/java/org/jsoup/select/Evaluator.java:362-379, src/main/java/org/jsoup/nodes/Element.java:1396-1397, src/main/java/org/jsoup/select/QueryParser.java:370-373, and tests in src/test/java/org/jsoup/select/EvaluatorTest.java:69-73 and src/test/java/org/jsoup/select/QueryParserTest.java:181-185. The class is a small final nested evaluator with one constructor, one matches method, one cost override, and one toString, and it only depends on AttributeKeyPair, Element, and lowerCase. Its direct fan-in is limited to two production constructors (Element.getElementsByAttributeValueContaining and QueryParser.evaluatorForAttribute) plus test code, so there is no strong incoming/outgoing dependency hub behavior."}
+tokens used
+16,523

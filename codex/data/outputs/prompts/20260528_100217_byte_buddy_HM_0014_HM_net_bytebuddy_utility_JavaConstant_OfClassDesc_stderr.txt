@@ -1,0 +1,980 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ead-b7bc-76d2-ac7b-6ccb89149edb
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.utility.JavaConstant.OfClassDesc` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.utility.JavaConstant.OfClassDesc",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.utility.JavaConstant.OfClassDesc`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its incoming and outgoing dependencies, then I’ll decide whether it behaves like a dependency hub based on the repository evidence.
+exec
+/bin/bash -lc "rg --files . | rg \"JavaConstant\\.java|JavaConstant|OfClassDesc\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/JavaConstantValue.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantSimpleConstantDescriptionTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantMethodTypeTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantMethodHandleTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantSimpleTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantVisitorNoOpTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/JavaConstantValueTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/JavaConstantValueVisitorTest.java
+
+exec
+/bin/bash -lc 'rg -n "class OfClassDesc|OfClassDesc" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java:185:        protected static final Dispatcher.OfClassDesc CLASS_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfClassDesc.class));
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java:677:            interface OfClassDesc extends Dispatcher {
+
+codex
+I found the target nested type in `JavaConstant.java`. Next I’m checking how many classes reference it and how many dependencies it itself reaches so the verdict is grounded in structure, not just name.
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '260,760p' byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.utility;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.build.AccessControllerPlugin;
+import net.bytebuddy.description.enumeration.EnumerationDescription;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.description.type.TypeList;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.constant.ClassConstant;
+import net.bytebuddy.implementation.bytecode.constant.DoubleConstant;
+import net.bytebuddy.implementation.bytecode.constant.FloatConstant;
+import net.bytebuddy.implementation.bytecode.constant.IntegerConstant;
+import net.bytebuddy.implementation.bytecode.constant.JavaConstantValue;
+import net.bytebuddy.implementation.bytecode.constant.LongConstant;
+import net.bytebuddy.implementation.bytecode.constant.TextConstant;
+import net.bytebuddy.pool.TypePool;
+import net.bytebuddy.utility.dispatcher.JavaDispatcher;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.objectweb.asm.ConstantDynamic;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.security.PrivilegedAction;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+
+/**
+ * Represents a constant-pool constant within a Java class file.
+ */
+public interface JavaConstant extends ConstantValue {
+
+    /**
+     * Returns this constant as a Java {@code java.lang.constant.ConstantDesc} if the current VM is of at least version 12.
+     * If the current VM is of an older version and does not support the type, an exception is thrown.
+     *
+     * @return This constant as a Java {@code java.lang.constant.ConstantDesc}.
+     */
+    Object toDescription();
+
+    /**
+     * Applies the supplied visitor to this constant type with its respective callback.
+     *
+     * @param visitor The visitor to dispatch.
+     * @param <T>     The type of the value that is returned by the visitor.
+     * @return The value that is returned by the supplied visitor.
+     */
+    <T> T accept(Visitor<T> visitor);
+
+    /**
+     * A visitor to resolve a {@link JavaConstant} based on its implementation.
+     *
+     * @param <T> The type of the value that is returned by this visitor.
+     */
+    interface Visitor<T> {
+
+        /**
+         * Invoked on a {@link Simple} constant that represents itself. Such values are of type
+         * {@link Integer}, {@link Long}, {@link Float}, {@link Double} or {@link String}.
+         *
+         * @param constant The simple constant.
+         * @return The returned value.
+         */
+        T onValue(Simple<?> constant);
+
+        /**
+         * Invoked on a {@link Simple} constant that represents a {@link TypeDescription}.
+         *
+         * @param constant The simple constant.
+         * @return The returned value.
+         */
+        T onType(Simple<TypeDescription> constant);
+
+        /**
+         * Invoked on a constant that represents a {@link MethodType}.
+         *
+         * @param constant The method type constant.
+         * @return The returned value.
+         */
+        T onMethodType(MethodType constant);
+
+        /**
+         * Invoked on a constant that represents a {@link MethodHandle}.
+         *
+         * @param constant The method handle constant.
+         * @return The returned value.
+         */
+        T onMethodHandle(MethodHandle constant);
+
+        /**
+         * Invoked on a {@link Dynamic} constant.
+         *
+         * @param constant The dynamic constant.
+         * @return The returned value.
+         */
+        T onDynamic(Dynamic constant);
+
+        /**
+         * A non-operational implementation of a {@link Visitor} for a {@link JavaConstant}.
+         */
+        enum NoOp implements Visitor<JavaConstant> {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public JavaConstant onValue(Simple<?> constant) {
+                return constant;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public JavaConstant onType(Simple<TypeDescription> constant) {
+                return constant;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public JavaConstant onMethodType(MethodType constant) {
+                return constant;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public JavaConstant onMethodHandle(MethodHandle constant) {
+                return constant;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public JavaConstant onDynamic(Dynamic constant) {
+                return constant;
+            }
+        }
+    }
+
+    /**
+     * Represents a simple Java constant, either a primitive constant, a {@link String} or a {@link Class}.
+     *
+     * @param <T> The represented type.
+     */
+    abstract class Simple<T> implements JavaConstant {
+
+        /**
+         * A dispatcher for interaction with {@code java.lang.constant.ClassDesc}.
+         */
+        protected static final Dispatcher CONSTANT_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.class));
+
+        /**
+         * A dispatcher for interaction with {@code java.lang.constant.ClassDesc}.
+         */
+        protected static final Dispatcher.OfClassDesc CLASS_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfClassDesc.class));
+
+        /**
+         * A dispatcher for interaction with {@code java.lang.constant.MethodTypeDesc}.
+         */
+        protected static final Dispatcher.OfMethodTypeDesc METHOD_TYPE_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfMethodTypeDesc.class));
+
+        /**
+         * A dispatcher for interaction with {@code java.lang.constant.MethodHandleDesc}.
+         */
+        protected static final Dispatcher.OfMethodHandleDesc METHOD_HANDLE_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfMethodHandleDesc.class));
+
+        /**
+         * A dispatcher for interaction with {@code java.lang.constant.DirectMethodHandleDesc}.
+         */
+        protected static final Dispatcher.OfDirectMethodHandleDesc DIRECT_METHOD_HANDLE_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfDirectMethodHandleDesc.class));
+
+        /**
+         * A dispatcher for interaction with {@code java.lang.constant.DirectMethodHandleDesc}.
+         */
+        protected static final Dispatcher.OfDirectMethodHandleDesc.ForKind DIRECT_METHOD_HANDLE_DESC_KIND = doPrivileged(JavaDispatcher.of(Dispatcher.OfDirectMethodHandleDesc.ForKind.class));
+
+        /**
+         * A dispatcher for interaction with {@code java.lang.constant.DirectMethodHandleDesc}.
+         */
+        protected static final Dispatcher.OfDynamicConstantDesc DYNAMIC_CONSTANT_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfDynamicConstantDesc.class));
+
+        /**
+         * The represented constant pool value.
+         */
+        protected final T value;
+
+        /**
+         * A description of the type of the constant.
+         */
+        private final TypeDescription typeDescription;
+
+        /**
+         * Creates a simple Java constant.
+         *
+         * @param value           The represented constant pool value.
+         * @param typeDescription A description of the type of the constant.
+         */
+        protected Simple(T value, TypeDescription typeDescription) {
+            this.value = value;
+            this.typeDescription = typeDescription;
+        }
+
+        /**
+         * A proxy for {@code java.security.AccessController#doPrivileged} that is activated if available.
+         *
+         * @param action The action to execute from a privileged context.
+         * @param <T>    The type of the action's resolved value.
+         * @return The action's resolved value.
+         */
+        @AccessControllerPlugin.Enhance
+        private static <T> T doPrivileged(PrivilegedAction<T> action) {
+            return action.run();
+        }
+
+        /**
+         * Resolves an ASM constant to a {@link JavaConstant}.
+         *
+         * @param typePool The type pool to resolve type descriptions with.
+         * @param value    The ASM constant value.
+         * @return An appropriate {@link JavaConstant}.
+         */
+        public static JavaConstant ofAsm(TypePool typePool, Object value) {
+            if (value instanceof Integer) {
+                return new OfTrivialValue.ForInteger((Integer) value);
+            } else if (value instanceof Long) {
+                return new OfTrivialValue.ForLong((Long) value);
+            } else if (value instanceof Float) {
+                return new OfTrivialValue.ForFloat((Float) value);
+            } else if (value instanceof Double) {
+                return new OfTrivialValue.ForDouble((Double) value);
+
+ succeeded in 0ms:
+                return new OfTrivialValue.ForDouble((Double) value);
+            } else if (value instanceof String) {
+                return new OfTrivialValue.ForString((String) value);
+            } else if (value instanceof Type) {
+                Type type = (Type) value;
+                if (type.getSort() == Type.METHOD) {
+                    return MethodType.ofAsm(typePool, type);
+                } else if (type.getSort() == Type.ARRAY) {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    for (int index = 0; index < type.getDimensions(); index++) {
+                        stringBuilder.append(type.getDescriptor());
+                    }
+                    return of(typePool.describe(stringBuilder.toString()).resolve());
+                } else {
+                    return of(typePool.describe(type.getClassName()).resolve());
+                }
+            } else if (value instanceof Handle) {
+                return MethodHandle.ofAsm(typePool, (Handle) value);
+            } else if (value instanceof ConstantDynamic) {
+                return Dynamic.ofAsm(typePool, (ConstantDynamic) value);
+            } else {
+                throw new IllegalArgumentException("Not an ASM constant: " + value);
+            }
+        }
+
+        /**
+         * Resolves a loaded Java value to a Java constant representation.
+         *
+         * @param value The value to represent.
+         * @return An appropriate Java constant representation.
+         */
+        public static JavaConstant ofLoaded(Object value) {
+            JavaConstant constant = ofLoadedOrNull(value);
+            if (constant == null) {
+                throw new IllegalArgumentException("Not a constant: " + value);
+            } else {
+                return constant;
+            }
+        }
+
+        /**
+         * Resolves a loaded Java value to a Java constant representation.
+         *
+         * @param value The value to represent.
+         * @return An appropriate Java constant representation or {@code null} if the supplied argument is not a compile-time constant.
+         */
+        @MaybeNull
+        protected static JavaConstant ofLoadedOrNull(Object value) {
+            if (value instanceof Integer) {
+                return new OfTrivialValue.ForInteger((Integer) value);
+            } else if (value instanceof Long) {
+                return new OfTrivialValue.ForLong((Long) value);
+            } else if (value instanceof Float) {
+                return new OfTrivialValue.ForFloat((Float) value);
+            } else if (value instanceof Double) {
+                return new OfTrivialValue.ForDouble((Double) value);
+            } else if (value instanceof String) {
+                return new OfTrivialValue.ForString((String) value);
+            } else if (value instanceof Class<?>) {
+                return JavaConstant.Simple.of(TypeDescription.ForLoadedType.of((Class<?>) value));
+            } else if (JavaType.METHOD_HANDLE.isInstance(value)) {
+                return MethodHandle.ofLoaded(value);
+            } else if (JavaType.METHOD_TYPE.isInstance(value)) {
+                return MethodType.ofLoaded(value);
+            } else {
+                return null;
+            }
+        }
+
+        /**
+         * Creates a Java constant value from a {@code java.lang.constant.ConstantDesc}.
+         *
+         * @param value       The  {@code java.lang.constant.ConstantDesc} to represent.
+         * @param classLoader The class loader to use for resolving type information from the supplied value.
+         * @return An appropriate Java constant representation.
+         */
+        public static JavaConstant ofDescription(Object value, @MaybeNull ClassLoader classLoader) {
+            return ofDescription(value, ClassFileLocator.ForClassLoader.of(classLoader));
+        }
+
+        /**
+         * Creates a Java constant value from a {@code java.lang.constant.ConstantDesc}.
+         *
+         * @param value            The  {@code java.lang.constant.ConstantDesc} to represent.
+         * @param classFileLocator The class file locator to use for resolving type information from the supplied value.
+         * @return An appropriate Java constant representation.
+         */
+        public static JavaConstant ofDescription(Object value, ClassFileLocator classFileLocator) {
+            return ofDescription(value, TypePool.Default.WithLazyResolution.of(classFileLocator));
+        }
+
+        /**
+         * Creates a Java constant value from a {@code java.lang.constant.ConstantDesc}.
+         *
+         * @param value    The  {@code java.lang.constant.ConstantDesc} to represent.
+         * @param typePool The type pool to use for resolving type information from the supplied value.
+         * @return An appropriate Java constant representation.
+         */
+        public static JavaConstant ofDescription(Object value, TypePool typePool) {
+            if (value instanceof Integer) {
+                return new JavaConstant.Simple.OfTrivialValue.ForInteger((Integer) value);
+            } else if (value instanceof Long) {
+                return new JavaConstant.Simple.OfTrivialValue.ForLong((Long) value);
+            } else if (value instanceof Float) {
+                return new JavaConstant.Simple.OfTrivialValue.ForFloat((Float) value);
+            } else if (value instanceof Double) {
+                return new JavaConstant.Simple.OfTrivialValue.ForDouble((Double) value);
+            } else if (value instanceof String) {
+                return new JavaConstant.Simple.OfTrivialValue.ForString((String) value);
+            } else if (CLASS_DESC.isInstance(value)) {
+                Type type = Type.getType(CLASS_DESC.descriptorString(value));
+                return JavaConstant.Simple.OfTypeDescription.of(typePool.describe(type.getSort() == Type.ARRAY
+                        ? type.getInternalName().replace('/', '.')
+                        : type.getClassName()).resolve());
+            } else if (METHOD_TYPE_DESC.isInstance(value)) {
+                Object[] parameterTypes = METHOD_TYPE_DESC.parameterArray(value);
+                List<TypeDescription> typeDescriptions = new ArrayList<TypeDescription>(parameterTypes.length);
+                for (Object parameterType : parameterTypes) {
+                    Type type = Type.getType(CLASS_DESC.descriptorString(parameterType));
+                    typeDescriptions.add(typePool.describe(type.getSort() == Type.ARRAY
+                            ? type.getInternalName().replace('/', '.')
+                            : type.getClassName()).resolve());
+                }
+                Type type = Type.getType(CLASS_DESC.descriptorString(METHOD_TYPE_DESC.returnType(value)));
+                return MethodType.of(typePool.describe(type.getSort() == Type.ARRAY
+                        ? type.getInternalName().replace('/', '.')
+                        : type.getClassName()).resolve(), typeDescriptions);
+            } else if (DIRECT_METHOD_HANDLE_DESC.isInstance(value)) {
+                Object[] parameterTypes = METHOD_TYPE_DESC.parameterArray(METHOD_HANDLE_DESC.invocationType(value));
+                List<TypeDescription> typeDescriptions = new ArrayList<TypeDescription>(parameterTypes.length);
+                for (Object parameterType : parameterTypes) {
+                    Type type = Type.getType(CLASS_DESC.descriptorString(parameterType));
+                    typeDescriptions.add(typePool.describe(type.getSort() == Type.ARRAY
+                            ? type.getInternalName().replace('/', '.')
+                            : type.getClassName()).resolve());
+                }
+                Type type = Type.getType(CLASS_DESC.descriptorString(METHOD_TYPE_DESC.returnType(METHOD_HANDLE_DESC.invocationType(value))));
+                return new MethodHandle(MethodHandle.HandleType.of(DIRECT_METHOD_HANDLE_DESC.refKind(value)),
+                        typePool.describe(Type.getType(CLASS_DESC.descriptorString(DIRECT_METHOD_HANDLE_DESC.owner(value))).getClassName()).resolve(),
+                        DIRECT_METHOD_HANDLE_DESC.methodName(value),
+                        DIRECT_METHOD_HANDLE_DESC.refKind(value) == Opcodes.H_NEWINVOKESPECIAL
+                                ? TypeDescription.ForLoadedType.of(void.class)
+                                : typePool.describe(type.getSort() == Type.ARRAY ? type.getInternalName().replace('/', '.') : type.getClassName()).resolve(),
+                        typeDescriptions);
+            } else if (DYNAMIC_CONSTANT_DESC.isInstance(value)) {
+                Type methodType = Type.getMethodType(DIRECT_METHOD_HANDLE_DESC.lookupDescriptor(DYNAMIC_CONSTANT_DESC.bootstrapMethod(value)));
+                List<TypeDescription> parameterTypes = new ArrayList<TypeDescription>(methodType.getArgumentTypes().length);
+                for (Type type : methodType.getArgumentTypes()) {
+                    parameterTypes.add(typePool.describe(type.getSort() == Type.ARRAY
+                            ? type.getInternalName().replace('/', '.')
+                            : type.getClassName()).resolve());
+                }
+                Object[] constant = DYNAMIC_CONSTANT_DESC.bootstrapArgs(value);
+                List<JavaConstant> arguments = new ArrayList<JavaConstant>(constant.length);
+                for (Object aConstant : constant) {
+                    arguments.add(ofDescription(aConstant, typePool));
+                }
+                Type type = Type.getType(CLASS_DESC.descriptorString(DYNAMIC_CONSTANT_DESC.constantType(value)));
+                return new Dynamic(DYNAMIC_CONSTANT_DESC.constantName(value),
+                        typePool.describe(type.getSort() == Type.ARRAY
+                                ? type.getInternalName().replace('/', '.')
+                                : type.getClassName()).resolve(),
+                        new MethodHandle(MethodHandle.HandleType.of(DIRECT_METHOD_HANDLE_DESC.refKind(DYNAMIC_CONSTANT_DESC.bootstrapMethod(value))),
+                                typePool.describe(Type.getType(CLASS_DESC.descriptorString(DIRECT_METHOD_HANDLE_DESC.owner(DYNAMIC_CONSTANT_DESC.bootstrapMethod(value)))).getClassName()).resolve(),
+                                DIRECT_METHOD_HANDLE_DESC.methodName(DYNAMIC_CONSTANT_DESC.bootstrapMethod(value)),
+                                typePool.describe(methodType.getReturnType().getSort() == Type.ARRAY
+                                        ? methodType.getReturnType().getInternalName().replace('/', '.')
+                                        : methodType.getReturnType().getClassName()).resolve(),
+                                parameterTypes),
+                        arguments);
+            } else {
+                throw new IllegalArgumentException("Not a resolvable constant description or not expressible as a constant pool value: " + value);
+            }
+        }
+
+        /**
+         * Returns a Java constant representation for a {@link TypeDescription}.
+         *
+         * @param typeDescription The type to represent as a constant.
+         * @return An appropriate Java constant representation.
+         */
+        public static JavaConstant of(TypeDescription typeDescription) {
+            if (typeDescription.isPrimitive()) {
+                throw new IllegalArgumentException("A primitive type cannot be represented as a type constant: " + typeDescription);
+            }
+            return new JavaConstant.Simple.OfTypeDescription(typeDescription);
+        }
+
+        /**
+         * Wraps a value representing a loaded or unloaded constant as {@link JavaConstant} instance.
+         *
+         * @param value The value to wrap.
+         * @return A wrapped Java constant.
+         */
+        public static JavaConstant wrap(Object value) {
+            if (value instanceof JavaConstant) {
+                return (JavaConstant) value;
+            } else if (value instanceof TypeDescription) {
+                return of((TypeDescription) value);
+            } else {
+                return ofLoaded(value);
+            }
+        }
+
+        /**
+         * Wraps a list of either loaded or unloaded constant representations as {@link JavaConstant} instances.
+         *
+         * @param values The values to wrap.
+         * @return A list of wrapped Java constants.
+         */
+        public static List<JavaConstant> wrap(List<?> values) {
+            List<JavaConstant> constants = new ArrayList<JavaConstant>(values.size());
+            for (Object value : values) {
+                constants.add(wrap(value));
+            }
+            return constants;
+        }
+
+        /**
+         * Returns the represented value.
+         *
+         * @return The represented value.
+         */
+        public T getValue() {
+            return value;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeDescription getTypeDescription() {
+            return typeDescription;
+        }
+
+        @Override
+        public int hashCode() {
+            return value.hashCode();
+        }
+
+        @Override
+        public boolean equals(@MaybeNull Object object) {
+            if (this == object) return true;
+            if (object == null || getClass() != object.getClass()) return false;
+            return value.equals(((JavaConstant.Simple<?>) object).value);
+        }
+
+        @Override
+        public String toString() {
+            return value.toString();
+        }
+
+        /**
+         * Represents a trivial constant value that represents itself.
+         *
+         * @param <S> The represented type.
+         */
+        protected abstract static class OfTrivialValue<S> extends JavaConstant.Simple<S> {
+
+            /**
+             * Creates a representation of a trivial constant that represents itself.
+             *
+             * @param value           The represented value.
+             * @param typeDescription The represented value's type.
+             */
+            protected OfTrivialValue(S value, TypeDescription typeDescription) {
+                super(value, typeDescription);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Object toDescription() {
+                return value;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public <T> T accept(Visitor<T> visitor) {
+                return visitor.onValue(this);
+            }
+
+            protected static class ForInteger extends OfTrivialValue<Integer> {
+
+                public ForInteger(Integer value) {
+                    super(value, TypeDescription.ForLoadedType.of(int.class));
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public StackManipulation toStackManipulation() {
+                    return IntegerConstant.forValue(value);
+                }
+            }
+
+            protected static class ForLong extends OfTrivialValue<Long> {
+
+                public ForLong(Long value) {
+                    super(value, TypeDescription.ForLoadedType.of(long.class));
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public StackManipulation toStackManipulation() {
+                    return LongConstant.forValue(value);
+                }
+            }
+
+            protected static class ForFloat extends OfTrivialValue<Float> {
+
+                public ForFloat(Float value) {
+                    super(value, TypeDescription.ForLoadedType.of(float.class));
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public StackManipulation toStackManipulation() {
+                    return FloatConstant.forValue(value);
+                }
+            }
+
+            protected static class ForDouble extends OfTrivialValue<Double> {
+
+                public ForDouble(Double value) {
+                    super(value, TypeDescription.ForLoadedType.of(double.class));
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public StackManipulation toStackManipulation() {
+                    return DoubleConstant.forValue(value);
+                }
+            }
+
+            protected static class ForString extends OfTrivialValue<String> {
+
+                public ForString(String value) {
+                    super(value, TypeDescription.ForLoadedType.of(String.class));
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public StackManipulation toStackManipulation() {
+                    return new TextConstant(value);
+                }
+            }
+        }
+
+        /**
+         * Represents a type constant.
+         */
+        protected static class OfTypeDescription extends JavaConstant.Simple<TypeDescription> {
+
+            /**
+             * Creates a type constant.
+             *
+             * @param value The represented type.
+             */
+            protected OfTypeDescription(TypeDescription value) {
+                super(value, TypeDescription.ForLoadedType.of(Class.class));
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Object toDescription() {
+                return CLASS_DESC.ofDescriptor(value.getDescriptor());
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation toStackManipulation() {
+                return ClassConstant.of(value);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public <T> T accept(Visitor<T> visitor) {
+                return visitor.onType(this);
+            }
+        }
+
+        /**
+         * A dispatcher to represent {@code java.lang.constant.ConstantDesc}.
+         */
+        @JavaDispatcher.Proxied("java.lang.constant.ConstantDesc")
+        protected interface Dispatcher {
+
+            /**
+             * Checks if the supplied instance is of the type of this dispatcher.
+             *
+             * @param instance The instance to verify.
+             * @return {@code true} if the instance is of the supplied type.
+             */
+            @JavaDispatcher.Instance
+            boolean isInstance(Object instance);
+
+            /**
+             * Returns an array of the dispatcher type.
+             *
+             * @param length The length of the array.
+             * @return An array of the type that is represented by this dispatcher with the given length.
+             */
+            @JavaDispatcher.Container
+            Object[] toArray(int length);
+
+            /**
+             * A dispatcher to represent {@code java.lang.constant.ClassDesc}.
+             */
+            @JavaDispatcher.Proxied("java.lang.constant.ClassDesc")
+            interface OfClassDesc extends Dispatcher {
+
+                /**
+                 * Resolves a {@code java.lang.constant.ClassDesc} of a descriptor.
+                 *
+                 * @param descriptor The descriptor to resolve.
+                 * @return An appropriate {@code java.lang.constant.ClassDesc}.
+                 */
+                @JavaDispatcher.IsStatic
+                Object ofDescriptor(String descriptor);
+
+                /**
+                 * Returns the descriptor of the supplied class description.
+                 *
+                 * @param value The {@code java.lang.constant.ClassDesc} to resolve.
+                 * @return The class's descriptor.
+                 */
+                String descriptorString(Object value);
+            }
+
+            /**
+             * A dispatcher to represent {@code java.lang.constant.MethodTypeDesc}.
+             */
+            @JavaDispatcher.Proxied("java.lang.constant.MethodTypeDesc")
+            interface OfMethodTypeDesc extends Dispatcher {
+
+                /**
+                 * Resolves a {@code java.lang.constant.MethodTypeDesc} from descriptions of the return type descriptor and parameter types.
+                 *
+                 * @param returnType    A {@code java.lang.constant.ClassDesc} representing the return type.
+                 * @param parameterType An array of {@code java.lang.constant.ClassDesc}s representing the parameter types.
+                 * @return An appropriate {@code java.lang.constant.MethodTypeDesc}.
+                 */
+                @JavaDispatcher.IsStatic
+                Object of(@JavaDispatcher.Proxied("java.lang.constant.ClassDesc") Object returnType,
+                          @JavaDispatcher.Proxied("java.lang.constant.ClassDesc") Object[] parameterType);
+
+                /**
+                 * Returns a {@code java.lang.constant.MethodTypeDesc} for a given descriptor.
+                 *
+                 * @param descriptor The method type's descriptor.
+                 * @return A {@code java.lang.constant.MethodTypeDesc} of the supplied descriptor
+                 */
+                @JavaDispatcher.IsStatic
+                Object ofDescriptor(String descriptor);
+
+                /**
+                 * Returns the return type of a {@code java.lang.constant.MethodTypeDesc}.
+                 *
+                 * @param value The {@code java.lang.constant.MethodTypeDesc} to resolve.
+                 * @return A {@code java.lang.constant.ClassDesc} of the supplied {@code java.lang.constant.MethodTypeDesc}'s return type.
+                 */
+                Object returnType(Object value);
+
+                /**
+                 * Returns the parameter types of a {@code java.lang.constant.MethodTypeDesc}.
+                 *
+                 * @param value The {@code java.lang.constant.MethodTypeDesc} to resolve.
+                 * @return An array of {@code java.lang.constant.ClassDesc} of the supplied {@code java.lang.constant.MethodTypeDesc}'s parameter types.
+                 */
+                Object[] parameterArray(Object value);
+            }
+
+            /**
+             * A dispatcher to represent {@code java.lang.constant.MethodHandleDesc}.
+             */
+            @JavaDispatcher.Proxied("java.lang.constant.MethodHandleDesc")
+            interface OfMethodHandleDesc extends Dispatcher {
+
+                /**
+                 * Resolves a {@code java.lang.constant.MethodHandleDesc}.
+                 *
+                 * @param kind       The {@code java.lang.constant.DirectMethodHandleDesc$Kind} of the resolved method handle description.
+                 * @param owner      The {@code java.lang.constant.ClassDesc} of the resolved method handle description's owner type.
+                 * @param name       The name of the method handle to resolve.
+                 * @param descriptor A descriptor of the lookup type.
+                 * @return An {@code java.lang.constant.MethodTypeDesc} representing the invocation type.
+                 */
+                @JavaDispatcher.IsStatic
+                Object of(@JavaDispatcher.Proxied("java.lang.constant.DirectMethodHandleDesc$Kind") Object kind,
+                          @JavaDispatcher.Proxied("java.lang.constant.ClassDesc") Object owner,
+                          String name,
+                          String descriptor);
+
+
+exec
+/bin/bash -lc 'rg -n "OfClassDesc" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java:185:        protected static final Dispatcher.OfClassDesc CLASS_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfClassDesc.class));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java:677:            interface OfClassDesc extends Dispatcher {
+
+codex
+The repository search shows `OfClassDesc` is only declared and used inside `JavaConstant.java`; there are no external call sites or test references. I’m grabbing exact line numbers now so the final verdict is tied to concrete source locations.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java | sed -n '170,210p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   170	    /**
+   171	     * Represents a simple Java constant, either a primitive constant, a {@link String} or a {@link Class}.
+   172	     *
+   173	     * @param <T> The represented type.
+   174	     */
+   175	    abstract class Simple<T> implements JavaConstant {
+   176	
+   177	        /**
+   178	         * A dispatcher for interaction with {@code java.lang.constant.ClassDesc}.
+   179	         */
+   180	        protected static final Dispatcher CONSTANT_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.class));
+   181	
+   182	        /**
+   183	         * A dispatcher for interaction with {@code java.lang.constant.ClassDesc}.
+   184	         */
+   185	        protected static final Dispatcher.OfClassDesc CLASS_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfClassDesc.class));
+   186	
+   187	        /**
+   188	         * A dispatcher for interaction with {@code java.lang.constant.MethodTypeDesc}.
+   189	         */
+   190	        protected static final Dispatcher.OfMethodTypeDesc METHOD_TYPE_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfMethodTypeDesc.class));
+   191	
+   192	        /**
+   193	         * A dispatcher for interaction with {@code java.lang.constant.MethodHandleDesc}.
+   194	         */
+   195	        protected static final Dispatcher.OfMethodHandleDesc METHOD_HANDLE_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfMethodHandleDesc.class));
+   196	
+   197	        /**
+   198	         * A dispatcher for interaction with {@code java.lang.constant.DirectMethodHandleDesc}.
+   199	         */
+   200	        protected static final Dispatcher.OfDirectMethodHandleDesc DIRECT_METHOD_HANDLE_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfDirectMethodHandleDesc.class));
+   201	
+   202	        /**
+   203	         * A dispatcher for interaction with {@code java.lang.constant.DirectMethodHandleDesc}.
+   204	         */
+   205	        protected static final Dispatcher.OfDirectMethodHandleDesc.ForKind DIRECT_METHOD_HANDLE_DESC_KIND = doPrivileged(JavaDispatcher.of(Dispatcher.OfDirectMethodHandleDesc.ForKind.class));
+   206	
+   207	        /**
+   208	         * A dispatcher for interaction with {@code java.lang.constant.DirectMethodHandleDesc}.
+   209	         */
+   210	        protected static final Dispatcher.OfDynamicConstantDesc DYNAMIC_CONSTANT_DESC = doPrivileged(JavaDispatcher.of(Dispatcher.OfDynamicConstantDesc.class));
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java | sed -n '660,715p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   660	             */
+   661	            @JavaDispatcher.Instance
+   662	            boolean isInstance(Object instance);
+   663	
+   664	            /**
+   665	             * Returns an array of the dispatcher type.
+   666	             *
+   667	             * @param length The length of the array.
+   668	             * @return An array of the type that is represented by this dispatcher with the given length.
+   669	             */
+   670	            @JavaDispatcher.Container
+   671	            Object[] toArray(int length);
+   672	
+   673	            /**
+   674	             * A dispatcher to represent {@code java.lang.constant.ClassDesc}.
+   675	             */
+   676	            @JavaDispatcher.Proxied("java.lang.constant.ClassDesc")
+   677	            interface OfClassDesc extends Dispatcher {
+   678	
+   679	                /**
+   680	                 * Resolves a {@code java.lang.constant.ClassDesc} of a descriptor.
+   681	                 *
+   682	                 * @param descriptor The descriptor to resolve.
+   683	                 * @return An appropriate {@code java.lang.constant.ClassDesc}.
+   684	                 */
+   685	                @JavaDispatcher.IsStatic
+   686	                Object ofDescriptor(String descriptor);
+   687	
+   688	                /**
+   689	                 * Returns the descriptor of the supplied class description.
+   690	                 *
+   691	                 * @param value The {@code java.lang.constant.ClassDesc} to resolve.
+   692	                 * @return The class's descriptor.
+   693	                 */
+   694	                String descriptorString(Object value);
+   695	            }
+   696	
+   697	            /**
+   698	             * A dispatcher to represent {@code java.lang.constant.MethodTypeDesc}.
+   699	             */
+   700	            @JavaDispatcher.Proxied("java.lang.constant.MethodTypeDesc")
+   701	            interface OfMethodTypeDesc extends Dispatcher {
+   702	
+   703	                /**
+   704	                 * Resolves a {@code java.lang.constant.MethodTypeDesc} from descriptions of the return type descriptor and parameter types.
+   705	                 *
+   706	                 * @param returnType    A {@code java.lang.constant.ClassDesc} representing the return type.
+   707	                 * @param parameterType An array of {@code java.lang.constant.ClassDesc}s representing the parameter types.
+   708	                 * @return An appropriate {@code java.lang.constant.MethodTypeDesc}.
+   709	                 */
+   710	                @JavaDispatcher.IsStatic
+   711	                Object of(@JavaDispatcher.Proxied("java.lang.constant.ClassDesc") Object returnType,
+   712	                          @JavaDispatcher.Proxied("java.lang.constant.ClassDesc") Object[] parameterType);
+   713	
+   714	                /**
+   715	                 * Returns a {@code java.lang.constant.MethodTypeDesc} for a given descriptor.
+
+codex
+{"target":"net.bytebuddy.utility.JavaConstant.OfClassDesc","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java and repo-wide references with rg. `OfClassDesc` is only declared once at lines 676-695 and only used once as the `CLASS_DESC` field in the same file at line 185; no other source or test file references it. Its interface has only two methods (`ofDescriptor`, `descriptorString`) and no additional outgoing dependencies beyond the proxied `java.lang.constant.ClassDesc` API, so the class does not show hub-like fan-in/fan-out behavior."}
+tokens used
+14,299

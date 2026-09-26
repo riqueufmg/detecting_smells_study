@@ -1,0 +1,601 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f30-8a26-7882-b222-d42d7d7ef418
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.jsoup.select.Evaluator.IndexEquals` in the repository located at:
+
+`data/repositories/jhy/jsoup`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.jsoup.select.Evaluator.IndexEquals",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.jsoup.select.Evaluator.IndexEquals`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing who uses it and what it depends on so I can make an evidence-based verdict.
+exec
+/bin/bash -lc "rg --files | rg \"Evaluator\\.java|Evaluator\"" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "rg -n \"class\\s+IndexEquals|IndexEquals\" src" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 307ms:
+src/test/java/org/jsoup/select/EvaluatorTest.java:114:    public void testIndexEqualsToString() {
+src/test/java/org/jsoup/select/EvaluatorTest.java:115:        Evaluator.IndexEquals evaluator = new Evaluator.IndexEquals(5);
+src/test/java/org/jsoup/nodes/ElementTest.java:2851:    @Test void getElementsByIndexEquals() {
+src/test/java/org/jsoup/nodes/ElementTest.java:2853:        Elements els = doc.body().getElementsByIndexEquals(1);
+src/main/java/org/jsoup/nodes/Element.java:1449:    public Elements getElementsByIndexEquals(int index) {
+src/main/java/org/jsoup/nodes/Element.java:1450:        return Collector.collect(new Evaluator.IndexEquals(index), this);
+src/main/java/org/jsoup/select/Evaluator.java:512:    public static final class IndexEquals extends IndexEvaluator {
+src/main/java/org/jsoup/select/Evaluator.java:513:        public IndexEquals(int index) {
+src/main/java/org/jsoup/select/Evaluator.java:610:     * @see IndexEquals
+src/main/java/org/jsoup/select/Evaluator.java:631:     * @see IndexEquals
+src/main/java/org/jsoup/select/QueryParser.java:206:                return new Evaluator.IndexEquals(consumeIndex());
+
+ succeeded in 345ms:
+src/test/java/org/jsoup/select/StructuralEvaluatorTest.java
+src/test/java/org/jsoup/select/EvaluatorTest.java
+src/test/java/org/jsoup/select/EvaluatorDebug.java
+src/main/java/org/jsoup/select/NodeEvaluator.java
+src/main/java/org/jsoup/select/CombiningEvaluator.java
+src/main/java/org/jsoup/select/StructuralEvaluator.java
+src/main/java/org/jsoup/select/Evaluator.java
+
+codex
+I found the target in `Evaluator.java` and the main call sites. Next I’m checking the class body and the exact fan-in/fan-out evidence around it.
+exec
+/bin/bash -lc "sed -n '470,560p' src/main/java/org/jsoup/select/Evaluator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '1400,1475p' src/main/java/org/jsoup/nodes/Element.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '180,225p' src/main/java/org/jsoup/select/QueryParser.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '90,130p' src/test/java/org/jsoup/select/EvaluatorTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 224ms:
+    public void testClassToString() {
+        Evaluator.Class evaluator = new Evaluator.Class("exampleClass");
+        assertEquals(".exampleClass", evaluator.toString());
+    }
+
+    @Test
+    public void testAllElementsToString() {
+        Evaluator.AllElements evaluator = new Evaluator.AllElements();
+        assertEquals("*", evaluator.toString());
+    }
+
+    @Test
+    public void testIndexLessThanToString() {
+        Evaluator.IndexLessThan evaluator = new Evaluator.IndexLessThan(5);
+        assertEquals(":lt(5)", evaluator.toString());
+    }
+
+    @Test
+    public void testIndexGreaterThanToString() {
+        Evaluator.IndexGreaterThan evaluator = new Evaluator.IndexGreaterThan(5);
+        assertEquals(":gt(5)", evaluator.toString());
+    }
+
+    @Test
+    public void testIndexEqualsToString() {
+        Evaluator.IndexEquals evaluator = new Evaluator.IndexEquals(5);
+        assertEquals(":eq(5)", evaluator.toString());
+    }
+
+    @Test
+    public void testIsLastChildToString() {
+        Evaluator.IsLastChild evaluator = new Evaluator.IsLastChild();
+        assertEquals(":last-child", evaluator.toString());
+    }
+
+    @Test
+    public void testIsFirstOfTypeToString() {
+        Evaluator.IsFirstOfType evaluator = new Evaluator.IsFirstOfType();
+        assertEquals(":first-of-type", evaluator.toString());
+    }
+
+
+ succeeded in 233ms:
+    static Evaluator or(Evaluator left, Evaluator right) {
+        if (left instanceof CombiningEvaluator.Or) {
+            ((CombiningEvaluator.Or) left).add(right);
+            return left;
+        }
+        return new CombiningEvaluator.Or(left, right);
+    }
+
+    /** Merge two evals into an And. */
+    static Evaluator and(@Nullable Evaluator left, Evaluator right) {
+        if (left == null) return right;
+        if (left instanceof CombiningEvaluator.And) {
+            ((CombiningEvaluator.And) left).add(right);
+            return left;
+        }
+        return new CombiningEvaluator.And(left, right);
+    }
+
+    private Evaluator parsePseudoSelector() {
+        final String pseudo = tq.consumeCssIdentifier();
+        switch (pseudo) {
+            case "lt":
+                return new Evaluator.IndexLessThan(consumeIndex());
+            case "gt":
+                return new Evaluator.IndexGreaterThan(consumeIndex());
+            case "eq":
+                return new Evaluator.IndexEquals(consumeIndex());
+            case "has":
+                return has();
+            case "is":
+                return is();
+            case "contains":
+                return contains(false);
+            case "containsOwn":
+                return contains(true);
+            case "containsWholeText":
+                return containsWholeText(false);
+            case "containsWholeOwnText":
+                return containsWholeText(true);
+            case "containsData":
+                return containsData();
+            case "matches":
+                return matches(false);
+            case "matchesOwn":
+                return matches(true);
+            case "matchesWholeText":
+
+ succeeded in 251ms:
+    /**
+     * Find elements that have an attribute whose value matches the supplied regular expression.
+     * @param key name of the attribute
+     * @param pattern compiled regular expression to match against attribute values
+     * @return elements that have attributes matching this regular expression
+     */
+    public Elements getElementsByAttributeValueMatching(String key, Pattern pattern) {
+        return Collector.collect(new Evaluator.AttributeWithValueMatching(key, pattern), this);
+    }
+
+    /**
+     * Find elements that have attributes whose values match the supplied regular expression.
+     * @param key name of the attribute
+     * @param regex regular expression to match against attribute values. You can use <a href="http://java.sun.com/docs/books/tutorial/essential/regex/pattern.html#embedded">embedded flags</a> (such as {@code (?i)} and {@code (?m)}) to control regex options.
+     * @return elements that have attributes matching this regular expression
+     */
+    public Elements getElementsByAttributeValueMatching(String key, String regex) {
+        Regex pattern;
+        try {
+            pattern = Regex.compile(regex);
+        } catch (PatternSyntaxException e) {
+            throw new IllegalArgumentException("Pattern syntax error: " + regex, e);
+        }
+        return Collector.collect(new Evaluator.AttributeWithValueMatching(key, pattern), this);
+    }
+
+    /**
+     * Find elements whose sibling index is less than the supplied index.
+     * @param index 0-based index
+     * @return elements less than index
+     */
+    public Elements getElementsByIndexLessThan(int index) {
+        return Collector.collect(new Evaluator.IndexLessThan(index), this);
+    }
+
+    /**
+     * Find elements whose sibling index is greater than the supplied index.
+     * @param index 0-based index
+     * @return elements greater than index
+     */
+    public Elements getElementsByIndexGreaterThan(int index) {
+        return Collector.collect(new Evaluator.IndexGreaterThan(index), this);
+    }
+
+    /**
+     * Find elements whose sibling index is equal to the supplied index.
+     * @param index 0-based index
+     * @return elements equal to index
+     */
+    public Elements getElementsByIndexEquals(int index) {
+        return Collector.collect(new Evaluator.IndexEquals(index), this);
+    }
+
+    /**
+     * Find elements that contain the specified string. The search is case-insensitive. The text may appear directly
+     * in the element, or in any of its descendants.
+     * @param searchText to look for in the element's text
+     * @return elements that contain the string, case-insensitive.
+     * @see Element#text()
+     */
+    public Elements getElementsContainingText(String searchText) {
+        return Collector.collect(new Evaluator.ContainsText(searchText), this);
+    }
+
+    /**
+     * Find elements that directly contain the specified string. The search is case-insensitive. The text must appear directly
+     * in the element, not in any of its descendants.
+     * @param searchText to look for in the element's own text
+     * @return elements that contain the string, case-insensitive.
+     * @see Element#ownText()
+     */
+    public Elements getElementsContainingOwnText(String searchText) {
+        return Collector.collect(new Evaluator.ContainsOwnText(searchText), this);
+    }
+
+    /**
+
+ succeeded in 272ms:
+     * Evaluator for matching by sibling index number (e {@literal <} idx)
+     */
+    public static final class IndexLessThan extends IndexEvaluator {
+        public IndexLessThan(int index) {
+            super(index);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return root != element && element.elementSiblingIndex() < index;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":lt(%d)", index);
+        }
+
+    }
+
+    /**
+     * Evaluator for matching by sibling index number (e {@literal >} idx)
+     */
+    public static final class IndexGreaterThan extends IndexEvaluator {
+        public IndexGreaterThan(int index) {
+            super(index);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.elementSiblingIndex() > index;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":gt(%d)", index);
+        }
+
+    }
+
+    /**
+     * Evaluator for matching by sibling index number (e = idx)
+     */
+    public static final class IndexEquals extends IndexEvaluator {
+        public IndexEquals(int index) {
+            super(index);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.elementSiblingIndex() == index;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":eq(%d)", index);
+        }
+
+    }
+
+    /**
+     * Evaluator for matching the last sibling (css :last-child)
+     */
+    public static final class IsLastChild extends Evaluator {
+		@Override
+		public boolean matches(Element root, Element element) {
+			final Element p = element.parent();
+			return p != null && !(p instanceof Document) && element == p.lastElementChild();
+		}
+
+		@Override
+		public String toString() {
+			return ":last-child";
+		}
+    }
+
+    public static final class IsFirstOfType extends IsNthOfType {
+		public IsFirstOfType() {
+			super(0,1);
+		}
+		@Override
+		public String toString() {
+			return ":first-of-type";
+		}
+    }
+
+    public static final class IsLastOfType extends IsNthLastOfType {
+		public IsLastOfType() {
+			super(0,1);
+		}
+		@Override
+		public String toString() {
+
+codex
+I have the direct call sites. I’m checking the superclass and nearby evaluator family to see whether `IndexEquals` is just a small leaf or a true dependency hub.
+exec
+/bin/bash -lc "sed -n '430,520p' src/main/java/org/jsoup/select/Evaluator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "rg -n \"new Evaluator\\.IndexEquals|Evaluator\\.IndexEquals|IndexEquals\\(\" src/main/java src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 264ms:
+                Validate.isTrue(value.length() > 1, "Quoted value must have content");
+                value = value.substring(1, value.length() - 1);
+            }
+
+            this.value = lowerCase(value); // case-insensitive match
+        }
+
+        /**
+         @deprecated since 1.22.1, use {@link #AttributeKeyPair(String, String)}; the previous trimQuoted parameter is no longer used.
+         This constructor will be removed in jsoup 1.24.1.
+         */
+        @Deprecated
+        public AttributeKeyPair(String key, String value, boolean ignored) {
+            this(key, value);
+        }
+
+
+    }
+
+    /**
+     * Evaluator for any / all element matching
+     */
+    public static final class AllElements extends Evaluator {
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return true;
+        }
+
+        @Override protected int cost() {
+            return 10;
+        }
+
+        @Override
+        public String toString() {
+            return "*";
+        }
+    }
+
+    /**
+     * Evaluator for matching by sibling index number (e {@literal <} idx)
+     */
+    public static final class IndexLessThan extends IndexEvaluator {
+        public IndexLessThan(int index) {
+            super(index);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return root != element && element.elementSiblingIndex() < index;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":lt(%d)", index);
+        }
+
+    }
+
+    /**
+     * Evaluator for matching by sibling index number (e {@literal >} idx)
+     */
+    public static final class IndexGreaterThan extends IndexEvaluator {
+        public IndexGreaterThan(int index) {
+            super(index);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.elementSiblingIndex() > index;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":gt(%d)", index);
+        }
+
+    }
+
+    /**
+     * Evaluator for matching by sibling index number (e = idx)
+     */
+    public static final class IndexEquals extends IndexEvaluator {
+        public IndexEquals(int index) {
+            super(index);
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.elementSiblingIndex() == index;
+        }
+
+ succeeded in 324ms:
+src/main/java/org/jsoup/select/QueryParser.java:206:                return new Evaluator.IndexEquals(consumeIndex());
+src/main/java/org/jsoup/select/Evaluator.java:513:        public IndexEquals(int index) {
+src/main/java/org/jsoup/nodes/Element.java:1449:    public Elements getElementsByIndexEquals(int index) {
+src/main/java/org/jsoup/nodes/Element.java:1450:        return Collector.collect(new Evaluator.IndexEquals(index), this);
+src/test/java/org/jsoup/select/EvaluatorTest.java:115:        Evaluator.IndexEquals evaluator = new Evaluator.IndexEquals(5);
+src/test/java/org/jsoup/nodes/ElementTest.java:2851:    @Test void getElementsByIndexEquals() {
+src/test/java/org/jsoup/nodes/ElementTest.java:2853:        Elements els = doc.body().getElementsByIndexEquals(1);
+
+exec
+/bin/bash -lc "sed -n '380,440p' src/main/java/org/jsoup/select/Evaluator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc 'rg -n "abstract static class IndexEvaluator|class IndexEvaluator" src/main/java/org/jsoup/select/Evaluator.java' in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 124ms:
+804:    public abstract static class IndexEvaluator extends Evaluator {
+
+ succeeded in 204ms:
+
+    }
+
+    /**
+     * Evaluator for attribute name/value matching (value regex matching)
+     */
+    public static final class AttributeWithValueMatching extends Evaluator {
+        final String key;
+        final Regex pattern;
+
+        public AttributeWithValueMatching(String key, Regex pattern) {
+            this.key = normalize(key);
+            this.pattern = pattern;
+        }
+
+        public AttributeWithValueMatching(String key, Pattern pattern) {
+            this(key, Regex.fromPattern(pattern)); // api compat
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return element.hasAttr(key) && pattern.matcher(element.attr(key)).find();
+        }
+
+        @Override protected int cost() {
+            return 8;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[%s~=%s]", key, pattern.toString());
+        }
+
+    }
+
+    /**
+     * Abstract evaluator for attribute name/value matching
+     */
+    public abstract static class AttributeKeyPair extends Evaluator {
+        final String key;
+        final String value;
+
+        public AttributeKeyPair(String key, String value) {
+            Validate.notEmpty(key);
+            Validate.notNull(value);
+
+            this.key = normalize(key);
+            boolean quoted = value.startsWith("'") && value.endsWith("'")
+                || value.startsWith("\"") && value.endsWith("\"");
+            if (quoted) {
+                Validate.isTrue(value.length() > 1, "Quoted value must have content");
+                value = value.substring(1, value.length() - 1);
+            }
+
+            this.value = lowerCase(value); // case-insensitive match
+        }
+
+        /**
+         @deprecated since 1.22.1, use {@link #AttributeKeyPair(String, String)}; the previous trimQuoted parameter is no longer used.
+         This constructor will be removed in jsoup 1.24.1.
+         */
+
+exec
+/bin/bash -lc "sed -n '790,835p' src/main/java/org/jsoup/select/Evaluator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 188ms:
+            return true;
+        }
+
+        @Override
+        public String toString() {
+            return ":empty";
+        }
+    }
+
+    /**
+     * Abstract evaluator for sibling index matching
+     *
+     * @author ant
+     */
+    public abstract static class IndexEvaluator extends Evaluator {
+        final int index;
+
+        public IndexEvaluator(int index) {
+            this.index = index;
+        }
+    }
+
+    /**
+     * Evaluator for matching Element (and its descendants) text
+     */
+    public static final class ContainsText extends Evaluator {
+        private final String searchText;
+
+        public ContainsText(String searchText) {
+            this.searchText = lowerCase(normaliseWhitespace(searchText));
+        }
+
+        @Override
+        public boolean matches(Element root, Element element) {
+            return lowerCase(element.text()).contains(searchText);
+        }
+
+        @Override protected int cost() {
+            return 10;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(":contains(%s)", searchText);
+        }
+    }
+
+codex
+{"target":"org.jsoup.select.Evaluator.IndexEquals","detection":false,"justification":"Inspected `src/main/java/org/jsoup/select/Evaluator.java`, `src/main/java/org/jsoup/select/QueryParser.java`, `src/main/java/org/jsoup/nodes/Element.java`, `src/test/java/org/jsoup/select/EvaluatorTest.java`, and `src/test/java/org/jsoup/nodes/ElementTest.java`. `IndexEquals` is a small leaf nested class: it only extends `IndexEvaluator`, stores one `int`, and its `matches` method calls only `element.elementSiblingIndex()` plus `toString()`. Repository-wide references are limited to 2 production call sites (`QueryParser.parsePseudoSelector()` and `Element.getElementsByIndexEquals()`) and 2 tests, which is not evidence of hub-like high fan-in/fan-out."}
+tokens used
+8,949

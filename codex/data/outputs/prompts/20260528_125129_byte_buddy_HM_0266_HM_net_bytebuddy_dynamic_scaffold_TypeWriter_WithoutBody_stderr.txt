@@ -1,0 +1,502 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f48-ab7b-7982-8778-a7782efded71
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.dynamic.scaffold.TypeWriter.WithoutBody` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.dynamic.scaffold.TypeWriter.WithoutBody",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.dynamic.scaffold.TypeWriter.WithoutBody`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its dependencies so I can judge fan-in and fan-out from the repository itself.
+exec
+/bin/bash -lc 'rg -n "class WithoutBody|WithoutBody" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files . | rg \"TypeWriter\\.java|TypeWriter/|WithoutBody\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 319ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:784:                public static class WithoutBody extends ForDefinedMethod {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:808:                    public WithoutBody(MethodDescription methodDescription, MethodAttributeAppender methodAttributeAppender, Visibility visibility) {
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:149:        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:167:        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:180:        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:193:        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:210:        new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:219:        new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:226:        new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:146:                return new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription, attributeAppender, visibility);
+
+ succeeded in 455ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java
+
+codex
+I found the nested class in `TypeWriter.java` and am checking both its own dependencies and who instantiates it, because hub-like modularization needs evidence of strong fan-in and fan-out.
+exec
+/bin/bash -lc "sed -n '730,860p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '120,170p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"ForDefinedMethod\\.WithoutBody|WithoutBody\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 198ms:
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public Visibility getVisibility() {
+                        return visibility;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void applyHead(MethodVisitor methodVisitor) {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void applyBody(MethodVisitor methodVisitor, Implementation.Context implementationContext, AnnotationValueFilter.Factory annotationValueFilterFactory) {
+                        applyAttributes(methodVisitor, annotationValueFilterFactory);
+                        methodVisitor.visitCode();
+                        ByteCodeAppender.Size size = applyCode(methodVisitor, implementationContext);
+                        methodVisitor.visitMaxs(size.getOperandStackSize(), size.getLocalVariableSize());
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void applyAttributes(MethodVisitor methodVisitor, AnnotationValueFilter.Factory annotationValueFilterFactory) {
+                        methodAttributeAppender.apply(methodVisitor, methodDescription, annotationValueFilterFactory.on(methodDescription));
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public ByteCodeAppender.Size applyCode(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+                        return byteCodeAppender.apply(methodVisitor, implementationContext, methodDescription);
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public Record prepend(ByteCodeAppender byteCodeAppender) {
+                        return new WithBody(methodDescription,
+                                new ByteCodeAppender.Compound(byteCodeAppender, this.byteCodeAppender),
+                                methodAttributeAppender,
+                                visibility);
+                    }
+                }
+
+                /**
+                 * Describes an entry that defines a method but without byte code and without an annotation value.
+                 */
+                @HashCodeAndEqualsPlugin.Enhance
+                public static class WithoutBody extends ForDefinedMethod {
+
+                    /**
+                     * The implemented method.
+                     */
+                    private final MethodDescription methodDescription;
+
+                    /**
+                     * The method attribute appender to apply.
+                     */
+                    private final MethodAttributeAppender methodAttributeAppender;
+
+                    /**
+                     * The represented method's minimum visibility.
+                     */
+                    private final Visibility visibility;
+
+                    /**
+                     * Creates a new entry for a method that is defines but does not append byte code, i.e. is native or abstract.
+                     *
+                     * @param methodDescription       The implemented method.
+                     * @param methodAttributeAppender The method attribute appender to apply.
+                     * @param visibility              The represented method's minimum visibility.
+                     */
+                    public WithoutBody(MethodDescription methodDescription, MethodAttributeAppender methodAttributeAppender, Visibility visibility) {
+                        this.methodDescription = methodDescription;
+                        this.methodAttributeAppender = methodAttributeAppender;
+                        this.visibility = visibility;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public MethodDescription getMethod() {
+                        return methodDescription;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public Sort getSort() {
+                        return Sort.DEFINED;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public Visibility getVisibility() {
+                        return visibility;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void applyHead(MethodVisitor methodVisitor) {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void applyBody(MethodVisitor methodVisitor, Implementation.Context implementationContext, AnnotationValueFilter.Factory annotationValueFilterFactory) {
+                        applyAttributes(methodVisitor, annotationValueFilterFactory);
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void applyAttributes(MethodVisitor methodVisitor, AnnotationValueFilter.Factory annotationValueFilterFactory) {
+                        methodAttributeAppender.apply(methodVisitor, methodDescription, annotationValueFilterFactory.on(methodDescription));
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public ByteCodeAppender.Size applyCode(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+                        throw new IllegalStateException("Cannot apply code for abstract method on " + methodDescription);
+
+ succeeded in 241ms:
+         */
+        enum ForAbstractMethod implements Handler, Compiled {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                return instrumentedType;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Compiled compile(Implementation.Target implementationTarget) {
+                return this;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeWriter.MethodPool.Record assemble(MethodDescription methodDescription, MethodAttributeAppender attributeAppender, Visibility visibility) {
+                return new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription, attributeAppender, visibility);
+            }
+        }
+
+        /**
+         * A handler for implementing a visibility bridge.
+         */
+        enum ForVisibilityBridge implements Handler {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                throw new IllegalStateException("A visibility bridge handler must not apply any preparations");
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Compiled compile(Implementation.Target implementationTarget) {
+
+ succeeded in 245ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:149:        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:167:        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:180:        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:193:        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:210:        new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:219:        new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java:226:        new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:808:                    public WithoutBody(MethodDescription methodDescription, MethodAttributeAppender methodAttributeAppender, Visibility visibility) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:146:                return new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription, attributeAppender, visibility);
+
+codex
+I’ve confirmed the class is a small nested record implementation, and I’m checking exact line numbers plus the reference count so the verdict is grounded in concrete repository evidence rather than a general impression.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java | sed -n '136,152p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java | sed -n '780,860p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java | sed -n '140,230p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 212ms:
+   136	             * {@inheritDoc}
+   137	             */
+   138	            public Compiled compile(Implementation.Target implementationTarget) {
+   139	                return this;
+   140	            }
+   141	
+   142	            /**
+   143	             * {@inheritDoc}
+   144	             */
+   145	            public TypeWriter.MethodPool.Record assemble(MethodDescription methodDescription, MethodAttributeAppender attributeAppender, Visibility visibility) {
+   146	                return new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription, attributeAppender, visibility);
+   147	            }
+   148	        }
+   149	
+   150	        /**
+   151	         * A handler for implementing a visibility bridge.
+   152	         */
+
+ succeeded in 237ms:
+   780	                /**
+   781	                 * Describes an entry that defines a method but without byte code and without an annotation value.
+   782	                 */
+   783	                @HashCodeAndEqualsPlugin.Enhance
+   784	                public static class WithoutBody extends ForDefinedMethod {
+   785	
+   786	                    /**
+   787	                     * The implemented method.
+   788	                     */
+   789	                    private final MethodDescription methodDescription;
+   790	
+   791	                    /**
+   792	                     * The method attribute appender to apply.
+   793	                     */
+   794	                    private final MethodAttributeAppender methodAttributeAppender;
+   795	
+   796	                    /**
+   797	                     * The represented method's minimum visibility.
+   798	                     */
+   799	                    private final Visibility visibility;
+   800	
+   801	                    /**
+   802	                     * Creates a new entry for a method that is defines but does not append byte code, i.e. is native or abstract.
+   803	                     *
+   804	                     * @param methodDescription       The implemented method.
+   805	                     * @param methodAttributeAppender The method attribute appender to apply.
+   806	                     * @param visibility              The represented method's minimum visibility.
+   807	                     */
+   808	                    public WithoutBody(MethodDescription methodDescription, MethodAttributeAppender methodAttributeAppender, Visibility visibility) {
+   809	                        this.methodDescription = methodDescription;
+   810	                        this.methodAttributeAppender = methodAttributeAppender;
+   811	                        this.visibility = visibility;
+   812	                    }
+   813	
+   814	                    /**
+   815	                     * {@inheritDoc}
+   816	                     */
+   817	                    public MethodDescription getMethod() {
+   818	                        return methodDescription;
+   819	                    }
+   820	
+   821	                    /**
+   822	                     * {@inheritDoc}
+   823	                     */
+   824	                    public Sort getSort() {
+   825	                        return Sort.DEFINED;
+   826	                    }
+   827	
+   828	                    /**
+   829	                     * {@inheritDoc}
+   830	                     */
+   831	                    public Visibility getVisibility() {
+   832	                        return visibility;
+   833	                    }
+   834	
+   835	                    /**
+   836	                     * {@inheritDoc}
+   837	                     */
+   838	                    public void applyHead(MethodVisitor methodVisitor) {
+   839	                        /* do nothing */
+   840	                    }
+   841	
+   842	                    /**
+   843	                     * {@inheritDoc}
+   844	                     */
+   845	                    public void applyBody(MethodVisitor methodVisitor, Implementation.Context implementationContext, AnnotationValueFilter.Factory annotationValueFilterFactory) {
+   846	                        applyAttributes(methodVisitor, annotationValueFilterFactory);
+   847	                    }
+   848	
+   849	                    /**
+   850	                     * {@inheritDoc}
+   851	                     */
+   852	                    public void applyAttributes(MethodVisitor methodVisitor, AnnotationValueFilter.Factory annotationValueFilterFactory) {
+   853	                        methodAttributeAppender.apply(methodVisitor, methodDescription, annotationValueFilterFactory.on(methodDescription));
+   854	                    }
+   855	
+   856	                    /**
+   857	                     * {@inheritDoc}
+   858	                     */
+   859	                    public ByteCodeAppender.Size applyCode(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+   860	                        throw new IllegalStateException("Cannot apply code for abstract method on " + methodDescription);
+
+ succeeded in 230ms:
+   140	    }
+   141	
+   142	    @Test(expected = IllegalStateException.class)
+   143	    public void testSkippedMethodCannotApplyHead() throws Exception {
+   144	        new TypeWriter.MethodPool.Record.ForNonImplementedMethod(methodDescription).applyHead(methodVisitor);
+   145	    }
+   146	
+   147	    @Test
+   148	    public void testDefinedMethod() throws Exception {
+   149	        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+   150	                methodAttributeAppender,
+   151	                Visibility.PUBLIC);
+   152	        assertThat(record.getSort(), is(TypeWriter.MethodPool.Record.Sort.DEFINED));
+   153	        record.apply(classVisitor, implementationContext, annotationValueFilterFactory);
+   154	        verify(classVisitor).visitMethod(MODIFIERS, FOO, BAR, QUX, new String[]{BAZ});
+   155	        verifyNoMoreInteractions(classVisitor);
+   156	        verify(methodVisitor).visitEnd();
+   157	        verifyNoMoreInteractions(methodVisitor);
+   158	        verifyNoMoreInteractions(implementationContext);
+   159	        verify(methodAttributeAppender).apply(methodVisitor, methodDescription, annotationValueFilter);
+   160	        verifyNoMoreInteractions(methodAttributeAppender);
+   161	    }
+   162	
+   163	    @Test
+   164	    public void testDefinedMethodHeadOnly() throws Exception {
+   165	        when(parameterDescription.hasModifiers()).thenReturn(true);
+   166	        when(parameterDescription.isNamed()).thenReturn(true);
+   167	        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+   168	                methodAttributeAppender,
+   169	                Visibility.PUBLIC);
+   170	        record.applyHead(methodVisitor);
+   171	        verifyNoMoreInteractions(methodVisitor);
+   172	        verifyNoMoreInteractions(implementationContext);
+   173	        verifyNoMoreInteractions(methodAttributeAppender);
+   174	    }
+   175	
+   176	    @Test
+   177	    public void testDefinedMethodBodyOnly() throws Exception {
+   178	        when(parameterDescription.hasModifiers()).thenReturn(true);
+   179	        when(parameterDescription.isNamed()).thenReturn(true);
+   180	        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+   181	                methodAttributeAppender,
+   182	                Visibility.PUBLIC);
+   183	        record.applyBody(methodVisitor, implementationContext, annotationValueFilterFactory);
+   184	        verifyNoMoreInteractions(methodVisitor);
+   185	        verifyNoMoreInteractions(implementationContext);
+   186	        verify(methodAttributeAppender).apply(methodVisitor, methodDescription, annotationValueFilter);
+   187	    }
+   188	
+   189	    @Test
+   190	    public void testDefinedMethodWithParameters() throws Exception {
+   191	        when(parameterDescription.hasModifiers()).thenReturn(true);
+   192	        when(parameterDescription.isNamed()).thenReturn(true);
+   193	        TypeWriter.MethodPool.Record record = new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+   194	                methodAttributeAppender,
+   195	                Visibility.PUBLIC);
+   196	        assertThat(record.getSort(), is(TypeWriter.MethodPool.Record.Sort.DEFINED));
+   197	        record.apply(classVisitor, implementationContext, annotationValueFilterFactory);
+   198	        verify(classVisitor).visitMethod(MODIFIERS, FOO, BAR, QUX, new String[]{BAZ});
+   199	        verifyNoMoreInteractions(classVisitor);
+   200	        verify(methodVisitor).visitParameter(FOO, MODIFIERS);
+   201	        verify(methodVisitor).visitEnd();
+   202	        verifyNoMoreInteractions(methodVisitor);
+   203	        verifyNoMoreInteractions(implementationContext);
+   204	        verify(methodAttributeAppender).apply(methodVisitor, methodDescription, annotationValueFilter);
+   205	        verifyNoMoreInteractions(methodAttributeAppender);
+   206	    }
+   207	
+   208	    @Test
+   209	    public void testDefinedMethodApplyAttributes() throws Exception {
+   210	        new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+   211	                methodAttributeAppender,
+   212	                Visibility.PUBLIC).applyAttributes(methodVisitor, annotationValueFilterFactory);
+   213	        verifyNoMoreInteractions(methodVisitor);
+   214	        verify(methodAttributeAppender).apply(methodVisitor, methodDescription, annotationValueFilter);
+   215	    }
+   216	
+   217	    @Test(expected = IllegalStateException.class)
+   218	    public void testDefinedMethodApplyCode() throws Exception {
+   219	        new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+   220	                methodAttributeAppender,
+   221	                Visibility.PUBLIC).applyCode(methodVisitor, implementationContext);
+   222	    }
+   223	
+   224	    @Test(expected = IllegalStateException.class)
+   225	    public void testDefinedMethodPrepended() throws Exception {
+   226	        new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription,
+   227	                methodAttributeAppender,
+   228	                Visibility.PUBLIC).prepend(otherAppender);
+   229	    }
+   230	
+
+codex
+{"target":"net.bytebuddy.dynamic.scaffold.TypeWriter.WithoutBody","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java`, `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java`, and `byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java`. `WithoutBody` is a small nested implementation with 3 fields and a narrow set of collaborators (`MethodDescription`, `MethodAttributeAppender`, `Visibility`, `MethodVisitor`, `Implementation.Context`, `AnnotationValueFilter.Factory`), and it has only one production caller (`MethodRegistry.ForAbstractMethod.assemble`) while the remaining references are test-only. That evidence does not show the high fan-in and fan-out expected for hub-like modularization."}
+tokens used
+9,726

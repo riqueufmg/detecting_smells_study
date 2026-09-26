@@ -1,0 +1,1182 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f41-cb07-7a81-9411-85030a71c733
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.gson.internal.bind.ReflectiveTypeAdapterFactory.RecordAdapter` in the repository located at:
+
+`data/repositories/google/gson`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.gson.internal.bind.ReflectiveTypeAdapterFactory.RecordAdapter",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.gson.internal.bind.ReflectiveTypeAdapterFactory.RecordAdapter`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the `RecordAdapter` source and tracing its direct dependencies and usages to judge fan-in/fan-out from the code itself.
+exec
+/bin/bash -lc "rg --files src | rg \"ReflectiveTypeAdapterFactory\\.java|TypeAdapterFactory|RecordAdapter\"" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "rg -n \"class RecordAdapter|RecordAdapter<|RecordAdapter\\b\" src -S" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ exited 1 in 160ms:
+rg: src: IO error for operation on src: No such file or directory (os error 2)
+
+ exited 2 in 164ms:
+rg: src: IO error for operation on src: No such file or directory (os error 2)
+
+codex
+The repository layout is different than a standard `src/` tree, so I’m finding the actual Java source roots first and then I’ll inspect the target class and its callers.
+exec
+/bin/bash -lc 'pwd && ls -la' in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "rg --files . | rg \"ReflectiveTypeAdapterFactory\\.java"'$|'"\\.java"'$"' in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 227ms:
+/data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+total 216
+drwxrwxr-x 12 henrique henrique  4096 May 26 19:29 .
+drwxrwxr-x  6 henrique henrique  4096 May 26 19:41 ..
+drwxrwxr-x  8 henrique henrique  4096 May 26 19:29 .git
+-rw-rw-r--  1 henrique henrique   184 May 26 19:29 .git-blame-ignore-revs
+drwxrwxr-x  4 henrique henrique  4096 May 26 19:29 .github
+-rw-rw-r--  1 henrique henrique   162 May 26 19:29 .gitignore
+drwxrwxr-x  2 henrique henrique  4096 May 26 19:29 .mvn
+-rw-rw-r--  1 henrique henrique 23605 May 26 19:29 CHANGELOG.md
+-rw-rw-r--  1 henrique henrique  6912 May 26 19:29 GsonDesignDocument.md
+-rw-rw-r--  1 henrique henrique 11358 May 26 19:29 LICENSE
+-rw-rw-r--  1 henrique henrique  7269 May 26 19:29 README.md
+-rw-rw-r--  1 henrique henrique  6458 May 26 19:29 ReleaseProcess.md
+-rw-rw-r--  1 henrique henrique 34978 May 26 19:29 Troubleshooting.md
+-rw-rw-r--  1 henrique henrique 34815 May 26 19:29 UserGuide.md
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 extras
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 gson
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 metrics
+-rw-rw-r--  1 henrique henrique 27295 May 26 19:29 pom.xml
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 proto
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 test-graal-native-image
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 test-jpms
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 test-shrinker
+
+ succeeded in 239ms:
+./proto/src/test/java/com/google/gson/protobuf/functional/ProtosWithAnnotationsAndJsonNamesTest.java
+./proto/src/test/java/com/google/gson/protobuf/functional/ProtosWithComplexAndRepeatedFieldsTest.java
+./proto/src/test/java/com/google/gson/protobuf/functional/ProtosWithPrimitiveTypesTest.java
+./proto/src/test/java/com/google/gson/protobuf/functional/ProtosWithAnnotationsTest.java
+./metrics/src/main/java/com/google/gson/metrics/BagOfPrimitives.java
+./metrics/src/main/java/com/google/gson/metrics/CollectionsDeserializationBenchmark.java
+./metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java
+./metrics/src/main/java/com/google/gson/metrics/BagOfPrimitivesDeserializationBenchmark.java
+./metrics/src/main/java/com/google/gson/metrics/NonUploadingCaliperRunner.java
+./metrics/src/main/java/com/google/gson/metrics/SerializationBenchmark.java
+./gson/src/test/java/com/google/gson/GenericArrayTypeTest.java
+./gson/src/test/java/com/google/gson/VersionExclusionStrategyTest.java
+./gson/src/test/java/com/google/gson/LongSerializationPolicyTest.java
+./gson/src/test/java/com/google/gson/OverrideCoreTypeAdaptersTest.java
+./gson/src/test/java/com/google/gson/GsonBuilderTest.java
+./gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java
+./gson/src/test/java/com/google/gson/GsonTypeAdapterTest.java
+./gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java
+./gson/src/test/java/com/google/gson/MixedStreamTest.java
+./gson/src/test/java/com/google/gson/SubsetTest.java
+./gson/src/test/java/com/google/gson/InnerClassExclusionStrategyTest.java
+./gson/src/test/java/com/google/gson/JsonParserParameterizedTest.java
+./gson/src/test/java/com/google/gson/functional/NamingPolicyTest.java
+./gson/src/test/java/com/google/gson/functional/TypeAdapterRuntimeTypeWrapperTest.java
+./gson/src/test/java/com/google/gson/functional/FieldNamingTest.java
+./gson/src/test/java/com/google/gson/functional/EnumWithObfuscatedTest.java
+./gson/src/test/java/com/google/gson/functional/TypeVariableTest.java
+./gson/src/test/java/com/google/gson/functional/UncategorizedTest.java
+./gson/src/test/java/com/google/gson/functional/ReflectionAccessFilterTest.java
+./gson/src/test/java/com/google/gson/functional/ReusedTypeVariablesFullyResolveTest.java
+./gson/src/test/java/com/google/gson/functional/MapAsArrayTypeAdapterTest.java
+./gson/src/test/java/com/google/gson/functional/TypeAdapterPrecedenceTest.java
+./gson/src/test/java/com/google/gson/functional/CustomSerializerTest.java
+./gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnClassesTest.java
+./gson/src/test/java/com/google/gson/functional/RuntimeTypeAdapterFactoryFunctionalTest.java
+./gson/src/test/java/com/google/gson/functional/ArrayTest.java
+./gson/src/test/java/com/google/gson/functional/StringTest.java
+./gson/src/test/java/com/google/gson/functional/ReflectionAccessTest.java
+./gson/src/test/java/com/google/gson/functional/PrintFormattingTest.java
+./gson/src/test/java/com/google/gson/functional/CustomDeserializerTest.java
+./gson/src/test/java/com/google/gson/functional/SecurityTest.java
+./gson/src/test/java/com/google/gson/functional/MapTest.java
+./gson/src/test/java/com/google/gson/functional/SerializedNameTest.java
+./gson/src/test/java/com/google/gson/functional/PrimitiveCharacterTest.java
+./gson/src/test/java/com/google/gson/functional/PrimitiveTest.java
+./gson/src/test/java/com/google/gson/functional/EnumTest.java
+./gson/src/test/java/com/google/gson/functional/CustomTypeAdaptersTest.java
+./gson/src/test/java/com/google/gson/functional/PrettyPrintingTest.java
+./gson/src/test/java/com/google/gson/functional/MoreSpecificTypeSerializationTest.java
+./gson/src/test/java/com/google/gson/functional/ParameterizedTypesTest.java
+./gson/src/test/java/com/google/gson/functional/ReadersWritersTest.java
+./gson/src/test/java/com/google/gson/functional/NumberLimitsTest.java
+./gson/src/test/java/com/google/gson/functional/EscapingTest.java
+./gson/src/test/java/com/google/gson/functional/InterfaceTest.java
+./gson/src/test/java/com/google/gson/functional/FieldExclusionTest.java
+./gson/src/test/java/com/google/gson/functional/FormattingStyleTest.java
+./gson/src/test/java/com/google/gson/functional/JavaUtilTest.java
+./gson/src/test/java/com/google/gson/functional/GsonVersionDiagnosticsTest.java
+./gson/src/test/java/com/google/gson/functional/JsonTreeTest.java
+./gson/src/test/java/com/google/gson/functional/CollectionTest.java
+./gson/src/test/java/com/google/gson/functional/JsonAdapterSerializerDeserializerTest.java
+./gson/src/test/java/com/google/gson/functional/JavaUtilConcurrentAtomicTest.java
+./gson/src/test/java/com/google/gson/functional/StreamingTypeAdaptersTest.java
+./gson/src/test/java/com/google/gson/functional/ExposeFieldsTest.java
+./gson/src/test/java/com/google/gson/functional/CircularReferenceTest.java
+./gson/src/test/java/com/google/gson/functional/LeniencyTest.java
+./gson/src/test/java/com/google/gson/functional/InstanceCreatorTest.java
+./gson/src/test/java/com/google/gson/functional/Java17RecordTest.java
+./gson/src/test/java/com/google/gson/functional/InternationalizationTest.java
+./gson/src/test/java/com/google/gson/functional/DelegateTypeAdapterTest.java
+./gson/src/test/java/com/google/gson/functional/TreeTypeAdaptersTest.java
+./gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnFieldsTest.java
+./gson/src/test/java/com/google/gson/DefaultInetAddressTypeAdapterTest.java
+./gson/src/test/java/com/google/gson/ExposeAnnotationExclusionStrategyTest.java
+./gson/src/test/java/com/google/gson/JsonObjectAsMapSuiteTest.java
+./gson/src/test/java/com/google/gson/ToNumberPolicyTest.java
+./gson/src/test/java/com/google/gson/FieldAttributesTest.java
+./gson/src/test/java/com/google/gson/common/TestTypes.java
+./gson/src/test/java/com/google/gson/common/MoreAsserts.java
+./gson/src/test/java/com/google/gson/stream/JsonWriterTest.java
+./gson/src/test/java/com/google/gson/stream/JsonReaderPathTest.java
+./gson/src/test/java/com/google/gson/stream/JsonReaderTest.java
+./gson/src/test/java/com/google/gson/JsonArrayAsListTest.java
+./gson/src/test/java/com/google/gson/JsonArrayTest.java
+./gson/src/test/java/com/google/gson/ObjectTypeAdapterTest.java
+./gson/src/test/java/com/google/gson/GsonTest.java
+./gson/src/test/java/com/google/gson/JsonNullTest.java
+./gson/src/test/java/com/google/gson/JavaSerializationTest.java
+./gson/src/test/java/com/google/gson/metrics/PerformanceTest.java
+./gson/src/test/java/com/google/gson/ObjectTypeAdapterParameterizedTest.java
+./gson/src/test/java/com/google/gson/internal/bind/RecursiveTypesResolveTest.java
+./gson/src/test/java/com/google/gson/internal/bind/Java17ReflectiveTypeAdapterFactoryTest.java
+./gson/src/test/java/com/google/gson/internal/bind/JsonTreeWriterTest.java
+./gson/src/test/java/com/google/gson/internal/bind/util/ISO8601UtilsTest.java
+./gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java
+./gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java
+./gson/src/test/java/com/google/gson/internal/bind/DefaultDateTypeAdapterTest.java
+./gson/src/test/java/com/google/gson/internal/LazilyParsedNumberTest.java
+./gson/src/test/java/com/google/gson/internal/ConstructorConstructorTest.java
+./gson/src/test/java/com/google/gson/internal/GsonBuildConfigTest.java
+./gson/src/test/java/com/google/gson/internal/LinkedTreeMapTest.java
+./gson/src/test/java/com/google/gson/internal/sql/SqlTypesSupportTest.java
+./gson/src/test/java/com/google/gson/internal/sql/SqlTypesGsonTest.java
+./gson/src/test/java/com/google/gson/internal/reflect/Java17ReflectionHelperTest.java
+./gson/src/test/java/com/google/gson/internal/LinkedTreeMapSuiteTest.java
+./gson/src/test/java/com/google/gson/internal/JavaVersionTest.java
+./gson/src/test/java/com/google/gson/internal/GsonTypesTest.java
+./gson/src/test/java/com/google/gson/internal/StreamsTest.java
+./gson/src/test/java/com/google/gson/internal/UnsafeAllocatorInstantiationTest.java
+./gson/src/test/java/com/google/gson/FieldNamingPolicyTest.java
+./gson/src/test/java/com/google/gson/ParameterizedTypeFixtures.java
+./gson/src/test/java/com/google/gson/JsonParserTest.java
+./gson/src/test/java/com/google/gson/JsonObjectAsMapTest.java
+./gson/src/test/java/com/google/gson/functional/TypeHierarchyAdapterTest.java
+./gson/src/test/java/com/google/gson/integration/OSGiManifestIT.java
+./gson/src/test/java/com/google/gson/CommentsTest.java
+./gson/src/test/java/com/google/gson/JsonPrimitiveTest.java
+./gson/src/test/java/com/google/gson/ParameterizedTypeTest.java
+./gson/src/test/java/com/google/gson/TypeAdapterTest.java
+./gson/src/test/java/com/google/gson/JsonObjectTest.java
+./gson/src/test/java/com/google/gson/JsonStreamParserTest.java
+./gson/src/test/java/com/google/gson/DefaultMapJsonSerializerTest.java
+./gson/src/test/java/com/google/gson/PrimitiveTypeAdapter.java
+./gson/src/test/java/com/google/gson/functional/ExclusionStrategyFunctionalTest.java
+./gson/src/test/java/com/google/gson/functional/NullObjectAndFieldTest.java
+./gson/src/test/java/com/google/gson/functional/ConcurrencyTest.java
+./gson/src/test/java/com/google/gson/functional/ToNumberPolicyFunctionalTest.java
+./gson/src/test/java/com/google/gson/functional/JsonParserTest.java
+./gson/src/test/java/com/google/gson/functional/VersioningTest.java
+./gson/src/test/java/com/google/gson/functional/ObjectTest.java
+./gson/src/test/java/com/google/gson/functional/InheritanceTest.java
+./gson/src/test/java/com/google/gson/functional/RawSerializationTest.java
+./extras/src/main/java/com/google/gson/interceptors/JsonPostDeserializer.java
+./extras/src/main/java/com/google/gson/interceptors/Intercept.java
+./extras/src/main/java/com/google/gson/interceptors/InterceptorFactory.java
+./extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java
+./extras/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java
+./extras/src/main/java/com/google/gson/typeadapters/UtcDateTypeAdapter.java
+./gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java
+./extras/src/main/java/com/google/gson/extras/examples/rawcollections/RawCollectionsExample.java
+./gson/src/main/java/module-info.java
+./extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java
+./gson/src/main/java-templates/com/google/gson/internal/GsonBuildConfig.java
+./gson/src/main/java/com/google/gson/JsonDeserializer.java
+./gson/src/main/java/com/google/gson/InstanceCreator.java
+./gson/src/main/java/com/google/gson/JsonStreamParser.java
+./gson/src/main/java/com/google/gson/ReflectionAccessFilter.java
+./gson/src/main/java/com/google/gson/package-info.java
+./gson/src/main/java/com/google/gson/JsonParser.java
+./test-jpms/src/test/java/module-info.java
+./gson/src/main/java/com/google/gson/internal/PreJava9DateFormatProvider.java
+./gson/src/main/java/com/google/gson/internal/bind/JavaTimeTypeAdapters.java
+./gson/src/main/java/com/google/gson/internal/bind/IgnoreJRERequirement.java
+./gson/src/main/java/com/google/gson/internal/bind/ObjectTypeAdapter.java
+./gson/src/main/java/com/google/gson/internal/bind/JsonElementTypeAdapter.java
+./gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java
+./gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java
+./gson/src/main/java/com/google/gson/internal/bind/JsonAdapterAnnotationTypeAdapterFactory.java
+./gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java
+./gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java
+./gson/src/main/java/com/google/gson/internal/bind/DefaultDateTypeAdapter.java
+./gson/src/main/java/com/google/gson/internal/bind/NumberTypeAdapter.java
+./test-jpms/src/test/java/com/google/gson/jpms_test/opened/ReflectionTest.java
+./test-jpms/src/test/java/com/google/gson/jpms_test/ReflectionInaccessibleTest.java
+./test-jpms/src/test/java/com/google/gson/jpms_test/ModuleTest.java
+./test-jpms/src/test/java/com/google/gson/jpms_test/ExportedPackagesTest.java
+./gson/src/main/java/com/google/gson/internal/bind/SerializationDelegatingTypeAdapter.java
+./gson/src/main/java/com/google/gson/internal/bind/util/ISO8601Utils.java
+./gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java
+./gson/src/main/java/com/google/gson/internal/bind/TreeTypeAdapter.java
+./gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java
+./gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java
+./gson/src/main/java/com/google/gson/internal/bind/ArrayTypeAdapter.java
+./gson/src/main/java/com/google/gson/internal/bind/EnumTypeAdapter.java
+./gson/src/main/java/com/google/gson/internal/LazilyParsedNumber.java
+./gson/src/main/java/com/google/gson/internal/TroubleshootingGuide.java
+./test-jpms/src/main/java/module-info.java
+./gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java
+./gson/src/main/java/com/google/gson/internal/GsonTypes.java
+./gson/src/main/java/com/google/gson/internal/package-info.java
+./gson/src/main/java/com/google/gson/internal/ObjectConstructor.java
+./gson/src/main/java/com/google/gson/internal/LinkedTreeMap.java
+./gson/src/main/java/com/google/gson/FormattingStyle.java
+./gson/src/main/java/com/google/gson/JsonArray.java
+./gson/src/main/java/com/google/gson/JsonSerializer.java
+./gson/src/main/java/com/google/gson/JsonIOException.java
+./gson/src/main/java/com/google/gson/JsonObject.java
+./gson/src/main/java/com/google/gson/internal/NumberLimits.java
+./gson/src/main/java/com/google/gson/internal/JavaVersion.java
+./gson/src/main/java/com/google/gson/internal/Primitives.java
+./gson/src/main/java/com/google/gson/internal/UnsafeAllocator.java
+./gson/src/main/java/com/google/gson/internal/JsonReaderInternalAccess.java
+./gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java
+./gson/src/main/java/com/google/gson/internal/Streams.java
+./gson/src/main/java/com/google/gson/internal/Excluder.java
+./gson/src/main/java/com/google/gson/internal/NonNullElementWrapperList.java
+./gson/src/main/java/com/google/gson/internal/sql/SqlTimeTypeAdapter.java
+./gson/src/main/java/com/google/gson/internal/sql/SqlTimestampTypeAdapter.java
+./gson/src/main/java/com/google/gson/internal/sql/SqlDateTypeAdapter.java
+./gson/src/main/java/com/google/gson/internal/sql/SqlTypesSupport.java
+./gson/src/main/java/com/google/gson/JsonPrimitive.java
+./gson/src/main/java/com/google/gson/ToNumberPolicy.java
+./gson/src/main/java/com/google/gson/TypeAdapter.java
+./gson/src/main/java/com/google/gson/JsonElement.java
+./gson/src/main/java/com/google/gson/stream/JsonWriter.java
+./gson/src/main/java/com/google/gson/stream/MalformedJsonException.java
+./gson/src/main/java/com/google/gson/stream/JsonScope.java
+./gson/src/main/java/com/google/gson/stream/JsonReader.java
+./gson/src/main/java/com/google/gson/stream/package-info.java
+./gson/src/main/java/com/google/gson/stream/JsonToken.java
+./gson/src/main/java/com/google/gson/ToNumberStrategy.java
+./gson/src/main/java/com/google/gson/JsonDeserializationContext.java
+./gson/src/main/java/com/google/gson/ExclusionStrategy.java
+./gson/src/main/java/com/google/gson/FieldAttributes.java
+./gson/src/main/java/com/google/gson/Gson.java
+./gson/src/main/java/com/google/gson/FieldNamingPolicy.java
+./gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java
+./proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java
+./extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java
+./extras/src/test/java/com/google/gson/interceptors/InterceptorTest.java
+./gson/src/main/java/com/google/gson/TypeAdapterFactory.java
+./gson/src/main/java/com/google/gson/GsonBuilder.java
+./gson/src/main/java/com/google/gson/JsonSyntaxException.java
+./gson/src/main/java/com/google/gson/JsonNull.java
+./gson/src/main/java/com/google/gson/JsonSerializationContext.java
+./gson/src/main/java/com/google/gson/reflect/TypeToken.java
+./gson/src/main/java/com/google/gson/reflect/package-info.java
+./gson/src/main/java/com/google/gson/LongSerializationPolicy.java
+./gson/src/main/java/com/google/gson/Strictness.java
+./gson/src/main/java/com/google/gson/FieldNamingStrategy.java
+./gson/src/main/java/com/google/gson/annotations/Expose.java
+./gson/src/main/java/com/google/gson/annotations/JsonAdapter.java
+./gson/src/main/java/com/google/gson/annotations/Since.java
+./gson/src/main/java/com/google/gson/annotations/Until.java
+./gson/src/main/java/com/google/gson/annotations/SerializedName.java
+./gson/src/main/java/com/google/gson/annotations/package-info.java
+./gson/src/main/java/com/google/gson/JsonParseException.java
+./extras/src/test/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactoryTest.java
+./extras/src/test/java/com/google/gson/typeadapters/PostConstructAdapterFactoryTest.java
+./extras/src/test/java/com/google/gson/typeadapters/UtcDateTypeAdapterTest.java
+./test-graal-native-image/src/test/java/com/google/gson/native_test/Java17RecordReflectionTest.java
+./test-graal-native-image/src/test/java/com/google/gson/native_test/ReflectionTest.java
+./test-shrinker/src/test/java/com/google/gson/it/ShrinkingIT.java
+./test-shrinker/src/main/java/com/example/EnumClassWithSerializedName.java
+./test-shrinker/src/main/java/com/example/GenericClasses.java
+./test-shrinker/src/main/java/com/example/ClassWithSerializedName.java
+./test-shrinker/src/main/java/com/example/ClassWithJsonAdapterAnnotation.java
+./test-shrinker/src/main/java/com/example/ClassWithExposeAnnotation.java
+./test-shrinker/src/main/java/com/example/EnumClass.java
+./test-shrinker/src/main/java/com/example/NoSerializedNameMain.java
+./test-shrinker/src/main/java/com/example/TestExecutor.java
+./test-shrinker/src/main/java/com/example/ClassWithHasArgsConstructor.java
+./test-shrinker/src/main/java/com/example/Main.java
+./test-shrinker/src/main/java/com/example/InterfaceWithImplementation.java
+./test-shrinker/src/main/java/com/example/ClassWithAdapter.java
+./test-shrinker/src/main/java/com/example/ClassWithNamedFields.java
+./test-shrinker/src/main/java/com/example/UnusedClass.java
+./test-shrinker/src/main/java/com/example/ClassWithVersionAnnotations.java
+./test-shrinker/src/main/java/com/example/ClassWithNoArgsConstructor.java
+./test-shrinker/src/main/java/com/example/ClassWithUnreferencedNoArgsConstructor.java
+./test-shrinker/src/main/java/com/example/ClassWithUnreferencedHasArgsConstructor.java
+
+codex
+I found the Gson module layout. Next I’m reading `ReflectiveTypeAdapterFactory` itself and then checking how widely `RecordAdapter` is referenced inside the repository to see whether it acts as a dependency hub.
+exec
+/bin/bash -lc "nl -ba gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java | sed -n '1,260p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "rg -n \"RecordAdapter\\b|new RecordAdapter|extends RecordAdapter|RecordAdapter<\" gson/src/main/java gson/src/test/java test-graal-native-image/src/test/java test-jpms/src/test/java test-shrinker/src/main/java extras/src/main/java extras/src/test/java proto/src/main/java proto/src/test/java -S" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 208ms:
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:152:    // If the type is actually a Java Record, we need to use the RecordAdapter instead. This will
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:158:              new RecordAdapter<>(
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:462:   * <p>The {@link RecordAdapter} is a special case to handle records for JVMs that support it, for
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:568:  private static final class RecordAdapter<T> extends Adapter<T, Object[]> {
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:578:    RecordAdapter(Class<T> raw, FieldsData fieldsData, boolean blockInaccessible) {
+
+ succeeded in 265ms:
+     1	/*
+     2	 * Copyright (C) 2011 Google Inc.
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *      http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	
+    17	package com.google.gson.internal.bind;
+    18	
+    19	import com.google.gson.FieldNamingStrategy;
+    20	import com.google.gson.Gson;
+    21	import com.google.gson.JsonIOException;
+    22	import com.google.gson.JsonParseException;
+    23	import com.google.gson.JsonSyntaxException;
+    24	import com.google.gson.ReflectionAccessFilter;
+    25	import com.google.gson.ReflectionAccessFilter.FilterResult;
+    26	import com.google.gson.TypeAdapter;
+    27	import com.google.gson.TypeAdapterFactory;
+    28	import com.google.gson.annotations.JsonAdapter;
+    29	import com.google.gson.annotations.SerializedName;
+    30	import com.google.gson.internal.ConstructorConstructor;
+    31	import com.google.gson.internal.Excluder;
+    32	import com.google.gson.internal.GsonTypes;
+    33	import com.google.gson.internal.ObjectConstructor;
+    34	import com.google.gson.internal.Primitives;
+    35	import com.google.gson.internal.ReflectionAccessFilterHelper;
+    36	import com.google.gson.internal.TroubleshootingGuide;
+    37	import com.google.gson.internal.reflect.ReflectionHelper;
+    38	import com.google.gson.reflect.TypeToken;
+    39	import com.google.gson.stream.JsonReader;
+    40	import com.google.gson.stream.JsonToken;
+    41	import com.google.gson.stream.JsonWriter;
+    42	import java.io.IOException;
+    43	import java.lang.reflect.AccessibleObject;
+    44	import java.lang.reflect.Constructor;
+    45	import java.lang.reflect.Field;
+    46	import java.lang.reflect.InvocationTargetException;
+    47	import java.lang.reflect.Member;
+    48	import java.lang.reflect.Method;
+    49	import java.lang.reflect.Modifier;
+    50	import java.lang.reflect.Type;
+    51	import java.util.ArrayList;
+    52	import java.util.Arrays;
+    53	import java.util.Collections;
+    54	import java.util.HashMap;
+    55	import java.util.LinkedHashMap;
+    56	import java.util.List;
+    57	import java.util.Map;
+    58	
+    59	/** Type adapter that reflects over the fields and methods of a class. */
+    60	public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
+    61	  private final ConstructorConstructor constructorConstructor;
+    62	  private final FieldNamingStrategy fieldNamingPolicy;
+    63	  private final Excluder excluder;
+    64	  private final JsonAdapterAnnotationTypeAdapterFactory jsonAdapterFactory;
+    65	  private final List<ReflectionAccessFilter> reflectionFilters;
+    66	
+    67	  public ReflectiveTypeAdapterFactory(
+    68	      ConstructorConstructor constructorConstructor,
+    69	      FieldNamingStrategy fieldNamingPolicy,
+    70	      Excluder excluder,
+    71	      JsonAdapterAnnotationTypeAdapterFactory jsonAdapterFactory,
+    72	      List<ReflectionAccessFilter> reflectionFilters) {
+    73	    this.constructorConstructor = constructorConstructor;
+    74	    this.fieldNamingPolicy = fieldNamingPolicy;
+    75	    this.excluder = excluder;
+    76	    this.jsonAdapterFactory = jsonAdapterFactory;
+    77	    this.reflectionFilters = reflectionFilters;
+    78	  }
+    79	
+    80	  private boolean includeField(Field f, boolean serialize) {
+    81	    return !excluder.excludeField(f, serialize);
+    82	  }
+    83	
+    84	  /** first element holds the default name */
+    85	  @SuppressWarnings("MixedMutabilityReturnType")
+    86	  private List<String> getFieldNames(Field f) {
+    87	
+    88	    String fieldName;
+    89	    List<String> alternates;
+    90	    SerializedName annotation = f.getAnnotation(SerializedName.class);
+    91	    if (annotation == null) {
+    92	      fieldName = fieldNamingPolicy.translateName(f);
+    93	      alternates = fieldNamingPolicy.alternateNames(f);
+    94	    } else {
+    95	      fieldName = annotation.value();
+    96	      alternates = Arrays.asList(annotation.alternate());
+    97	    }
+    98	
+    99	    if (alternates.isEmpty()) {
+   100	      return Collections.singletonList(fieldName);
+   101	    }
+   102	
+   103	    List<String> fieldNames = new ArrayList<>(alternates.size() + 1);
+   104	    fieldNames.add(fieldName);
+   105	    fieldNames.addAll(alternates);
+   106	    return fieldNames;
+   107	  }
+   108	
+   109	  @Override
+   110	  public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
+   111	    Class<? super T> raw = type.getRawType();
+   112	
+   113	    if (!Object.class.isAssignableFrom(raw)) {
+   114	      return null; // it's a primitive!
+   115	    }
+   116	
+   117	    // Don't allow using reflection on anonymous and local classes because synthetic fields for
+   118	    // captured enclosing values make this unreliable
+   119	    if (ReflectionHelper.isAnonymousOrNonStaticLocal(raw)) {
+   120	      // This adapter just serializes and deserializes null, ignoring the actual values
+   121	      // This is done for backward compatibility; troubleshooting-wise it might be better to throw
+   122	      // exceptions
+   123	      return new TypeAdapter<T>() {
+   124	        @Override
+   125	        public T read(JsonReader in) throws IOException {
+   126	          in.skipValue();
+   127	          return null;
+   128	        }
+   129	
+   130	        @Override
+   131	        public void write(JsonWriter out, T value) throws IOException {
+   132	          out.nullValue();
+   133	        }
+   134	
+   135	        @Override
+   136	        public String toString() {
+   137	          return "AnonymousOrNonStaticLocalClassAdapter";
+   138	        }
+   139	      };
+   140	    }
+   141	
+   142	    FilterResult filterResult =
+   143	        ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
+   144	    if (filterResult == FilterResult.BLOCK_ALL) {
+   145	      throw new JsonIOException(
+   146	          "ReflectionAccessFilter does not permit using reflection for "
+   147	              + raw
+   148	              + ". Register a TypeAdapter for this type or adjust the access filter.");
+   149	    }
+   150	    boolean blockInaccessible = filterResult == FilterResult.BLOCK_INACCESSIBLE;
+   151	
+   152	    // If the type is actually a Java Record, we need to use the RecordAdapter instead. This will
+   153	    // always be false on JVMs that do not support records.
+   154	    if (ReflectionHelper.isRecord(raw)) {
+   155	      @SuppressWarnings("unchecked")
+   156	      TypeAdapter<T> adapter =
+   157	          (TypeAdapter<T>)
+   158	              new RecordAdapter<>(
+   159	                  raw, getBoundFields(gson, type, raw, blockInaccessible, true), blockInaccessible);
+   160	      return adapter;
+   161	    }
+   162	
+   163	    ObjectConstructor<T> constructor = constructorConstructor.get(type, true);
+   164	    return new FieldReflectionAdapter<>(
+   165	        constructor, getBoundFields(gson, type, raw, blockInaccessible, false));
+   166	  }
+   167	
+   168	  private static <M extends AccessibleObject & Member> void checkAccessible(
+   169	      Object object, M member) {
+   170	    if (!ReflectionAccessFilterHelper.canAccess(
+   171	        member, Modifier.isStatic(member.getModifiers()) ? null : object)) {
+   172	      String memberDescription = ReflectionHelper.getAccessibleObjectDescription(member, true);
+   173	      throw new JsonIOException(
+   174	          memberDescription
+   175	              + " is not accessible and ReflectionAccessFilter does not permit making it"
+   176	              + " accessible. Register a TypeAdapter for the declaring type, adjust the access"
+   177	              + " filter or increase the visibility of the element and its declaring type.");
+   178	    }
+   179	  }
+   180	
+   181	  private BoundField createBoundField(
+   182	      Gson context,
+   183	      Field field,
+   184	      Method accessor,
+   185	      String serializedName,
+   186	      TypeToken<?> fieldType,
+   187	      boolean serialize,
+   188	      boolean blockInaccessible) {
+   189	
+   190	    boolean isPrimitive = Primitives.isPrimitive(fieldType.getRawType());
+   191	
+   192	    int modifiers = field.getModifiers();
+   193	    boolean isStaticFinalField = Modifier.isStatic(modifiers) && Modifier.isFinal(modifiers);
+   194	
+   195	    JsonAdapter annotation = field.getAnnotation(JsonAdapter.class);
+   196	    TypeAdapter<?> mapped = null;
+   197	    if (annotation != null) {
+   198	      // This is not safe; requires that user has specified correct adapter class for @JsonAdapter
+   199	      mapped =
+   200	          jsonAdapterFactory.getTypeAdapter(
+   201	              constructorConstructor, context, fieldType, annotation, false);
+   202	    }
+   203	    boolean jsonAdapterPresent = mapped != null;
+   204	    if (mapped == null) {
+   205	      mapped = context.getAdapter(fieldType);
+   206	    }
+   207	
+   208	    @SuppressWarnings("unchecked")
+   209	    TypeAdapter<Object> typeAdapter = (TypeAdapter<Object>) mapped;
+   210	    TypeAdapter<Object> writeTypeAdapter;
+   211	    if (serialize) {
+   212	      writeTypeAdapter =
+   213	          jsonAdapterPresent
+   214	              ? typeAdapter
+   215	              : new TypeAdapterRuntimeTypeWrapper<>(context, typeAdapter, fieldType.getType());
+   216	    } else {
+   217	      // Will never actually be used, but we set it to avoid confusing nullness-analysis tools
+   218	      writeTypeAdapter = typeAdapter;
+   219	    }
+   220	    return new BoundField(serializedName, field) {
+   221	      @Override
+   222	      void write(JsonWriter writer, Object source) throws IOException, IllegalAccessException {
+   223	        if (blockInaccessible) {
+   224	          if (accessor == null) {
+   225	            checkAccessible(source, field);
+   226	          } else {
+   227	            // Note: This check might actually be redundant because access check for canonical
+   228	            // constructor should have failed already
+   229	            checkAccessible(source, accessor);
+   230	          }
+   231	        }
+   232	
+   233	        Object fieldValue;
+   234	        if (accessor != null) {
+   235	          try {
+   236	            fieldValue = accessor.invoke(source);
+   237	          } catch (InvocationTargetException e) {
+   238	            String accessorDescription =
+   239	                ReflectionHelper.getAccessibleObjectDescription(accessor, false);
+   240	            throw new JsonIOException(
+   241	                "Accessor " + accessorDescription + " threw exception", e.getCause());
+   242	          }
+   243	        } else {
+   244	          fieldValue = field.get(source);
+   245	        }
+   246	        if (fieldValue == source) {
+   247	          // avoid direct recursion
+   248	          return;
+   249	        }
+   250	        writer.name(serializedName);
+   251	        writeTypeAdapter.write(writer, fieldValue);
+   252	      }
+   253	
+   254	      @Override
+   255	      void readIntoArray(JsonReader reader, int index, Object[] target)
+   256	          throws IOException, JsonParseException {
+   257	        Object fieldValue = typeAdapter.read(reader);
+   258	        if (fieldValue == null && isPrimitive) {
+   259	          throw new JsonParseException(
+   260	              "null is not allowed as value for record component '"
+
+codex
+I found the nested `RecordAdapter` definition and the only construction site. I’m reading that section now to measure how much it depends on other types and whether there is any meaningful fan-in beyond the enclosing factory.
+exec
+/bin/bash -lc "nl -ba gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java | sed -n '430,760p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "rg -n \"getBoundFields\\(|class FieldsData|class Adapter<|class FieldReflectionAdapter|abstract class Adapter\" gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java -n -S" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 250ms:
+159:                  raw, getBoundFields(gson, type, raw, blockInaccessible, true), blockInaccessible);
+165:        constructor, getBoundFields(gson, type, raw, blockInaccessible, false));
+288:  private static class FieldsData {
+317:  private FieldsData getBoundFields(
+474:  public abstract static class Adapter<T, A> extends TypeAdapter<T> {
+543:  private static final class FieldReflectionAdapter<T> extends Adapter<T, T> {
+
+ succeeded in 281ms:
+   430	    final String serializedName;
+   431	
+   432	    final Field field;
+   433	
+   434	    /** Name of the underlying field */
+   435	    final String fieldName;
+   436	
+   437	    protected BoundField(String serializedName, Field field) {
+   438	      this.serializedName = serializedName;
+   439	      this.field = field;
+   440	      this.fieldName = field.getName();
+   441	    }
+   442	
+   443	    /** Read this field value from the source, and append its JSON value to the writer */
+   444	    abstract void write(JsonWriter writer, Object source)
+   445	        throws IOException, IllegalAccessException;
+   446	
+   447	    /** Read the value into the target array, used to provide constructor arguments for records */
+   448	    abstract void readIntoArray(JsonReader reader, int index, Object[] target)
+   449	        throws IOException, JsonParseException;
+   450	
+   451	    /**
+   452	     * Read the value from the reader, and set it on the corresponding field on target via
+   453	     * reflection
+   454	     */
+   455	    abstract void readIntoField(JsonReader reader, Object target)
+   456	        throws IOException, IllegalAccessException;
+   457	  }
+   458	
+   459	  /**
+   460	   * Base class for Adapters produced by this factory.
+   461	   *
+   462	   * <p>The {@link RecordAdapter} is a special case to handle records for JVMs that support it, for
+   463	   * all other types we use the {@link FieldReflectionAdapter}. This class encapsulates the common
+   464	   * logic for serialization and deserialization. During deserialization, we construct an
+   465	   * accumulator A, which we use to accumulate values from the source JSON. After the object has
+   466	   * been read in full, the {@link #finalize(Object)} method is used to convert the accumulator to
+   467	   * an instance of T.
+   468	   *
+   469	   * @param <T> type of objects that this Adapter creates.
+   470	   * @param <A> type of accumulator used to build the deserialization result.
+   471	   */
+   472	  // This class is public because external projects check for this class with `instanceof` (even
+   473	  // though it is internal)
+   474	  public abstract static class Adapter<T, A> extends TypeAdapter<T> {
+   475	    private final FieldsData fieldsData;
+   476	
+   477	    Adapter(FieldsData fieldsData) {
+   478	      this.fieldsData = fieldsData;
+   479	    }
+   480	
+   481	    @Override
+   482	    public void write(JsonWriter out, T value) throws IOException {
+   483	      if (value == null) {
+   484	        out.nullValue();
+   485	        return;
+   486	      }
+   487	
+   488	      out.beginObject();
+   489	      try {
+   490	        for (BoundField boundField : fieldsData.serializedFields) {
+   491	          boundField.write(out, value);
+   492	        }
+   493	      } catch (IllegalAccessException e) {
+   494	        throw ReflectionHelper.createExceptionForUnexpectedIllegalAccess(e);
+   495	      }
+   496	      out.endObject();
+   497	    }
+   498	
+   499	    @Override
+   500	    public T read(JsonReader in) throws IOException {
+   501	      if (in.peek() == JsonToken.NULL) {
+   502	        in.nextNull();
+   503	        return null;
+   504	      }
+   505	
+   506	      A accumulator = createAccumulator();
+   507	      Map<String, BoundField> deserializedFields = fieldsData.deserializedFields;
+   508	
+   509	      try {
+   510	        in.beginObject();
+   511	        while (in.hasNext()) {
+   512	          String name = in.nextName();
+   513	          BoundField field = deserializedFields.get(name);
+   514	          if (field == null) {
+   515	            in.skipValue();
+   516	          } else {
+   517	            readField(accumulator, in, field);
+   518	          }
+   519	        }
+   520	      } catch (IllegalStateException e) {
+   521	        throw new JsonSyntaxException(e);
+   522	      } catch (IllegalAccessException e) {
+   523	        throw ReflectionHelper.createExceptionForUnexpectedIllegalAccess(e);
+   524	      }
+   525	      in.endObject();
+   526	      return finalize(accumulator);
+   527	    }
+   528	
+   529	    /** Create the Object that will be used to collect each field value */
+   530	    abstract A createAccumulator();
+   531	
+   532	    /**
+   533	     * Read a single BoundField into the accumulator. The JsonReader will be pointed at the start of
+   534	     * the value for the BoundField to read from.
+   535	     */
+   536	    abstract void readField(A accumulator, JsonReader in, BoundField field)
+   537	        throws IllegalAccessException, IOException;
+   538	
+   539	    /** Convert the accumulator to a final instance of T. */
+   540	    abstract T finalize(A accumulator);
+   541	  }
+   542	
+   543	  private static final class FieldReflectionAdapter<T> extends Adapter<T, T> {
+   544	    private final ObjectConstructor<T> constructor;
+   545	
+   546	    FieldReflectionAdapter(ObjectConstructor<T> constructor, FieldsData fieldsData) {
+   547	      super(fieldsData);
+   548	      this.constructor = constructor;
+   549	    }
+   550	
+   551	    @Override
+   552	    T createAccumulator() {
+   553	      return constructor.construct();
+   554	    }
+   555	
+   556	    @Override
+   557	    void readField(T accumulator, JsonReader in, BoundField field)
+   558	        throws IllegalAccessException, IOException {
+   559	      field.readIntoField(in, accumulator);
+   560	    }
+   561	
+   562	    @Override
+   563	    T finalize(T accumulator) {
+   564	      return accumulator;
+   565	    }
+   566	  }
+   567	
+   568	  private static final class RecordAdapter<T> extends Adapter<T, Object[]> {
+   569	    static final Map<Class<?>, Object> PRIMITIVE_DEFAULTS = primitiveDefaults();
+   570	
+   571	    // The canonical constructor of the record
+   572	    private final Constructor<T> constructor;
+   573	    // Array of arguments to the constructor, initialized with default values for primitives
+   574	    private final Object[] constructorArgsDefaults;
+   575	    // Map from component names to index into the constructors arguments.
+   576	    private final Map<String, Integer> componentIndices = new HashMap<>();
+   577	
+   578	    RecordAdapter(Class<T> raw, FieldsData fieldsData, boolean blockInaccessible) {
+   579	      super(fieldsData);
+   580	      constructor = ReflectionHelper.getCanonicalRecordConstructor(raw);
+   581	
+   582	      if (blockInaccessible) {
+   583	        checkAccessible(null, constructor);
+   584	      } else {
+   585	        // Ensure the constructor is accessible
+   586	        ReflectionHelper.makeAccessible(constructor);
+   587	      }
+   588	
+   589	      String[] componentNames = ReflectionHelper.getRecordComponentNames(raw);
+   590	      for (int i = 0; i < componentNames.length; i++) {
+   591	        componentIndices.put(componentNames[i], i);
+   592	      }
+   593	      Class<?>[] parameterTypes = constructor.getParameterTypes();
+   594	
+   595	      // We need to ensure that we are passing non-null values to primitive fields in the
+   596	      // constructor. To do this, we create an Object[] where all primitives are initialized to
+   597	      // non-null values.
+   598	      constructorArgsDefaults = new Object[parameterTypes.length];
+   599	      for (int i = 0; i < parameterTypes.length; i++) {
+   600	        // This will correctly be null for non-primitive types:
+   601	        constructorArgsDefaults[i] = PRIMITIVE_DEFAULTS.get(parameterTypes[i]);
+   602	      }
+   603	    }
+   604	
+   605	    private static Map<Class<?>, Object> primitiveDefaults() {
+   606	      Map<Class<?>, Object> zeroes = new HashMap<>();
+   607	      zeroes.put(byte.class, (byte) 0);
+   608	      zeroes.put(short.class, (short) 0);
+   609	      zeroes.put(int.class, 0);
+   610	      zeroes.put(long.class, 0L);
+   611	      zeroes.put(float.class, 0F);
+   612	      zeroes.put(double.class, 0D);
+   613	      zeroes.put(char.class, '\0');
+   614	      zeroes.put(boolean.class, false);
+   615	      return zeroes;
+   616	    }
+   617	
+   618	    @Override
+   619	    Object[] createAccumulator() {
+   620	      return constructorArgsDefaults.clone();
+   621	    }
+   622	
+   623	    @Override
+   624	    void readField(Object[] accumulator, JsonReader in, BoundField field) throws IOException {
+   625	      // Obtain the component index from the name of the field backing it
+   626	      Integer componentIndex = componentIndices.get(field.fieldName);
+   627	      if (componentIndex == null) {
+   628	        throw new IllegalStateException(
+   629	            "Could not find the index in the constructor '"
+   630	                + ReflectionHelper.constructorToString(constructor)
+   631	                + "' for field with name '"
+   632	                + field.fieldName
+   633	                + "', unable to determine which argument in the constructor the field corresponds"
+   634	                + " to. This is unexpected behavior, as we expect the RecordComponents to have the"
+   635	                + " same names as the fields in the Java class, and that the order of the"
+   636	                + " RecordComponents is the same as the order of the canonical constructor"
+   637	                + " parameters.");
+   638	      }
+   639	      field.readIntoArray(in, componentIndex, accumulator);
+   640	    }
+   641	
+   642	    @Override
+   643	    T finalize(Object[] accumulator) {
+   644	      try {
+   645	        return constructor.newInstance(accumulator);
+   646	      } catch (IllegalAccessException e) {
+   647	        throw ReflectionHelper.createExceptionForUnexpectedIllegalAccess(e);
+   648	      }
+   649	      // Note: InstantiationException should be impossible because record class is not abstract;
+   650	      //  IllegalArgumentException should not be possible unless a bad adapter returns objects of
+   651	      //  the wrong type
+   652	      catch (InstantiationException | IllegalArgumentException e) {
+   653	        throw new RuntimeException(
+   654	            "Failed to invoke constructor '"
+   655	                + ReflectionHelper.constructorToString(constructor)
+   656	                + "' with args "
+   657	                + Arrays.toString(accumulator),
+   658	            e);
+   659	      } catch (InvocationTargetException e) {
+   660	        // TODO: JsonParseException ?
+   661	        throw new RuntimeException(
+   662	            "Failed to invoke constructor '"
+   663	                + ReflectionHelper.constructorToString(constructor)
+   664	                + "' with args "
+   665	                + Arrays.toString(accumulator),
+   666	            e.getCause());
+   667	      }
+   668	    }
+   669	  }
+   670	}
+
+exec
+/bin/bash -lc "nl -ba gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java | sed -n '280,430p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+   280	            throw new JsonIOException("Cannot set value of 'static final' " + fieldDescription);
+   281	          }
+   282	          field.set(target, fieldValue);
+   283	        }
+   284	      }
+   285	    };
+   286	  }
+   287	
+   288	  private static class FieldsData {
+   289	    static final FieldsData EMPTY = new FieldsData(Collections.emptyMap(), Collections.emptyList());
+   290	
+   291	    /** Maps from JSON member name to field */
+   292	    final Map<String, BoundField> deserializedFields;
+   293	
+   294	    final List<BoundField> serializedFields;
+   295	
+   296	    FieldsData(Map<String, BoundField> deserializedFields, List<BoundField> serializedFields) {
+   297	      this.deserializedFields = deserializedFields;
+   298	      this.serializedFields = serializedFields;
+   299	    }
+   300	  }
+   301	
+   302	  private static IllegalArgumentException createDuplicateFieldException(
+   303	      Class<?> declaringType, String duplicateName, Field field1, Field field2) {
+   304	    throw new IllegalArgumentException(
+   305	        "Class "
+   306	            + declaringType.getName()
+   307	            + " declares multiple JSON fields named '"
+   308	            + duplicateName
+   309	            + "'; conflict is caused by fields "
+   310	            + ReflectionHelper.fieldToString(field1)
+   311	            + " and "
+   312	            + ReflectionHelper.fieldToString(field2)
+   313	            + "\nSee "
+   314	            + TroubleshootingGuide.createUrl("duplicate-fields"));
+   315	  }
+   316	
+   317	  private FieldsData getBoundFields(
+   318	      Gson context, TypeToken<?> type, Class<?> raw, boolean blockInaccessible, boolean isRecord) {
+   319	    if (raw.isInterface()) {
+   320	      return FieldsData.EMPTY;
+   321	    }
+   322	
+   323	    Map<String, BoundField> deserializedFields = new LinkedHashMap<>();
+   324	    // For serialized fields use a Map to track duplicate field names; otherwise this could be a
+   325	    // List<BoundField> instead
+   326	    Map<String, BoundField> serializedFields = new LinkedHashMap<>();
+   327	
+   328	    Class<?> originalRaw = raw;
+   329	    while (raw != Object.class) {
+   330	      Field[] fields = raw.getDeclaredFields();
+   331	
+   332	      // For inherited fields, check if access to their declaring class is allowed
+   333	      if (raw != originalRaw && fields.length > 0) {
+   334	        FilterResult filterResult =
+   335	            ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
+   336	        if (filterResult == FilterResult.BLOCK_ALL) {
+   337	          throw new JsonIOException(
+   338	              "ReflectionAccessFilter does not permit using reflection for "
+   339	                  + raw
+   340	                  + " (supertype of "
+   341	                  + originalRaw
+   342	                  + "). Register a TypeAdapter for this type or adjust the access filter.");
+   343	        }
+   344	        blockInaccessible = filterResult == FilterResult.BLOCK_INACCESSIBLE;
+   345	      }
+   346	
+   347	      for (Field field : fields) {
+   348	        boolean serialize = includeField(field, true);
+   349	        boolean deserialize = includeField(field, false);
+   350	        if (!serialize && !deserialize) {
+   351	          continue;
+   352	        }
+   353	        // The accessor method is only used for records. If the type is a record, we will read out
+   354	        // values via its accessor method instead of via reflection. This way we will bypass the
+   355	        // accessible restrictions
+   356	        Method accessor = null;
+   357	        if (isRecord) {
+   358	          // If there is a static field on a record, there will not be an accessor. Instead we will
+   359	          // use the default field serialization logic, but for deserialization the field is
+   360	          // excluded for simplicity.
+   361	          // Note that Gson ignores static fields by default, but
+   362	          // GsonBuilder.excludeFieldsWithModifiers can overwrite this.
+   363	          if (Modifier.isStatic(field.getModifiers())) {
+   364	            deserialize = false;
+   365	          } else {
+   366	            accessor = ReflectionHelper.getAccessor(raw, field);
+   367	            // If blockInaccessible, skip and perform access check later
+   368	            if (!blockInaccessible) {
+   369	              ReflectionHelper.makeAccessible(accessor);
+   370	            }
+   371	
+   372	            // @SerializedName can be placed on accessor method, but it is not supported there
+   373	            // If field and method have annotation it is not easily possible to determine if
+   374	            // accessor method is implicit and has inherited annotation, or if it is explicitly
+   375	            // declared with custom annotation
+   376	            if (accessor.getAnnotation(SerializedName.class) != null
+   377	                && field.getAnnotation(SerializedName.class) == null) {
+   378	              String methodDescription =
+   379	                  ReflectionHelper.getAccessibleObjectDescription(accessor, false);
+   380	              throw new JsonIOException(
+   381	                  "@SerializedName on " + methodDescription + " is not supported");
+   382	            }
+   383	          }
+   384	        }
+   385	
+   386	        // If blockInaccessible, skip and perform access check later
+   387	        // For Records if the accessor method is used the field does not have to be made accessible
+   388	        if (!blockInaccessible && accessor == null) {
+   389	          ReflectionHelper.makeAccessible(field);
+   390	        }
+   391	
+   392	        Type fieldType = GsonTypes.resolve(type.getType(), raw, field.getGenericType());
+   393	        List<String> fieldNames = getFieldNames(field);
+   394	        String serializedName = fieldNames.get(0);
+   395	        BoundField boundField =
+   396	            createBoundField(
+   397	                context,
+   398	                field,
+   399	                accessor,
+   400	                serializedName,
+   401	                TypeToken.get(fieldType),
+   402	                serialize,
+   403	                blockInaccessible);
+   404	
+   405	        if (deserialize) {
+   406	          for (String name : fieldNames) {
+   407	            BoundField replaced = deserializedFields.put(name, boundField);
+   408	
+   409	            if (replaced != null) {
+   410	              throw createDuplicateFieldException(originalRaw, name, replaced.field, field);
+   411	            }
+   412	          }
+   413	        }
+   414	
+   415	        if (serialize) {
+   416	          BoundField replaced = serializedFields.put(serializedName, boundField);
+   417	          if (replaced != null) {
+   418	            throw createDuplicateFieldException(originalRaw, serializedName, replaced.field, field);
+   419	          }
+   420	        }
+   421	      }
+   422	      type = TypeToken.get(GsonTypes.resolve(type.getType(), raw, raw.getGenericSuperclass()));
+   423	      raw = type.getRawType();
+   424	    }
+   425	    return new FieldsData(deserializedFields, new ArrayList<>(serializedFields.values()));
+   426	  }
+   427	
+   428	  abstract static class BoundField {
+   429	    /** Name used for serialization (but not for deserialization) */
+   430	    final String serializedName;
+
+exec
+/bin/bash -lc "rg -n \"Java17RecordTest|record\\b|getAdapter\\(.*record|ReflectiveTypeAdapterFactory\" gson/src/test/java/com/google/gson/internal/bind gson/src/test/java/com/google/gson/functional gson/src/test/java/com/google/gson -S" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 285ms:
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:47:public final class Java17RecordTest {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:81:  private record RecordWithCustomNames(
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:90:    record LocalRecord(int i) {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:108:    record LocalRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:118:    record LocalRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:126:    record LocalRecord(Integer a, Integer b) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:135:    record LocalRecord(String s) {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:149:    record LocalRecord(String s) {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:174:    record LocalRecord(String s) {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:185:  /** Tests behavior when a record accessor method throws an exception */
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:188:    record LocalRecord(String s) {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:206:  /** Tests behavior for a record without components */
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:209:    record EmptyRecord() {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:216:   * Tests behavior when {@code null} is serialized / deserialized as record value; basically makes
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:221:    record LocalRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:243:            "null is not allowed as value for record component 'aByte' of primitive type; at path"
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:278:            "null is not allowed as value for record component 'aByte' of primitive type; at path"
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:282:  private record RecordWithPrimitives(
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:296:    record LocalRecord(String s, int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:302:   * Tests serialization of a record with {@code static} field.
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:323:   * Tests deserialization of a record with {@code static} field.
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:344:      // Currently record deserialization always ignores static fields
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:351:  private record RecordWithStaticField() {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:358:    record RecordWithExpose(@Expose int a, int b) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:367:    record LocalRecord(int a, int b, double c) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:390:    record Adapter() implements JsonSerializer<String>, JsonDeserializer<String> {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:402:    record LocalRecord(@JsonAdapter(Adapter.class) String s) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:411:    record Allowed(int a) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:412:    record Blocked(int b) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:441:            "Constructor 'com.google.gson.functional.Java17RecordTest$PrivateRecord(int)' is not"
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:450:            "Constructor 'com.google.gson.functional.Java17RecordTest$PrivateRecord(int)' is not"
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:459:  private record PrivateRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:461:  public record PublicRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:469:    record LocalRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnFieldsTest.java:34:import com.google.gson.internal.bind.ReflectiveTypeAdapterFactory;
+gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnFieldsTest.java:487:   * <p>This is a separate test method because {@link ReflectiveTypeAdapterFactory} handles this
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:33:import com.google.gson.internal.bind.ReflectiveTypeAdapterFactory;
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1031:      checkReflectiveTypeAdapterFactory(value, expectedJson);
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1042:  // ReflectiveTypeAdapterFactory would produce the same JSON. This ensures that we are preserving
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1044:  private void checkReflectiveTypeAdapterFactory(Object value, String expectedJson) {
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1053:    ReflectiveTypeAdapterFactory adapterFactory =
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1055:            .filter(f -> f instanceof ReflectiveTypeAdapterFactory)
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1056:            .map(f -> (ReflectiveTypeAdapterFactory) f)
+gson/src/test/java/com/google/gson/GsonTest.java:272:     * ReflectiveTypeAdapterFactory$Adapter}.
+gson/src/test/java/com/google/gson/internal/bind/Java17ReflectiveTypeAdapterFactoryTest.java:34:public class Java17ReflectiveTypeAdapterFactoryTest {
+gson/src/test/java/com/google/gson/internal/bind/Java17ReflectiveTypeAdapterFactoryTest.java:39:  // have record support at the language level for these tests. This class was added in JDK 16.
+gson/src/test/java/com/google/gson/internal/reflect/Java17ReflectionHelperTest.java:33:    // UnixDomainPrincipal is a record
+gson/src/test/java/com/google/gson/internal/reflect/Java17ReflectionHelperTest.java:49:    // and GroupPrincipal. Then attempt to access each component of the record using our accessor
+gson/src/test/java/com/google/gson/internal/reflect/Java17ReflectionHelperTest.java:68:  /** Implementation of {@link UserPrincipal} and {@link GroupPrincipal} just for record tests. */
+gson/src/test/java/com/google/gson/internal/bind/Java17ReflectiveTypeAdapterFactoryTest.java:34:public class Java17ReflectiveTypeAdapterFactoryTest {
+gson/src/test/java/com/google/gson/internal/bind/Java17ReflectiveTypeAdapterFactoryTest.java:39:  // have record support at the language level for these tests. This class was added in JDK 16.
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:47:public final class Java17RecordTest {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:81:  private record RecordWithCustomNames(
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:90:    record LocalRecord(int i) {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:108:    record LocalRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:118:    record LocalRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:126:    record LocalRecord(Integer a, Integer b) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:135:    record LocalRecord(String s) {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:149:    record LocalRecord(String s) {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:174:    record LocalRecord(String s) {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:185:  /** Tests behavior when a record accessor method throws an exception */
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:188:    record LocalRecord(String s) {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:206:  /** Tests behavior for a record without components */
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:209:    record EmptyRecord() {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:216:   * Tests behavior when {@code null} is serialized / deserialized as record value; basically makes
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:221:    record LocalRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:243:            "null is not allowed as value for record component 'aByte' of primitive type; at path"
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:278:            "null is not allowed as value for record component 'aByte' of primitive type; at path"
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:282:  private record RecordWithPrimitives(
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:296:    record LocalRecord(String s, int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:302:   * Tests serialization of a record with {@code static} field.
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:323:   * Tests deserialization of a record with {@code static} field.
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:344:      // Currently record deserialization always ignores static fields
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:351:  private record RecordWithStaticField() {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:358:    record RecordWithExpose(@Expose int a, int b) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:367:    record LocalRecord(int a, int b, double c) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:390:    record Adapter() implements JsonSerializer<String>, JsonDeserializer<String> {
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:402:    record LocalRecord(@JsonAdapter(Adapter.class) String s) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:411:    record Allowed(int a) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:412:    record Blocked(int b) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:441:            "Constructor 'com.google.gson.functional.Java17RecordTest$PrivateRecord(int)' is not"
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:450:            "Constructor 'com.google.gson.functional.Java17RecordTest$PrivateRecord(int)' is not"
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:459:  private record PrivateRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:461:  public record PublicRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java:469:    record LocalRecord(int i) {}
+gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnFieldsTest.java:34:import com.google.gson.internal.bind.ReflectiveTypeAdapterFactory;
+gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnFieldsTest.java:487:   * <p>This is a separate test method because {@link ReflectiveTypeAdapterFactory} handles this
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:33:import com.google.gson.internal.bind.ReflectiveTypeAdapterFactory;
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1031:      checkReflectiveTypeAdapterFactory(value, expectedJson);
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1042:  // ReflectiveTypeAdapterFactory would produce the same JSON. This ensures that we are preserving
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1044:  private void checkReflectiveTypeAdapterFactory(Object value, String expectedJson) {
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1053:    ReflectiveTypeAdapterFactory adapterFactory =
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1055:            .filter(f -> f instanceof ReflectiveTypeAdapterFactory)
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:1056:            .map(f -> (ReflectiveTypeAdapterFactory) f)
+
+codex
+I’ve confirmed the key structural point: `RecordAdapter` is a `private static final` nested class with one construction site in `ReflectiveTypeAdapterFactory#create`, and I haven’t found any direct references outside that file. I’m doing one last pass to make sure the evidence is sufficient for a non-smelly verdict.
+exec
+/bin/bash -lc "rg -n \"RecordAdapter\\b\" . -S" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc 'rg -n "private static final class RecordAdapter|new RecordAdapter|RecordAdapter is a special case" gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java -n -S' in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 268ms:
+158:              new RecordAdapter<>(
+568:  private static final class RecordAdapter<T> extends Adapter<T, Object[]> {
+
+ succeeded in 356ms:
+./gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:152:    // If the type is actually a Java Record, we need to use the RecordAdapter instead. This will
+./gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:158:              new RecordAdapter<>(
+./gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:462:   * <p>The {@link RecordAdapter} is a special case to handle records for JVMs that support it, for
+./gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:568:  private static final class RecordAdapter<T> extends Adapter<T, Object[]> {
+./gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:578:    RecordAdapter(Class<T> raw, FieldsData fieldsData, boolean blockInaccessible) {
+
+codex
+{"target":"com.google.gson.internal.bind.ReflectiveTypeAdapterFactory.RecordAdapter","detection":false,"justification":"`gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java` defines `RecordAdapter` as a `private static final` nested class and constructs it only once in `create()` when `ReflectionHelper.isRecord(raw)` is true. A repo-wide `rg` search found no other references to `RecordAdapter`, so there is no evidence of strong fan-in. Its fan-out is also limited to the enclosing factory’s helpers (`Adapter`, `FieldsData`, `BoundField`) plus a small set of JDK/Gson helpers (`ReflectionHelper`, `Constructor`, `JsonReader`, `JsonWriter`, `Map`), which is not hub-like modularization."}
+tokens used
+21,614

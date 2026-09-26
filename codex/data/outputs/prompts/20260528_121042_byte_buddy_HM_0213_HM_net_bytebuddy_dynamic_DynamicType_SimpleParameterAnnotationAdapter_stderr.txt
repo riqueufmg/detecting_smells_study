@@ -1,0 +1,594 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f23-48a5-7282-819f-677db3fb49ef
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.dynamic.DynamicType.SimpleParameterAnnotationAdapter` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.dynamic.DynamicType.SimpleParameterAnnotationAdapter",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.dynamic.DynamicType.SimpleParameterAnnotationAdapter`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’ll locate the target class, inspect its source and direct references, then decide from the observed fan-in/fan-out evidence whether it behaves like a dependency hub.
+exec
+/bin/bash -lc "rg --files . | rg \"DynamicType\\.java|DynamicType/|SimpleParameterAnnotationAdapter\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java
+
+exec
+/bin/bash -lc 'rg -n "class SimpleParameterAnnotationAdapter|SimpleParameterAnnotationAdapter" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6526:                        return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(type.asGenericType()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6691:                    protected class SimpleParameterAnnotationAdapter extends MethodDefinition.ParameterDefinition.Simple.Annotatable.AbstractBase.Adapter<U> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6703:                        protected SimpleParameterAnnotationAdapter(ParameterDescription.Token token) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6711:                            return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(token.getType(),
+
+codex
+I found the target as a nested class inside `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java`. Next I’m checking the class body and the surrounding references to see whether it actually sits at the center of a dependency network or is just a small implementation detail.
+exec
+/bin/bash -lc "sed -n '6505,6538p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+
+                    /**
+                     * Creates a new method definition adapter.
+                     *
+                     * @param token A token representing the currently defined method.
+                     */
+                    protected MethodDefinitionAdapter(MethodDescription.Token token) {
+                        this.token = token;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public MethodDefinition.ParameterDefinition.Annotatable<U> withParameter(TypeDefinition type, String name, int modifiers) {
+                        return new ParameterAnnotationAdapter(new ParameterDescription.Token(type.asGenericType(), name, modifiers));
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public Simple.Annotatable<U> withParameter(TypeDefinition type) {
+                        return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(type.asGenericType()));
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public MethodDefinition.ExceptionDefinition<U> throwing(Collection<? extends TypeDefinition> types) {
+                        return new MethodDefinitionAdapter(new MethodDescription.Token(token.getName(),
+                                token.getModifiers(),
+                                token.getTypeVariableTokens(),
+                                token.getReturnType(),
+                                token.getParameterTokens(),
+                                CompoundList.of(token.getExceptionTypes(), new TypeList.Generic.Explicit(new ArrayList<TypeDefinition>(types))),
+
+exec
+/bin/bash -lc "sed -n '6660,6735p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+                            this.token = token;
+                        }
+
+                        /**
+                         * {@inheritDoc}
+                         */
+                        public MethodDefinition.ParameterDefinition.Annotatable<U> annotateParameter(Collection<? extends AnnotationDescription> annotations) {
+                            return new ParameterAnnotationAdapter(new ParameterDescription.Token(token.getType(),
+                                    CompoundList.of(token.getAnnotations(), new ArrayList<AnnotationDescription>(annotations)),
+                                    token.getName(),
+                                    token.getModifiers()));
+                        }
+
+                        @Override
+                        protected MethodDefinition.ParameterDefinition<U> materialize() {
+                            return new MethodDefinitionAdapter(new MethodDescription.Token(MethodDefinitionAdapter.this.token.getName(),
+                                    MethodDefinitionAdapter.this.token.getModifiers(),
+                                    MethodDefinitionAdapter.this.token.getTypeVariableTokens(),
+                                    MethodDefinitionAdapter.this.token.getReturnType(),
+                                    CompoundList.of(MethodDefinitionAdapter.this.token.getParameterTokens(), token),
+                                    MethodDefinitionAdapter.this.token.getExceptionTypes(),
+                                    MethodDefinitionAdapter.this.token.getAnnotations(),
+                                    MethodDefinitionAdapter.this.token.getDefaultValue(),
+                                    MethodDefinitionAdapter.this.token.getReceiverType()));
+                        }
+                    }
+
+                    /**
+                     * An annotation adapter for a simple parameter definition.
+                     */
+                    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+                    protected class SimpleParameterAnnotationAdapter extends MethodDefinition.ParameterDefinition.Simple.Annotatable.AbstractBase.Adapter<U> {
+
+                        /**
+                         * The token of the currently defined parameter.
+                         */
+                        private final ParameterDescription.Token token;
+
+                        /**
+                         * Creates a new simple parameter annotation adapter.
+                         *
+                         * @param token The token of the currently defined parameter.
+                         */
+                        protected SimpleParameterAnnotationAdapter(ParameterDescription.Token token) {
+                            this.token = token;
+                        }
+
+                        /**
+                         * {@inheritDoc}
+                         */
+                        public MethodDefinition.ParameterDefinition.Simple.Annotatable<U> annotateParameter(Collection<? extends AnnotationDescription> annotations) {
+                            return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(token.getType(),
+                                    CompoundList.of(token.getAnnotations(), new ArrayList<AnnotationDescription>(annotations)),
+                                    token.getName(),
+                                    token.getModifiers()));
+                        }
+
+                        @Override
+                        protected MethodDefinition.ParameterDefinition.Simple<U> materialize() {
+                            return new MethodDefinitionAdapter(new MethodDescription.Token(MethodDefinitionAdapter.this.token.getName(),
+                                    MethodDefinitionAdapter.this.token.getModifiers(),
+                                    MethodDefinitionAdapter.this.token.getTypeVariableTokens(),
+                                    MethodDefinitionAdapter.this.token.getReturnType(),
+                                    CompoundList.of(MethodDefinitionAdapter.this.token.getParameterTokens(), token),
+                                    MethodDefinitionAdapter.this.token.getExceptionTypes(),
+                                    MethodDefinitionAdapter.this.token.getAnnotations(),
+                                    MethodDefinitionAdapter.this.token.getDefaultValue(),
+                                    MethodDefinitionAdapter.this.token.getReceiverType()));
+                        }
+                    }
+
+                    /**
+                     * An annotation adapter for a method definition.
+                     */
+                    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+                    protected class AnnotationAdapter extends MethodDefinition.AbstractBase.Adapter<U> {
+
+exec
+/bin/bash -lc "rg -n \"SimpleParameterAnnotationAdapter\\b\" byte-buddy-dep/src/main/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6526:                        return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(type.asGenericType()));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6691:                    protected class SimpleParameterAnnotationAdapter extends MethodDefinition.ParameterDefinition.Simple.Annotatable.AbstractBase.Adapter<U> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6703:                        protected SimpleParameterAnnotationAdapter(ParameterDescription.Token token) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6711:                            return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(token.getType(),
+
+codex
+The source already suggests this is a local helper rather than a hub, but I’m checking the full repository for any additional call sites so the fan-in is not underestimated.
+exec
+/bin/bash -lc "rg -n \"SimpleParameterAnnotationAdapter\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"withParameter\\(TypeDefinition type\\)\" byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc 'rg -n "class MethodDefinitionAdapter|class ParameterAnnotationAdapter|class AnnotationAdapter" byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 259ms:
+6499:                protected class MethodDefinitionAdapter extends MethodDefinition.ParameterDefinition.Initial.AbstractBase<U> {
+6647:                    protected class ParameterAnnotationAdapter extends MethodDefinition.ParameterDefinition.Annotatable.AbstractBase.Adapter<U> {
+6735:                    protected class AnnotationAdapter extends MethodDefinition.AbstractBase.Adapter<U> {
+6900:                    protected class AnnotationAdapter extends MethodDefinition.AbstractBase.Adapter<U> {
+
+ succeeded in 331ms:
+3511:                    Annotatable<V> withParameter(TypeDefinition type);
+3594:                                public Simple.Annotatable<X> withParameter(TypeDefinition type) {
+6525:                    public Simple.Annotatable<U> withParameter(TypeDefinition type) {
+
+ succeeded in 359ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6526:                        return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(type.asGenericType()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6691:                    protected class SimpleParameterAnnotationAdapter extends MethodDefinition.ParameterDefinition.Simple.Annotatable.AbstractBase.Adapter<U> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6703:                        protected SimpleParameterAnnotationAdapter(ParameterDescription.Token token) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6711:                            return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(token.getType(),
+
+codex
+I’ve confirmed the repository-wide fan-in is just the class’s own constructor calls and the enclosing factory method. I’m pulling exact line-numbered context now so the final verdict can cite concrete evidence cleanly.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java | sed -n '6518,6720p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java | sed -n '6640,6728p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java | sed -n '3498,3600p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 119ms:
+  6518	                    public MethodDefinition.ParameterDefinition.Annotatable<U> withParameter(TypeDefinition type, String name, int modifiers) {
+  6519	                        return new ParameterAnnotationAdapter(new ParameterDescription.Token(type.asGenericType(), name, modifiers));
+  6520	                    }
+  6521	
+  6522	                    /**
+  6523	                     * {@inheritDoc}
+  6524	                     */
+  6525	                    public Simple.Annotatable<U> withParameter(TypeDefinition type) {
+  6526	                        return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(type.asGenericType()));
+  6527	                    }
+  6528	
+  6529	                    /**
+  6530	                     * {@inheritDoc}
+  6531	                     */
+  6532	                    public MethodDefinition.ExceptionDefinition<U> throwing(Collection<? extends TypeDefinition> types) {
+  6533	                        return new MethodDefinitionAdapter(new MethodDescription.Token(token.getName(),
+  6534	                                token.getModifiers(),
+  6535	                                token.getTypeVariableTokens(),
+  6536	                                token.getReturnType(),
+  6537	                                token.getParameterTokens(),
+  6538	                                CompoundList.of(token.getExceptionTypes(), new TypeList.Generic.Explicit(new ArrayList<TypeDefinition>(types))),
+  6539	                                token.getAnnotations(),
+  6540	                                token.getDefaultValue(),
+  6541	                                token.getReceiverType()));
+  6542	                    }
+  6543	
+  6544	                    /**
+  6545	                     * {@inheritDoc}
+  6546	                     */
+  6547	                    public MethodDefinition.TypeVariableDefinition.Annotatable<U> typeVariable(String symbol, Collection<? extends TypeDefinition> bounds) {
+  6548	                        return new TypeVariableAnnotationAdapter(new TypeVariableToken(symbol, new TypeList.Generic.Explicit(new ArrayList<TypeDefinition>(bounds))));
+  6549	                    }
+  6550	
+  6551	                    /**
+  6552	                     * {@inheritDoc}
+  6553	                     */
+  6554	                    public MethodDefinition.ReceiverTypeDefinition<U> intercept(Implementation implementation) {
+  6555	                        return materialize(new MethodRegistry.Handler.ForImplementation(implementation));
+  6556	                    }
+  6557	
+  6558	                    /**
+  6559	                     * {@inheritDoc}
+  6560	                     */
+  6561	                    public MethodDefinition.ReceiverTypeDefinition<U> withoutCode() {
+  6562	                        return new MethodDefinitionAdapter(new MethodDescription.Token(token.getName(),
+  6563	                                (token.getModifiers() & Opcodes.ACC_NATIVE) == 0
+  6564	                                        ? ModifierContributor.Resolver.of(MethodManifestation.ABSTRACT).resolve(token.getModifiers())
+  6565	                                        : token.getModifiers(),
+  6566	                                token.getTypeVariableTokens(),
+  6567	                                token.getReturnType(),
+  6568	                                token.getParameterTokens(),
+  6569	                                token.getExceptionTypes(),
+  6570	                                token.getAnnotations(),
+  6571	                                token.getDefaultValue(),
+  6572	                                token.getReceiverType())).materialize(MethodRegistry.Handler.ForAbstractMethod.INSTANCE);
+  6573	                    }
+  6574	
+  6575	                    /**
+  6576	                     * {@inheritDoc}
+  6577	                     */
+  6578	                    public MethodDefinition.ReceiverTypeDefinition<U> defaultValue(AnnotationValue<?, ?> annotationValue) {
+  6579	                        return new MethodDefinitionAdapter(new MethodDescription.Token(token.getName(),
+  6580	                                ModifierContributor.Resolver.of(MethodManifestation.ABSTRACT).resolve(token.getModifiers()),
+  6581	                                token.getTypeVariableTokens(),
+  6582	                                token.getReturnType(),
+  6583	                                token.getParameterTokens(),
+  6584	                                token.getExceptionTypes(),
+  6585	                                token.getAnnotations(),
+  6586	                                annotationValue,
+  6587	                                token.getReceiverType())).materialize(new MethodRegistry.Handler.ForAnnotationValue(annotationValue));
+  6588	                    }
+  6589	
+  6590	                    /**
+  6591	                     * Materializes the given handler as the implementation.
+  6592	                     *
+  6593	                     * @param handler The handler for implementing the method.
+  6594	                     * @return A method definition for the given handler.
+  6595	                     */
+  6596	                    private MethodDefinition.ReceiverTypeDefinition<U> materialize(MethodRegistry.Handler handler) {
+  6597	                        return new AnnotationAdapter(handler);
+  6598	                    }
+  6599	
+  6600	                    /**
+  6601	                     * An adapter for defining a new type variable for the currently defined method.
+  6602	                     */
+  6603	                    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+  6604	                    protected class TypeVariableAnnotationAdapter extends MethodDefinition.TypeVariableDefinition.Annotatable.AbstractBase.Adapter<U> {
+  6605	
+  6606	                        /**
+  6607	                         * The currently defined type variable.
+  6608	                         */
+  6609	                        private final TypeVariableToken token;
+  6610	
+  6611	                        /**
+  6612	                         * Creates a new type variable annotation adapter.
+  6613	                         *
+  6614	                         * @param token The currently defined type variable.
+  6615	                         */
+  6616	                        protected TypeVariableAnnotationAdapter(TypeVariableToken token) {
+  6617	                            this.token = token;
+  6618	                        }
+  6619	
+  6620	                        @Override
+  6621	                        protected MethodDefinition.ParameterDefinition<U> materialize() {
+  6622	                            return new MethodDefinitionAdapter(new MethodDescription.Token(MethodDefinitionAdapter.this.token.getName(),
+  6623	                                    MethodDefinitionAdapter.this.token.getModifiers(),
+  6624	                                    CompoundList.of(MethodDefinitionAdapter.this.token.getTypeVariableTokens(), token),
+  6625	                                    MethodDefinitionAdapter.this.token.getReturnType(),
+  6626	                                    MethodDefinitionAdapter.this.token.getParameterTokens(),
+  6627	                                    MethodDefinitionAdapter.this.token.getExceptionTypes(),
+  6628	                                    MethodDefinitionAdapter.this.token.getAnnotations(),
+  6629	                                    MethodDefinitionAdapter.this.token.getDefaultValue(),
+  6630	                                    MethodDefinitionAdapter.this.token.getReceiverType()));
+  6631	                        }
+  6632	
+  6633	                        /**
+  6634	                         * {@inheritDoc}
+  6635	                         */
+  6636	                        public Annotatable<U> annotateTypeVariable(Collection<? extends AnnotationDescription> annotations) {
+  6637	                            return new TypeVariableAnnotationAdapter(new TypeVariableToken(token.getSymbol(),
+  6638	                                    token.getBounds(),
+  6639	                                    CompoundList.of(token.getAnnotations(), new ArrayList<AnnotationDescription>(annotations))));
+  6640	                        }
+  6641	                    }
+  6642	
+  6643	                    /**
+  6644	                     * An annotation adapter for a parameter definition.
+  6645	                     */
+  6646	                    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+  6647	                    protected class ParameterAnnotationAdapter extends MethodDefinition.ParameterDefinition.Annotatable.AbstractBase.Adapter<U> {
+  6648	
+  6649	                        /**
+  6650	                         * The token of the currently defined parameter.
+  6651	                         */
+  6652	                        private final ParameterDescription.Token token;
+  6653	
+  6654	                        /**
+  6655	                         * Creates a new parameter annotation adapter.
+  6656	                         *
+  6657	                         * @param token The token of the currently defined parameter.
+  6658	                         */
+  6659	                        protected ParameterAnnotationAdapter(ParameterDescription.Token token) {
+  6660	                            this.token = token;
+  6661	                        }
+  6662	
+  6663	                        /**
+  6664	                         * {@inheritDoc}
+  6665	                         */
+  6666	                        public MethodDefinition.ParameterDefinition.Annotatable<U> annotateParameter(Collection<? extends AnnotationDescription> annotations) {
+  6667	                            return new ParameterAnnotationAdapter(new ParameterDescription.Token(token.getType(),
+  6668	                                    CompoundList.of(token.getAnnotations(), new ArrayList<AnnotationDescription>(annotations)),
+  6669	                                    token.getName(),
+  6670	                                    token.getModifiers()));
+  6671	                        }
+  6672	
+  6673	                        @Override
+  6674	                        protected MethodDefinition.ParameterDefinition<U> materialize() {
+  6675	                            return new MethodDefinitionAdapter(new MethodDescription.Token(MethodDefinitionAdapter.this.token.getName(),
+  6676	                                    MethodDefinitionAdapter.this.token.getModifiers(),
+  6677	                                    MethodDefinitionAdapter.this.token.getTypeVariableTokens(),
+  6678	                                    MethodDefinitionAdapter.this.token.getReturnType(),
+  6679	                                    CompoundList.of(MethodDefinitionAdapter.this.token.getParameterTokens(), token),
+  6680	                                    MethodDefinitionAdapter.this.token.getExceptionTypes(),
+  6681	                                    MethodDefinitionAdapter.this.token.getAnnotations(),
+  6682	                                    MethodDefinitionAdapter.this.token.getDefaultValue(),
+  6683	                                    MethodDefinitionAdapter.this.token.getReceiverType()));
+  6684	                        }
+  6685	                    }
+  6686	
+  6687	                    /**
+  6688	                     * An annotation adapter for a simple parameter definition.
+  6689	                     */
+  6690	                    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+  6691	                    protected class SimpleParameterAnnotationAdapter extends MethodDefinition.ParameterDefinition.Simple.Annotatable.AbstractBase.Adapter<U> {
+  6692	
+  6693	                        /**
+  6694	                         * The token of the currently defined parameter.
+  6695	                         */
+  6696	                        private final ParameterDescription.Token token;
+  6697	
+  6698	                        /**
+  6699	                         * Creates a new simple parameter annotation adapter.
+  6700	                         *
+  6701	                         * @param token The token of the currently defined parameter.
+  6702	                         */
+  6703	                        protected SimpleParameterAnnotationAdapter(ParameterDescription.Token token) {
+  6704	                            this.token = token;
+  6705	                        }
+  6706	
+  6707	                        /**
+  6708	                         * {@inheritDoc}
+  6709	                         */
+  6710	                        public MethodDefinition.ParameterDefinition.Simple.Annotatable<U> annotateParameter(Collection<? extends AnnotationDescription> annotations) {
+  6711	                            return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(token.getType(),
+  6712	                                    CompoundList.of(token.getAnnotations(), new ArrayList<AnnotationDescription>(annotations)),
+  6713	                                    token.getName(),
+  6714	                                    token.getModifiers()));
+  6715	                        }
+  6716	
+  6717	                        @Override
+  6718	                        protected MethodDefinition.ParameterDefinition.Simple<U> materialize() {
+  6719	                            return new MethodDefinitionAdapter(new MethodDescription.Token(MethodDefinitionAdapter.this.token.getName(),
+  6720	                                    MethodDefinitionAdapter.this.token.getModifiers(),
+
+ succeeded in 101ms:
+e<V> annotateParameter(Collection<? extends AnnotationDescription> annotations);
+  3555	
+  3556	                        /**
+  3557	                         * An abstract base implementation of a simple parameter definition.
+  3558	                         *
+  3559	                         * @param <W> A loaded type that the built type is guaranteed to be a subclass of.
+  3560	                         */
+  3561	                        abstract class AbstractBase<W> extends Simple.AbstractBase<W> implements Annotatable<W> {
+  3562	
+  3563	                            /**
+  3564	                             * {@inheritDoc}
+  3565	                             */
+  3566	                            public Simple.Annotatable<W> annotateParameter(Annotation... annotation) {
+  3567	                                return annotateParameter(Arrays.asList(annotation));
+  3568	                            }
+  3569	
+  3570	                            /**
+  3571	                             * {@inheritDoc}
+  3572	                             */
+  3573	                            public Simple.Annotatable<W> annotateParameter(List<? extends Annotation> annotations) {
+  3574	                                return annotateParameter(new AnnotationList.ForLoadedAnnotations(annotations));
+  3575	                            }
+  3576	
+  3577	                            /**
+  3578	                             * {@inheritDoc}
+  3579	                             */
+  3580	                            public Simple.Annotatable<W> annotateParameter(AnnotationDescription... annotation) {
+  3581	                                return annotateParameter(Arrays.asList(annotation));
+  3582	                            }
+  3583	
+  3584	                            /**
+  3585	                             * An adapter implementation of a simple parameter definition.
+  3586	                             *
+  3587	                             * @param <X> A loaded type that the built type is guaranteed to be a subclass of.
+  3588	                             */
+  3589	                            protected abstract static class Adapter<X> extends Simple.Annotatable.AbstractBase<X> {
+  3590	
+  3591	                                /**
+  3592	                                 * {@inheritDoc}
+  3593	                                 */
+  3594	                                public Simple.Annotatable<X> withParameter(TypeDefinition type) {
+  3595	                                    return materialize().withParameter(type);
+  3596	                                }
+  3597	
+  3598	                                /**
+  3599	                                 * {@inheritDoc}
+  3600	                                 */
+
+ succeeded in 102ms:
+  6640	                        }
+  6641	                    }
+  6642	
+  6643	                    /**
+  6644	                     * An annotation adapter for a parameter definition.
+  6645	                     */
+  6646	                    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+  6647	                    protected class ParameterAnnotationAdapter extends MethodDefinition.ParameterDefinition.Annotatable.AbstractBase.Adapter<U> {
+  6648	
+  6649	                        /**
+  6650	                         * The token of the currently defined parameter.
+  6651	                         */
+  6652	                        private final ParameterDescription.Token token;
+  6653	
+  6654	                        /**
+  6655	                         * Creates a new parameter annotation adapter.
+  6656	                         *
+  6657	                         * @param token The token of the currently defined parameter.
+  6658	                         */
+  6659	                        protected ParameterAnnotationAdapter(ParameterDescription.Token token) {
+  6660	                            this.token = token;
+  6661	                        }
+  6662	
+  6663	                        /**
+  6664	                         * {@inheritDoc}
+  6665	                         */
+  6666	                        public MethodDefinition.ParameterDefinition.Annotatable<U> annotateParameter(Collection<? extends AnnotationDescription> annotations) {
+  6667	                            return new ParameterAnnotationAdapter(new ParameterDescription.Token(token.getType(),
+  6668	                                    CompoundList.of(token.getAnnotations(), new ArrayList<AnnotationDescription>(annotations)),
+  6669	                                    token.getName(),
+  6670	                                    token.getModifiers()));
+  6671	                        }
+  6672	
+  6673	                        @Override
+  6674	                        protected MethodDefinition.ParameterDefinition<U> materialize() {
+  6675	                            return new MethodDefinitionAdapter(new MethodDescription.Token(MethodDefinitionAdapter.this.token.getName(),
+  6676	                                    MethodDefinitionAdapter.this.token.getModifiers(),
+  6677	                                    MethodDefinitionAdapter.this.token.getTypeVariableTokens(),
+  6678	                                    MethodDefinitionAdapter.this.token.getReturnType(),
+  6679	                                    CompoundList.of(MethodDefinitionAdapter.this.token.getParameterTokens(), token),
+  6680	                                    MethodDefinitionAdapter.this.token.getExceptionTypes(),
+  6681	                                    MethodDefinitionAdapter.this.token.getAnnotations(),
+  6682	                                    MethodDefinitionAdapter.this.token.getDefaultValue(),
+  6683	                                    MethodDefinitionAdapter.this.token.getReceiverType()));
+  6684	                        }
+  6685	                    }
+  6686	
+  6687	                    /**
+  6688	                     * An annotation adapter for a simple parameter definition.
+  6689	                     */
+  6690	                    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+  6691	                    protected class SimpleParameterAnnotationAdapter extends MethodDefinition.ParameterDefinition.Simple.Annotatable.AbstractBase.Adapter<U> {
+  6692	
+  6693	                        /**
+  6694	                         * The token of the currently defined parameter.
+  6695	                         */
+  6696	                        private final ParameterDescription.Token token;
+  6697	
+  6698	                        /**
+  6699	                         * Creates a new simple parameter annotation adapter.
+  6700	                         *
+  6701	                         * @param token The token of the currently defined parameter.
+  6702	                         */
+  6703	                        protected SimpleParameterAnnotationAdapter(ParameterDescription.Token token) {
+  6704	                            this.token = token;
+  6705	                        }
+  6706	
+  6707	                        /**
+  6708	                         * {@inheritDoc}
+  6709	                         */
+  6710	                        public MethodDefinition.ParameterDefinition.Simple.Annotatable<U> annotateParameter(Collection<? extends AnnotationDescription> annotations) {
+  6711	                            return new SimpleParameterAnnotationAdapter(new ParameterDescription.Token(token.getType(),
+  6712	                                    CompoundList.of(token.getAnnotations(), new ArrayList<AnnotationDescription>(annotations)),
+  6713	                                    token.getName(),
+  6714	                                    token.getModifiers()));
+  6715	                        }
+  6716	
+  6717	                        @Override
+  6718	                        protected MethodDefinition.ParameterDefinition.Simple<U> materialize() {
+  6719	                            return new MethodDefinitionAdapter(new MethodDescription.Token(MethodDefinitionAdapter.this.token.getName(),
+  6720	                                    MethodDefinitionAdapter.this.token.getModifiers(),
+  6721	                                    MethodDefinitionAdapter.this.token.getTypeVariableTokens(),
+  6722	                                    MethodDefinitionAdapter.this.token.getReturnType(),
+  6723	                                    CompoundList.of(MethodDefinitionAdapter.this.token.getParameterTokens(), token),
+  6724	                                    MethodDefinitionAdapter.this.token.getExceptionTypes(),
+  6725	                                    MethodDefinitionAdapter.this.token.getAnnotations(),
+  6726	                                    MethodDefinitionAdapter.this.token.getDefaultValue(),
+  6727	                                    MethodDefinitionAdapter.this.token.getReceiverType()));
+  6728	                        }
+
+codex
+{"target":"net.bytebuddy.dynamic.DynamicType.SimpleParameterAnnotationAdapter","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java. `SimpleParameterAnnotationAdapter` is a protected inner helper at lines 6691-6728 with one field (`ParameterDescription.Token`) and only two relevant behaviors: `annotateParameter(...)` and `materialize()`. Repository-wide search found no external references; the only call sites are its creation in `MethodDefinitionAdapter.withParameter(TypeDefinition)` at lines 6525-6526 and its own recursive re-creation inside `annotateParameter(...)` at lines 6710-6714. This shows low fan-in and low fan-out, not a hub-like dependency profile."}
+tokens used
+10,371

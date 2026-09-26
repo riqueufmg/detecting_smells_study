@@ -1,0 +1,521 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f73-4bbe-7520-bf8e-67d3faf6d8a4
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.ByteBuddy.InitializationAppender` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.ByteBuddy.InitializationAppender",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.ByteBuddy.InitializationAppender`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing who uses it, then I’ll judge hub-like modularization from the observed fan-in and fan-out in the source tree.
+exec
+/bin/bash -lc 'rg -n "class InitializationAppender|InitializationAppender" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files . | rg \"ByteBuddy\\.java|InitializationAppender|ByteBuddy\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 257ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1675:                    .withInitializer(new InitializationAppender(values));
+./byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1724:        protected static class InitializationAppender implements ByteCodeAppender {
+./byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1736:            protected InitializationAppender(List<String> values) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Nexus.java:127:     * <b>Important</b>: This method must never be called directly but only by using a {@link NexusAccessor.InitializationAppender} which enforces to
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/NexusAccessor.java:136:    public static class InitializationAppender implements ByteCodeAppender {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/NexusAccessor.java:148:        public InitializationAppender(int identification) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/TypeResolutionStrategy.java:176:                return typeInitializer.expandWith(new NexusAccessor.InitializationAppender(identification));
+./byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:4153:                    return builder.initializer(new NexusAccessor.InitializationAppender(identification));
+./byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderInitializationStrategySelfInjectionDispatcherTest.java:117:        verify(builder).initializer(matchesPrototype(new NexusAccessor.InitializationAppender(IDENTIFIER)));
+./byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderInitializationStrategySelfInjectionDispatcherTest.java:127:        verify(builder).initializer(matchesPrototype(new NexusAccessor.InitializationAppender(IDENTIFIER)));
+./byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderInitializationStrategySelfInjectionDispatcherTest.java:137:        verify(builder).initializer(matchesPrototype(new NexusAccessor.InitializationAppender(IDENTIFIER)));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/TypeResolutionStrategyTest.java:82:        when(typeInitializer.expandWith(matchesPrototype(new NexusAccessor.InitializationAppender(identification)))).thenReturn(otherTypeInitializer);
+
+ succeeded in 298ms:
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentAgentProviderTest.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentInstallationTest.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentAttachmentTypeEvaluator.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentTest.java
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentAttachmentProviderTest.java
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/ByteBuddyAgent.java
+./byte-buddy-gradle-plugin/src/test/java/net/bytebuddy/build/gradle/ByteBuddyPluginTest.java
+./byte-buddy-gradle-plugin/src/test/java/net/bytebuddy/build/gradle/ByteBuddyTaskExtensionTest.java
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/ByteBuddyMojoTest.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyLocalClassesEnhancerTask.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAsmClassVisitorFactory.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/LegacyByteBuddyLocalClassesEnhancerTask.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidTaskExtension.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidService.java
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyInstrumentationParameters.java
+./byte-buddy-gradle-plugin/android-plugin-test/app/src/androidTest/java/net/bytebuddy/android/test/ByteBuddyInstrumentedTest.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddySimpleTaskConfiguration.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTask.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyJarsTask.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/AbstractByteBuddyTask.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/AbstractByteBuddyTaskConfiguration.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddySimpleTaskExtension.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddySimpleTask.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTaskExtension.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/AbstractByteBuddyTaskExtension.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyPlugin.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyJarsTaskExtension.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyJarTask.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTaskConfiguration.java
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyJarTaskExtension.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddySubclassDeadlockTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTutorialExamplesTest.java
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java
+
+codex
+I found the target as a nested class inside [`byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java`](...); next I’m checking how many concrete call sites it has and what it depends on internally.
+exec
+/bin/bash -lc "sed -n '1640,1785p' byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"new InitializationAppender\\(|InitializationAppender\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 205ms:
+         */
+        private static final int ENUM_FIELD_MODIFIERS = Opcodes.ACC_FINAL | Opcodes.ACC_STATIC | Opcodes.ACC_PUBLIC;
+
+        /**
+         * The name of the field containing an array of all enumeration values.
+         */
+        private static final String ENUM_VALUES = "$VALUES";
+
+        /**
+         * The names of the enumerations to define for the enumeration.
+         */
+        private final List<String> values;
+
+        /**
+         * Creates a new implementation of an enumeration type.
+         *
+         * @param values The values of the enumeration.
+         */
+        protected EnumerationImplementation(List<String> values) {
+            this.values = values;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+            for (String value : values) {
+                instrumentedType = instrumentedType.withField(new FieldDescription.Token(value,
+                        ENUM_FIELD_MODIFIERS | Opcodes.ACC_ENUM,
+                        TargetType.DESCRIPTION.asGenericType()));
+            }
+            return instrumentedType
+                    .withField(new FieldDescription.Token(ENUM_VALUES,
+                            ENUM_FIELD_MODIFIERS | Opcodes.ACC_SYNTHETIC,
+                            TypeDescription.ArrayProjection.of(TargetType.DESCRIPTION).asGenericType()))
+                    .withInitializer(new InitializationAppender(values));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ByteCodeAppender appender(Target implementationTarget) {
+            return new ValuesMethodAppender(implementationTarget.getInstrumentedType());
+        }
+
+        /**
+         * A byte code appender for the {@code values} method of any enumeration type.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class ValuesMethodAppender implements ByteCodeAppender {
+
+            /**
+             * The instrumented enumeration type.
+             */
+            private final TypeDescription instrumentedType;
+
+            /**
+             * Creates a new appender for the {@code values} method.
+             *
+             * @param instrumentedType The instrumented enumeration type.
+             */
+            protected ValuesMethodAppender(TypeDescription instrumentedType) {
+                this.instrumentedType = instrumentedType;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+                FieldDescription valuesField = instrumentedType.getDeclaredFields().filter(named(ENUM_VALUES)).getOnly();
+                MethodDescription cloneMethod = TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(Object.class).getDeclaredMethods().filter(named(CLONE_METHOD_NAME)).getOnly();
+                return new Size(new StackManipulation.Compound(
+                        FieldAccess.forField(valuesField).read(),
+                        MethodInvocation.invoke(cloneMethod).virtual(valuesField.getType().asErasure()),
+                        TypeCasting.to(valuesField.getType().asErasure()),
+                        MethodReturn.REFERENCE
+                ).apply(methodVisitor, implementationContext).getMaximalSize(), instrumentedMethod.getStackSize());
+            }
+        }
+
+        /**
+         * A byte code appender for the type initializer of any enumeration type.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class InitializationAppender implements ByteCodeAppender {
+
+            /**
+             * The values of the enumeration that is being created.
+             */
+            private final List<String> values;
+
+            /**
+             * Creates an appender for an enumerations type initializer.
+             *
+             * @param values The values of the enumeration that is being created.
+             */
+            protected InitializationAppender(List<String> values) {
+                this.values = values;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+                TypeDescription instrumentedType = instrumentedMethod.getDeclaringType().asErasure();
+                MethodDescription enumConstructor = instrumentedType.getDeclaredMethods()
+                        .filter(isConstructor().and(takesArguments(String.class, int.class)))
+                        .getOnly();
+                int ordinal = 0;
+                StackManipulation stackManipulation = StackManipulation.Trivial.INSTANCE;
+                List<FieldDescription> enumerationFields = new ArrayList<FieldDescription>(values.size());
+                for (String value : values) {
+                    FieldDescription fieldDescription = instrumentedType.getDeclaredFields().filter(named(value)).getOnly();
+                    stackManipulation = new StackManipulation.Compound(stackManipulation,
+                            TypeCreation.of(instrumentedType),
+                            Duplication.SINGLE,
+                            new TextConstant(value),
+                            IntegerConstant.forValue(ordinal++),
+                            MethodInvocation.invoke(enumConstructor),
+                            FieldAccess.forField(fieldDescription).write());
+                    enumerationFields.add(fieldDescription);
+                }
+                List<StackManipulation> fieldGetters = new ArrayList<StackManipulation>(values.size());
+                for (FieldDescription fieldDescription : enumerationFields) {
+                    fieldGetters.add(FieldAccess.forField(fieldDescription).read());
+                }
+                stackManipulation = new StackManipulation.Compound(
+                        stackManipulation,
+                        ArrayFactory.forType(instrumentedType.asGenericType()).withValues(fieldGetters),
+                        FieldAccess.forField(instrumentedType.getDeclaredFields().filter(named(ENUM_VALUES)).getOnly()).write()
+                );
+                return new Size(stackManipulation.apply(methodVisitor, implementationContext).getMaximalSize(), instrumentedMethod.getStackSize());
+            }
+        }
+    }
+
+    /**
+     * A constructor strategy for implementing a Java record.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    protected enum RecordConstructorStrategy implements ConstructorStrategy, Implementation {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+ succeeded in 258ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1675:                    .withInitializer(new InitializationAppender(values));
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1724:        protected static class InitializationAppender implements ByteCodeAppender {
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1736:            protected InitializationAppender(List<String> values) {
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderInitializationStrategySelfInjectionDispatcherTest.java:117:        verify(builder).initializer(matchesPrototype(new NexusAccessor.InitializationAppender(IDENTIFIER)));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderInitializationStrategySelfInjectionDispatcherTest.java:127:        verify(builder).initializer(matchesPrototype(new NexusAccessor.InitializationAppender(IDENTIFIER)));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderInitializationStrategySelfInjectionDispatcherTest.java:137:        verify(builder).initializer(matchesPrototype(new NexusAccessor.InitializationAppender(IDENTIFIER)));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/TypeResolutionStrategyTest.java:82:        when(typeInitializer.expandWith(matchesPrototype(new NexusAccessor.InitializationAppender(identification)))).thenReturn(otherTypeInitializer);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Nexus.java:127:     * <b>Important</b>: This method must never be called directly but only by using a {@link NexusAccessor.InitializationAppender} which enforces to
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:4153:                    return builder.initializer(new NexusAccessor.InitializationAppender(identification));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/TypeResolutionStrategy.java:176:                return typeInitializer.expandWith(new NexusAccessor.InitializationAppender(identification));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/NexusAccessor.java:136:    public static class InitializationAppender implements ByteCodeAppender {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/NexusAccessor.java:148:        public InitializationAppender(int identification) {
+
+codex
+The evidence is already leaning away from the smell: the class is a private implementation detail of one enum strategy, and I’ve only found one production instantiation. I’m pulling exact line numbers now so the verdict can cite concrete source facts.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java | sed -n '1665,1755p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 226ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy;
+    17	
+    18	import net.bytebuddy.build.AccessControllerPlugin;
+    19	import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+    20	import net.bytebuddy.description.annotation.AnnotationDescription;
+    21	import net.bytebuddy.description.annotation.AnnotationValue;
+    22	import net.bytebuddy.description.field.FieldDescription;
+    23	import net.bytebuddy.description.method.MethodDescription;
+    24	import net.bytebuddy.description.method.ParameterDescription;
+    25	import net.bytebuddy.description.modifier.EnumerationState;
+    26	import net.bytebuddy.description.modifier.ModifierContributor;
+    27	import net.bytebuddy.description.modifier.Ownership;
+    28	import net.bytebuddy.description.modifier.TypeManifestation;
+    29	import net.bytebuddy.description.modifier.Visibility;
+    30	import net.bytebuddy.description.module.ModuleDescription;
+    31	import net.bytebuddy.description.type.PackageDescription;
+    32	import net.bytebuddy.description.type.RecordComponentDescription;
+    33	import net.bytebuddy.description.type.TypeDefinition;
+    34	import net.bytebuddy.description.type.TypeDescription;
+    35	import net.bytebuddy.description.type.TypeList;
+    36	import net.bytebuddy.description.type.TypeVariableToken;
+    37	import net.bytebuddy.dynamic.ClassFileLocator;
+    38	import net.bytebuddy.dynamic.DynamicType;
+    39	import net.bytebuddy.dynamic.TargetType;
+    40	import net.bytebuddy.dynamic.Transformer;
+    41	import net.bytebuddy.dynamic.VisibilityBridgeStrategy;
+    42	import net.bytebuddy.dynamic.scaffold.InstrumentedType;
+    43	import net.bytebuddy.dynamic.scaffold.MethodGraph;
+    44	import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+    45	import net.bytebuddy.dynamic.scaffold.TypeValidation;
+    46	import net.bytebuddy.dynamic.scaffold.inline.DecoratingDynamicTypeBuilder;
+    47	import net.bytebuddy.dynamic.scaffold.inline.MethodNameTransformer;
+    48	import net.bytebuddy.dynamic.scaffold.inline.RebaseDynamicTypeBuilder;
+    49	import net.bytebuddy.dynamic.scaffold.inline.RedefinitionDynamicTypeBuilder;
+    50	import net.bytebuddy.dynamic.scaffold.subclass.ConstructorStrategy;
+    51	import net.bytebuddy.dynamic.scaffold.subclass.SubclassDynamicTypeBuilder;
+    52	import net.bytebuddy.implementation.Implementation;
+    53	import net.bytebuddy.implementation.MethodCall;
+    54	import net.bytebuddy.implementation.SuperMethodCall;
+    55	import net.bytebuddy.implementation.attribute.AnnotationRetention;
+    56	import net.bytebuddy.implementation.attribute.AnnotationValueFilter;
+    57	import net.bytebuddy.implementation.attribute.MethodAttributeAppender;
+    58	import net.bytebuddy.implementation.auxiliary.AuxiliaryType;
+    59	import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+    60	import net.bytebuddy.implementation.bytecode.Duplication;
+    61	import net.bytebuddy.implementation.bytecode.StackManipulation;
+    62	import net.bytebuddy.implementation.bytecode.TypeCreation;
+    63	import net.bytebuddy.implementation.bytecode.assign.Assigner;
+    64	import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
+    65	import net.bytebuddy.implementation.bytecode.collection.ArrayFactory;
+    66	import net.bytebuddy.implementation.bytecode.constant.IntegerConstant;
+    67	import net.bytebuddy.implementation.bytecode.constant.TextConstant;
+    68	import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+    69	import net.bytebuddy.implementation.bytecode.member.MethodInvocation;
+    70	import net.bytebuddy.implementation.bytecode.member.MethodReturn;
+    71	import net.bytebuddy.implementation.bytecode.member.MethodVariableAccess;
+    72	import net.bytebuddy.matcher.ElementMatcher;
+    73	import net.bytebuddy.matcher.LatentMatcher;
+    74	import net.bytebuddy.utility.AsmClassReader;
+    75	import net.bytebuddy.utility.AsmClassWriter;
+    76	import net.bytebuddy.utility.CompoundList;
+    77	import net.bytebuddy.utility.GraalImageCode;
+    78	import net.bytebuddy.utility.JavaConstant;
+    79	import net.bytebuddy.utility.JavaType;
+    80	import net.bytebuddy.utility.RandomString;
+    81	import net.bytebuddy.utility.nullability.MaybeNull;
+    82	import net.bytebuddy.utility.privilege.GetSystemPropertyAction;
+    83	import org.objectweb.asm.MethodVisitor;
+    84	import org.objectweb.asm.Opcodes;
+    85	
+    86	import java.lang.annotation.Annotation;
+    87	import java.lang.annotation.ElementType;
+    88	import java.lang.reflect.Type;
+    89	import java.security.PrivilegedAction;
+    90	import java.util.ArrayList;
+    91	import java.util.Arrays;
+    92	import java.util.Collection;
+    93	import java.util.Collections;
+    94	import java.util.List;
+    95	import java.util.Random;
+    96	
+    97	import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+    98	import static net.bytebuddy.matcher.ElementMatchers.isDefaultFinalizer;
+    99	import static net.bytebuddy.matcher.ElementMatchers.isEquals;
+   100	import static net.bytebuddy.matcher.ElementMatchers.isHashCode;
+   101	import static net.bytebuddy.matcher.ElementMatchers.isSynthetic;
+   102	import static net.bytebuddy.matcher.ElementMatchers.isToString;
+   103	import static net.bytebuddy.matcher.ElementMatchers.named;
+   104	import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+   105	import static net.bytebuddy.matcher.ElementMatchers.takesGenericArguments;
+   106	import static net.bytebuddy.matcher.ElementMatchers.targetsElement;
+   107	
+   108	/**
+   109	 * Instances of this class serve as a focus point for configuration of the library's behavior and as an entry point
+   110	 * to any form of code generation using the library. For this purpose, Byte Buddy offers a fluent API which allows
+   111	 * for the step-wise generation of a new Java type. A type is generated either by:
+   112	 * <ul>
+   113	 * <li><b>Subclassing</b> some type: A subclass - as the name suggests - extends another, existing Java type. Virtual
+   114	 * members of the generated type's super types can be overridden. Subclasses can also be interface extensions of one
+   115	 * or several interfaces.</li>
+   116	 * <li><b>Redefining</b> a type: By redefining a type, it is not only possible to override virtual methods of the
+   117	 * redefined type but also to redefine existing methods. This way, it is also possible to change the behavior of
+   118	 * non-virtual methods and constructors of the redefined type.</li>
+   119	 * <li><b>Rebasing</b> a type: Rebasing a type works similar to creating a subclass, i.e. any method being overridden
+   120	 * is still capable of invoking any original code of the rebased type. Any rebased method is however inlined into the
+
+ succeeded in 262ms:
+  1665	        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+  1666	            for (String value : values) {
+  1667	                instrumentedType = instrumentedType.withField(new FieldDescription.Token(value,
+  1668	                        ENUM_FIELD_MODIFIERS | Opcodes.ACC_ENUM,
+  1669	                        TargetType.DESCRIPTION.asGenericType()));
+  1670	            }
+  1671	            return instrumentedType
+  1672	                    .withField(new FieldDescription.Token(ENUM_VALUES,
+  1673	                            ENUM_FIELD_MODIFIERS | Opcodes.ACC_SYNTHETIC,
+  1674	                            TypeDescription.ArrayProjection.of(TargetType.DESCRIPTION).asGenericType()))
+  1675	                    .withInitializer(new InitializationAppender(values));
+  1676	        }
+  1677	
+  1678	        /**
+  1679	         * {@inheritDoc}
+  1680	         */
+  1681	        public ByteCodeAppender appender(Target implementationTarget) {
+  1682	            return new ValuesMethodAppender(implementationTarget.getInstrumentedType());
+  1683	        }
+  1684	
+  1685	        /**
+  1686	         * A byte code appender for the {@code values} method of any enumeration type.
+  1687	         */
+  1688	        @HashCodeAndEqualsPlugin.Enhance
+  1689	        protected static class ValuesMethodAppender implements ByteCodeAppender {
+  1690	
+  1691	            /**
+  1692	             * The instrumented enumeration type.
+  1693	             */
+  1694	            private final TypeDescription instrumentedType;
+  1695	
+  1696	            /**
+  1697	             * Creates a new appender for the {@code values} method.
+  1698	             *
+  1699	             * @param instrumentedType The instrumented enumeration type.
+  1700	             */
+  1701	            protected ValuesMethodAppender(TypeDescription instrumentedType) {
+  1702	                this.instrumentedType = instrumentedType;
+  1703	            }
+  1704	
+  1705	            /**
+  1706	             * {@inheritDoc}
+  1707	             */
+  1708	            public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+  1709	                FieldDescription valuesField = instrumentedType.getDeclaredFields().filter(named(ENUM_VALUES)).getOnly();
+  1710	                MethodDescription cloneMethod = TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(Object.class).getDeclaredMethods().filter(named(CLONE_METHOD_NAME)).getOnly();
+  1711	                return new Size(new StackManipulation.Compound(
+  1712	                        FieldAccess.forField(valuesField).read(),
+  1713	                        MethodInvocation.invoke(cloneMethod).virtual(valuesField.getType().asErasure()),
+  1714	                        TypeCasting.to(valuesField.getType().asErasure()),
+  1715	                        MethodReturn.REFERENCE
+  1716	                ).apply(methodVisitor, implementationContext).getMaximalSize(), instrumentedMethod.getStackSize());
+  1717	            }
+  1718	        }
+  1719	
+  1720	        /**
+  1721	         * A byte code appender for the type initializer of any enumeration type.
+  1722	         */
+  1723	        @HashCodeAndEqualsPlugin.Enhance
+  1724	        protected static class InitializationAppender implements ByteCodeAppender {
+  1725	
+  1726	            /**
+  1727	             * The values of the enumeration that is being created.
+  1728	             */
+  1729	            private final List<String> values;
+  1730	
+  1731	            /**
+  1732	             * Creates an appender for an enumerations type initializer.
+  1733	             *
+  1734	             * @param values The values of the enumeration that is being created.
+  1735	             */
+  1736	            protected InitializationAppender(List<String> values) {
+  1737	                this.values = values;
+  1738	            }
+  1739	
+  1740	            /**
+  1741	             * {@inheritDoc}
+  1742	             */
+  1743	            public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+  1744	                TypeDescription instrumentedType = instrumentedMethod.getDeclaringType().asErasure();
+  1745	                MethodDescription enumConstructor = instrumentedType.getDeclaredMethods()
+  1746	                        .filter(isConstructor().and(takesArguments(String.class, int.class)))
+  1747	                        .getOnly();
+  1748	                int ordinal = 0;
+  1749	                StackManipulation stackManipulation = StackManipulation.Trivial.INSTANCE;
+  1750	                List<FieldDescription> enumerationFields = new ArrayList<FieldDescription>(values.size());
+  1751	                for (String value : values) {
+  1752	                    FieldDescription fieldDescription = instrumentedType.getDeclaredFields().filter(named(value)).getOnly();
+  1753	                    stackManipulation = new StackManipulation.Compound(stackManipulation,
+  1754	                            TypeCreation.of(instrumentedType),
+  1755	                            Duplication.SINGLE,
+
+codex
+{"target":"net.bytebuddy.ByteBuddy.InitializationAppender","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java (lines 1665-1758) and repository-wide references with rg. InitializationAppender is a protected static nested helper inside EnumerationImplementation, with one List<String> field and a single production call site at .withInitializer(new InitializationAppender(values)) in the same file. No other production or test references to net.bytebuddy.ByteBuddy.InitializationAppender were found. Its apply method only builds bytecode for the enum’s own constructor and fields via local Byte Buddy helpers, so it does not show high fan-in or fan-out."}
+tokens used
+10,241

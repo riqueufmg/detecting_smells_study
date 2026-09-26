@@ -1,0 +1,1132 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ea5-37aa-7ee0-9a0b-e405c5d7b5b5
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.matcher.ElementMatchers` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.matcher.ElementMatchers",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.matcher.ElementMatchers`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’ll inspect the target class and a few nearby package files to collect concrete fan-in and fan-out evidence, then I’ll return a verdict JSON only.
+exec
+/bin/bash -lc "rg --files src/main/java/net/bytebuddy/matcher | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+rg: src/main/java/net/bytebuddy/matcher: IO error for operation on src/main/java/net/bytebuddy/matcher: No such file or directory (os error 2)
+
+exec
+/bin/bash -lc "rg -n \"class ElementMatchers|interface ElementMatchers|ElementMatchers\" src/main/java src/test/java -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 0ms:
+rg: src/main/java: No such file or directory (os error 2)
+rg: src/test/java: No such file or directory (os error 2)
+
+codex
+The repository layout isn’t the standard Maven `src/main/java` root, so I’m locating the actual source tree first and then I’ll inspect the target class and its call sites.
+exec
+/bin/bash -lc "find . -maxdepth 3 -type d | sed -n '1,200p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+.
+./.mvn
+./.mvn/wrapper-legacy
+./.mvn/wrapper
+./.mvn/checksum
+./byte-buddy-dep
+./byte-buddy-dep/src
+./byte-buddy-dep/src/main
+./byte-buddy-dep/src/test
+./byte-buddy
+./byte-buddy/src
+./byte-buddy/src/main
+./byte-buddy-benchmark
+./byte-buddy-benchmark/src
+./byte-buddy-benchmark/src/main
+./byte-buddy-benchmark/src/test
+./byte-buddy-maven-plugin
+./byte-buddy-maven-plugin/src
+./byte-buddy-maven-plugin/src/main
+./byte-buddy-maven-plugin/src/test
+./byte-buddy-android
+./byte-buddy-android/src
+./byte-buddy-android/src/main
+./byte-buddy-android/src/test
+./byte-buddy-gradle-plugin
+./byte-buddy-gradle-plugin/gradle
+./byte-buddy-gradle-plugin/gradle/wrapper-legacy
+./byte-buddy-gradle-plugin/gradle/wrapper
+./byte-buddy-gradle-plugin/android-plugin
+./byte-buddy-gradle-plugin/android-plugin/src
+./byte-buddy-gradle-plugin/src
+./byte-buddy-gradle-plugin/src/main
+./byte-buddy-gradle-plugin/src/test
+./byte-buddy-gradle-plugin/mavenBridge
+./byte-buddy-gradle-plugin/android-plugin-test
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-target
+./byte-buddy-gradle-plugin/android-plugin-test/app
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib
+./byte-buddy-gradle-plugin/android-plugin-test/service-definition-lib
+./byte-buddy-agent
+./byte-buddy-agent/src
+./byte-buddy-agent/src/main
+./byte-buddy-agent/src/test
+./.github
+./.github/workflows
+./.git
+./.git/refs
+./.git/refs/tags
+./.git/refs/heads
+./.git/refs/remotes
+./.git/branches
+./.git/objects
+./.git/objects/pack
+./.git/objects/89
+./.git/objects/info
+./.git/objects/45
+./.git/info
+./.git/logs
+./.git/logs/refs
+./.git/hooks
+./byte-buddy-android-test
+./byte-buddy-android-test/src
+./byte-buddy-android-test/src/main
+./byte-buddy-android-test/res
+./byte-buddy-android-test/res/values
+./byte-buddy-android-test/res/drawable
+./byte-buddy-android-test/res/layout
+
+exec
+/bin/bash -lc "pwd && rg --files | sed -n '1,200p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+byte-buddy-android-test/pom.xml
+byte-buddy-android-test/AndroidManifest.xml
+NOTICE
+byte-buddy-android-test/res/layout/main.xml
+SECURITY.md
+release-notes.md
+byte-buddy-android-test/res/drawable/icon.png
+byte-buddy-maven-plugin/pom.xml
+byte-buddy-maven-plugin/README.md
+pom.xml
+byte-buddy-android-test/res/values/strings.xml
+spotbugs-exclude.xml
+LICENSE
+byte-buddy-dep/pom.xml
+mvnw
+mvnw.cmd
+byte-buddy-benchmark/pom.xml
+byte-buddy-agent/pom.xml
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/InitializationTest.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/ClassLoaderResolverTest.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/ByteBuddyMojoTest.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/MavenCoordinateTest.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/TransformationTest.java
+byte-buddy-dep/src/test/resources/net_bytebuddy_test_c_NativeSample.so
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/SimpleEntryPoint.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/IllegalTransformPlugin.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/ArgumentPlugin.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/IllegalEntryPoint.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/LiveInitializerPlugin.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/SimplePlugin.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/IllegalTransformEntryPoint.java
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/IllegalPlugin.java
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/StubInvocationBenchmarkTest.java
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/AbstractBlackHoleTest.java
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmarkTest.java
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/TrivialClassCreationBenchmarkTest.java
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByImplementationBenchmarkTest.java
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/package-info.java
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceOriginMethodHandlesLookup.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/DynamicInvokeBootstrap.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceBootstrap.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceBootstrapErased.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionDynamicConstant.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodType.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MethodDelegationDynamicConstant.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/OriginMethodHandlesLookup.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/DynamicSampleBootstrap.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceDynamicConstant.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandlesLookup.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceOriginMethodType.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/AdviceOriginMethodHandle.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionOriginMethodHandle.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/OriginMethodType.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/OriginMethodHandle.java
+byte-buddy-dep/src/test/java-7/net/bytebuddy/test/precompiled/v7/MemberSubstitutionBootstrap.java
+README.md
+byte-buddy-android-test/src/main/resources/maven.properties
+byte-buddy/pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/entry.illegal.transform.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/illegal.apply.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/suffix.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/entry.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/simple.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/live.allowed.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/illegal.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/live.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/empty.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/test.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/argument.pom.xml
+byte-buddy-maven-plugin/src/test/resources/net/bytebuddy/test/entry.illegal.pom.xml
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByImplementationBenchmark.java
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/runner/QuickRunner.java
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/runner/package-info.java
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/StubInvocationBenchmark.java
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/TrivialClassCreationBenchmark.java
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/package-info.java
+byte-buddy-dep/src/test/precompiled-16/net/bytebuddy/test/precompiled/v16/RecordSample.class
+byte-buddy-dep/src/test/precompiled-16/net/bytebuddy/test/precompiled/v16/GenericRecordSample.class
+byte-buddy/src/main/resources/META-INF/licenses/ASM
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/specimen/ExampleInterface.java
+byte-buddy/src/main/resources/META-INF/LICENSE
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/specimen/ExampleClass.java
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/specimen/package-info.java
+byte-buddy-benchmark/result.txt
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/Discovery.java
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/package-info.java
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/MavenCoordinate.java
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/CoordinateConfiguration.java
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ClassLoaderResolver.java
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/PluginArgument.java
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/Initialization.java
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/Transformation.java
+checkstyle.xml
+byte-buddy-android/pom.xml
+byte-buddy-android/README.md
+byte-buddy-agent/src/test/java/net/bytebuddy/test/utility/AgentAttachmentRule.java
+byte-buddy-agent/src/test/java/net/bytebuddy/test/utility/JnaRule.java
+byte-buddy-agent/src/test/java/net/bytebuddy/test/utility/JavaVersionRule.java
+byte-buddy-maven-plugin/src/main/resources/META-INF/m2e/lifecycle-mapping-metadata.xml
+version-rules.xml
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentAgentProviderTest.java
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/VirtualMachineForHotSpotTest.java
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentInstallationTest.java
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/VirtualMachineAttachmentTest.java
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/InstallerTest.java
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/VirtualMachineForOpenJ9Test.java
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentAttachmentTypeEvaluator.java
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/SampleAgent.java
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/AttacherTest.java
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentTest.java
+byte-buddy-agent/src/test/java/net/bytebuddy/agent/ByteBuddyAgentAttachmentProviderTest.java
+byte-buddy-dep/src/test/precompiled-4/net/bytebuddy/test/precompiled/v4/TypeConstantSample.class
+byte-buddy-agent/src/main/c/attach_hotspot_windows.c
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java
+byte-buddy-android/src/main/java/net/bytebuddy/android/package-info.java
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/TypeAnnotation.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/ReceiverTypeSample$Generic$Inner.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/ReturnTypeInterfaceBridgeBase.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/ReceiverTypeSample.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodInterface.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/ReceiverTypeSample$Generic.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/TypeAnnotationOtherSamples$Bar.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/DelegationDefaultTargetExplicit.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/MorphDefaultInterface.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/OtherTypeAnnotation.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/TypeAnnotationOtherSamples.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/TypeAnnotationOtherSamples$Qux.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/ReceiverTypeSample$Generic$Nested.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/ReceiverTypeSample$Inner.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/TypeAnnotationOtherSamples$Qux$Baz.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/OriginExecutableWithCache.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/DelegationDefaultTargetSerializable.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/TypeAnnotationSamples.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/MorphDefaultDelegationTargetExplicit.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/SimpleTypeAnnotatedType.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/OriginExecutable.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodConflictingPreferringInterceptor.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/DelegationDefaultInterface.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodConflictingInterface.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/TypeVariableInterfaceBridgeBase.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/ReceiverTypeSample$Nested.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodPreferringInterceptor.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/DelegationDefaultTarget.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodNonOverridingInterface.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/TypeVariableInterfaceBridge.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/LambdaSampleFactory.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/ReturnTypeInterfaceBridge.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/MorphDefaultDelegationTargetImplicit.class
+byte-buddy-dep/src/test/precompiled-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodClass.class
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java
+byte-buddy-dep/src/test/precompiled-8-parameters/net/bytebuddy/test/precompiled/v8parameters/ParameterNames.class
+byte-buddy-agent/src/main/java/net/bytebuddy/agent/Installer.java
+byte-buddy-agent/src/main/resources/win32-x86-64/attach_hotspot_windows.dll
+byte-buddy-agent/src/main/resources/win32-x86/attach_hotspot_windows.dll
+byte-buddy-agent/src/main/java/net/bytebuddy/agent/utility/nullability/UnknownNull.java
+byte-buddy-agent/src/main/java/net/bytebuddy/agent/utility/nullability/MaybeNull.java
+byte-buddy-agent/src/main/java/net/bytebuddy/agent/utility/nullability/NeverNull.java
+byte-buddy-agent/src/main/java/net/bytebuddy/agent/utility/nullability/package-info.java
+byte-buddy-agent/src/main/java/net/bytebuddy/agent/utility/nullability/AlwaysNull.java
+byte-buddy-agent/src/main/java/net/bytebuddy/agent/Attacher.java
+byte-buddy-agent/src/main/java/net/bytebuddy/agent/VirtualMachine.java
+byte-buddy-agent/src/main/java/net/bytebuddy/agent/package-info.java
+byte-buddy-agent/src/main/java/net/bytebuddy/agent/ByteBuddyAgent.java
+byte-buddy-dep/src/test/java-4/net/bytebuddy/test/precompiled/v4/TypeConstantSample.java
+byte-buddy-dep/src/test/java-4-jsr14/net/bytebuddy/test/precompiled/v4jsr14/Jsr14Sample.java
+byte-buddy-dep/src/test/java-11/net/bytebuddy/test/precompiled/v11/AdviceDynamicConstant.java
+byte-buddy-dep/src/test/java-11/net/bytebuddy/test/precompiled/v11/MemberSubstitutionDynamicConstant.java
+byte-buddy-dep/src/test/java-11/net/bytebuddy/test/precompiled/v11/MethodDelegationDynamicConstant.java
+byte-buddy-dep/src/test/java-11/net/bytebuddy/test/precompiled/v11/DynamicConstantBootstrap.java
+byte-buddy-dep/src/test/java-11/net/bytebuddy/test/precompiled/v11/ClassExtendsTypeReference.java
+byte-buddy-dep/src/test/precompiled-6/net/bytebuddy/test/precompiled/v6/LegacyInterface.class
+byte-buddy-dep/src/test/java/net/bytebuddy/description/enumeration/EnumerationDescriptionForLoadedEnumerationTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/description/enumeration/AbstractEnumerationDescriptionTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/description/enumeration/EnumerationDescriptionLatentTest.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/TypeAnnotationOtherSamples.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodPreferringInterceptor.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/MorphDefaultDelegationTargetExplicit.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/ReceiverTypeSample.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/TypeAnnotation.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodConflictingInterface.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/ReturnTypeInterfaceBridgeBase.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/MorphDefaultDelegationTargetImplicit.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodConflictingPreferringInterceptor.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/DelegationDefaultInterface.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodNonOverridingInterface.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/SingleDefaultMethodInterface.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/DelegationDefaultTargetExplicit.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/OtherTypeAnnotation.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/OriginExecutable.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/OriginExecutableWithCache.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/TypeVariableInterfaceBridgeBase.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/TypeAnnotationSamples.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/SimpleTypeAnnotatedType.java
+byte-buddy-dep/src/test/java-8/net/bytebuddy/test/precompiled/v8/DelegationDefaultTarget.java
+
+codex
+I have the module layout now. Next I’m opening `ElementMatchers` itself and then checking who imports or references it to estimate fan-in, along with what it depends on directly.
+exec
+/bin/bash -lc "rg -n \"class ElementMatchers|interface ElementMatchers|final class ElementMatchers\" byte-buddy byte-buddy-dep byte-buddy-agent byte-buddy-gradle-plugin byte-buddy-maven-plugin byte-buddy-android -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:55:public final class ElementMatchers {
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:53:public class ElementMatchersTest {
+
+exec
+/bin/bash -lc "rg -n \"ElementMatchers\\b\" byte-buddy byte-buddy-dep byte-buddy-agent byte-buddy-gradle-plugin byte-buddy-maven-plugin byte-buddy-android -g '*.java' | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:29:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/ArgumentPlugin.java:9:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/LiveInitializerPlugin.java:9:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-maven-plugin/src/test/java/net/bytebuddy/test/SimplePlugin.java:9:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/PluginForLocalClass.java:24:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/PluginForLocalClass.java:56:        return builder.visit(Advice.to(AdviceForLocalClass.class).on(ElementMatchers.named("method")));
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/PluginForLibClass.java:24:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/PluginForLibClass.java:56:        return builder.visit(Advice.to(AdviceForLibClass.class).on(ElementMatchers.named("method")));
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/aar/AarPlugin.java:23:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/aar/AarPlugin.java:41:        return builder.visit(Advice.to(AarAdvice.class).on(ElementMatchers.named("method")));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ToStringMethod.java:34:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ToStringMethod.java:42:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ToStringMethod.java:43:import static net.bytebuddy.matcher.ElementMatchers.isStatic;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ToStringMethod.java:44:import static net.bytebuddy.matcher.ElementMatchers.isToString;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ToStringMethod.java:45:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ToStringMethod.java:46:import static net.bytebuddy.matcher.ElementMatchers.not;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ToStringMethod.java:59:            .filter(isConstructor().and(ElementMatchers.takesArguments(String.class)))
+byte-buddy-dep/src/main/java/net/bytebuddy/description/TypeVariableSource.java:24:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldValue.java:37:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DefaultCall.java:38:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Pipe.java:47:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Pipe.java:60:import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Pipe.java:61:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Pipe.java:62:import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Pipe.java:63:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Pipe.java:312:                        .method(ElementMatchers.<MethodDescription>isAbstract().and(isDeclaredBy(forwardingType)))
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:41:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:49:import static net.bytebuddy.matcher.ElementMatchers.any;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:50:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:51:import static net.bytebuddy.matcher.ElementMatchers.isFinalizer;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:52:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:53:import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:136:                .ignore(ignoreFinalizer ? isFinalizer() : ElementMatchers.<MethodDescription>none())
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/SuperCallHandle.java:45:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/PrivilegedMemberLookupAction.java:39:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/PrivilegedMemberLookupAction.java:40:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Super.java:41:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Super.java:42:import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Super.java:43:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Super.java:44:import static net.bytebuddy.matcher.ElementMatchers.not;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Super.java:45:import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldGetterHandle.java:42:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/MethodCallProxy.java:59:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DefaultMethod.java:42:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/SuperMethodHandle.java:35:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Argument.java:36:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:46:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:59:import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:60:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:61:import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:62:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:396:                        .method(ElementMatchers.<MethodDescription>isAbstract().and(isDeclaredBy(morphingType)))
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:36:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:59:import static net.bytebuddy.matcher.ElementMatchers.not;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:60:import static net.bytebuddy.matcher.ElementMatchers.ofSort;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1691:            return methodDescription.getTypeVariables().accept(visitor).filter(ElementMatchers.ofSort(TypeDefinition.Sort.VARIABLE));
+byte-buddy-dep/src/test/java/net/bytebuddy/description/method/AbstractParameterListTest.java:9:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Default.java:35:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldSetterHandle.java:42:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/AllArguments.java:40:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/This.java:35:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/method/AbstractMethodDescriptionTest.java:33:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/SuperCall.java:37:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/method/MethodListEmptyTest.java:6:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/SuperMethod.java:41:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DefaultCallHandle.java:46:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/method/MethodDescriptionLatentTest.java:6:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/method/MethodDescriptionLatentTest.java:21:                new MethodDescription.ForLoadedMethod(method).asToken(ElementMatchers.is(method.getDeclaringClass())));
+byte-buddy-dep/src/test/java/net/bytebuddy/description/method/MethodDescriptionLatentTest.java:26:                new MethodDescription.ForLoadedConstructor(constructor).asToken(ElementMatchers.is(constructor.getDeclaringClass())));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Origin.java:43:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/method/ParameterListEmptyTest.java:5:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:57:import static net.bytebuddy.matcher.ElementMatchers.definedMethod;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:58:import static net.bytebuddy.matcher.ElementMatchers.is;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:59:import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:60:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:61:import static net.bytebuddy.matcher.ElementMatchers.isGetter;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:62:import static net.bytebuddy.matcher.ElementMatchers.isSetter;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:63:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/method/AbstractMethodListTest.java:10:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DefaultMethodHandle.java:37:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/BindingPriority.java:30:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DynamicConstant.java:39:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Handle.java:38:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/field/FieldListEmptyTest.java:5:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:66:import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:67:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/field/AbstractFieldListTest.java:9:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:48:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:20:import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java:30:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/annotation/AnnotationListEmptyTest.java:9:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:97:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:98:import static net.bytebuddy.matcher.ElementMatchers.isDefaultFinalizer;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:99:import static net.bytebuddy.matcher.ElementMatchers.isEquals;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:100:import static net.bytebuddy.matcher.ElementMatchers.isHashCode;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:101:import static net.bytebuddy.matcher.ElementMatchers.isSynthetic;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:102:import static net.bytebuddy.matcher.ElementMatchers.isToString;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:103:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:104:import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:105:import static net.bytebuddy.matcher.ElementMatchers.takesGenericArguments;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:106:import static net.bytebuddy.matcher.ElementMatchers.targetsElement;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/MethodAttributeAppender.java:30:import static net.bytebuddy.matcher.ElementMatchers.annotationType;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/MethodAttributeAppender.java:31:import static net.bytebuddy.matcher.ElementMatchers.nameStartsWith;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/MethodAttributeAppender.java:32:import static net.bytebuddy.matcher.ElementMatchers.not;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/annotation/AbstractAnnotationListTest.java:5:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/annotation/AbstractAnnotationListTest.java:78:        assertThat(asList(getFirst()).visibility(ElementMatchers.is(RetentionPolicy.RUNTIME)), is(asList(getFirst())));
+byte-buddy-dep/src/test/java/net/bytebuddy/description/annotation/AbstractAnnotationListTest.java:83:        assertThat(asList(getFirst()).visibility(ElementMatchers.is(RetentionPolicy.SOURCE)).size(), is(0));
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:80:import static net.bytebuddy.matcher.ElementMatchers.is;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:39:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:41:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:38:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/annotation/AnnotationDescription.java:55:import static net.bytebuddy.matcher.ElementMatchers.isPublic;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/annotation/AnnotationDescription.java:56:import static net.bytebuddy.matcher.ElementMatchers.isStatic;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/annotation/AnnotationDescription.java:57:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/annotation/AnnotationDescription.java:58:import static net.bytebuddy.matcher.ElementMatchers.not;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/annotation/AnnotationDescription.java:59:import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java:44:import static net.bytebuddy.matcher.ElementMatchers.fieldType;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java:45:import static net.bytebuddy.matcher.ElementMatchers.genericFieldType;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java:46:import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java:47:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:61:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:92:import static net.bytebuddy.matcher.ElementMatchers.hasDescriptor;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:93:import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:94:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:95:import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:96:import static net.bytebuddy.matcher.ElementMatchers.isStatic;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:97:import static net.bytebuddy.matcher.ElementMatchers.isVirtual;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:98:import static net.bytebuddy.matcher.ElementMatchers.isVisibleTo;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:99:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:100:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:101:import static net.bytebuddy.matcher.ElementMatchers.not;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:278:                ElementMatchers.<String>any(),
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:279:                ElementMatchers.<JavaConstant.MethodType>any(),
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:280:                ElementMatchers.<List<? extends JavaConstant>>any());
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:745:                        new Replacement.Factory.Compound(this.replacementFactory, Replacement.ForElementMatchers.Factory.of(matcher, substitutionFactory)));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:841:                        new Replacement.Factory.Compound(this.replacementFactory, Replacement.ForElementMatchers.Factory.ofField(matcher, matchRead, matchWrite, substitutionFactory)));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:951:                        new Replacement.Factory.Compound(this.replacementFactory, Replacement.ForElementMatchers.Factory.ofMethod(matcher, includeVirtualCalls, includeSuperCalls, substitutionFactory)));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:7732:        class ForElementMatchers implements Replacement {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:7780:            protected ForElementMatchers(ElementMatcher<? super FieldDescription> fieldMatcher,
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:7943:                    return new ForElementMatchers(fieldMatcher,
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8301:                            ? ElementMatchers.<FieldDescription>named(internalName).and(hasDescriptor(descriptor))
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8302:                            : ElementMatchers.<FieldDescription>failSafe(named(internalName).and(hasDescriptor(descriptor))));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8366:                            ? ElementMatchers.<MethodDescription>isConstructor().and(hasDescriptor(descriptor))
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8367:                            : ElementMatchers.<MethodDescription>failSafe(isConstructor().and(hasDescriptor(descriptor))));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8372:                                ? ElementMatchers.<MethodDescription>named(internalName).and(hasDescriptor(descriptor))
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8373:                                : ElementMatchers.<MethodDescription>failSafe(named(internalName).and(hasDescriptor(descriptor))));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8377:                            ? ElementMatchers.<MethodDescription>named(internalName).and(hasDescriptor(descriptor))
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8378:                            : ElementMatchers.<MethodDescription>failSafe(named(internalName).and(hasDescriptor(descriptor))));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8381:                            ? ElementMatchers.<MethodDescription>isPrivate().and(not(isStatic())).and(named(internalName).and(hasDescriptor(descriptor)))
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8382:                            : ElementMatchers.<MethodDescription>failSafe(isPrivate().<MethodDescription>and(not(isStatic())).and(named(internalName).and(hasDescriptor(descriptor)))));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8385:                                ? ElementMatchers.<MethodDescription>named(internalName).and(hasDescriptor(descriptor))
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8386:                                : ElementMatchers.<MethodDescription>failSafe(named(internalName).and(hasDescriptor(descriptor))));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8390:                            ? ElementMatchers.<MethodDescription>named(internalName).and(hasDescriptor(descriptor))
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8391:                            : ElementMatchers.<MethodDescription>failSafe(named(internalName).and(hasDescriptor(descriptor))));
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/AbstractTypeDescriptionTest.java:52:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/AbstractTypeDescriptionTest.java:53:import static net.bytebuddy.matcher.ElementMatchers.isMethod;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/AbstractTypeDescriptionTest.java:54:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:45:import static net.bytebuddy.matcher.ElementMatchers.isHashCode;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:46:import static net.bytebuddy.matcher.ElementMatchers.isStatic;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:47:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:48:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:49:import static net.bytebuddy.matcher.ElementMatchers.not;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:50:import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/TypeReferenceAdjustment.java:45:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ExceptionMethod.java:31:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ExceptionMethod.java:32:import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionGenericOfParameterizedTypeForReifiedTypeTest.java:7:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/ModifierAdjustment.java:41:import static net.bytebuddy.matcher.ElementMatchers.any;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/ModifierAdjustment.java:42:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/ModifierAdjustment.java:43:import static net.bytebuddy.matcher.ElementMatchers.isMethod;
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:86:import static net.bytebuddy.matcher.ElementMatchers.hasDescriptor;
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:87:import static net.bytebuddy.matcher.ElementMatchers.hasMethodName;
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:88:import static net.bytebuddy.matcher.ElementMatchers.is;
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:89:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceLocalValueTest.java:7:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberRemoval.java:26:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberRemoval.java:38:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberRemoval.java:39:import static net.bytebuddy.matcher.ElementMatchers.isMethod;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberRemoval.java:72:        this(ElementMatchers.<FieldDescription.InDefinedShape>none(), ElementMatchers.<MethodDescription>none());
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:47:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:67:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:68:import static net.bytebuddy.matcher.ElementMatchers.isVisibleTo;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:69:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:70:import static net.bytebuddy.matcher.ElementMatchers.not;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:841:                        instrumentedType.getDeclaredMethods().filter(not(ElementMatchers.isVirtual()).and(matcher)),
+byte-buddy-dep/src/test/java/net/bytebuddy/build/EntryPointDefaultTest.java:16:import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
+byte-buddy-dep/src/test/java/net/bytebuddy/build/EntryPointDefaultTest.java:17:import static net.bytebuddy.matcher.ElementMatchers.not;
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceFrameTest.java:14:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceJsrRetTest.java:16:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AnnotationRemoval.java:40:import static net.bytebuddy.matcher.ElementMatchers.any;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AnnotationRemoval.java:41:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AnnotationRemoval.java:42:import static net.bytebuddy.matcher.ElementMatchers.isMethod;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AnnotationRemoval.java:43:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:47:import static net.bytebuddy.matcher.ElementMatchers.isEquals;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:48:import static net.bytebuddy.matcher.ElementMatchers.isStatic;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:49:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:50:import static net.bytebuddy.matcher.ElementMatchers.none;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:51:import static net.bytebuddy.matcher.ElementMatchers.not;
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineDefaultOtherTest.java:9:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineDefaultOtherTest.java:103:            return builder.visit(new AsmVisitorWrapper.ForDeclaredFields().field(ElementMatchers.<FieldDescription.InDefinedShape>any()));
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/AbstractTypeDescriptionGenericTest.java:37:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/AbstractTypeDescriptionGenericTest.java:38:import static net.bytebuddy.matcher.ElementMatchers.isMethod;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/AbstractTypeDescriptionGenericTest.java:39:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceBoxedReturnAssignmentTest.java:13:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceCustomAnnotationOnFieldTest.java:15:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionGenericVisitorAssignerTest.java:14:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceSkipOnNonDefaultValueTest.java:12:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceInconsistentStackSizeTest.java:27:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineDefaultTest.java:12:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineDefaultTest.java:172:                .ignore(ElementMatchers.is(Sample.class))
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionGenericVisitorSubstitutorForDetachmentTest.java:4:import net.bytebuddy.matcher.ElementMatchers;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionGenericVisitorSubstitutorForDetachmentTest.java:22:        TypeDescription.Generic detached = original.accept(new TypeDescription.Generic.Visitor.Substitutor.ForDetachment(ElementMatchers.is(Foo.Inner.class)));
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionGenericVisitorSubstitutorForDetachmentTest.java:47:        TypeDescription.Generic detached = original.accept(new TypeDescription.Generic.Visitor.Substitutor.ForDetachment(ElementMatchers.is(Foo.Inner.class)));
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceSuppressionTest.java:12:import static net.bytebuddy.matcher.ElementMatchers.named;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:49:import static net.bytebuddy.matcher.ElementMatchers.any;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:50:import static net.bytebuddy.matcher.ElementMatchers.fieldType;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:51:import static net.bytebuddy.matcher.ElementMatchers.isArray;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:52:import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:53:import static net.bytebuddy.matcher.ElementMatchers.isPrimitive;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:54:import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
+
+codex
+I’ve already found a broad usage footprint in tests and production code. I’m now checking the class body to confirm that it also fans out to many collaborators, which is the other half of the hub-like modularization pattern.
+exec
+/bin/bash -lc "rg -l \"\\bElementMatchers\\b\" byte-buddy byte-buddy-dep byte-buddy-agent byte-buddy-gradle-plugin byte-buddy-maven-plugin byte-buddy-android -g '*.java' | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+264
+
+exec
+/bin/bash -lc 'rg -n "''^'"\\s*public static\" byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+71:    public static <T> ElementMatcher.Junction<T> failSafe(ElementMatcher<? super T> matcher) {
+90:    public static <T> ElementMatcher.Junction<T> cached(ElementMatcher<? super T> matcher, ConcurrentMap<? super T, Boolean> map) {
+111:    public static <T> ElementMatcher.Junction<T> cached(ElementMatcher<? super T> matcher, int evictionSize) {
+126:    public static <T> ElementMatcher.Junction<T> is(@MaybeNull Object value) {
+139:    public static <T extends FieldDescription> ElementMatcher.Junction<T> is(Field field) {
+150:    public static <T extends FieldDescription> ElementMatcher.Junction<T> is(FieldDescription.InDefinedShape field) {
+161:    public static <T extends FieldDescription> ElementMatcher.Junction<T> definedField(ElementMatcher<? super FieldDescription.InDefinedShape> matcher) {
+172:    public static <T extends MethodDescription> ElementMatcher.Junction<T> is(Method method) {
+183:    public static <T extends MethodDescription> ElementMatcher.Junction<T> is(Constructor<?> constructor) {
+194:    public static <T extends MethodDescription> ElementMatcher.Junction<T> is(MethodDescription.InDefinedShape method) {
+205:    public static <T extends MethodDescription> ElementMatcher.Junction<T> definedMethod(ElementMatcher<? super MethodDescription.InDefinedShape> matcher) {
+216:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> is(ParameterDescription.InDefinedShape parameter) {
+227:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> definedParameter(ElementMatcher<? super ParameterDescription.InDefinedShape> matcher) {
+238:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> hasType(ElementMatcher<? super TypeDescription> matcher) {
+249:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> hasGenericType(ElementMatcher<? super TypeDescription.Generic> matcher) {
+259:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> isMandated() {
+270:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> is(Type type) {
+281:    public static <T extends AnnotationDescription> ElementMatcher.Junction<T> is(Annotation annotation) {
+292:    public static <T> ElementMatcher.Junction<T> not(ElementMatcher<? super T> matcher) {
+302:    public static <T> ElementMatcher.Junction<T> any() {
+312:    public static <T> ElementMatcher.Junction<T> none() {
+330:    public static <T> ElementMatcher.Junction<T> anyOf(Object... value) {
+348:    public static <T> ElementMatcher.Junction<T> anyOf(Iterable<?> values) {
+368:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> anyOf(Type... value) {
+380:    public static <T extends MethodDescription> ElementMatcher.Junction<T> anyOf(Constructor<?>... value) {
+392:    public static <T extends MethodDescription> ElementMatcher.Junction<T> anyOf(Method... value) {
+404:    public static <T extends FieldDescription> ElementMatcher.Junction<T> anyOf(Field... value) {
+416:    public static <T extends AnnotationDescription> ElementMatcher.Junction<T> anyOf(Annotation... value) {
+428:    public static <T> ElementMatcher.Junction<T> noneOf(Object... value) {
+440:    public static <T> ElementMatcher.Junction<T> noneOf(Iterable<?> values) {
+460:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> noneOf(Type... value) {
+472:    public static <T extends MethodDescription> ElementMatcher.Junction<T> noneOf(Constructor<?>... value) {
+484:    public static <T extends MethodDescription> ElementMatcher.Junction<T> noneOf(Method... value) {
+496:    public static <T extends FieldDescription> ElementMatcher.Junction<T> noneOf(Field... value) {
+508:    public static <T extends AnnotationDescription> ElementMatcher.Junction<T> noneOf(Annotation... value) {
+520:    public static <T> ElementMatcher.Junction<Iterable<? extends T>> whereAny(ElementMatcher<? super T> matcher) {
+531:    public static <T> ElementMatcher.Junction<Iterable<? extends T>> whereNone(ElementMatcher<? super T> matcher) {
+543:    public static <T extends TypeDescription.Generic> ElementMatcher.Junction<T> erasure(Class<?> type) {
+555:    public static <T extends TypeDescription.Generic> ElementMatcher.Junction<T> erasure(TypeDescription type) {
+567:    public static <T extends TypeDescription.Generic> ElementMatcher.Junction<T> erasure(ElementMatcher<? super TypeDescription> matcher) {
+579:    public static <T extends Iterable<? extends TypeDescription.Generic>> ElementMatcher.Junction<T> erasures(Class<?>... type) {
+591:    public static <T extends Iterable<? extends TypeDescription.Generic>> ElementMatcher.Junction<T> erasures(TypeDescription... type) {
+603:    public static <T extends Iterable<? extends TypeDescription.Generic>> ElementMatcher.Junction<T> erasures(
+620:    public static <T extends Iterable<? extends TypeDescription.Generic>> ElementMatcher.Junction<T> erasures(
+632:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> isVariable(String symbol) {
+643:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> isVariable(ElementMatcher<? super NamedElement> matcher) {
+654:    public static <T extends NamedElement> ElementMatcher.Junction<T> named(String name) {
+665:    public static <T extends NamedElement> ElementMatcher.Junction<T> namedOneOf(String... names) {
+677:    public static <T extends NamedElement> ElementMatcher.Junction<T> namedIgnoreCase(String name) {
+688:    public static <T extends NamedElement> ElementMatcher.Junction<T> nameStartsWith(String prefix) {
+700:    public static <T extends NamedElement> ElementMatcher.Junction<T> nameStartsWithIgnoreCase(String prefix) {
+711:    public static <T extends NamedElement> ElementMatcher.Junction<T> nameEndsWith(String suffix) {
+723:    public static <T extends NamedElement> ElementMatcher.Junction<T> nameEndsWithIgnoreCase(String suffix) {
+734:    public static <T extends NamedElement> ElementMatcher.Junction<T> nameContains(String infix) {
+746:    public static <T extends NamedElement> ElementMatcher.Junction<T> nameContainsIgnoreCase(String infix) {
+757:    public static <T extends NamedElement> ElementMatcher.Junction<T> nameMatches(String regex) {
+767:    public static <T extends NamedElement.WithOptionalName> ElementMatcher.Junction<T> isNamed() {
+778:    public static <T extends NamedElement.WithDescriptor> ElementMatcher.Junction<T> hasDescriptor(String descriptor) {
+790:    public static <T extends ByteCodeElement> ElementMatcher.Junction<T> isDeclaredBy(Class<?> type) {
+802:    public static <T extends ByteCodeElement> ElementMatcher.Junction<T> isDeclaredBy(TypeDescription type) {
+815:    public static <T extends ByteCodeElement> ElementMatcher.Junction<T> isDeclaredBy(ElementMatcher<? super TypeDescription> matcher) {
+826:    public static <T extends ByteCodeElement> ElementMatcher.Junction<T> isDeclaredByGeneric(Type type) {
+837:    public static <T extends ByteCodeElement> ElementMatcher.Junction<T> isDeclaredByGeneric(TypeDescription.Generic type) {
+848:    public static <T extends ByteCodeElement> ElementMatcher.Junction<T> isDeclaredByGeneric(ElementMatcher<? super TypeDescription.Generic> matcher) {
+859:    public static <T extends ByteCodeElement> ElementMatcher.Junction<T> isVisibleTo(Class<?> type) {
+870:    public static <T extends ByteCodeElement> ElementMatcher.Junction<T> isVisibleTo(TypeDescription type) {
+881:    public static <T extends ByteCodeElement> ElementMatcher.Junction<T> isAccessibleTo(Class<?> type) {
+892:    public static <T extends ByteCodeElement> ElementMatcher.Junction<T> isAccessibleTo(TypeDescription type) {
+902:    public static <T extends ModifierReviewable.OfAbstraction> ElementMatcher.Junction<T> isAbstract() {
+912:    public static <T extends ModifierReviewable.OfEnumeration> ElementMatcher.Junction<T> isEnum() {
+925:    public static <T extends AnnotationSource> ElementMatcher.Junction<T> isAnnotatedWith(Class<? extends Annotation> type) {
+939:    public static <T extends AnnotationSource> ElementMatcher.Junction<T> isAnnotatedWith(TypeDescription type) {
+954:    public static <T extends AnnotationSource> ElementMatcher.Junction<T> isAnnotatedWith(ElementMatcher<? super TypeDescription> matcher) {
+969:    public static <T extends AnnotationSource> ElementMatcher.Junction<T> declaresAnnotation(ElementMatcher<? super AnnotationDescription> matcher) {
+979:    public static <T extends ModifierReviewable.OfByteCodeElement> ElementMatcher.Junction<T> isPublic() {
+989:    public static <T extends ModifierReviewable.OfByteCodeElement> ElementMatcher.Junction<T> isProtected() {
+999:    public static <T extends ModifierReviewable.OfByteCodeElement> ElementMatcher.Junction<T> isPackagePrivate() {
+1009:    public static <T extends ModifierReviewable.OfByteCodeElement> ElementMatcher.Junction<T> isPrivate() {
+1019:    public static <T extends ModifierReviewable.OfByteCodeElement> ElementMatcher.Junction<T> isStatic() {
+1029:    public static <T extends ModifierReviewable> ElementMatcher.Junction<T> isFinal() {
+1039:    public static <T extends ModifierReviewable> ElementMatcher.Junction<T> isSynthetic() {
+1049:    public static <T extends ModifierReviewable.ForMethodDescription> ElementMatcher.Junction<T> isSynchronized() {
+1059:    public static <T extends ModifierReviewable.ForMethodDescription> ElementMatcher.Junction<T> isNative() {
+1069:    public static <T extends ModifierReviewable.ForMethodDescription> ElementMatcher.Junction<T> isStrict() {
+1079:    public static <T extends ModifierReviewable.ForMethodDescription> ElementMatcher.Junction<T> isVarArgs() {
+1089:    public static <T extends ModifierReviewable.ForMethodDescription> ElementMatcher.Junction<T> isBridge() {
+1100:    public static <T extends MethodDescription> ElementMatcher.Junction<T> returnsGeneric(Type type) {
+1112:    public static <T extends MethodDescription> ElementMatcher.Junction<T> returnsGeneric(TypeDescription.Generic type) {
+1123:    public static <T extends MethodDescription> ElementMatcher.Junction<T> returns(Class<?> type) {
+1134:    public static <T extends MethodDescription> ElementMatcher.Junction<T> returns(TypeDescription type) {
+1145:    public static <T extends MethodDescription> ElementMatcher.Junction<T> returns(ElementMatcher<? super TypeDescription> matcher) {
+1156:    public static <T extends MethodDescription> ElementMatcher.Junction<T> returnsGeneric(ElementMatcher<? super TypeDescription.Generic> matcher) {
+1168:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesGenericArgument(int index, Type type) {
+1180:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesGenericArgument(int index, TypeDescription.Generic type) {
+1192:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesGenericArgument(int index, ElementMatcher<? super TypeDescription.Generic> matcher) {
+1203:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesGenericArguments(Type... type) {
+1214:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesGenericArguments(TypeDefinition... type) {
+1225:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesGenericArguments(List<? extends TypeDefinition> types) {
+1240:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesGenericArguments(ElementMatcher<? super Iterable<? extends TypeDescription.Generic>> matchers) {
+1252:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesArgument(int index, Class<?> type) {
+1264:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesArgument(int index, TypeDescription type) {
+1276:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesArgument(int index, ElementMatcher<? super TypeDescription> matcher) {
+1287:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesArguments(Class<?>... type) {
+1298:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesArguments(TypeDescription... type) {
+1309:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesArguments(Iterable<? extends TypeDescription> types) {
+1324:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesArguments(ElementMatcher<? super Iterable<? extends TypeDescription>> matchers) {
+1335:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesArguments(int length) {
+1345:    public static <T extends MethodDescription> ElementMatcher.Junction<T> takesNoArguments() {
+1357:    public static <T extends MethodDescription> ElementMatcher.Junction<T> hasParameters(
+1370:    public static <T extends MethodDescription> ElementMatcher.Junction<T> canThrow(Class<? extends Throwable> exceptionType) {
+1382:    public static <T extends MethodDescription> ElementMatcher.Junction<T> canThrow(TypeDescription exceptionType) {
+1397:    public static <T extends MethodDescription> ElementMatcher.Junction<T> declaresGenericException(Type exceptionType) {
+1410:    public static <T extends MethodDescription> ElementMatcher.Junction<T> declaresGenericException(TypeDescription.Generic exceptionType) {
+1423:    public static <T extends MethodDescription> ElementMatcher.Junction<T> declaresException(Class<? extends Throwable> exceptionType) {
+1434:    public static <T extends MethodDescription> ElementMatcher.Junction<T> declaresException(TypeDescription exceptionType) {
+1447:    public static <T extends MethodDescription> ElementMatcher.Junction<T> declaresGenericException(
+1459:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isOverriddenFrom(Class<?> type) {
+1470:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isOverriddenFrom(TypeDescription type) {
+1482:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isOverriddenFrom(ElementMatcher<? super TypeDescription> matcher) {
+1493:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isOverriddenFromGeneric(Type type) {
+1504:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isOverriddenFromGeneric(TypeDescription.Generic type) {
+1516:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isOverriddenFromGeneric(ElementMatcher<? super TypeDescription.Generic> matcher) {
+1527:    public static <T extends TypeDescription> ElementMatcher.Junction<T> isInterface() {
+1537:    public static <T extends TypeDescription> ElementMatcher.Junction<T> isAnnotation() {
+1547:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isMethod() {
+1557:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isConstructor() {
+1567:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isTypeInitializer() {
+1577:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isVirtual() {
+1587:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isDefaultMethod() {
+1597:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isDefaultConstructor() {
+1608:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isMain() {
+1619:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isMain(boolean modernized) {
+1640:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isDefaultFinalizer() {
+1650:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isFinalizer() {
+1660:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isHashCode() {
+1670:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isEquals() {
+1680:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isClone() {
+1690:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isToString() {
+1700:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isSetter() {
+1712:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isSetter(String property) {
+1725:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isSetter(Class<?> type) {
+1736:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGenericSetter(Type type) {
+1747:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isSetter(TypeDescription type) {
+1758:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGenericSetter(TypeDescription.Generic type) {
+1769:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isSetter(ElementMatcher<? super TypeDescription> matcher) {
+1780:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGenericSetter(ElementMatcher<? super TypeDescription.Generic> matcher) {
+1790:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGetter() {
+1803:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGetter(String property) {
+1816:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGetter(Class<?> type) {
+1827:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGenericGetter(Type type) {
+1838:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGetter(TypeDescription type) {
+1849:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGenericGetter(TypeDescription.Generic type) {
+1860:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGetter(ElementMatcher<? super TypeDescription> matcher) {
+1871:    public static <T extends MethodDescription> ElementMatcher.Junction<T> isGenericGetter(ElementMatcher<? super TypeDescription.Generic> matcher) {
+1882:    public static <T extends MethodDescription> ElementMatcher.Junction<T> hasMethodName(String internalName) {
+1899:    public static <T extends MethodDescription> ElementMatcher.Junction<T> hasSignature(MethodDescription.SignatureToken token) {
+1910:    public static <T extends TypeDescription> ElementMatcher.Junction<T> isSubTypeOf(Class<?> type) {
+1921:    public static <T extends TypeDescription> ElementMatcher.Junction<T> isSubTypeOf(TypeDescription type) {
+1932:    public static <T extends TypeDescription> ElementMatcher.Junction<T> isSuperTypeOf(Class<?> type) {
+1943:    public static <T extends TypeDescription> ElementMatcher.Junction<T> isSuperTypeOf(TypeDescription type) {
+1954:    public static <T extends TypeDescription> ElementMatcher.Junction<T> hasSuperClass(ElementMatcher<? super TypeDescription> matcher) {
+1965:    public static <T extends TypeDescription> ElementMatcher.Junction<T> hasGenericSuperClass(ElementMatcher<? super TypeDescription.Generic> matcher) {
+1976:    public static <T extends TypeDescription> ElementMatcher.Junction<T> hasSuperType(ElementMatcher<? super TypeDescription> matcher) {
+1987:    public static <T extends TypeDescription> ElementMatcher.Junction<T> hasGenericSuperType(ElementMatcher<? super TypeDescription.Generic> matcher) {
+1999:    public static <T extends TypeDescription> ElementMatcher.Junction<T> inheritsAnnotation(Class<?> type) {
+2011:    public static <T extends TypeDescription> ElementMatcher.Junction<T> inheritsAnnotation(TypeDescription type) {
+2023:    public static <T extends TypeDescription> ElementMatcher.Junction<T> inheritsAnnotation(ElementMatcher<? super TypeDescription> matcher) {
+2035:    public static <T extends TypeDescription> ElementMatcher.Junction<T> hasAnnotation(ElementMatcher<? super AnnotationDescription> matcher) {
+2046:    public static <T extends TypeDescription> ElementMatcher.Junction<T> hasClassFileVersionAtLeast(ClassFileVersion classFileVersion) {
+2057:    public static <T extends TypeDescription> ElementMatcher.Junction<T> hasClassFileVersionAtMost(ClassFileVersion classFileVersion) {
+2068:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> declaresField(ElementMatcher<? super FieldDescription> matcher) {
+2079:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> declaresMethod(ElementMatcher<? super MethodDescription> matcher) {
+2090:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> ofSort(TypeDefinition.Sort sort) {
+2101:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> ofSort(ElementMatcher<? super TypeDefinition.Sort> matcher) {
+2111:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> isPrimitive() {
+2121:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> isArray() {
+2131:    public static <T extends TypeDefinition> ElementMatcher.Junction<T> isRecord() {
+2142:    public static <T extends FieldDescription> ElementMatcher.Junction<T> genericFieldType(Type fieldType) {
+2153:    public static <T extends FieldDescription> ElementMatcher.Junction<T> genericFieldType(TypeDescription.Generic fieldType) {
+2164:    public static <T extends FieldDescription> ElementMatcher.Junction<T> genericFieldType(ElementMatcher<? super TypeDescription.Generic> matcher) {
+2175:    public static <T extends FieldDescription> ElementMatcher.Junction<T> fieldType(Class<?> fieldType) {
+2186:    public static <T extends FieldDescription> ElementMatcher.Junction<T> fieldType(TypeDescription fieldType) {
+2197:    public static <T extends FieldDescription> ElementMatcher.Junction<T> fieldType(ElementMatcher<? super TypeDescription> matcher) {
+2207:    public static <T extends FieldDescription> ElementMatcher.Junction<T> isVolatile() {
+2217:    public static <T extends FieldDescription> ElementMatcher.Junction<T> isTransient() {
+2228:    public static <T extends AnnotationDescription> ElementMatcher.Junction<T> annotationType(Class<? extends Annotation> type) {
+2239:    public static <T extends AnnotationDescription> ElementMatcher.Junction<T> annotationType(TypeDescription type) {
+2250:    public static <T extends AnnotationDescription> ElementMatcher.Junction<T> annotationType(ElementMatcher<? super TypeDescription> matcher) {
+2261:    public static <T extends AnnotationDescription> ElementMatcher.Junction<T> targetsElement(ElementType elementType) {
+2272:    public static <T extends ClassLoader> ElementMatcher.Junction<T> isBootstrapClassLoader() {
+2283:    public static <T extends ClassLoader> ElementMatcher.Junction<T> isSystemClassLoader() {
+2294:    public static <T extends ClassLoader> ElementMatcher.Junction<T> isExtensionClassLoader() {
+2309:    public static <T extends ClassLoader> ElementMatcher.Junction<T> isChildOf(@MaybeNull ClassLoader classLoader) {
+2322:    public static <T extends ClassLoader> ElementMatcher.Junction<T> hasChild(ElementMatcher<? super ClassLoader> matcher) {
+2334:    public static <T extends ClassLoader> ElementMatcher.Junction<T> isParentOf(@MaybeNull ClassLoader classLoader) {
+2347:    public static <T extends ClassLoader> ElementMatcher.Junction<T> ofType(ElementMatcher<? super TypeDescription> matcher) {
+2357:    public static <T extends JavaModule> ElementMatcher.Junction<T> supportsModules() {
+
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.matcher;
+
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.description.ByteCodeElement;
+import net.bytebuddy.description.ModifierReviewable;
+import net.bytebuddy.description.NamedElement;
+import net.bytebuddy.description.annotation.AnnotationDescription;
+import net.bytebuddy.description.annotation.AnnotationList;
+import net.bytebuddy.description.annotation.AnnotationSource;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.field.FieldList;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.MethodList;
+import net.bytebuddy.description.method.ParameterDescription;
+import net.bytebuddy.description.method.ParameterList;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.description.type.TypeList;
+import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
+import net.bytebuddy.utility.JavaModule;
+import net.bytebuddy.utility.nullability.MaybeNull;
+
+import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+/**
+ * A utility class that contains a human-readable language for creating {@link net.bytebuddy.matcher.ElementMatcher}s.
+ */
+public final class ElementMatchers {
+
+    /**
+     * A private constructor that must not be invoked.
+     */
+    private ElementMatchers() {
+        throw new UnsupportedOperationException("This class is a utility class and not supposed to be instantiated");
+    }
+
+    /**
+     * Wraps another matcher to assure that an element is not matched in case that the matching causes an {@link Exception}.
+     *
+     * @param matcher The element matcher that potentially throws an exception.
+     * @param <T>     The type of the matched object.
+     * @return A matcher that returns {@code false} in case that the given matcher throws an exception.
+     */
+    public static <T> ElementMatcher.Junction<T> failSafe(ElementMatcher<? super T> matcher) {
+        return new FailSafeMatcher<T>(matcher, false);
+    }
+
+    /**
+     * <p>
+     * Wraps another matcher but caches the result of previously matched elements. Caching can be important if a
+     * matcher requires expensive calculations.
+     * </p>
+     * <p>
+     * <b>Warning</b>: The supplied map can however introduce a memory leak as the matched elements are stored within the map.
+     * It is therefore important to dereference this matcher at some point or to regularly evict entries from the supplied map.
+     * </p>
+     *
+     * @param matcher The actual matcher for which the results are cached.
+     * @param map     The map for storing results of previously matched elements.
+     * @param <T>     The type of the matched object.
+     * @return A matcher that stores the results of a previous matching in the supplied map.
+     */
+    public static <T> ElementMatcher.Junction<T> cached(ElementMatcher<? super T> matcher, ConcurrentMap<? super T, Boolean> map) {
+        return new CachingMatcher<T>(matcher, map);
+    }
+
+    /**
+     * <p>
+     * Wraps another matcher but caches the result of previously matched elements. Caching can be important if a
+     * matcher requires expensive calculations.
+     * </p>
+     * <p>
+     * <b>Warning</b>: The cache will hold {@code evictionSize} elements and evict a random element once the cache
+     * contains more than the specified amount of elements. Cached elements are referenced strongly and might cause
+     * a memory leak if instance are of a significant size. Using {@link ElementMatchers#cached(ElementMatcher, ConcurrentMap)}
+     * allows for explicit control over cache eviction.
+     * </p>
+     *
+     * @param matcher      The actual matcher for which the results are cached.
+     * @param evictionSize The maximum amount of elements that are stored in the cache. Must be a positive number.
+     * @param <T>          The type of the matched object.
+     * @return A matcher that stores the results of a previous matching in the supplied map.
+     */
+    public static <T> ElementMatcher.Junction<T> cached(ElementMatcher<? super T> matcher, int evictionSize) {
+        if (evictionSize < 1) {
+            throw new IllegalArgumentException("Eviction size must be a positive number: " + evictionSize);
+        }
+        return new CachingMatcher.WithInlineEviction<T>(matcher, new ConcurrentHashMap<T, Boolean>(), evictionSize);
+    }
+
+    /**
+     * Matches the given value which can also be {@code null} by the {@link java.lang.Object#equals(Object)} method or
+     * by a null-check.
+     *
+     * @param value The value that is to be matched.
+     * @param <T>   The type of the matched object.
+     * @return A matcher that matches an exact value.
+     */
+    public static <T> ElementMatcher.Junction<T> is(@MaybeNull Object value) {
+        return value == null
+                ? NullMatcher.<T>make()
+                : new EqualityMatcher<T>(value);
+    }
+
+    /**
+     * Exactly matches a given field as a {@link FieldDescription} in its defined shape.
+     *
+     * @param field The field to match by its description
+     * @param <T>   The type of the matched object.
+     * @return An element matcher that exactly matches the given field in its defined shape.
+     */
+    public static <T extends FieldDescription> ElementMatcher.Junction<T> is(Field field) {
+        return is(new FieldDescription.ForLoadedField(field));
+    }
+
+    /**
+     * Exactly matches a given field as a {@link FieldDescription} in its defined shape.
+     *
+     * @param field The field to match by its description
+     * @param <T>   The type of the matched object.
+     * @return An element matcher that exactly matches the given field in its defined shape.
+     */
+    public static <T extends FieldDescription> ElementMatcher.Junction<T> is(FieldDescription.InDefinedShape field) {
+        return definedField(new EqualityMatcher<FieldDescription.InDefinedShape>(field));
+    }
+
+    /**
+     * Matches a field in its defined shape.
+     *
+     * @param matcher The matcher to apply to the matched field's defined shape.
+     * @param <T>     The matched object's type.
+     * @return A matcher that matches a matched field's defined shape.
+     */
+    public static <T extends FieldDescription> ElementMatcher.Junction<T> definedField(ElementMatcher<? super FieldDescription.InDefinedShape> matcher) {
+        return new DefinedShapeMatcher<T, FieldDescription.InDefinedShape>(matcher);
+    }
+
+    /**
+     * Exactly matches a given method as a {@link MethodDescription} in its defined shape.
+     *
+     * @param method The method to match by its description
+     * @param <T>    The type of the matched object.
+     * @return An element matcher that exactly matches the given method in its defined shape.
+     */
+    public static <T extends MethodDescription> ElementMatcher.Junction<T> is(Method method) {
+        return is(new MethodDescription.ForLoadedMethod(method));
+    }
+
+    /**
+     * Exactly matches a given constructor as a {@link MethodDescription} in its defined shape.
+     *
+     * @param constructor The constructor to match by its description
+     * @param <T>         The type of the matched object.
+     * @return An element matcher that exactly matches the given constructor in its defined shape.
+     */
+    public static <T extends MethodDescription> ElementMatcher.Junction<T> is(Constructor<?> constructor) {
+        return is(new MethodDescription.ForLoadedConstructor(constructor));
+    }
+
+    /**
+     * Exactly matches a given method or constructor as a {@link MethodDescription} in its defined shape.
+     *
+     * @param method The method to match by its description
+     * @param <T>    The type of the matched object.
+     * @return An element matcher that exactly matches the given method or constructor in its defined shape.
+     */
+    public static <T extends MethodDescription> ElementMatcher.Junction<T> is(MethodDescription.InDefinedShape method) {
+        return definedMethod(new EqualityMatcher<MethodDescription.InDefinedShape>(method));
+    }
+
+    /**
+     * Matches a method in its defined shape.
+     *
+     * @param matcher The matcher to apply to the matched method's defined shape.
+     * @param <T>     The matched object's type.
+     * @return A matcher that matches a matched method's defined shape.
+     */
+    public static <T extends MethodDescription> ElementMatcher.Junction<T> definedMethod(ElementMatcher<? super MethodDescription.InDefinedShape> matcher) {
+        return new DefinedShapeMatcher<T, MethodDescription.InDefinedShape>(matcher);
+    }
+
+    /**
+     * Exactly matches a given parameter as a {@link ParameterDescription} in its defined shape.
+     *
+     * @param parameter The parameter to match by its description
+     * @param <T>       The type of the matched object.
+     * @return An element matcher that exactly matches the given parameter in its defined shape.
+     */
+    public static <T extends ParameterDescription> ElementMatcher.Junction<T> is(ParameterDescription.InDefinedShape parameter) {
+        return definedParameter(new EqualityMatcher<ParameterDescription.InDefinedShape>(parameter));
+    }
+
+    /**
+     * Matches a parameter in its defined shape.
+     *
+     * @param matcher The matcher to apply to the matched parameter's defined shape.
+     * @param <T>     The matched object's type.
+     * @return A matcher that matches a matched parameter's defined shape.
+     */
+    public static <T extends ParameterDescription> ElementMatcher.Junction<T> definedParameter(ElementMatcher<? super ParameterDescription.InDefinedShape> matcher) {
+        return new DefinedShapeMatcher<T, ParameterDescription.InDefinedShape>(matcher);
+    }
+
+    /**
+     * Matches a parameter's type by the given matcher.
+     *
+     * @param matcher The matcher to apply to the parameter's type.
+     * @param <T>     The type of the matched object.
+     * @return A matcher that matches a parameter's type by the given matcher.
+     */
+    public static <T extends ParameterDescription> ElementMatcher.Junction<T> hasType(ElementMatcher<? super TypeDescription> matcher) {
+        return hasGenericType(erasure(matcher));
+    }
+
+    /**
+     * Matches a method parameter by its generic type.
+     *
+     * @param matcher The matcher to apply to a parameter's generic type.
+     * @param <T>     The type of the matched object.
+     * @return A matcher that matches the matched parameter's generic type.
+     */
+    public static <T extends ParameterDescription> ElementMatcher.Junction<T> hasGenericType(ElementMatcher<? super TypeDescription.Generic> matcher) {
+        return new MethodParameterTypeMatcher<T>(matcher);
+    }
+
+    /**
+     * Matches a parameter description for a {@code mandated} parameter.
+     *
+     * @param <T> The type of the matched object.
+     * @return A matcher for a {@code mandated} parameter.
+     */
+    public static <T extends ParameterDescription> ElementMatcher.Junction<T> isMandated() {
+        return ModifierMatcher.of(ModifierMatcher.Mode.MANDATED);
+
+codex
+I have enough for the fan-in side. I’m doing one last quick pass for the outbound dependency picture so the final verdict is grounded in both directions, not just popularity of the API.
+exec
+/bin/bash -lc "sed -n '2350,2445p' byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+
+    /**
+     * Matches a module if it exists, i.e. not {@code null}.
+     *
+     * @param <T> The type of the matched object.
+     * @return A matcher that validates a module's existence.
+     */
+    public static <T extends JavaModule> ElementMatcher.Junction<T> supportsModules() {
+        return not(NullMatcher.make());
+    }
+}
+
+exec
+/bin/bash -lc 'rg -n "new (FailSafeMatcher|CachingMatcher|NullMatcher|EqualityMatcher|DefinedShapeMatcher|MethodParameterTypeMatcher|ModifierMatcher|Collection|Iterable|LatentMatcher|ClassLoaderMatcher|AnnotationTypeMatcher|VisibilityMatcher|NameMatcher|TypeMatcher)" byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+72:        return new FailSafeMatcher<T>(matcher, false);
+91:        return new CachingMatcher<T>(matcher, map);
+115:        return new CachingMatcher.WithInlineEviction<T>(matcher, new ConcurrentHashMap<T, Boolean>(), evictionSize);
+129:                : new EqualityMatcher<T>(value);
+151:        return definedField(new EqualityMatcher<FieldDescription.InDefinedShape>(field));
+162:        return new DefinedShapeMatcher<T, FieldDescription.InDefinedShape>(matcher);
+195:        return definedMethod(new EqualityMatcher<MethodDescription.InDefinedShape>(method));
+206:        return new DefinedShapeMatcher<T, MethodDescription.InDefinedShape>(matcher);
+217:        return definedParameter(new EqualityMatcher<ParameterDescription.InDefinedShape>(parameter));
+228:        return new DefinedShapeMatcher<T, ParameterDescription.InDefinedShape>(matcher);
+250:        return new MethodParameterTypeMatcher<T>(matcher);
+521:        return new CollectionItemMatcher<T>(matcher);
+609:        return erasures(new CollectionOneToOneMatcher<TypeDescription>(typeMatchers));
+622:        return new CollectionErasureMatcher<T>(matcher);
+655:        return new NameMatcher<T>(new StringMatcher(name, StringMatcher.Mode.EQUALS_FULLY));
+666:        return new NameMatcher<T>(new StringSetMatcher(new HashSet<String>(Arrays.asList(names))));
+678:        return new NameMatcher<T>(new StringMatcher(name, StringMatcher.Mode.EQUALS_FULLY_IGNORE_CASE));
+689:        return new NameMatcher<T>(new StringMatcher(prefix, StringMatcher.Mode.STARTS_WITH));
+701:        return new NameMatcher<T>(new StringMatcher(prefix, StringMatcher.Mode.STARTS_WITH_IGNORE_CASE));
+712:        return new NameMatcher<T>(new StringMatcher(suffix, StringMatcher.Mode.ENDS_WITH));
+724:        return new NameMatcher<T>(new StringMatcher(suffix, StringMatcher.Mode.ENDS_WITH_IGNORE_CASE));
+735:        return new NameMatcher<T>(new StringMatcher(infix, StringMatcher.Mode.CONTAINS));
+747:        return new NameMatcher<T>(new StringMatcher(infix, StringMatcher.Mode.CONTAINS_IGNORE_CASE));
+758:        return new NameMatcher<T>(new StringMatcher(regex, StringMatcher.Mode.MATCHES));
+871:        return new VisibilityMatcher<T>(type);
+970:        return new DeclaringAnnotationMatcher<T>(new CollectionItemMatcher<AnnotationDescription>(matcher));
+1193:        return takesGenericArguments(new CollectionElementMatcher<TypeDescription.Generic>(index, matcher));
+1230:        return takesGenericArguments(new CollectionOneToOneMatcher<TypeDescription.Generic>(typeMatchers));
+1314:        return takesGenericArguments(new CollectionOneToOneMatcher<TypeDescription.Generic>(typeMatchers));
+1336:        return new MethodParametersMatcher<T>(new CollectionSizeMatcher<ParameterList<?>>(length));
+1385:                : ElementMatchers.<T>declaresGenericException(new CollectionItemMatcher<TypeDescription.Generic>(erasure(isSuperTypeOf(exceptionType))));
+1412:                ? ElementMatchers.<T>declaresGenericException(new CollectionItemMatcher<TypeDescription.Generic>(is(exceptionType)))
+1436:                ? ElementMatchers.<T>declaresGenericException(new CollectionItemMatcher<TypeDescription.Generic>(erasure(exceptionType)))
+1781:        return isSetter().and(takesGenericArguments(new CollectionOneToOneMatcher<TypeDescription.Generic>(Collections.singletonList(matcher))));
+2036:        return new InheritedAnnotationMatcher<T>(new CollectionItemMatcher<AnnotationDescription>(matcher));
+2069:        return new DeclaringFieldMatcher<T>(new CollectionItemMatcher<FieldDescription>(matcher));
+2080:        return new DeclaringMethodMatcher<T>(new CollectionItemMatcher<MethodDescription>(matcher));
+2251:        return new AnnotationTypeMatcher<T>(matcher);
+2284:        return new EqualityMatcher<T>(ClassLoader.getSystemClassLoader());
+2298:                : new EqualityMatcher<T>(classLoader);
+
+codex
+{"target":"net.bytebuddy.matcher.ElementMatchers","detection":true,"justification":"`byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java` is a central utility hub: it defines 264 `public static` matcher factory methods, imports many core model/JDK types (`ByteCodeElement`, `FieldDescription`, `MethodDescription`, `TypeDescription`, `ClassFileVersion`, `JavaModule`, reflection and collection classes), and instantiates many helper matchers such as `FailSafeMatcher`, `CachingMatcher`, `EqualityMatcher`, `DefinedShapeMatcher`, `CollectionItemMatcher`, `NameMatcher`, and `VisibilityMatcher`. Fan-in is also high: `rg` found 264 Java files referencing `ElementMatchers`, including core production files like `byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java`, `.../implementation/MethodDelegation.java`, `.../asm/MemberSubstitution.java`, `.../implementation/auxiliary/TypeProxy.java`, and `.../implementation/ToStringMethod.java`, plus multiple plugin tests. This combination of broad incoming usage and wide outgoing dependencies supports Hub-like Modularization."}
+tokens used
+28,077

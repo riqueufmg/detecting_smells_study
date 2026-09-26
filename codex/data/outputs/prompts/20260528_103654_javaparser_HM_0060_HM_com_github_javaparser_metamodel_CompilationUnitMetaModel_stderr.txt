@@ -1,0 +1,559 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ecd-69e0-7c63-863c-32592c3557c1
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.metamodel.CompilationUnitMetaModel` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.metamodel.CompilationUnitMetaModel",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.metamodel.CompilationUnitMetaModel`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `CompilationUnitMetaModel` and checking its inbound and outbound references to judge whether it acts as a dependency hub. I’ll verify the source and supporting references in the repository, then return a JSON verdict only.
+web search: 
+web search: site:github.com javaparser CompilationUnitMetaModel source
+codex
+I have the repository in view now and I’m narrowing it to the metamodel package plus the direct references to `CompilationUnitMetaModel`. Next I’m checking how many classes depend on it and what it depends on itself.
+exec
+/bin/bash -lc 'rg -n "CompilationUnitMetaModel" .' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/CloneVisitorGenerator.java:31:import com.github.javaparser.metamodel.CompilationUnitMetaModel;
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/CloneVisitorGenerator.java:85:        if (node instanceof CompilationUnitMetaModel) {
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/CompilationUnitMetaModel.java:37:public class CompilationUnitMetaModel extends NodeMetaModel {
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/CompilationUnitMetaModel.java:40:    CompilationUnitMetaModel(Optional<BaseNodeMetaModel> superBaseNodeMetaModel) {
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:3050:    public static final CompilationUnitMetaModel compilationUnitMetaModel =
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:3051:            new CompilationUnitMetaModel(Optional.of(nodeMetaModel));
+./javaparser-core/src/main/java/com/github/javaparser/ast/CompilationUnit.java:43:import com.github.javaparser.metamodel.CompilationUnitMetaModel;
+./javaparser-core/src/main/java/com/github/javaparser/ast/CompilationUnit.java:876:    public CompilationUnitMetaModel getMetaModel() {
+
+exec
+/bin/bash -lc "rg --files . | rg 'CompilationUnitMetaModel\\.java|metamodel'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+./javaparser-core-metamodel-generator/pom.xml
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/metamodel/InitializePropertyMetaModelsStatementsGenerator.java
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/metamodel/AstTypeAnalysis.java
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/metamodel/InitializeConstructorParametersStatementsGenerator.java
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/metamodel/NodeMetaModelGenerator.java
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/metamodel/MetaModelGenerator.java
+./run_core_metamodel_generator.sh
+./javaparser-core-testing/src/test/java/com/github/javaparser/metamodel/BaseNodeMetaModelTest.java
+./javaparser-core-testing/src/test/java/com/github/javaparser/metamodel/PropertyMetaModelTest.java
+./javaparser-core-testing/src/test/resources/com/github/javaparser/bulk_test_results/javaparser_test_results_javaparser_metamodel_generator_src_main_java.txt
+./javaparser-core-testing/src/test/resources/com/github/javaparser/bulk_test_results/javaparser_test_results_javaparser_core_metamodel_generator_src_main_java.txt
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/UnionTypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/AnnotationMemberDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/EmptyStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/BooleanLiteralExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/JavadocCommentMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/EnumDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/DoubleLiteralExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/TypeDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/SwitchExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/TraditionalJavadocCommentMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/RecordPatternExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/LambdaExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ModuleDirectiveMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/PrimitiveTypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ConditionalExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/DerivedProperty.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/SuperExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ReferenceTypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ReceiverParameterMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/BlockCommentMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ArrayInitializerExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/TypeExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/BreakStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ContinueStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/CastExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/IntegerLiteralExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/CompactConstructorDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/AssertStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/StringLiteralExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ParameterMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/NonEmptyProperty.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/LineCommentMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ReturnStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/LocalRecordDeclarationStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/VariableDeclarationExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/CallableDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/EnclosedExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/FieldDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ConstructorDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ComponentPatternExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ClassOrInterfaceTypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/BinaryExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/TextBlockLiteralExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ThisExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ModuleUsesDirectiveMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/MatchAllPatternExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/NodeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/NameMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ExplicitConstructorInvocationStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ModuleProvidesDirectiveMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/UnparsableStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ExpressionMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/NullLiteralExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ArrayTypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/LabeledStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/VariableDeclaratorMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/IfStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/DoStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/InitializerDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ForStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/UnaryExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/YieldStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/EnumConstantDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ModuleOpensDirectiveMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/MethodReferenceExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ClassExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ObjectCreationExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ArrayAccessExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/BodyDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ModuleRequiresDirectiveMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ModuleExportsDirectiveMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/LiteralExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ArrayCreationExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/MethodDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/MethodCallExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/SynchronizedStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/WhileStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/UnknownTypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/InternalProperty.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ExpressionStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/NameExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/PropertyMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/CatchClauseMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ArrayCreationLevelMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/NormalAnnotationExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/TypeParameterMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ThrowStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/TryStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/SingleMemberAnnotationExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/WildcardTypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/CharLiteralExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/LiteralStringValueExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/FieldAccessExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ClassOrInterfaceDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/SwitchStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/MarkdownCommentMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/StatementMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/PatternExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/VoidTypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/TypePatternExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/TypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ForEachStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/OptionalProperty.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/CommentMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/CompilationUnitMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/BlockStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/SimpleNameMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/VarTypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/SwitchEntryMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/AnnotationDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/LongLiteralExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/IntersectionTypeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/AssignExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ModifierMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/LocalClassDeclarationStmtMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ModuleDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/BaseNodeMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/RecordDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/AnnotationExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/InstanceOfExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/MemberValuePairMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/MarkerAnnotationExprMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/ImportDeclarationMetaModel.java
+./javaparser-core/src/main/java/com/github/javaparser/metamodel/PackageDeclarationMetaModel.java
+
+codex
+I’ve confirmed the class file and the first direct references. I’m now counting the actual incoming uses of `CompilationUnitMetaModel` and checking the class body to see whether it has broad outgoing dependencies or is just a small generated metamodel node.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/metamodel/CompilationUnitMetaModel.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.metamodel;
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Generated;
+import java.util.Optional;
+
+/**
+ * This file, class, and its contents are completely generated based on:
+ * <ul>
+ *     <li>The contents and annotations within the package `com.github.javaparser.ast`, and</li>
+ *     <li>`ALL_NODE_CLASSES` within the class `com.github.javaparser.generator.metamodel.MetaModelGenerator`.</li>
+ * </ul>
+ *
+ * For this reason, any changes made directly to this file will be overwritten the next time generators are run.
+ */
+@Generated("com.github.javaparser.generator.metamodel.NodeMetaModelGenerator")
+public class CompilationUnitMetaModel extends NodeMetaModel {
+
+    @Generated("com.github.javaparser.generator.metamodel.NodeMetaModelGenerator")
+    CompilationUnitMetaModel(Optional<BaseNodeMetaModel> superBaseNodeMetaModel) {
+        super(
+                superBaseNodeMetaModel,
+                CompilationUnit.class,
+                "CompilationUnit",
+                "com.github.javaparser.ast",
+                false,
+                false);
+    }
+
+    public PropertyMetaModel importsPropertyMetaModel;
+
+    public PropertyMetaModel modulePropertyMetaModel;
+
+    public PropertyMetaModel packageDeclarationPropertyMetaModel;
+
+    public PropertyMetaModel typesPropertyMetaModel;
+}
+
+exec
+/bin/bash -lc 'rg -n "CompilationUnitMetaModel|compilationUnitMetaModel" javaparser-core javaparser-core-generators javaparser-core-metamodel-generator javaparser-core-testing' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/CloneVisitorGenerator.java:31:import com.github.javaparser.metamodel.CompilationUnitMetaModel;
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/CloneVisitorGenerator.java:85:        if (node instanceof CompilationUnitMetaModel) {
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:86:        compilationUnitMetaModel
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:88:                .add(compilationUnitMetaModel.packageDeclarationPropertyMetaModel);
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:89:        compilationUnitMetaModel.getConstructorParameters().add(compilationUnitMetaModel.importsPropertyMetaModel);
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:90:        compilationUnitMetaModel.getConstructorParameters().add(compilationUnitMetaModel.typesPropertyMetaModel);
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:91:        compilationUnitMetaModel.getConstructorParameters().add(compilationUnitMetaModel.modulePropertyMetaModel);
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:545:        nodeMetaModels.add(compilationUnitMetaModel);
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:865:        compilationUnitMetaModel.importsPropertyMetaModel = new PropertyMetaModel(
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:866:                compilationUnitMetaModel,
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:874:        compilationUnitMetaModel.getDeclaredPropertyMetaModels().add(compilationUnitMetaModel.importsPropertyMetaModel);
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:875:        compilationUnitMetaModel.modulePropertyMetaModel = new PropertyMetaModel(
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:876:                compilationUnitMetaModel,
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:884:        compilationUnitMetaModel.getDeclaredPropertyMetaModels().add(compilationUnitMetaModel.modulePropertyMetaModel);
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:885:        compilationUnitMetaModel.packageDeclarationPropertyMetaModel = new PropertyMetaModel(
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:886:                compilationUnitMetaModel,
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:894:        compilationUnitMetaModel
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:896:                .add(compilationUnitMetaModel.packageDeclarationPropertyMetaModel);
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:897:        compilationUnitMetaModel.typesPropertyMetaModel = new PropertyMetaModel(
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:898:                compilationUnitMetaModel,
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:906:        compilationUnitMetaModel.getDeclaredPropertyMetaModels().add(compilationUnitMetaModel.typesPropertyMetaModel);
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:3050:    public static final CompilationUnitMetaModel compilationUnitMetaModel =
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:3051:            new CompilationUnitMetaModel(Optional.of(nodeMetaModel));
+javaparser-core/src/main/java/com/github/javaparser/metamodel/CompilationUnitMetaModel.java:37:public class CompilationUnitMetaModel extends NodeMetaModel {
+javaparser-core/src/main/java/com/github/javaparser/metamodel/CompilationUnitMetaModel.java:40:    CompilationUnitMetaModel(Optional<BaseNodeMetaModel> superBaseNodeMetaModel) {
+javaparser-core/src/main/java/com/github/javaparser/ast/CompilationUnit.java:43:import com.github.javaparser.metamodel.CompilationUnitMetaModel;
+javaparser-core/src/main/java/com/github/javaparser/ast/CompilationUnit.java:876:    public CompilationUnitMetaModel getMetaModel() {
+javaparser-core/src/main/java/com/github/javaparser/ast/CompilationUnit.java:877:        return JavaParserMetaModel.compilationUnitMetaModel;
+
+codex
+The reference count is small so far. I’m pulling exact line numbers from the three non-self uses and the class definition so the verdict can cite concrete evidence rather than a vague impression.
+exec
+/bin/bash -lc "nl -ba javaparser-core/src/main/java/com/github/javaparser/metamodel/CompilationUnitMetaModel.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+     3	 * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	package com.github.javaparser.metamodel;
+    22	
+    23	import com.github.javaparser.ast.CompilationUnit;
+    24	import com.github.javaparser.ast.Generated;
+    25	import java.util.Optional;
+    26	
+    27	/**
+    28	 * This file, class, and its contents are completely generated based on:
+    29	 * <ul>
+    30	 *     <li>The contents and annotations within the package `com.github.javaparser.ast`, and</li>
+    31	 *     <li>`ALL_NODE_CLASSES` within the class `com.github.javaparser.generator.metamodel.MetaModelGenerator`.</li>
+    32	 * </ul>
+    33	 *
+    34	 * For this reason, any changes made directly to this file will be overwritten the next time generators are run.
+    35	 */
+    36	@Generated("com.github.javaparser.generator.metamodel.NodeMetaModelGenerator")
+    37	public class CompilationUnitMetaModel extends NodeMetaModel {
+    38	
+    39	    @Generated("com.github.javaparser.generator.metamodel.NodeMetaModelGenerator")
+    40	    CompilationUnitMetaModel(Optional<BaseNodeMetaModel> superBaseNodeMetaModel) {
+    41	        super(
+    42	                superBaseNodeMetaModel,
+    43	                CompilationUnit.class,
+    44	                "CompilationUnit",
+    45	                "com.github.javaparser.ast",
+    46	                false,
+    47	                false);
+    48	    }
+    49	
+    50	    public PropertyMetaModel importsPropertyMetaModel;
+    51	
+    52	    public PropertyMetaModel modulePropertyMetaModel;
+    53	
+    54	    public PropertyMetaModel packageDeclarationPropertyMetaModel;
+    55	
+    56	    public PropertyMetaModel typesPropertyMetaModel;
+    57	}
+
+exec
+/bin/bash -lc "nl -ba javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java | sed -n '3044,3056p;80,92p;860,907p;540,548p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+    80	        arrayCreationLevelMetaModel
+    81	                .getConstructorParameters()
+    82	                .add(arrayCreationLevelMetaModel.dimensionPropertyMetaModel);
+    83	        arrayCreationLevelMetaModel
+    84	                .getConstructorParameters()
+    85	                .add(arrayCreationLevelMetaModel.annotationsPropertyMetaModel);
+    86	        compilationUnitMetaModel
+    87	                .getConstructorParameters()
+    88	                .add(compilationUnitMetaModel.packageDeclarationPropertyMetaModel);
+    89	        compilationUnitMetaModel.getConstructorParameters().add(compilationUnitMetaModel.importsPropertyMetaModel);
+    90	        compilationUnitMetaModel.getConstructorParameters().add(compilationUnitMetaModel.typesPropertyMetaModel);
+    91	        compilationUnitMetaModel.getConstructorParameters().add(compilationUnitMetaModel.modulePropertyMetaModel);
+    92	        importDeclarationMetaModel.getConstructorParameters().add(importDeclarationMetaModel.namePropertyMetaModel);
+   540	        nodeMetaModels.add(classExprMetaModel);
+   541	        nodeMetaModels.add(classOrInterfaceDeclarationMetaModel);
+   542	        nodeMetaModels.add(classOrInterfaceTypeMetaModel);
+   543	        nodeMetaModels.add(commentMetaModel);
+   544	        nodeMetaModels.add(compactConstructorDeclarationMetaModel);
+   545	        nodeMetaModels.add(compilationUnitMetaModel);
+   546	        nodeMetaModels.add(componentPatternExprMetaModel);
+   547	        nodeMetaModels.add(conditionalExprMetaModel);
+   548	        nodeMetaModels.add(constructorDeclarationMetaModel);
+   860	                false,
+   861	                false);
+   862	        arrayCreationLevelMetaModel
+   863	                .getDeclaredPropertyMetaModels()
+   864	                .add(arrayCreationLevelMetaModel.dimensionPropertyMetaModel);
+   865	        compilationUnitMetaModel.importsPropertyMetaModel = new PropertyMetaModel(
+   866	                compilationUnitMetaModel,
+   867	                "imports",
+   868	                com.github.javaparser.ast.ImportDeclaration.class,
+   869	                Optional.of(importDeclarationMetaModel),
+   870	                false,
+   871	                false,
+   872	                true,
+   873	                false);
+   874	        compilationUnitMetaModel.getDeclaredPropertyMetaModels().add(compilationUnitMetaModel.importsPropertyMetaModel);
+   875	        compilationUnitMetaModel.modulePropertyMetaModel = new PropertyMetaModel(
+   876	                compilationUnitMetaModel,
+   877	                "module",
+   878	                com.github.javaparser.ast.modules.ModuleDeclaration.class,
+   879	                Optional.of(moduleDeclarationMetaModel),
+   880	                true,
+   881	                false,
+   882	                false,
+   883	                false);
+   884	        compilationUnitMetaModel.getDeclaredPropertyMetaModels().add(compilationUnitMetaModel.modulePropertyMetaModel);
+   885	        compilationUnitMetaModel.packageDeclarationPropertyMetaModel = new PropertyMetaModel(
+   886	                compilationUnitMetaModel,
+   887	                "packageDeclaration",
+   888	                com.github.javaparser.ast.PackageDeclaration.class,
+   889	                Optional.of(packageDeclarationMetaModel),
+   890	                true,
+   891	                false,
+   892	                false,
+   893	                false);
+   894	        compilationUnitMetaModel
+   895	                .getDeclaredPropertyMetaModels()
+   896	                .add(compilationUnitMetaModel.packageDeclarationPropertyMetaModel);
+   897	        compilationUnitMetaModel.typesPropertyMetaModel = new PropertyMetaModel(
+   898	                compilationUnitMetaModel,
+   899	                "types",
+   900	                com.github.javaparser.ast.body.TypeDeclaration.class,
+   901	                Optional.of(typeDeclarationMetaModel),
+   902	                false,
+   903	                false,
+   904	                true,
+   905	                true);
+   906	        compilationUnitMetaModel.getDeclaredPropertyMetaModels().add(compilationUnitMetaModel.typesPropertyMetaModel);
+   907	        importDeclarationMetaModel.isAsteriskPropertyMetaModel = new PropertyMetaModel(
+  3044	
+  3045	    @Generated("com.github.javaparser.generator.metamodel.NodeMetaModelGenerator")
+  3046	    public static final ArrayCreationLevelMetaModel arrayCreationLevelMetaModel =
+  3047	            new ArrayCreationLevelMetaModel(Optional.of(nodeMetaModel));
+  3048	
+  3049	    @Generated("com.github.javaparser.generator.metamodel.NodeMetaModelGenerator")
+  3050	    public static final CompilationUnitMetaModel compilationUnitMetaModel =
+  3051	            new CompilationUnitMetaModel(Optional.of(nodeMetaModel));
+  3052	
+  3053	    @Generated("com.github.javaparser.generator.metamodel.NodeMetaModelGenerator")
+  3054	    public static final ImportDeclarationMetaModel importDeclarationMetaModel =
+  3055	            new ImportDeclarationMetaModel(Optional.of(nodeMetaModel));
+  3056	
+
+exec
+/bin/bash -lc "nl -ba javaparser-core/src/main/java/com/github/javaparser/ast/CompilationUnit.java | sed -n '870,880p' && printf '\\n' && nl -ba javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/CloneVisitorGenerator.java | sed -n '25,90p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+   870	    public CompilationUnit clone() {
+   871	        return (CompilationUnit) accept(new CloneVisitor(), null);
+   872	    }
+   873	
+   874	    @Override
+   875	    @Generated("com.github.javaparser.generator.core.node.GetMetaModelGenerator")
+   876	    public CompilationUnitMetaModel getMetaModel() {
+   877	        return JavaParserMetaModel.compilationUnitMetaModel;
+   878	    }
+   879	
+   880	    @Override
+
+    25	
+    26	import com.github.javaparser.ast.CompilationUnit;
+    27	import com.github.javaparser.ast.body.MethodDeclaration;
+    28	import com.github.javaparser.ast.stmt.BlockStmt;
+    29	import com.github.javaparser.generator.VisitorGenerator;
+    30	import com.github.javaparser.metamodel.BaseNodeMetaModel;
+    31	import com.github.javaparser.metamodel.CompilationUnitMetaModel;
+    32	import com.github.javaparser.metamodel.PropertyMetaModel;
+    33	import com.github.javaparser.utils.SeparatedItemStringBuilder;
+    34	import com.github.javaparser.utils.SourceRoot;
+    35	
+    36	/**
+    37	 * Generates JavaParser's CloneVisitor.
+    38	 */
+    39	public class CloneVisitorGenerator extends VisitorGenerator {
+    40	    public CloneVisitorGenerator(SourceRoot sourceRoot) {
+    41	        super(sourceRoot, "com.github.javaparser.ast.visitor", "CloneVisitor", "Visitable", "Object", true);
+    42	    }
+    43	
+    44	    @Override
+    45	    protected void generateVisitMethodBody(
+    46	            BaseNodeMetaModel node, MethodDeclaration visitMethod, CompilationUnit compilationUnit) {
+    47	        visitMethod.getParameters().forEach(p -> p.setFinal(true));
+    48	
+    49	        BlockStmt body = visitMethod.getBody().get();
+    50	        body.getStatements().clear();
+    51	
+    52	        for (PropertyMetaModel field : node.getAllPropertyMetaModels()) {
+    53	            final String getter = field.getGetterMethodName() + "()";
+    54	            if (field.getNodeReference().isPresent()) {
+    55	                if (field.isOptional() && field.isNodeList()) {
+    56	                    body.addStatement(f(
+    57	                            "NodeList<%s> %s = cloneList(n.%s.orElse(null), arg);",
+    58	                            field.getTypeNameGenerified(), field.getName(), getter));
+    59	                } else if (field.isNodeList()) {
+    60	                    body.addStatement(f(
+    61	                            "NodeList<%s> %s = cloneList(n.%s, arg);",
+    62	                            field.getTypeNameGenerified(), field.getName(), getter));
+    63	                } else {
+    64	                    body.addStatement(
+    65	                            f("%s %s = cloneNode(n.%s, arg);", field.getTypeNameGenerified(), field.getName(), getter));
+    66	                }
+    67	            }
+    68	        }
+    69	
+    70	        SeparatedItemStringBuilder builder = new SeparatedItemStringBuilder(
+    71	                f("%s r = new %s(", node.getTypeNameGenerified(), node.getTypeNameGenerified()), ",", ");");
+    72	        builder.append("n.getTokenRange().orElse(null)");
+    73	        for (PropertyMetaModel field : node.getConstructorParameters()) {
+    74	            if ("comment".equals(field.getName())) {
+    75	                continue;
+    76	            }
+    77	            if (field.getNodeReference().isPresent()) {
+    78	                builder.append(field.getName());
+    79	            } else {
+    80	                builder.append(f("n.%s()", field.getGetterMethodName()));
+    81	            }
+    82	        }
+    83	
+    84	        body.addStatement(builder.toString());
+    85	        if (node instanceof CompilationUnitMetaModel) {
+    86	            body.addStatement("n.getStorage().ifPresent(s -> r.setStorage(s.getPath(), s.getEncoding()));");
+    87	        }
+    88	        body.addStatement("r.setComment(comment);");
+    89	        body.addStatement("n.getOrphanComments().stream().map(Comment::clone).forEach(r::addOrphanComment);");
+    90	        body.addStatement("copyData(n, r);");
+
+codex
+{"target":"com.github.javaparser.metamodel.CompilationUnitMetaModel","detection":false,"justification":"Inspected javaparser-core/src/main/java/com/github/javaparser/metamodel/CompilationUnitMetaModel.java, javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java, javaparser-core/src/main/java/com/github/javaparser/ast/CompilationUnit.java, and javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/CloneVisitorGenerator.java. The target class is a small generated metamodel node with one constructor calling super(…, CompilationUnit.class, …) and only four PropertyMetaModel fields, so its fan-out is low. Its fan-in is also limited: the repo shows only three external uses, in JavaParserMetaModel (static initialization and property wiring), CompilationUnit.getMetaModel(), and one CloneVisitorGenerator instanceof special-case. This is not strong hub-like dependency evidence."}
+tokens used
+19,821

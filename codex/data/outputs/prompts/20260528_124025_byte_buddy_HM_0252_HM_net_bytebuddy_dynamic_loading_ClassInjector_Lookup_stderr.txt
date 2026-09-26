@@ -1,0 +1,864 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f3e-88c9-7a40-bad7-cb2a887857bd
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.dynamic.loading.ClassInjector.Lookup` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.dynamic.loading.ClassInjector.Lookup",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.dynamic.loading.ClassInjector.Lookup`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and collecting structural evidence from the source and its direct references, then I’ll decide whether it looks like a dependency hub.
+exec
+/bin/bash -lc 'rg -n "class Lookup|interface Lookup|Lookup extends|Lookup implements|ClassInjector.Lookup" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files | rg 'ClassInjector(\\"'$Lookup)?'"\\.java"'$|ClassInjector'"\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 217ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java
+
+ succeeded in 261ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/TypeCache.java:263:    protected static class LookupKey {
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:9310:                protected class ArrayLookup implements AnnotationRegistrant {
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:9359:                protected class AnnotationLookup implements AnnotationRegistrant {
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java:1959:            interface Lookup {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:1118:            protected static class WithLookup extends ForField {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:1616:    class UsingLookup extends AbstractBase {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:1759:            interface Lookup {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java:485:    class UsingLookup implements ClassLoadingStrategy<ClassLoader> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:366:    protected static class PrivilegedLookup implements StackManipulation, CanCache {
+./byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:8120:                protected static class LookupKey {
+./byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9349:                enum UsingMethodHandleLookup implements Loader {
+
+codex
+I found the source file and the nested `Lookup` type inside `ClassInjector`. Next I’m checking how many classes depend on it and how many dependencies it introduces itself.
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1680,1825p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"ClassInjector\\.Lookup|ClassInjector\\.UsingLookup|Lookup\\.of|implements ClassInjector\\.Lookup|extends ClassInjector\\.Lookup|Lookup lookup|new ClassInjector\\.Lookup|ClassInjector.Lookup\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 169ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.dynamic.loading;
+
+import com.sun.jna.FunctionMapper;
+import com.sun.jna.JNIEnv;
+import com.sun.jna.LastErrorException;
+import com.sun.jna.Library;
+import com.sun.jna.Native;
+import com.sun.jna.NativeLibrary;
+import com.sun.jna.Platform;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.asm.MemberRemoval;
+import net.bytebuddy.build.AccessControllerPlugin;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.description.type.PackageDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.dynamic.scaffold.TypeValidation;
+import net.bytebuddy.dynamic.scaffold.subclass.ConstructorStrategy;
+import net.bytebuddy.implementation.FixedValue;
+import net.bytebuddy.implementation.MethodCall;
+import net.bytebuddy.utility.GraalImageCode;
+import net.bytebuddy.utility.JavaModule;
+import net.bytebuddy.utility.JavaType;
+import net.bytebuddy.utility.RandomString;
+import net.bytebuddy.utility.dispatcher.JavaDispatcher;
+import net.bytebuddy.utility.nullability.AlwaysNull;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import net.bytebuddy.utility.nullability.UnknownNull;
+import net.bytebuddy.utility.privilege.GetMethodAction;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.lang.instrument.Instrumentation;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.security.Permission;
+import java.security.PrivilegedAction;
+import java.security.ProtectionDomain;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.jar.JarOutputStream;
+import java.util.zip.ZipFile;
+
+import static net.bytebuddy.matcher.ElementMatchers.any;
+import static net.bytebuddy.matcher.ElementMatchers.named;
+
+/**
+ * <p>
+ * A class injector is capable of injecting classes into a {@link java.lang.ClassLoader} without
+ * requiring the class loader to being able to explicitly look up these classes.
+ * </p>
+ * <p>
+ * <b>Important</b>: Byte Buddy does not supply privileges when injecting code. When using a {@code java.lang.SecurityManager},
+ * the user of this injector is responsible for providing access to non-public properties.
+ * </p>
+ */
+public interface ClassInjector {
+
+    /**
+     * Determines the default behavior for type injections when a type is already loaded.
+     */
+    boolean ALLOW_EXISTING_TYPES = false;
+
+    /**
+     * Indicates if this class injector is available on the current VM.
+     *
+     * @return {@code true} if this injector is available on the current VM.
+     */
+    boolean isAlive();
+
+    /**
+     * Injects the given types into the represented class loader.
+     *
+     * @param types            The types to load via injection.
+     * @param classFileLocator The class file locator to use for resolving binary representations.
+     * @return The loaded types that were passed as arguments.
+     */
+    Map<TypeDescription, Class<?>> inject(Set<? extends TypeDescription> types, ClassFileLocator classFileLocator);
+
+    /**
+     * Injects the given types into the represented class loader.
+     *
+     * @param names            The names of the types to load via injection.
+     * @param classFileLocator The class file locator to use for resolving binary representations.
+     * @return The loaded types that were passed as arguments.
+     */
+    Map<String, Class<?>> injectRaw(Set<String> names, ClassFileLocator classFileLocator);
+
+    /**
+     * Injects the given types into the represented class loader.
+     *
+     * @param types The types to load via injection.
+     * @return The loaded types that were passed as arguments.
+     */
+    Map<TypeDescription, Class<?>> inject(Map<? extends TypeDescription, byte[]> types);
+
+    /**
+     * Injects the given types into the represented class loader.
+     *
+     * @param types The names of the type to load via injection.
+     * @return The loaded types that were passed as arguments.
+     */
+    Map<String, Class<?>> injectRaw(Map<String, byte[]> types);
+
+    /**
+     * An abstract base implementation of a class injector.
+     */
+    abstract class AbstractBase implements ClassInjector {
+
+        /**
+         * A permission for the {@code suppressAccessChecks} permission or {@code null} if not supported.
+         */
+        @MaybeNull
+        protected static final Permission SUPPRESS_ACCESS_CHECKS = toSuppressAccessChecks();
+
+        /**
+         * Returns a permission for the {@code suppressAccessChecks} permission or {@code null} if not supported.
+         *
+         * @return A permission for the {@code suppressAccessChecks} permission or {@code null} if not supported.
+         */
+        @MaybeNull
+        @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "Exception should not be rethrown but return null.")
+        private static Permission toSuppressAccessChecks() {
+            try {
+                return (Permission) Class.forName("java.lang.reflect.ReflectPermission")
+                        .getConstructor(String.class)
+                        .newInstance("suppressAccessChecks");
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Map<TypeDescription, Class<?>> inject(Set<? extends TypeDescription> types, ClassFileLocator classFileLocator) {
+            Set<String> names = new LinkedHashSet<String>();
+            for (TypeDescription type : types) {
+                names.add(type.getName());
+            }
+            Map<String, Class<?>> loadedTypes = injectRaw(names, classFileLocator);
+            Map<TypeDescription, Class<?>> result = new HashMap<TypeDescription, Class<?>>();
+            for (TypeDescription type : types) {
+                result.put(type, loadedTypes.get(type.getName()));
+            }
+            return result;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Map<TypeDescription, Class<?>> inject(Map<? extends TypeDescription, byte[]> types) {
+            Map<String, byte[]> binaryRepresentations = new LinkedHashMap<String, byte[]>();
+            for (Map.Entry<? extends TypeDescription, byte[]> entry : types.entrySet()) {
+                binaryRepresentations.put(entry.getKey().getName(), entry.getValue());
+            }
+            Map<String, Class<?>> loadedTypes = injectRaw(binaryRepresentations);
+            Map<TypeDescription, Class<?>> result = new HashMap<TypeDescription, Class<?>>();
+            for (TypeDescription typeDescription : types.keySet()) {
+                result.put(typeDescription, loadedTypes.get(typeDescription.getName()));
+            }
+            return result;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Map<String, Class<?>> injectRaw(Map<String, byte[]> types) {
+            return injectRaw(types.keySet(), new ClassFileLocator.Simple(types));
+        }
+    }
+
+    /**
+     * A class injector that uses reflective method calls.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class UsingReflection extends AbstractBase {
+
+        /**
+         * The dispatcher to use for accessing a class loader via reflection.
+         */
+        private static final Dispatcher.Initializable DISPATCHER = doPrivileged(Dispatcher.CreationAction.INSTANCE);
+
+        /**
+         * A proxy for {@code java.lang.System} to access the security manager if available.
+         */
+        private static final System SYSTEM = doPrivileged(JavaDispatcher.of(System.class));
+
+        /**
+         * The {@code java.lang.SecurityManager#checkPermission} method or {@code null} if not available.
+         */
+        private static final Method CHECK_PERMISSION = doPrivileged(new GetMethodAction("java.lang.SecurityManager",
+                "checkPermission",
+                Permission.class));
+
+        /**
+         * The class loader into which the classes are to be injected.
+         */
+        private final ClassLoader classLoader;
+
+        /**
+         * The protection domain that is used when loading classes.
+         */
+        @MaybeNull
+        @HashCodeAndEqualsPlugin.ValueHandling(HashCodeAndEqualsPlugin.ValueHandling.Sort.REVERSE_NULLABILITY)
+        private final ProtectionDomain protectionDomain;
+
+        /**
+         * The package definer to be queried for package definitions.
+         */
+        private final PackageDefinitionStrategy packageDefinitionStrategy;
+
+        /**
+         * Determines if an exception should be thrown when attempting to load a type that already exists.
+         */
+        private final boolean forbidExisting;
+
+        /**
+         * Creates a new injector for the given {@link java.lang.ClassLoader} and a default {@link java.security.ProtectionDomain} and a
+         * trivial {@link PackageDefinitionStrategy} which does not trigger an error when discovering existent classes.
+         *
+         * @param classLoader The {@link java.lang.ClassLoader} into which new class definitions are to be injected. Must not be the bootstrap loader.
+         */
+        public UsingReflection(ClassLoader classLoader) {
+            this(classLoader, ClassLoadingStrategy.NO_PROTECTION_DOMAIN);
+        }
+
+
+ succeeded in 188ms:
+         */
+        public Class<?> lookupType() {
+            return METHOD_HANDLES_LOOKUP.lookupClass(lookup);
+        }
+
+        /**
+         * Resolves this injector to use the supplied type's scope.
+         *
+         * @param type The type to resolve the access scope for.
+         * @return An new injector with the specified scope.
+         */
+        public UsingLookup in(Class<?> type) {
+            try {
+                return new UsingLookup(METHOD_HANDLES.privateLookupIn(type, lookup));
+            } catch (IllegalAccessException exception) {
+                throw new IllegalStateException("Cannot access " + type.getName() + " from " + lookup, exception);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isAlive() {
+            return isAvailable();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Map<String, Class<?>> injectRaw(Set<String> names, ClassFileLocator classFileLocator) {
+            PackageDescription target = TypeDescription.ForLoadedType.of(lookupType()).getPackage();
+            if (target == null) {
+                throw new IllegalArgumentException("Cannot inject array or primitive type");
+            }
+            Map<String, Class<?>> result = new HashMap<String, Class<?>>();
+            for (String name : names) {
+                int index = name.lastIndexOf('.');
+                if (!target.getName().equals(index == -1 ? "" : name.substring(0, index))) {
+                    throw new IllegalArgumentException(name + " must be defined in the same package as " + lookup);
+                }
+                try {
+                    result.put(name, METHOD_HANDLES_LOOKUP.defineClass(lookup, classFileLocator.locate(name).resolve()));
+                } catch (Exception exception) {
+                    throw new IllegalStateException(exception);
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Checks if the current VM is capable of defining classes using a method handle lookup.
+         *
+         * @return {@code true} if the current VM is capable of defining classes using a lookup.
+         */
+        public static boolean isAvailable() {
+            return JavaType.MODULE.isAvailable();
+        }
+
+        /**
+         * A dispatcher for {@code java.lang.invoke.MethodHandles}.
+         */
+        @JavaDispatcher.Proxied("java.lang.invoke.MethodHandles")
+        protected interface MethodHandles {
+
+            /**
+             * Resolves the supplied lookup instance's access scope for the supplied type.
+             *
+             * @param type   The type to resolve the scope for.
+             * @param lookup The lookup to resolve.
+             * @return An appropriate lookup instance.
+             * @throws IllegalAccessException If an illegal access occurs.
+             */
+            @JavaDispatcher.IsStatic
+            Object privateLookupIn(Class<?> type, @JavaDispatcher.Proxied("java.lang.invoke.MethodHandles$Lookup") Object lookup) throws IllegalAccessException;
+
+            /**
+             * A dispatcher for {@code java.lang.invoke.MethodHandles$Lookup}.
+             */
+            @JavaDispatcher.Proxied("java.lang.invoke.MethodHandles$Lookup")
+            interface Lookup {
+
+                /**
+                 * Returns the lookup type for a given method handle lookup.
+                 *
+                 * @param lookup The lookup instance.
+                 * @return The lookup type.
+                 */
+                Class<?> lookupClass(Object lookup);
+
+                /**
+                 * Returns a lookup objects lookup types.
+                 *
+                 * @param lookup The lookup instance.
+                 * @return The modifiers indicating the instance's lookup modes.
+                 */
+                int lookupModes(Object lookup);
+
+                /**
+                 * Defines the represented class.
+                 *
+                 * @param lookup               The lookup instance.
+                 * @param binaryRepresentation The binary representation.
+                 * @return The defined class.
+                 * @throws IllegalAccessException If the definition implies an illegal access.
+                 */
+                Class<?> defineClass(Object lookup, byte[] binaryRepresentation) throws IllegalAccessException;
+            }
+        }
+    }
+
+    /**
+     * A class injector that uses {@code sun.misc.Unsafe} or {@code jdk.internal.misc.Unsafe} to inject classes.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class UsingUnsafe extends AbstractBase {
+
+        /**
+         * If this property is set, Byte Buddy does not make use of any {@code Unsafe} class.
+         */
+        public static final String SAFE_PROPERTY = "net.bytebuddy.safe";
+
+        /**
+         * The dispatcher to use.
+         */
+        private static final Dispatcher.Initializable DISPATCHER = doPrivileged(Dispatcher.CreationAction.INSTANCE);
+
+        /**
+         * A proxy for {@code java.lang.System} to access the security manager if available.
+         */
+        private static final System SYSTEM = doPrivileged(JavaDispatcher.of(System.class));
+
+        /**
+         * The {@code java.lang.SecurityManager#checkPermission} method or {@code null} if not available.
+         */
+        private static final Method CHECK_PERMISSION = doPrivileged(new GetMethodAction("java.lang.SecurityManager",
+                "checkPermission",
+                Permission.class));
+
+        /**
+         * A lock for the bootstrap loader when injecting.
+         */
+        private static final Object BOOTSTRAP_LOADER_LOCK = new Object();
+
+        /**
+         * The class loader to inject classes into or {@code null} for the bootstrap loader.
+         */
+
+ succeeded in 249ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/test/utility/InjectionStrategyResolver.java:11:        } else if (ClassInjector.UsingLookup.isAvailable()) {
+byte-buddy-dep/src/test/java/net/bytebuddy/test/utility/InjectionStrategyResolver.java:12:            return ClassLoadingStrategy.UsingLookup.of(
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9333:                 * MethodHandles.Lookup lookup;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java:508:            return new UsingLookup(ClassInjector.UsingLookup.of(lookup));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java:539:            if (ClassInjector.UsingLookup.isAvailable()) {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:47:        assertThat(ClassInjector.UsingLookup.isAvailable(), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:53:        assertThat(ClassInjector.UsingLookup.of(type.getMethod("lookup").invoke(null)).lookupType(), is((Object) type));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:59:        ClassInjector injector = ClassInjector.UsingLookup.of(type.getMethod("lookup").invoke(null));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:71:        ClassInjector injector = ClassInjector.UsingLookup.of(Class.forName("java.lang.invoke.MethodHandles").getMethod("lookup").invoke(null)).in(type);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:95:                .load(defaultPackageType.getClassLoader(), ClassLoadingStrategy.UsingLookup.of(privateLookup))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:111:        assertThat(ClassInjector.UsingLookup.isAvailable(), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:112:        assertThat(ClassInjector.UsingLookup.of(type.getMethod("lookup").invoke(null)).isAlive(), is((Object) true));
+
+codex
+The source does not show a standalone `ClassInjector.Lookup`; the closest match is the nested `MethodHandles.Lookup` inside `ClassInjector.UsingLookup`. I’m verifying whether the repo references any `ClassInjector$Lookup` symbol directly or only the `UsingLookup` path.
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"ClassInjector\\"'$Lookup|ClassInjector'"\\.Lookup|UsingLookup\\.Lookup|MethodHandles\\.Lookup\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '480,560p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 164ms:
+package net.bytebuddy.dynamic.loading;
+
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.description.modifier.Ownership;
+import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.implementation.MethodCall;
+import net.bytebuddy.test.utility.JavaVersionRule;
+import net.bytebuddy.utility.JavaType;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+
+import java.lang.reflect.Constructor;
+import java.util.Collections;
+
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertTrue;
+
+public class ClassInjectorUsingLookupTest {
+
+    @Rule
+    public MethodRule javaVersionRule = new JavaVersionRule();
+
+    private Class<?> type;
+
+    @Before
+    public void setUp() throws Exception {
+        type = new ByteBuddy()
+                .subclass(Object.class)
+                .name("net.bytebuddy.test.Foo")
+                .defineMethod("lookup", Object.class, Ownership.STATIC, Visibility.PUBLIC)
+                .intercept(MethodCall.invoke(Class.forName("java.lang.invoke.MethodHandles").getMethod("lookup")))
+                .make()
+                .load(ClassLoadingStrategy.BOOTSTRAP_LOADER, ClassLoadingStrategy.Default.WRAPPER)
+                .getLoaded();
+    }
+
+    @Test
+    @JavaVersionRule.Enforce(9)
+    public void testIsAvailable() {
+        assertThat(ClassInjector.UsingLookup.isAvailable(), is(true));
+    }
+
+    @Test
+    @JavaVersionRule.Enforce(9)
+    public void testLookupType() throws Exception {
+        assertThat(ClassInjector.UsingLookup.of(type.getMethod("lookup").invoke(null)).lookupType(), is((Object) type));
+    }
+
+    @Test
+    @JavaVersionRule.Enforce(9)
+    public void testLookupInjection() throws Exception {
+        ClassInjector injector = ClassInjector.UsingLookup.of(type.getMethod("lookup").invoke(null));
+        DynamicType dynamicType = new ByteBuddy()
+                .subclass(Object.class)
+                .name("net.bytebuddy.test.Bar")
+                .make();
+        assertThat(injector.inject(Collections.singletonMap(dynamicType.getTypeDescription(), dynamicType.getBytes()))
+                .get(dynamicType.getTypeDescription()).getName(), is("net.bytebuddy.test.Bar"));
+    }
+
+    @Test
+    @JavaVersionRule.Enforce(9)
+    public void testLookupInjectionPropagate() throws Exception {
+        ClassInjector injector = ClassInjector.UsingLookup.of(Class.forName("java.lang.invoke.MethodHandles").getMethod("lookup").invoke(null)).in(type);
+        DynamicType dynamicType = new ByteBuddy()
+                .subclass(Object.class)
+                .name("net.bytebuddy.test.Bar")
+                .make();
+        assertThat(injector.inject(Collections.singletonMap(dynamicType.getTypeDescription(), dynamicType.getBytes()))
+                .get(dynamicType.getTypeDescription()).getName(), is("net.bytebuddy.test.Bar"));
+    }
+
+    @Test
+    @JavaVersionRule.Enforce(9)
+    public void testSubclassUsingLookup() throws Exception {
+        Class<?> defaultPackageType = new ByteBuddy()
+                .subclass(Object.class)
+                .name("DefaultPackageType")
+                .make()
+                .load(ClassLoadingStrategy.BOOTSTRAP_LOADER, ClassLoadingStrategy.Default.WRAPPER)
+                .getLoaded();
+        Object privateLookup = JavaType.METHOD_HANDLES.load()
+                .getMethod("privateLookupIn", Class.class, JavaType.METHOD_HANDLES_LOOKUP.load())
+                .invoke(null, defaultPackageType, JavaType.METHOD_HANDLES.load().getMethod("lookup").invoke(null));
+        Class<?> type = new ByteBuddy()
+                .subclass(defaultPackageType)
+                .make()
+                .load(defaultPackageType.getClassLoader(), ClassLoadingStrategy.UsingLookup.of(privateLookup))
+                .getLoaded();
+        assertThat(type.getDeclaredMethods().length, is(0));
+        assertThat(type.getDeclaredConstructors().length, is(1));
+        assertThat(type.getDeclaredConstructor(), notNullValue(Constructor.class));
+        assertThat(defaultPackageType.isAssignableFrom(type), is(true));
+        assertThat(type, not(is((Object) defaultPackageType)));
+        assertThat(type.getDeclaredConstructor().newInstance(), instanceOf(defaultPackageType));
+        assertTrue(defaultPackageType.isInstance(type.getDeclaredConstructor().newInstance()));
+        assertThat(type.isInterface(), is(false));
+        assertThat(type.isAnnotation(), is(false));
+    }
+
+    @Test
+    @JavaVersionRule.Enforce(9)
+    public void testAvailable() throws Exception {
+        assertThat(ClassInjector.UsingLookup.isAvailable(), is(true));
+        assertThat(ClassInjector.UsingLookup.of(type.getMethod("lookup").invoke(null)).isAlive(), is((Object) true));
+    }
+}
+
+ succeeded in 299ms:
+     * A class loading strategy that uses a {@code java.lang.invoke.MethodHandles$Lookup} instance for defining types.
+     * A lookup instance can define types only in the same class loader and in the same package as the type within which
+     * it was created. The supplied lookup must have package privileges, i.e. it must not be a public lookup.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class UsingLookup implements ClassLoadingStrategy<ClassLoader> {
+
+        /**
+         * The class injector to use.
+         */
+        private final ClassInjector classInjector;
+
+        /**
+         * Creates a new class loading strategy that uses a lookup type.
+         *
+         * @param classInjector The class injector to use.
+         */
+        protected UsingLookup(ClassInjector classInjector) {
+            this.classInjector = classInjector;
+        }
+
+        /**
+         * Creates a new class loading strategy that uses a {@code java.lang.invoke.MethodHandles$Lookup} instance.
+         *
+         * @param lookup The lookup instance to use for defining new types.
+         * @return A suitable class loading strategy.
+         */
+        public static ClassLoadingStrategy<ClassLoader> of(Object lookup) {
+            return new UsingLookup(ClassInjector.UsingLookup.of(lookup));
+        }
+
+        /**
+         * Resolves a class loading strategy using a lookup if available on the current JVM. If the current JVM supports method handles
+         * lookups, a lookup instance will be used. Alternatively, unsafe class definition is used, if supported. If neither strategy is
+         * supported, an exception is thrown. A common use case would be calling this method as in
+         * {@code ClassLoadingStrategy.UsingLookup.withFallback(MethodHandles::lookup)}. Note that the invocation of
+         * {@code MethodHandles.lookup()} is call site sensitive such that it cannot be invoked within Byte Buddy what requires this
+         * external invocation.
+         *
+         * @param lookup A resolver for a lookup instance if the current JVM allows for lookup-based class injection.
+         * @return An appropriate class loading strategy for the current JVM that uses a method handles lookup if available.
+         */
+        public static ClassLoadingStrategy<ClassLoader> withFallback(Callable<?> lookup) {
+            return withFallback(lookup, false);
+        }
+
+        /**
+         * Resolves a class loading strategy using a lookup if available on the current JVM. If the current JVM supports method handles
+         * lookups, a lookup instance will be used. Alternatively, unsafe class definition is used, if supported. If neither strategy is
+         * supported, an exception is thrown. A common use case would be calling this method as in
+         * {@code ClassLoadingStrategy.UsingLookup.withFallback(MethodHandles::lookup)}. Note that the invocation of
+         * {@code MethodHandles.lookup()} is call site sensitive such that it cannot be invoked within Byte Buddy what requires this
+         * external invocation.
+         *
+         * @param lookup  A resolver for a lookup instance if the current JVM allows for lookup-based class injection.
+         * @param wrapper {@code true} if a {@link Default#WRAPPER} strategy should be used as a fallback in case that no injection strategy is available.
+         * @return An appropriate class loading strategy for the current JVM that uses a method handles lookup if available.
+         */
+        public static ClassLoadingStrategy<ClassLoader> withFallback(Callable<?> lookup, boolean wrapper) {
+            if (ClassInjector.UsingLookup.isAvailable()) {
+                try {
+                    return of(lookup.call());
+                } catch (Exception exception) {
+                    throw new IllegalStateException(exception);
+                }
+            } else if (ClassInjector.UsingUnsafe.isAvailable()) {
+                return new ClassLoadingStrategy.ForUnsafeInjection();
+            } else if (wrapper) {
+                return Default.WRAPPER;
+            } else {
+                throw new IllegalStateException("Neither lookup or unsafe class injection is available");
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Map<TypeDescription, Class<?>> load(@MaybeNull ClassLoader classLoader, Map<TypeDescription, byte[]> types) {
+            return classInjector.inject(types);
+        }
+    }
+
+ succeeded in 400ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java:1299:        protected static final MethodHandles.Lookup METHOD_HANDLES_LOOKUP = doPrivileged(JavaDispatcher.of(MethodHandles.Lookup.class));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java:1398:         * Creates a method handles representation of a loaded method handle which is analyzed using a public {@code MethodHandles.Lookup} object.
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:15893:         * <li>A {@code java.lang.invoke.MethodHandles.Lookup} representing the source method.</li>
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:15926:         * <li>A {@code java.lang.invoke.MethodHandles.Lookup} representing the source method.</li>
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:15978:         * <li>A {@code java.lang.invoke.MethodHandles.Lookup} representing the source method.</li>
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:8848:         * public static CallSite metafactory(MethodHandles.Lookup caller,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:8884:         * public static CallSite altMetafactory(MethodHandles.Lookup caller,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9333:                 * MethodHandles.Lookup lookup;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9338:                 *     MethodHandles.Lookup.ClassOption.NESTMATE,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9339:                 *     MethodHandles.Lookup.ClassOption.STRONG);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9343:                 *     MethodHandles.Lookup.ClassOption.NESTMATE,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9344:                 *     MethodHandles.Lookup.ClassOption.STRONG);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:5830:                                 * Represents the supplied value as a {@code java.lang.invoke.MethodHandles.Lookup}.
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:6585:                         * <li>A {@code java.lang.invoke.MethodHandles.Lookup} representing the source method.</li>
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:7118:                         * <li>A {@code java.lang.invoke.MethodHandles.Lookup} representing the source method.</li>
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:7151:                         * <li>A {@code java.lang.invoke.MethodHandles.Lookup} representing the source method.</li>
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:7184:                         * <li>A {@code java.lang.invoke.MethodHandles.Lookup} representing the source method.</li>
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:1626:        private static final MethodHandles.Lookup METHOD_HANDLES_LOOKUP = doPrivileged(JavaDispatcher.of(MethodHandles.Lookup.class));
+
+codex
+I have enough to see the shape: `UsingLookup` is a small adapter with a few direct callers, not an obvious hub. I’m counting its concrete inbound references in production/tests and its own direct dependencies before I decide.
+exec
+/bin/bash -lc "rg -n \"ClassInjector\\.UsingLookup\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"ClassInjector\\.UsingLookup\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1600,1685p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 246ms:
+9
+
+ succeeded in 282ms:
+            @MaybeNull
+            @JavaDispatcher.IsStatic
+            @JavaDispatcher.Defaults
+            Object getSecurityManager();
+        }
+    }
+
+    /**
+     * <p>
+     * A class injector that uses a {@code java.lang.invoke.MethodHandles$Lookup} object for defining a class.
+     * </p>
+     * <p>
+     * <b>Important</b>: This functionality is only available starting from Java 9.
+     * </p>
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class UsingLookup extends AbstractBase {
+
+        /**
+         * The dispatcher to interacting with instances of {@code java.lang.invoke.MethodHandles}.
+         */
+        private static final MethodHandles METHOD_HANDLES = doPrivileged(JavaDispatcher.of(MethodHandles.class));
+
+        /**
+         * The dispatcher to interacting with {@code java.lang.invoke.MethodHandles$Lookup}.
+         */
+        private static final MethodHandles.Lookup METHOD_HANDLES_LOOKUP = doPrivileged(JavaDispatcher.of(MethodHandles.Lookup.class));
+
+        /**
+         * Indicates a lookup instance's package lookup mode.
+         */
+        private static final int PACKAGE_LOOKUP = 0x8;
+
+        /**
+         * The {@code java.lang.invoke.MethodHandles$Lookup} to use.
+         */
+        private final Object lookup;
+
+        /**
+         * Creates a new class injector using a lookup instance.
+         *
+         * @param lookup The {@code java.lang.invoke.MethodHandles$Lookup} instance to use.
+         */
+        protected UsingLookup(Object lookup) {
+            this.lookup = lookup;
+        }
+
+        /**
+         * A proxy for {@code java.security.AccessController#doPrivileged} that is activated if available.
+         *
+         * @param action The action to execute from a privileged context.
+         * @param <T>    The type of the action's resolved value.
+         * @return The action's resolved value.
+         */
+        @AccessControllerPlugin.Enhance
+        private static <T> T doPrivileged(PrivilegedAction<T> action) {
+            return action.run();
+        }
+
+        /**
+         * Creates class injector that defines a class using a method handle lookup.
+         *
+         * @param lookup The {@code java.lang.invoke.MethodHandles$Lookup} instance to use.
+         * @return An appropriate class injector.
+         */
+        public static UsingLookup of(Object lookup) {
+            if (!isAvailable()) {
+                throw new IllegalStateException("The current VM does not support class definition via method handle lookups");
+            } else if (!JavaType.METHOD_HANDLES_LOOKUP.isInstance(lookup)) {
+                throw new IllegalArgumentException("Not a method handle lookup: " + lookup);
+            } else if ((METHOD_HANDLES_LOOKUP.lookupModes(lookup) & PACKAGE_LOOKUP) == 0) {
+                throw new IllegalArgumentException("Lookup does not imply package-access: " + lookup);
+            }
+            return new UsingLookup(lookup);
+        }
+
+        /**
+         * Returns the lookup type this injector is based upon.
+         *
+         * @return The lookup type.
+         */
+        public Class<?> lookupType() {
+            return METHOD_HANDLES_LOOKUP.lookupClass(lookup);
+        }
+
+        /**
+
+ succeeded in 315ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/test/utility/InjectionStrategyResolver.java:11:        } else if (ClassInjector.UsingLookup.isAvailable()) {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:47:        assertThat(ClassInjector.UsingLookup.isAvailable(), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:53:        assertThat(ClassInjector.UsingLookup.of(type.getMethod("lookup").invoke(null)).lookupType(), is((Object) type));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:59:        ClassInjector injector = ClassInjector.UsingLookup.of(type.getMethod("lookup").invoke(null));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:71:        ClassInjector injector = ClassInjector.UsingLookup.of(Class.forName("java.lang.invoke.MethodHandles").getMethod("lookup").invoke(null)).in(type);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:111:        assertThat(ClassInjector.UsingLookup.isAvailable(), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java:112:        assertThat(ClassInjector.UsingLookup.of(type.getMethod("lookup").invoke(null)).isAlive(), is((Object) true));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java:508:            return new UsingLookup(ClassInjector.UsingLookup.of(lookup));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java:539:            if (ClassInjector.UsingLookup.isAvailable()) {
+
+codex
+{"target":"net.bytebuddy.dynamic.loading.ClassInjector.Lookup","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java`, where the only `Lookup` type is the nested `MethodHandles.Lookup` dispatcher inside `ClassInjector.UsingLookup`; it has just 3 methods and is used only internally by `UsingLookup` via `METHOD_HANDLES_LOOKUP`. Repository references are sparse: `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java`, `byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassInjectorUsingLookupTest.java`, and `byte-buddy-dep/src/test/java/net/bytebuddy/test/utility/InjectionStrategyResolver.java` reference `ClassInjector.UsingLookup`, not a standalone `ClassInjector.Lookup`. This shows low fan-in and limited fan-out, so the hub-like modularization smell is not present."}
+tokens used
+12,410

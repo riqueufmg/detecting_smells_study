@@ -1,0 +1,487 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f0b-bf68-7730-801f-6eeed7502f36
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.dynamic.loading.ClassFilePostProcessor.ForClassFileTransformer` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.dynamic.loading.ClassFilePostProcessor.ForClassFileTransformer",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.dynamic.loading.ClassFilePostProcessor.ForClassFileTransformer`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class first, then I’ll inspect its source and nearby references to gauge fan-in and fan-out from repository evidence only.
+exec
+/bin/bash -lc 'rg -n "class ForClassFileTransformer|ForClassFileTransformer" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:38:        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenReturn(new byte[]{4, 5, 6});
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:39:        byte[] transformed = new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:45:        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenThrow(new IllegalClassFormatException());
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:46:        new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java:69:    class ForClassFileTransformer implements ClassFilePostProcessor {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java:92:        public ForClassFileTransformer(ClassFileTransformer classFileTransformer) {
+
+exec
+/bin/bash -lc "rg --files . | rg \"ClassFilePostProcessor|ClassFileTransformer|ClassFilePostProcessor\\.java\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerWithDelegationWithCallbackTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerSubstitutableTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerWithDelegationTest.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java
+
+codex
+I found the implementation and its direct test. Next I’m reading the class to count its own dependencies and see whether other code depends on it beyond the test and local wrapper usage.
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.dynamic.loading;
+
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.utility.nullability.AlwaysNull;
+import net.bytebuddy.utility.nullability.MaybeNull;
+
+import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.IllegalClassFormatException;
+import java.security.AllPermission;
+import java.security.Permission;
+import java.security.PermissionCollection;
+import java.security.ProtectionDomain;
+import java.util.Collections;
+import java.util.Enumeration;
+
+/**
+ * A post processor for class files.
+ */
+public interface ClassFilePostProcessor {
+
+    /**
+     * Transforms a class file for a given class.
+     *
+     * @param classLoader          The class loader which is used to load a class or {@code null} if loaded by the bootstrap loader.
+     * @param name                 The binary name of the transformed class.
+     * @param protectionDomain     The protection domain of the transformed class or {@code null} if no protection domain is provided.
+     * @param binaryRepresentation The binary representation of the class file.
+     * @return The class file to use.
+     */
+    byte[] transform(@MaybeNull ClassLoader classLoader, String name, @MaybeNull ProtectionDomain protectionDomain, byte[] binaryRepresentation);
+
+    /**
+     * A non-operation class file post processor.
+     */
+    enum NoOp implements ClassFilePostProcessor {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * {@inheritDoc}
+         */
+        public byte[] transform(@MaybeNull ClassLoader classLoader, String name, @MaybeNull ProtectionDomain protectionDomain, byte[] binaryRepresentation) {
+            return binaryRepresentation;
+        }
+    }
+
+    /**
+     * A class file post processor that delegates to an {@link ClassFileTransformer}.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class ForClassFileTransformer implements ClassFilePostProcessor {
+
+        /**
+         * A protection domain that represents all permissions.
+         */
+        protected static final ProtectionDomain ALL_PRIVILEGES = new ProtectionDomain(null, new AllPermissionsCollection());
+
+        /**
+         * Indicates that a class is not currently loaded.
+         */
+        @AlwaysNull
+        private static final Class<?> UNLOADED_TYPE = null;
+
+        /**
+         * The class file transformer to delegate to.
+         */
+        private final ClassFileTransformer classFileTransformer;
+
+        /**
+         * Creates a new class file post processor for a class file transformer.
+         *
+         * @param classFileTransformer The class file transformer to delegate to.
+         */
+        public ForClassFileTransformer(ClassFileTransformer classFileTransformer) {
+            this.classFileTransformer = classFileTransformer;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public byte[] transform(@MaybeNull ClassLoader classLoader, String name, @MaybeNull ProtectionDomain protectionDomain, byte[] binaryRepresentation) {
+            try {
+                byte[] transformed = classFileTransformer.transform(classLoader, name.replace('.', '/'),
+                        UNLOADED_TYPE,
+                        protectionDomain == null
+                                ? ALL_PRIVILEGES
+                                : protectionDomain,
+                        binaryRepresentation);
+                return transformed == null ? binaryRepresentation : transformed;
+            } catch (IllegalClassFormatException exception) {
+                throw new IllegalStateException("Failed to transform " + name, exception);
+            }
+        }
+
+        /**
+         * A permission collection that implies all permissions.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class AllPermissionsCollection extends PermissionCollection {
+
+            /**
+             * The serial version UID.
+             */
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void add(Permission permission) {
+                throw new UnsupportedOperationException("add");
+            }
+
+            @Override
+            public boolean implies(Permission permission) {
+                return true;
+            }
+
+            @Override
+            public Enumeration<Permission> elements() {
+                return Collections.enumeration(Collections.<Permission>singleton(new AllPermission()));
+            }
+        }
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+package net.bytebuddy.dynamic.loading;
+
+import net.bytebuddy.test.utility.JavaVersionRule;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+
+import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.IllegalClassFormatException;
+import java.util.Arrays;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.when;
+
+public class ClassFilePostProcessorTest {
+
+    @Rule
+    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+
+    @Rule
+    public MethodRule javaVersionRule = new JavaVersionRule();
+
+    @Mock
+    private ClassFileTransformer classFileTransformer;
+
+    @Test
+    public void testNoOpPostProcessor() throws Exception {
+        byte[] transformed = ClassFilePostProcessor.NoOp.INSTANCE.transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+        assertThat(Arrays.equals(transformed, new byte[]{1, 2, 3}), is(true));
+    }
+
+    @Test
+    @JavaVersionRule.Enforce(7) // Error in generic processing on Java 6
+    public void testClassFileTransformerPostProcessor() throws Exception {
+        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenReturn(new byte[]{4, 5, 6});
+        byte[] transformed = new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+        assertThat(Arrays.equals(transformed, new byte[]{4, 5, 6}), is(true));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testClassFileTransformerPostProcessorWithException() throws Exception {
+        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenThrow(new IllegalClassFormatException());
+        new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+    }
+}
+
+codex
+The implementation is a thin adapter. I’m checking repository-wide references now to confirm whether it has meaningful fan-in in production code or is mostly an isolated wrapper used locally and by tests.
+exec
+/bin/bash -lc "rg -n \"ClassFilePostProcessor\\.ForClassFileTransformer|new ClassFilePostProcessor\\.ForClassFileTransformer|ForClassFileTransformer\\(\" byte-buddy-dep/src/main byte-buddy-dep/src/test" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java:92:        public ForClassFileTransformer(ClassFileTransformer classFileTransformer) {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:38:        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenReturn(new byte[]{4, 5, 6});
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:39:        byte[] transformed = new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:45:        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenThrow(new IllegalClassFormatException());
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:46:        new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+
+exec
+/bin/bash -lc 'rg -n "ClassFilePostProcessor" byte-buddy-dep/src/main byte-buddy-dep/src/test' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoaderTest.java:59:    private ClassFilePostProcessor classFilePostProcessor;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:18:public class ClassFilePostProcessorTest {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:31:        byte[] transformed = ClassFilePostProcessor.NoOp.INSTANCE.transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:38:        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenReturn(new byte[]{4, 5, 6});
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:39:        byte[] transformed = new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:45:        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenThrow(new IllegalClassFormatException());
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:46:        new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java:34:public interface ClassFilePostProcessor {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java:50:    enum NoOp implements ClassFilePostProcessor {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java:69:    class ForClassFileTransformer implements ClassFilePostProcessor {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:151:    protected final ClassFilePostProcessor classFilePostProcessor;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:236:        this(parent, sealed, typeDefinitions, protectionDomain, persistenceHandler, packageDefinitionStrategy, ClassFilePostProcessor.NoOp.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:254:                                ClassFilePostProcessor classFilePostProcessor) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:275:                                ClassFilePostProcessor classFilePostProcessor) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:397:                ClassFilePostProcessor.NoOp.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:1256:                          ClassFilePostProcessor classFilePostProcessor) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:1277:                          ClassFilePostProcessor classFilePostProcessor) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:1359:                    ClassFilePostProcessor.NoOp.INSTANCE);
+
+exec
+/bin/bash -lc "rg -n \"classFileTransformer\\.transform\\(|ALL_PRIVILEGES|UNLOADED_TYPE\" byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+74:        protected static final ProtectionDomain ALL_PRIVILEGES = new ProtectionDomain(null, new AllPermissionsCollection());
+80:        private static final Class<?> UNLOADED_TYPE = null;
+101:                byte[] transformed = classFileTransformer.transform(classLoader, name.replace('.', '/'),
+102:                        UNLOADED_TYPE,
+104:                                ? ALL_PRIVILEGES
+
+exec
+/bin/bash -lc "rg -n \"new ForClassFileTransformer|ForClassFileTransformer\\s*class|ClassFilePostProcessor\\.ForClassFileTransformer\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:38:        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenReturn(new byte[]{4, 5, 6});
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:39:        byte[] transformed = new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:45:        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenThrow(new IllegalClassFormatException());
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java:46:        new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+
+codex
+I have enough to decide, but I’m grabbing exact line numbers so the justification can point to concrete evidence rather than a vague summary.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java | sed -n '60,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+    60	        public byte[] transform(@MaybeNull ClassLoader classLoader, String name, @MaybeNull ProtectionDomain protectionDomain, byte[] binaryRepresentation) {
+    61	            return binaryRepresentation;
+    62	        }
+    63	    }
+    64	
+    65	    /**
+    66	     * A class file post processor that delegates to an {@link ClassFileTransformer}.
+    67	     */
+    68	    @HashCodeAndEqualsPlugin.Enhance
+    69	    class ForClassFileTransformer implements ClassFilePostProcessor {
+    70	
+    71	        /**
+    72	         * A protection domain that represents all permissions.
+    73	         */
+    74	        protected static final ProtectionDomain ALL_PRIVILEGES = new ProtectionDomain(null, new AllPermissionsCollection());
+    75	
+    76	        /**
+    77	         * Indicates that a class is not currently loaded.
+    78	         */
+    79	        @AlwaysNull
+    80	        private static final Class<?> UNLOADED_TYPE = null;
+    81	
+    82	        /**
+    83	         * The class file transformer to delegate to.
+    84	         */
+    85	        private final ClassFileTransformer classFileTransformer;
+    86	
+    87	        /**
+    88	         * Creates a new class file post processor for a class file transformer.
+    89	         *
+    90	         * @param classFileTransformer The class file transformer to delegate to.
+    91	         */
+    92	        public ForClassFileTransformer(ClassFileTransformer classFileTransformer) {
+    93	            this.classFileTransformer = classFileTransformer;
+    94	        }
+    95	
+    96	        /**
+    97	         * {@inheritDoc}
+    98	         */
+    99	        public byte[] transform(@MaybeNull ClassLoader classLoader, String name, @MaybeNull ProtectionDomain protectionDomain, byte[] binaryRepresentation) {
+   100	            try {
+   101	                byte[] transformed = classFileTransformer.transform(classLoader, name.replace('.', '/'),
+   102	                        UNLOADED_TYPE,
+   103	                        protectionDomain == null
+   104	                                ? ALL_PRIVILEGES
+   105	                                : protectionDomain,
+   106	                        binaryRepresentation);
+   107	                return transformed == null ? binaryRepresentation : transformed;
+   108	            } catch (IllegalClassFormatException exception) {
+   109	                throw new IllegalStateException("Failed to transform " + name, exception);
+   110	            }
+   111	        }
+   112	
+   113	        /**
+   114	         * A permission collection that implies all permissions.
+   115	         */
+   116	        @HashCodeAndEqualsPlugin.Enhance
+   117	        protected static class AllPermissionsCollection extends PermissionCollection {
+   118	
+   119	            /**
+   120	             * The serial version UID.
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java | sed -n '1,80p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+     1	package net.bytebuddy.dynamic.loading;
+     2	
+     3	import net.bytebuddy.test.utility.JavaVersionRule;
+     4	import org.junit.Rule;
+     5	import org.junit.Test;
+     6	import org.junit.rules.MethodRule;
+     7	import org.mockito.Mock;
+     8	import org.mockito.junit.MockitoJUnit;
+     9	
+    10	import java.lang.instrument.ClassFileTransformer;
+    11	import java.lang.instrument.IllegalClassFormatException;
+    12	import java.util.Arrays;
+    13	
+    14	import static org.hamcrest.CoreMatchers.is;
+    15	import static org.hamcrest.MatcherAssert.assertThat;
+    16	import static org.mockito.Mockito.when;
+    17	
+    18	public class ClassFilePostProcessorTest {
+    19	
+    20	    @Rule
+    21	    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+    22	
+    23	    @Rule
+    24	    public MethodRule javaVersionRule = new JavaVersionRule();
+    25	
+    26	    @Mock
+    27	    private ClassFileTransformer classFileTransformer;
+    28	
+    29	    @Test
+    30	    public void testNoOpPostProcessor() throws Exception {
+    31	        byte[] transformed = ClassFilePostProcessor.NoOp.INSTANCE.transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+    32	        assertThat(Arrays.equals(transformed, new byte[]{1, 2, 3}), is(true));
+    33	    }
+    34	
+    35	    @Test
+    36	    @JavaVersionRule.Enforce(7) // Error in generic processing on Java 6
+    37	    public void testClassFileTransformerPostProcessor() throws Exception {
+    38	        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenReturn(new byte[]{4, 5, 6});
+    39	        byte[] transformed = new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+    40	        assertThat(Arrays.equals(transformed, new byte[]{4, 5, 6}), is(true));
+    41	    }
+    42	
+    43	    @Test(expected = IllegalStateException.class)
+    44	    public void testClassFileTransformerPostProcessorWithException() throws Exception {
+    45	        when(classFileTransformer.transform(null, "foo/Bar", null, ClassFilePostProcessor.ForClassFileTransformer.ALL_PRIVILEGES, new byte[]{1, 2, 3})).thenThrow(new IllegalClassFormatException());
+    46	        new ClassFilePostProcessor.ForClassFileTransformer(classFileTransformer).transform(null, "foo.Bar", null, new byte[]{1, 2, 3});
+    47	    }
+    48	}
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java | sed -n '145,165p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   145	     */
+   146	    protected final PackageDefinitionStrategy packageDefinitionStrategy;
+   147	
+   148	    /**
+   149	     * The class file transformer to apply on loaded classes.
+   150	     */
+   151	    protected final ClassFilePostProcessor classFilePostProcessor;
+   152	
+   153	    /**
+   154	     * The access control context to use for loading classes or {@code null} if this is not supported on the current VM.
+   155	     */
+   156	    @MaybeNull
+   157	    protected final Object accessControlContext;
+   158	
+   159	    /**
+   160	     * Creates a new class loader for a given definition of classes.
+   161	     *
+   162	     * @param parent          The {@link java.lang.ClassLoader} that is the parent of this class loader.
+   163	     * @param typeDefinitions A map of fully qualified class names pointing to their binary representations.
+   164	     */
+   165	    public ByteArrayClassLoader(@MaybeNull ClassLoader parent, Map<String, byte[]> typeDefinitions) {
+
+codex
+{"target":"net.bytebuddy.dynamic.loading.ClassFilePostProcessor.ForClassFileTransformer","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessor.java and byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassFilePostProcessorTest.java. ForClassFileTransformer is a thin adapter with one delegate field and one constructor; its only outbound dependency is a java.lang.instrument.ClassFileTransformer call plus local constants/helpers. Repository-wide search found no production callers of this nested class, only its definition and two test uses; ByteArrayClassLoader depends on the ClassFilePostProcessor interface, not this implementation. The evidence does not show hub-like fan-in/fan-out."}
+tokens used
+10,659

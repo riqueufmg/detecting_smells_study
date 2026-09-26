@@ -1,0 +1,808 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6edd-8042-70d3-a9bb-e502ca51478f
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.generator.core.visitor.EqualsVisitorGenerator` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.generator.core.visitor.EqualsVisitorGenerator",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.generator.core.visitor.EqualsVisitorGenerator`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the generator class and its references first, then I’ll inspect its outgoing imports/usages and whether other code depends on it heavily enough to support a hub-like modularization verdict.
+exec
+/bin/bash -lc 'rg --files . | rg "EqualsVisitorGenerator|generator/core/visitor|EqualsVisitor"' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "class EqualsVisitorGenerator|EqualsVisitorGenerator" .' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java:77:        new EqualsVisitorGenerator(sourceRoot).generate();
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java:78:        new ObjectIdentityEqualsVisitorGenerator(sourceRoot).generate();
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java:79:        new NoCommentEqualsVisitorGenerator(sourceRoot).generate();
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/EqualsVisitorGenerator.java:37:public class EqualsVisitorGenerator extends VisitorGenerator {
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/EqualsVisitorGenerator.java:38:    public EqualsVisitorGenerator(SourceRoot sourceRoot) {
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ObjectIdentityEqualsVisitorGenerator.java:34:public class ObjectIdentityEqualsVisitorGenerator extends VisitorGenerator {
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ObjectIdentityEqualsVisitorGenerator.java:35:    public ObjectIdentityEqualsVisitorGenerator(SourceRoot sourceRoot) {
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/NoCommentEqualsVisitorGenerator.java:35:public class NoCommentEqualsVisitorGenerator extends VisitorGenerator {
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/NoCommentEqualsVisitorGenerator.java:37:    public NoCommentEqualsVisitorGenerator(SourceRoot sourceRoot) {
+
+ succeeded in 0ms:
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/visitor/ObjectIdentityEqualsVisitorTest.java
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/visitor/NoCommentEqualsVisitorTest.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/EqualsVisitorGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ObjectIdentityEqualsVisitorGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/VoidVisitorWithDefaultsGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/CloneVisitorGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/NoCommentHashCodeVisitorGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/GenericVisitorGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/GenericVisitorAdapterGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/VoidVisitorAdapterGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/GenericListVisitorAdapterGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/VoidVisitorGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/HashCodeVisitorGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ModifierVisitorGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ObjectIdentityHashCodeVisitorGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/GenericVisitorWithDefaultsGenerator.java
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/NoCommentEqualsVisitorGenerator.java
+./javaparser-symbol-solver-testing/src/test/test_sourcecode/javaparser_new_src/expected_output/com_github_javaparser_ast_visitor_EqualsVisitor.txt
+./javaparser-symbol-solver-testing/src/test/test_sourcecode/javaparser_new_src/javaparser-core/com/github/javaparser/ast/visitor/EqualsVisitor.java
+./javaparser-symbol-solver-testing/src/test/test_sourcecode/javaparser_src/expected_output/com_github_javaparser_ast_visitor_EqualsVisitor.txt
+./javaparser-symbol-solver-testing/src/test/test_sourcecode/javaparser_src/proper_source/com/github/javaparser/ast/visitor/EqualsVisitor.java
+./javaparser-core/src/main/java/com/github/javaparser/ast/visitor/ObjectIdentityEqualsVisitor.java
+./javaparser-core/src/main/java/com/github/javaparser/ast/visitor/NoCommentEqualsVisitor.java
+./javaparser-core/src/main/java/com/github/javaparser/ast/visitor/EqualsVisitor.java
+
+codex
+I found the target and its neighbors. Next I’m reading the generator implementation and the orchestration code that instantiates it so I can judge both its outgoing dependencies and how much other code points at it.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/EqualsVisitorGenerator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.generator.core.visitor;
+
+import static com.github.javaparser.utils.CodeGenerationUtils.f;
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.generator.VisitorGenerator;
+import com.github.javaparser.metamodel.BaseNodeMetaModel;
+import com.github.javaparser.metamodel.PropertyMetaModel;
+import com.github.javaparser.utils.SourceRoot;
+
+/**
+ * Generates JavaParser's EqualsVisitor.
+ */
+public class EqualsVisitorGenerator extends VisitorGenerator {
+    public EqualsVisitorGenerator(SourceRoot sourceRoot) {
+        super(sourceRoot, "com.github.javaparser.ast.visitor", "EqualsVisitor", "Boolean", "Visitable", true);
+    }
+
+    @Override
+    protected void generateVisitMethodBody(
+            BaseNodeMetaModel node, MethodDeclaration visitMethod, CompilationUnit compilationUnit) {
+        visitMethod.getParameters().forEach(p -> p.setFinal(true));
+
+        BlockStmt body = visitMethod.getBody().get();
+        body.getStatements().clear();
+
+        body.addStatement(f("final %s n2 = (%s) arg;", node.getTypeName(), node.getTypeName()));
+
+        for (PropertyMetaModel field : node.getAllPropertyMetaModels()) {
+            final String getter = field.getGetterMethodName() + "()";
+            if (field.getNodeReference().isPresent()) {
+                if (field.isNodeList()) {
+                    body.addStatement(f("if (!nodesEquals(n.%s, n2.%s)) return false;", getter, getter));
+                } else {
+                    body.addStatement(f("if (!nodeEquals(n.%s, n2.%s)) return false;", getter, getter));
+                }
+            } else {
+                body.addStatement(f("if (!objEquals(n.%s, n2.%s)) return false;", getter, getter));
+            }
+        }
+        if (body.getStatements().size() == 1) {
+            // Only the cast line was added, but nothing is using it, so remove it again.
+            body.getStatements().clear();
+        }
+        body.addStatement("return true;");
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/VisitorGenerator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ exited 2 in 0ms:
+sed: can't read javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/VisitorGenerator.java: No such file or directory
+
+exec
+/bin/bash -lc "sed -n '1,180p' javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.generator.core;
+
+import static com.github.javaparser.ParserConfiguration.LanguageLevel.RAW;
+
+import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.generator.core.node.*;
+import com.github.javaparser.generator.core.other.BndGenerator;
+import com.github.javaparser.generator.core.other.TokenKindGenerator;
+import com.github.javaparser.generator.core.quality.NotNullGenerator;
+import com.github.javaparser.generator.core.visitor.*;
+import com.github.javaparser.utils.Log;
+import com.github.javaparser.utils.SourceRoot;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+/**
+ * Generates all generated visitors in the javaparser-core module.
+ * Suggested usage is by running the run_core_generators.sh script.
+ * You may want to run_metamodel_generator.sh before that.
+ */
+public class CoreGenerator {
+    private static final ParserConfiguration parserConfiguration = new ParserConfiguration().setLanguageLevel(RAW)
+            //                                .setStoreTokens(false)
+            //                                .setAttributeComments(false)
+            //                                .setLexicalPreservationEnabled(true)
+            ;
+
+    public static void main(String[] args) throws Exception {
+        if (args.length != 1) {
+            throw new RuntimeException("Need 1 parameter: the JavaParser source checkout root directory.");
+        }
+        Log.setAdapter(new Log.StandardOutStandardErrorAdapter());
+        final Path root = Paths.get(args[0], "..", "javaparser-core", "src", "main", "java");
+        final SourceRoot sourceRoot = new SourceRoot(root, parserConfiguration)
+                //                .setPrinter(LexicalPreservingPrinter::print)
+                ;
+        StaticJavaParser.setConfiguration(parserConfiguration);
+
+        final Path generatedJavaCcRoot =
+                Paths.get(args[0], "..", "javaparser-core", "target", "generated-sources", "javacc");
+        final SourceRoot generatedJavaCcSourceRoot = new SourceRoot(generatedJavaCcRoot, parserConfiguration)
+                //                .setPrinter(LexicalPreservingPrinter::print)
+                ;
+
+        new CoreGenerator().run(sourceRoot, generatedJavaCcSourceRoot);
+
+        sourceRoot.saveAll();
+    }
+
+    private void run(SourceRoot sourceRoot, SourceRoot generatedJavaCcSourceRoot) throws Exception {
+        new TypeCastingGenerator(sourceRoot).generate();
+        new GenericListVisitorAdapterGenerator(sourceRoot).generate();
+        new GenericVisitorAdapterGenerator(sourceRoot).generate();
+        new GenericVisitorWithDefaultsGenerator(sourceRoot).generate();
+        new EqualsVisitorGenerator(sourceRoot).generate();
+        new ObjectIdentityEqualsVisitorGenerator(sourceRoot).generate();
+        new NoCommentEqualsVisitorGenerator(sourceRoot).generate();
+        new VoidVisitorAdapterGenerator(sourceRoot).generate();
+        new VoidVisitorGenerator(sourceRoot).generate();
+        new VoidVisitorWithDefaultsGenerator(sourceRoot).generate();
+        new GenericVisitorGenerator(sourceRoot).generate();
+        new HashCodeVisitorGenerator(sourceRoot).generate();
+        new ObjectIdentityHashCodeVisitorGenerator(sourceRoot).generate();
+        new NoCommentHashCodeVisitorGenerator(sourceRoot).generate();
+        new CloneVisitorGenerator(sourceRoot).generate();
+        new ModifierVisitorGenerator(sourceRoot).generate();
+
+        new PropertyGenerator(sourceRoot).generate();
+        new RemoveMethodGenerator(sourceRoot).generate();
+        new ReplaceMethodGenerator(sourceRoot).generate();
+        new CloneGenerator(sourceRoot).generate();
+        new GetMetaModelGenerator(sourceRoot).generate();
+        new MainConstructorGenerator(sourceRoot).generate();
+        new NodeModifierGenerator(sourceRoot).generate();
+        new AcceptGenerator(sourceRoot).generate();
+        new TokenKindGenerator(sourceRoot, generatedJavaCcSourceRoot).generate();
+        new BndGenerator(sourceRoot).generate();
+
+        new NotNullGenerator(sourceRoot).generate();
+    }
+}
+
+codex
+I have the target implementation now. I’m checking the superclass and the exact reference count next, because hub-like modularization depends on both how many things the class touches and how many things depend on it.
+exec
+/bin/bash -lc 'rg -n "class VisitorGenerator|abstract class VisitorGenerator|extends VisitorGenerator" javaparser-core-generators/src/main/java' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/VisitorGenerator.java:42:public abstract class VisitorGenerator extends Generator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/NoCommentEqualsVisitorGenerator.java:35:public class NoCommentEqualsVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/EqualsVisitorGenerator.java:37:public class EqualsVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/VoidVisitorAdapterGenerator.java:37:public class VoidVisitorAdapterGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ObjectIdentityEqualsVisitorGenerator.java:34:public class ObjectIdentityEqualsVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/GenericListVisitorAdapterGenerator.java:40:public class GenericListVisitorAdapterGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/VoidVisitorWithDefaultsGenerator.java:34:public class VoidVisitorWithDefaultsGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/VoidVisitorGenerator.java:33:public class VoidVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/CloneVisitorGenerator.java:39:public class CloneVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/GenericVisitorWithDefaultsGenerator.java:34:public class GenericVisitorWithDefaultsGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ModifierVisitorGenerator.java:40:public class ModifierVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/HashCodeVisitorGenerator.java:39:public class HashCodeVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/NoCommentHashCodeVisitorGenerator.java:37:public class NoCommentHashCodeVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ObjectIdentityHashCodeVisitorGenerator.java:34:public class ObjectIdentityHashCodeVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/GenericVisitorAdapterGenerator.java:37:public class GenericVisitorAdapterGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/GenericVisitorGenerator.java:33:public class GenericVisitorGenerator extends VisitorGenerator {
+
+exec
+/bin/bash -lc "rg -n \"new EqualsVisitorGenerator\\(|EqualsVisitorGenerator\\b\" javaparser-core-generators/src/main/java javaparser-core-testing/src/test/java javaparser-core/src/main/java javaparser-symbol-solver-testing/src/test/test_sourcecode" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/EqualsVisitorGenerator.java:37:public class EqualsVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/EqualsVisitorGenerator.java:38:    public EqualsVisitorGenerator(SourceRoot sourceRoot) {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ObjectIdentityEqualsVisitorGenerator.java:34:public class ObjectIdentityEqualsVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ObjectIdentityEqualsVisitorGenerator.java:35:    public ObjectIdentityEqualsVisitorGenerator(SourceRoot sourceRoot) {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/NoCommentEqualsVisitorGenerator.java:35:public class NoCommentEqualsVisitorGenerator extends VisitorGenerator {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/NoCommentEqualsVisitorGenerator.java:37:    public NoCommentEqualsVisitorGenerator(SourceRoot sourceRoot) {
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java:77:        new EqualsVisitorGenerator(sourceRoot).generate();
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java:78:        new ObjectIdentityEqualsVisitorGenerator(sourceRoot).generate();
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java:79:        new NoCommentEqualsVisitorGenerator(sourceRoot).generate();
+
+exec
+/bin/bash -lc "sed -n '1,240p' javaparser-core-generators/src/main/java/com/github/javaparser/generator/VisitorGenerator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.generator;
+
+import static com.github.javaparser.ast.Modifier.Keyword.PUBLIC;
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.expr.MarkerAnnotationExpr;
+import com.github.javaparser.ast.expr.Name;
+import com.github.javaparser.metamodel.BaseNodeMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
+import com.github.javaparser.utils.Log;
+import com.github.javaparser.utils.SourceRoot;
+import java.util.Optional;
+
+/**
+ * Makes it easier to generate visitor classes.
+ * It will create missing visit methods on the fly,
+ * and will ask you to fill in the bodies of the visit methods.
+ */
+public abstract class VisitorGenerator extends Generator {
+    private final String pkg;
+    private final String visitorClassName;
+    private final String returnType;
+    private final String argumentType;
+    private final boolean createMissingVisitMethods;
+
+    protected VisitorGenerator(
+            SourceRoot sourceRoot,
+            String pkg,
+            String visitorClassName,
+            String returnType,
+            String argumentType,
+            boolean createMissingVisitMethods) {
+        super(sourceRoot);
+        this.pkg = pkg;
+        this.visitorClassName = visitorClassName;
+        this.returnType = returnType;
+        this.argumentType = argumentType;
+        this.createMissingVisitMethods = createMissingVisitMethods;
+    }
+
+    public final void generate() throws Exception {
+        Log.info("Running %s", () -> getClass().getSimpleName());
+
+        final CompilationUnit compilationUnit = sourceRoot
+                .tryToParse(pkg, visitorClassName + ".java")
+                .getResult()
+                .get();
+
+        Optional<ClassOrInterfaceDeclaration> visitorClassOptional = compilationUnit.getClassByName(visitorClassName);
+        if (!visitorClassOptional.isPresent()) {
+            visitorClassOptional = compilationUnit.getInterfaceByName(visitorClassName);
+        }
+        final ClassOrInterfaceDeclaration visitorClass = visitorClassOptional.get();
+
+        JavaParserMetaModel.getNodeMetaModels().stream()
+                .filter((baseNodeMetaModel) -> !baseNodeMetaModel.isAbstract())
+                .forEach(node -> generateVisitMethodForNode(node, visitorClass, compilationUnit));
+        after();
+    }
+
+    protected void after() throws Exception {}
+
+    private void generateVisitMethodForNode(
+            BaseNodeMetaModel node, ClassOrInterfaceDeclaration visitorClass, CompilationUnit compilationUnit) {
+        final Optional<MethodDeclaration> existingVisitMethod = visitorClass.getMethods().stream()
+                .filter(m -> "visit".equals(m.getNameAsString()))
+                .filter(m -> m.getParameter(0).getType().toString().equals(node.getTypeName()))
+                .findFirst();
+
+        if (existingVisitMethod.isPresent()) {
+            generateVisitMethodBody(node, existingVisitMethod.get(), compilationUnit);
+        } else if (createMissingVisitMethods) {
+            MethodDeclaration newVisitMethod = visitorClass
+                    .addMethod("visit")
+                    .addParameter(node.getTypeNameGenerified(), "n")
+                    .addParameter(argumentType, "arg")
+                    .setType(returnType);
+            if (!visitorClass.isInterface()) {
+                newVisitMethod
+                        .addAnnotation(new MarkerAnnotationExpr(new Name("Override")))
+                        .addModifier(PUBLIC);
+            }
+            generateVisitMethodBody(node, newVisitMethod, compilationUnit);
+        }
+    }
+
+    protected abstract void generateVisitMethodBody(
+            BaseNodeMetaModel node, MethodDeclaration visitMethod, CompilationUnit compilationUnit);
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/ObjectIdentityEqualsVisitorGenerator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.generator.core.visitor;
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.generator.VisitorGenerator;
+import com.github.javaparser.metamodel.BaseNodeMetaModel;
+import com.github.javaparser.utils.SourceRoot;
+
+/**
+ * Generates JavaParser's ObjectIdentityEqualsVisitor.
+ */
+public class ObjectIdentityEqualsVisitorGenerator extends VisitorGenerator {
+    public ObjectIdentityEqualsVisitorGenerator(SourceRoot sourceRoot) {
+        super(
+                sourceRoot,
+                "com.github.javaparser.ast.visitor",
+                "ObjectIdentityEqualsVisitor",
+                "Boolean",
+                "Visitable",
+                true);
+    }
+
+    @Override
+    protected void generateVisitMethodBody(
+            BaseNodeMetaModel node, MethodDeclaration visitMethod, CompilationUnit compilationUnit) {
+        visitMethod.getParameters().forEach(p -> p.setFinal(true));
+
+        BlockStmt body = visitMethod.getBody().get();
+        body.getStatements().clear();
+
+        body.addStatement("return n == arg;");
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/NoCommentEqualsVisitorGenerator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.generator.core.visitor;
+
+import static com.github.javaparser.utils.CodeGenerationUtils.f;
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.generator.VisitorGenerator;
+import com.github.javaparser.metamodel.BaseNodeMetaModel;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
+import com.github.javaparser.metamodel.PropertyMetaModel;
+import com.github.javaparser.utils.SourceRoot;
+
+public class NoCommentEqualsVisitorGenerator extends VisitorGenerator {
+
+    public NoCommentEqualsVisitorGenerator(SourceRoot sourceRoot) {
+        super(sourceRoot, "com.github.javaparser.ast.visitor", "NoCommentEqualsVisitor", "Boolean", "Visitable", true);
+    }
+
+    @Override
+    protected void generateVisitMethodBody(
+            BaseNodeMetaModel node, MethodDeclaration visitMethod, CompilationUnit compilationUnit) {
+        visitMethod.getParameters().forEach(p -> p.setFinal(true));
+
+        BlockStmt body = visitMethod.getBody().get();
+        body.getStatements().clear();
+
+        if (!(node.equals(JavaParserMetaModel.lineCommentMetaModel)
+                || node.equals(JavaParserMetaModel.blockCommentMetaModel)
+                || node.equals(JavaParserMetaModel.traditionalJavadocCommentMetaModel))) {
+
+            body.addStatement(f("final %s n2 = (%s) arg;", node.getTypeName(), node.getTypeName()));
+
+            for (PropertyMetaModel field : node.getAllPropertyMetaModels()) {
+                final String getter = field.getGetterMethodName() + "()";
+                if (field.equals(JavaParserMetaModel.nodeMetaModel.commentPropertyMetaModel)) continue;
+                if (field.getNodeReference().isPresent()) {
+                    if (field.isNodeList()) {
+                        body.addStatement(f("if (!nodesEquals(n.%s, n2.%s)) return false;", getter, getter));
+                    } else {
+                        body.addStatement(f("if (!nodeEquals(n.%s, n2.%s)) return false;", getter, getter));
+                    }
+                } else {
+                    body.addStatement(f("if (!objEquals(n.%s, n2.%s)) return false;", getter, getter));
+                }
+            }
+            if (body.getStatements().size() == 1) {
+                // Only the cast line was added, but nothing is using it, so remove it again.
+                body.getStatements().clear();
+            }
+        }
+        body.addStatement("return true;");
+    }
+}
+
+codex
+The reference search is small so far: one direct instantiation site and one concrete implementation file. I’m pulling line-numbered snippets now so the verdict can cite exact structural evidence instead of vague counts.
+exec
+/bin/bash -lc "nl -ba javaparser-core-generators/src/main/java/com/github/javaparser/generator/VisitorGenerator.java | sed -n '1,140p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+     3	 * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	
+    22	package com.github.javaparser.generator;
+    23	
+    24	import static com.github.javaparser.ast.Modifier.Keyword.PUBLIC;
+    25	
+    26	import com.github.javaparser.ast.CompilationUnit;
+    27	import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+    28	import com.github.javaparser.ast.body.MethodDeclaration;
+    29	import com.github.javaparser.ast.expr.MarkerAnnotationExpr;
+    30	import com.github.javaparser.ast.expr.Name;
+    31	import com.github.javaparser.metamodel.BaseNodeMetaModel;
+    32	import com.github.javaparser.metamodel.JavaParserMetaModel;
+    33	import com.github.javaparser.utils.Log;
+    34	import com.github.javaparser.utils.SourceRoot;
+    35	import java.util.Optional;
+    36	
+    37	/**
+    38	 * Makes it easier to generate visitor classes.
+    39	 * It will create missing visit methods on the fly,
+    40	 * and will ask you to fill in the bodies of the visit methods.
+    41	 */
+    42	public abstract class VisitorGenerator extends Generator {
+    43	    private final String pkg;
+    44	    private final String visitorClassName;
+    45	    private final String returnType;
+    46	    private final String argumentType;
+    47	    private final boolean createMissingVisitMethods;
+    48	
+    49	    protected VisitorGenerator(
+    50	            SourceRoot sourceRoot,
+    51	            String pkg,
+    52	            String visitorClassName,
+    53	            String returnType,
+    54	            String argumentType,
+    55	            boolean createMissingVisitMethods) {
+    56	        super(sourceRoot);
+    57	        this.pkg = pkg;
+    58	        this.visitorClassName = visitorClassName;
+    59	        this.returnType = returnType;
+    60	        this.argumentType = argumentType;
+    61	        this.createMissingVisitMethods = createMissingVisitMethods;
+    62	    }
+    63	
+    64	    public final void generate() throws Exception {
+    65	        Log.info("Running %s", () -> getClass().getSimpleName());
+    66	
+    67	        final CompilationUnit compilationUnit = sourceRoot
+    68	                .tryToParse(pkg, visitorClassName + ".java")
+    69	                .getResult()
+    70	                .get();
+    71	
+    72	        Optional<ClassOrInterfaceDeclaration> visitorClassOptional = compilationUnit.getClassByName(visitorClassName);
+    73	        if (!visitorClassOptional.isPresent()) {
+    74	            visitorClassOptional = compilationUnit.getInterfaceByName(visitorClassName);
+    75	        }
+    76	        final ClassOrInterfaceDeclaration visitorClass = visitorClassOptional.get();
+    77	
+    78	        JavaParserMetaModel.getNodeMetaModels().stream()
+    79	                .filter((baseNodeMetaModel) -> !baseNodeMetaModel.isAbstract())
+    80	                .forEach(node -> generateVisitMethodForNode(node, visitorClass, compilationUnit));
+    81	        after();
+    82	    }
+    83	
+    84	    protected void after() throws Exception {}
+    85	
+    86	    private void generateVisitMethodForNode(
+    87	            BaseNodeMetaModel node, ClassOrInterfaceDeclaration visitorClass, CompilationUnit compilationUnit) {
+    88	        final Optional<MethodDeclaration> existingVisitMethod = visitorClass.getMethods().stream()
+    89	                .filter(m -> "visit".equals(m.getNameAsString()))
+    90	                .filter(m -> m.getParameter(0).getType().toString().equals(node.getTypeName()))
+    91	                .findFirst();
+    92	
+    93	        if (existingVisitMethod.isPresent()) {
+    94	            generateVisitMethodBody(node, existingVisitMethod.get(), compilationUnit);
+    95	        } else if (createMissingVisitMethods) {
+    96	            MethodDeclaration newVisitMethod = visitorClass
+    97	                    .addMethod("visit")
+    98	                    .addParameter(node.getTypeNameGenerified(), "n")
+    99	                    .addParameter(argumentType, "arg")
+   100	                    .setType(returnType);
+   101	            if (!visitorClass.isInterface()) {
+   102	                newVisitMethod
+   103	                        .addAnnotation(new MarkerAnnotationExpr(new Name("Override")))
+   104	                        .addModifier(PUBLIC);
+   105	            }
+   106	            generateVisitMethodBody(node, newVisitMethod, compilationUnit);
+   107	        }
+   108	    }
+   109	
+   110	    protected abstract void generateVisitMethodBody(
+   111	            BaseNodeMetaModel node, MethodDeclaration visitMethod, CompilationUnit compilationUnit);
+   112	}
+
+exec
+/bin/bash -lc "nl -ba javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/EqualsVisitorGenerator.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+     3	 * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	
+    22	package com.github.javaparser.generator.core.visitor;
+    23	
+    24	import static com.github.javaparser.utils.CodeGenerationUtils.f;
+    25	
+    26	import com.github.javaparser.ast.CompilationUnit;
+    27	import com.github.javaparser.ast.body.MethodDeclaration;
+    28	import com.github.javaparser.ast.stmt.BlockStmt;
+    29	import com.github.javaparser.generator.VisitorGenerator;
+    30	import com.github.javaparser.metamodel.BaseNodeMetaModel;
+    31	import com.github.javaparser.metamodel.PropertyMetaModel;
+    32	import com.github.javaparser.utils.SourceRoot;
+    33	
+    34	/**
+    35	 * Generates JavaParser's EqualsVisitor.
+    36	 */
+    37	public class EqualsVisitorGenerator extends VisitorGenerator {
+    38	    public EqualsVisitorGenerator(SourceRoot sourceRoot) {
+    39	        super(sourceRoot, "com.github.javaparser.ast.visitor", "EqualsVisitor", "Boolean", "Visitable", true);
+    40	    }
+    41	
+    42	    @Override
+    43	    protected void generateVisitMethodBody(
+    44	            BaseNodeMetaModel node, MethodDeclaration visitMethod, CompilationUnit compilationUnit) {
+    45	        visitMethod.getParameters().forEach(p -> p.setFinal(true));
+    46	
+    47	        BlockStmt body = visitMethod.getBody().get();
+    48	        body.getStatements().clear();
+    49	
+    50	        body.addStatement(f("final %s n2 = (%s) arg;", node.getTypeName(), node.getTypeName()));
+    51	
+    52	        for (PropertyMetaModel field : node.getAllPropertyMetaModels()) {
+    53	            final String getter = field.getGetterMethodName() + "()";
+    54	            if (field.getNodeReference().isPresent()) {
+    55	                if (field.isNodeList()) {
+    56	                    body.addStatement(f("if (!nodesEquals(n.%s, n2.%s)) return false;", getter, getter));
+    57	                } else {
+    58	                    body.addStatement(f("if (!nodeEquals(n.%s, n2.%s)) return false;", getter, getter));
+    59	                }
+    60	            } else {
+    61	                body.addStatement(f("if (!objEquals(n.%s, n2.%s)) return false;", getter, getter));
+    62	            }
+    63	        }
+    64	        if (body.getStatements().size() == 1) {
+    65	            // Only the cast line was added, but nothing is using it, so remove it again.
+    66	            body.getStatements().clear();
+    67	        }
+    68	        body.addStatement("return true;");
+    69	    }
+    70	}
+
+exec
+/bin/bash -lc "nl -ba javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java | sed -n '68,86p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+    68	
+    69	        sourceRoot.saveAll();
+    70	    }
+    71	
+    72	    private void run(SourceRoot sourceRoot, SourceRoot generatedJavaCcSourceRoot) throws Exception {
+    73	        new TypeCastingGenerator(sourceRoot).generate();
+    74	        new GenericListVisitorAdapterGenerator(sourceRoot).generate();
+    75	        new GenericVisitorAdapterGenerator(sourceRoot).generate();
+    76	        new GenericVisitorWithDefaultsGenerator(sourceRoot).generate();
+    77	        new EqualsVisitorGenerator(sourceRoot).generate();
+    78	        new ObjectIdentityEqualsVisitorGenerator(sourceRoot).generate();
+    79	        new NoCommentEqualsVisitorGenerator(sourceRoot).generate();
+    80	        new VoidVisitorAdapterGenerator(sourceRoot).generate();
+    81	        new VoidVisitorGenerator(sourceRoot).generate();
+    82	        new VoidVisitorWithDefaultsGenerator(sourceRoot).generate();
+    83	        new GenericVisitorGenerator(sourceRoot).generate();
+    84	        new HashCodeVisitorGenerator(sourceRoot).generate();
+    85	        new ObjectIdentityHashCodeVisitorGenerator(sourceRoot).generate();
+    86	        new NoCommentHashCodeVisitorGenerator(sourceRoot).generate();
+
+codex
+{"target":"com.github.javaparser.generator.core.visitor.EqualsVisitorGenerator","detection":false,"justification":"Inspected `javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/EqualsVisitorGenerator.java`, `javaparser-core-generators/src/main/java/com/github/javaparser/generator/VisitorGenerator.java`, and `javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java`. The target has a modest, localized set of direct dependencies (imports for `CompilationUnit`, `MethodDeclaration`, `BlockStmt`, `VisitorGenerator`, `BaseNodeMetaModel`, `PropertyMetaModel`, `SourceRoot`, plus the static formatter) and mostly delegates shared behavior to `VisitorGenerator`. Repo-wide search found only one external instantiation site, `CoreGenerator` at line 77, with no other production or test references to `EqualsVisitorGenerator`. That is insufficient fan-in/fan-out evidence for hub-like modularization."}
+tokens used
+16,278

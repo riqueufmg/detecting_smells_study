@@ -1,0 +1,803 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f5e-3d30-7cc1-b4a1-be94a7c7e1ea
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.FixedValue.ForNullValue` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.FixedValue.ForNullValue",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.FixedValue.ForNullValue`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `FixedValue.ForNullValue` and tracing its direct references so I can judge fan-in/fan-out from the source, not from any external analysis tool.
+web search: 
+web search: site:github.com raphw byte-buddy FixedValue.ForNullValue
+codex
+I found the repository root context; next I’m reading the target class and counting who calls into it versus what it depends on directly. That gives the strongest evidence for or against a hub-like role.
+exec
+/bin/bash -lc 'rg -n "class ForNullValue|ForNullValue" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files | rg \"FixedValue\\.java|ForNullValue|FixedValue\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 167ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:663:            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForNullValue(aTypeDescription));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2120:            class ForNullValue implements ArgumentProvider {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2132:                protected ForNullValue(TypeDescription typeDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:186:        return ForNullValue.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:247:    protected enum ForNullValue implements Implementation, ByteCodeAppender {
+
+ succeeded in 392ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDriverBinderParameterBinderForFixedValueOfConstantOtherTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDriverBinderParameterBinderForFixedValueOfConstantTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueConstantPoolTypesTest.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java
+
+exec
+/bin/bash -lc "sed -n '1,360p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"FixedValue\\.|ForNullValue\\.INSTANCE|value\\(null\\)|ForNullValue\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 191ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/GenericSignatureResolutionTest.java:53:                .intercept(FixedValue.nullValue())
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/GenericSignatureResolutionTest.java:69:                .intercept(FixedValue.nullValue())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorOtherTest.java:53:                .intercept(FieldAccessor.ofField(FOO).setsArgumentAt(0).andThen(FixedValue.value(BAR)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorOtherTest.java:95:                .intercept(FieldAccessor.ofField(FOO).setsArgumentAt(1).andThen(FixedValue.value(BAR)))
+byte-buddy-dep/src/main/java/net/bytebuddy/package-info.java:23: *    .intercept(named("toString"), FixedValue.value("Hello World!"))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDriverBinderParameterBinderForFixedValueOfConstantOtherTest.java:36:                        .withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.ForFixedValue.OfConstant.of(Bar.class, TypeDescription.ForLoadedType.of(Object.class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDriverBinderParameterBinderForFixedValueOfConstantOtherTest.java:52:                        .withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.ForFixedValue.OfConstant.of(Bar.class, null))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDriverBinderParameterBinderForFixedValueOfConstantOtherTest.java:73:                        .withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.ForFixedValue.OfConstant.of(Bar.class, methodHandleLoaded))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDriverBinderParameterBinderForFixedValueOfConstantOtherTest.java:94:                        .withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.ForFixedValue.OfConstant.of(Bar.class, JavaConstant.MethodHandle.ofLoaded(methodHandleLoaded)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDriverBinderParameterBinderForFixedValueOfConstantOtherTest.java:113:                        .withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.ForFixedValue.OfConstant.of(Bar.class, loadedMethodType))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDriverBinderParameterBinderForFixedValueOfConstantOtherTest.java:132:                        .withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.ForFixedValue.OfConstant.of(Bar.class, JavaConstant.MethodType.ofLoaded(loadedMethodType)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDriverBinderParameterBinderForFixedValueOfConstantOtherTest.java:148:                        .withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.ForFixedValue.OfConstant.of(Bar.class, new Object()))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDriverBinderParameterBinderForFixedValueOfConstantTest.java:54:                        .withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.ForFixedValue.OfConstant.of(Bar.class, value))
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:663:            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForNullValue(aTypeDescription));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2120:            class ForNullValue implements ArgumentProvider {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2132:                protected ForNullValue(TypeDescription typeDescription) {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:51:                .intercept(FixedValue.value(TypeDescription.ForLoadedType.of(Object.class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:64:                .intercept(FixedValue.value(Object.class))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:78:                .intercept(FixedValue.value(JavaConstant.MethodType.of(void.class, Object.class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:92:                .intercept(FixedValue.value(makeMethodType(void.class, Object.class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:106:                .intercept(FixedValue.value(JavaConstant.MethodHandle.of(Qux.class.getDeclaredMethod("bar"))))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:120:                .intercept(FixedValue.value(makeMethodHandle()))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:133:                .intercept(FixedValue.reference(bar))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:142:                .intercept(FixedValue.reference(bar))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:151:                .intercept(FixedValue.nullValue())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:165:                .intercept(FixedValue.nullValue())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:174:                .intercept(FixedValue.self())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:189:                .intercept(FixedValue.self())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:198:                .intercept(FixedValue.self())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:207:                .intercept(FixedValue.originType())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:221:                .intercept(FixedValue.argument(1))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:232:        FixedValue.argument(-1);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:240:                .intercept(FixedValue.argument(0))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:249:                .intercept(FixedValue.argument(2))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodDelegationMethodReturnTest.java:41:                .intercept(FixedValue.value(new SampleDelegation(42)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueConstantPoolTypesTest.java:93:                .intercept(FixedValue.value(fixedValue))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueConstantPoolTypesTest.java:112:                .intercept(FixedValue.reference(fixedValue))
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:186:        return ForNullValue.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:247:    protected enum ForNullValue implements Implementation, ByteCodeAppender {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:1054:                                .intercept(FixedValue.argument(0));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategy.java:689:                            ? forFixedValue.sealBase == null
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategy.java:690:                            : sealBase.equals(forFixedValue.sealBase);
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/TypeReferenceAdjustmentTest.java:138:                .intercept(FixedValue.value(Foo.class))
+byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTutorialExamplesTest.java:94:                .method(named("toString")).intercept(FixedValue.value("Hello World!"))
+byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTutorialExamplesTest.java:189:                return builder.method(named("toString")).intercept(FixedValue.value("transformed"));
+byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTutorialExamplesTest.java:218:                .method(isDeclaredBy(Foo.class)).intercept(FixedValue.value("Hello World!"))
+byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTutorialExamplesTest.java:219:                .method(named("foo")).intercept(FixedValue.value("Hello Foo!"))
+byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTutorialExamplesTest.java:220:                .method(named("foo").and(takesArguments(1))).intercept(FixedValue.value("..."))
+byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTutorialExamplesTest.java:235:                .method(isDeclaredBy(Foo.class)).intercept(FixedValue.value(0))
+byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTutorialExamplesTest.java:430:                .intercept(FixedValue.value(42).withAssigner(new PrimitiveTypeAwareAssigner(ToStringAssigner.INSTANCE), Assigner.Typing.STATIC))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationRedefineTest.java:303:            return builder.method(named(FOO)).intercept(FixedValue.value(value));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationResubmissionTest.java:153:            return builder.method(named(FOO)).intercept(FixedValue.value(BAR));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/InvokeDynamicTest.java:446:                        .andThen(FixedValue.value(BAZ)))
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceInconsistentStackSizeTest.java:99:                .intercept(FixedValue.value(FOO))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationSuperTypeLoadingTest.java:123:                    .method(isDeclaredBy(typeDescription).and(named(FOO))).intercept(FixedValue.value(FOO))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationSuperTypeLoadingTest.java:124:                    .method(isDeclaredBy(typeDescription).and(named(BAR))).intercept(FixedValue.value(BAR));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:880:            return builder.method(named(FOO)).intercept(FixedValue.value(BAR));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:1010:            return builder.method(named(methodName)).intercept(FixedValue.value(BAR));
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceDeadCodeTest.java:80:                .intercept(FixedValue.value(FOO))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:64:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getMethod("bootstrap",
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:84:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getMethod("other",
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:104:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getMethod("bootstrap",
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:125:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getMethod("bootstrap",
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:146:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getMethod("bootstrap",
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:168:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getMethod("bootstrap",
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:192:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO,
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:226:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getConstructor(
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:246:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getConstructor(
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:267:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getConstructor(
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:288:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getConstructor(
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:310:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO, bootstrap.getConstructor(
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:334:                .intercept(FixedValue.value(JavaConstant.Dynamic.bootstrap(FOO,
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:367:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofNullConstant()))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:383:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofPrimitiveType(void.class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:399:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofEnumeration(SampleEnum.INSTANCE)))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:415:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofField(SampleClass.class.getDeclaredField("FOO"))))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:431:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofField(SampleClass.class.getDeclaredField("BAR"))))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:448:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofInvocation(bootstrap.getConstructor(
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:477:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofInvocation(SampleClass.class.getMethod("make"))))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:494:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofInvocation(SampleClass.class.getConstructor())))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:512:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofInvocation(bootstrap.getMethod("make",
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:546:                .intercept(FixedValue.value(value))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:568:                .intercept(FixedValue.value(value))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:586:                .intercept(FixedValue.value(value))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:603:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofVarHandle(SampleClass.class.getDeclaredField("FOO"))))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:619:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofVarHandle(SampleClass.class.getDeclaredField("qux"))))
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaConstantDynamicTest.java:635:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofArrayVarHandle(Object[].class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:187:                .value(null);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:469:                .intercept(FixedValue.value(Object.class))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:482:                .intercept(FixedValue.value(Object[].class))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:495:                .intercept(FixedValue.value(int.class))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:508:                .intercept(FixedValue.value(int.class))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:520:                .intercept(FixedValue.value(JavaConstant.MethodType.of(Object.class, Object.class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:529:                .intercept(FixedValue.value(JavaConstant.Dynamic.ofNullConstant()))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:538:                .intercept(FixedValue.value(JavaConstant.MethodHandle.of(new MethodDescription.ForLoadedMethod(Object.class.getDeclaredMethod("toString")))))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassReloadingStrategyTest.java:64:                .intercept(FixedValue.value(BAR))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassReloadingStrategyTest.java:87:                .intercept(FixedValue.value(BAR))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassReloadingStrategyTest.java:128:                .intercept(FixedValue.value(BAR))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassReloadingStrategyTest.java:149:                .intercept(FixedValue.value(BAR))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ClassReloadingStrategyTest.java:229:                    .intercept(FixedValue.value(BAR))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:1005:                .intercept(FixedValue.value(FOO))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:1007:                .intercept(FixedValue.value(BAR))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:1030:                .intercept(FixedValue.value(FOO))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:1032:                .intercept(FixedValue.value(BAR))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:1078:                .intercept(FixedValue.value(FOO))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:1092:                .intercept(FixedValue.value(FOO))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:1106:                .intercept(FixedValue.value(FOO))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:1118:                .intercept(FixedValue.value(FOO))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:1131:                .intercept(FixedValue.self())
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilderTest.java:320:                .method(isDeclaredBy(interfaceType)).intercept(FixedValue.value(BAR))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilderTest.java:524:                .intercept(FixedValue.value(BAR))
+
+ succeeded in 309ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation;
+
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.ParameterDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.scaffold.InstrumentedType;
+import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.assign.Assigner;
+import net.bytebuddy.implementation.bytecode.constant.ClassConstant;
+import net.bytebuddy.implementation.bytecode.constant.NullConstant;
+import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+import net.bytebuddy.implementation.bytecode.member.MethodReturn;
+import net.bytebuddy.implementation.bytecode.member.MethodVariableAccess;
+import net.bytebuddy.utility.ConstantValue;
+import net.bytebuddy.utility.JavaConstant;
+import net.bytebuddy.utility.RandomString;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import static net.bytebuddy.matcher.ElementMatchers.named;
+
+/**
+ * This implementation returns a fixed value for a method. Other than the {@link net.bytebuddy.implementation.StubMethod}
+ * implementation, this implementation allows to determine a specific value which must be assignable to the returning value
+ * of any instrumented method. Otherwise, an exception will be thrown.
+ *
+ * @see FieldAccessor
+ */
+@HashCodeAndEqualsPlugin.Enhance
+public abstract class FixedValue implements Implementation {
+
+    /**
+     * The assigner that is used for assigning the fixed value to a method's return type.
+     */
+    protected final Assigner assigner;
+
+    /**
+     * Indicates if dynamic type castings should be attempted for incompatible assignments.
+     */
+    protected final Assigner.Typing typing;
+
+    /**
+     * Creates a new fixed value implementation.
+     *
+     * @param assigner The assigner to use for assigning the fixed value to the return type of the instrumented value.
+     * @param typing   Indicates if dynamic type castings should be attempted for incompatible assignments.
+     */
+    protected FixedValue(Assigner assigner, Assigner.Typing typing) {
+        this.assigner = assigner;
+        this.typing = typing;
+    }
+
+    /**
+     * <p>
+     * Returns a fixed value from any intercepted method. The fixed value is stored in the constant pool if this is possible.
+     * Specifically, an argument that is a {@link JavaConstant}, {@link TypeDescription}, primitive, {@link String} or
+     * {@link Class} value is stored in the constant pool.  Since Java 7, {@code MethodHandle} as well as {@code MethodType}
+     * references are also supported. Alternatively, the fixed value is stored in a static field.
+     * </p>
+     * <p>
+     * When a value is stored in the class's constant pool, its identity is lost. If an object's identity is important, the
+     * {@link FixedValue#reference(Object)} method should be used instead.
+     * </p>
+     * <p>
+     * <b>Important</b>: When supplying a method handle or a method type, all types that are implied must be visible to the instrumented
+     * type or an {@link IllegalAccessException} will be thrown at runtime.
+     * </p>
+     *
+     * @param value The fixed value to return from the method.
+     * @return An implementation for the given {@code value}.
+     * @see #value(JavaConstant)
+     * @see #value(TypeDescription)
+     * @see #nullValue()
+     */
+    public static AssignerConfigurable value(Object value) {
+        ConstantValue constant = ConstantValue.Simple.wrapOrNull(value);
+        return constant == null
+                ? reference(value)
+                : new ForConstantValue(constant.toStackManipulation(), constant.getTypeDescription());
+    }
+
+    /**
+     * Other than {@link net.bytebuddy.implementation.FixedValue#value(Object)}, this function
+     * will create a fixed value implementation that will always defined a field in the instrumented class. As a result,
+     * object identity will be preserved between the given {@code value} and the value that is returned by
+     * instrumented methods. The field name can be explicitly determined. The field name is generated from the fixed value's
+     * hash code.
+     *
+     * @param value The fixed value to be returned by methods that are instrumented by this implementation.
+     * @return An implementation for the given {@code value}.
+     */
+    public static AssignerConfigurable reference(Object value) {
+        return reference(value, ForValue.PREFIX + "$" + RandomString.hashOf(value));
+    }
+
+    /**
+     * Other than {@link net.bytebuddy.implementation.FixedValue#value(Object)}, this function
+     * will create a fixed value implementation that will always defined a field in the instrumented class. As a result,
+     * object identity will be preserved between the given {@code value} and the value that is returned by
+     * instrumented methods. The field name can be explicitly determined.
+     *
+     * @param value The fixed value to be returned by methods that are instrumented by this implementation.
+     * @param name  The name of the field for storing the fixed value.
+     * @return An implementation for the given {@code value}.
+     */
+    public static AssignerConfigurable reference(Object value, String name) {
+        return new ForValue(value, name);
+    }
+
+    /**
+     * Returns the given type in form of a loaded type. The value is loaded from the written class's constant pool.
+     *
+     * @param type The type to return from the method.
+     * @return An implementation for the given {@code value}.
+     */
+    public static AssignerConfigurable value(TypeDescription type) {
+        return new ForConstantValue(ClassConstant.of(type), TypeDescription.ForLoadedType.of(Class.class));
+    }
+
+    /**
+     * Returns the loaded version of the given {@link JavaConstant}. The value is loaded from the written class's constant pool.
+     *
+     * @param constant The type to return from the method.
+     * @return An implementation for the given {@code value}.
+     */
+    public static AssignerConfigurable value(ConstantValue constant) {
+        return new ForConstantValue(constant.toStackManipulation(), constant.getTypeDescription());
+    }
+
+    /**
+     * Returns the loaded version of the given {@link JavaConstant}. The value is loaded from the written class's constant pool.
+     *
+     * @param constant The type to return from the method.
+     * @return An implementation for the given {@code value}.
+     */
+    public static AssignerConfigurable value(JavaConstant constant) {
+        return value((ConstantValue) constant);
+    }
+
+    /**
+     * Returns the argument at the specified index.
+     *
+     * @param index The index of the argument to return.
+     * @return An implementation of a method that returns the argument at the specified index.
+     */
+    public static AssignerConfigurable argument(int index) {
+        if (index < 0) {
+            throw new IllegalArgumentException("Argument index cannot be negative: " + index);
+        }
+        return new ForArgument(index);
+    }
+
+    /**
+     * Returns {@code this} from an instrumented method.
+     *
+     * @return An implementation that returns {@code this} from a method.
+     */
+    public static AssignerConfigurable self() {
+        return new ForThisValue();
+    }
+
+    /**
+     * Returns a {@code null} value from an instrumented method.
+     *
+     * @return An implementation that returns {@code null} from a method.
+     */
+    public static Implementation nullValue() {
+        return ForNullValue.INSTANCE;
+    }
+
+    /**
+     * Returns the origin type from an instrumented method.
+     *
+     * @return An implementation that returns the origin type of the current instrumented type.
+     */
+    public static AssignerConfigurable originType() {
+        return new ForOriginType();
+    }
+
+    /**
+     * Blueprint method that for applying the actual implementation.
+     *
+     * @param methodVisitor         The method visitor to which the implementation is applied to.
+     * @param implementationContext The implementation context for the given implementation.
+     * @param instrumentedMethod    The instrumented method that is target of the implementation.
+     * @param typeDescription       A description of the type of the fixed value that is loaded by the
+     *                              {@code valueLoadingInstruction}.
+     * @param stackManipulation     A stack manipulation that represents the loading of the fixed value onto the
+     *                              operand stack.
+     * @return A representation of the stack and variable array sized that are required for this implementation.
+     */
+    protected ByteCodeAppender.Size apply(MethodVisitor methodVisitor,
+                                          Context implementationContext,
+                                          MethodDescription instrumentedMethod,
+                                          TypeDescription.Generic typeDescription,
+                                          StackManipulation stackManipulation) {
+        StackManipulation assignment = assigner.assign(typeDescription, instrumentedMethod.getReturnType(), typing);
+        if (!assignment.isValid()) {
+            throw new IllegalArgumentException("Cannot return value of type " + typeDescription + " for " + instrumentedMethod);
+        }
+        StackManipulation.Size stackSize = new StackManipulation.Compound(
+                stackManipulation,
+                assignment,
+                MethodReturn.of(instrumentedMethod.getReturnType())
+        ).apply(methodVisitor, implementationContext);
+        return new ByteCodeAppender.Size(stackSize.getMaximalSize(), instrumentedMethod.getStackSize());
+    }
+
+    /**
+     * Represents a fixed value implementation that is using a default assigner for attempting to assign
+     * the fixed value to the return type of the instrumented method.
+     */
+    public interface AssignerConfigurable extends Implementation {
+
+        /**
+         * Defines an explicit assigner to this fixed value implementation.
+         *
+         * @param assigner The assigner to use for assigning the fixed value to the return type of the
+         *                 instrumented value.
+         * @param typing   Indicates if dynamic type castings should be attempted for incompatible assignments.
+         * @return A fixed value implementation that makes use of the given assigner.
+         */
+        Implementation withAssigner(Assigner assigner, Assigner.Typing typing);
+    }
+
+    /**
+     * A fixed value of {@code null}.
+     */
+    protected enum ForNullValue implements Implementation, ByteCodeAppender {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * {@inheritDoc}
+         */
+        public ByteCodeAppender appender(Target implementationTarget) {
+            return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+            return instrumentedType;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+            if (instrumentedMethod.getReturnType().isPrimitive()) {
+                throw new IllegalStateException("Cannot return null from " + instrumentedMethod);
+            }
+            return new ByteCodeAppender.Simple(
+                    NullConstant.INSTANCE,
+                    MethodReturn.REFERENCE
+            ).apply(methodVisitor, implementationContext, instrumentedMethod);
+        }
+    }
+
+    /**
+     * A fixed value that appends the origin type of the instrumented type.
+     */
+    protected static class ForOriginType extends FixedValue implements AssignerConfigurable {
+
+        /**
+         * Creates a new fixed value appender for the origin type.
+         */
+        protected ForOriginType() {
+            this(Assigner.DEFAULT, Assigner.Typing.STATIC);
+        }
+
+        /**
+         * Creates a new fixed value appender for the origin type.
+         *
+         * @param assigner The assigner to use for assigning the fixed value to the return type of the instrumented value.
+         * @param typing   Indicates if dynamic type castings should be attempted for incompatible assignments.
+         */
+        private ForOriginType(Assigner assigner, Assigner.Typing typing) {
+            super(assigner, typing);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Implementation withAssigner(Assigner assigner, Assigner.Typing typing) {
+            return new ForOriginType(assigner, typing);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ByteCodeAppender appender(Target implementationTarget) {
+            return new Appender(implementationTarget.getOriginType().asErasure());
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+            return instrumentedType;
+        }
+
+        /**
+         * An appender for writing the origin type.
+         */
+        @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+        protected class Appender implements ByteCodeAppender {
+
+            /**
+             * The instrumented type.
+             */
+            private final TypeDescription originType;
+
+            /**
+             * Creates a new appender.
+             *
+             * @param originType The instrumented type.
+             */
+            protected Appender(TypeDescription originType) {
+                this.originType = originType;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+                return ForOriginType.this.apply(methodVisitor,
+                        implementationContext,
+                        instrumentedMethod,
+                        TypeDescription.ForLoadedType.of(Class.class).asGenericType(),
+                        ClassConstant.of(originType));
+            }
+        }
+    }
+
+    /**
+     * A fixed value of {@code this}.
+     */
+
+codex
+The first pass already suggests this is a small internal singleton, not a dependency hub. I’m verifying that by checking whether anything outside `FixedValue.java` actually refers to `FixedValue.ForNullValue` directly, and how many classes it depends on.
+exec
+/bin/bash -lc "rg -n \"public static Implementation nullValue\\(|protected enum ForNullValue|public Size apply\\(|public ByteCodeAppender appender\\(|public InstrumentedType prepare\\(\" byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"FixedValue\\.ForNullValue|ForNullValue\\.INSTANCE\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"\\.nullValue\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 208ms:
+185:    public static Implementation nullValue() {
+247:    protected enum ForNullValue implements Implementation, ByteCodeAppender {
+257:        public ByteCodeAppender appender(Target implementationTarget) {
+264:        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+271:        public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+314:        public ByteCodeAppender appender(Target implementationTarget) {
+321:        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+348:            public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+383:        public ByteCodeAppender appender(Target implementationTarget) {
+390:        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+424:            public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+472:        public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+491:        public ByteCodeAppender appender(Target implementationTarget) {
+498:        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+574:        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+581:        public ByteCodeAppender appender(Target implementationTarget) {
+588:        public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+649:        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+658:        public ByteCodeAppender appender(Target implementationTarget) {
+685:            public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+
+ succeeded in 310ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:186:        return ForNullValue.INSTANCE;
+
+ succeeded in 292ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/GenericSignatureResolutionTest.java:53:                .intercept(FixedValue.nullValue())
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/GenericSignatureResolutionTest.java:69:                .intercept(FixedValue.nullValue())
+byte-buddy-dep/src/test/java/net/bytebuddy/test/utility/FieldByFieldComparison.java:30:            return (Matcher<S>) CoreMatchers.nullValue();
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:151:                .intercept(FixedValue.nullValue())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java:165:                .intercept(FixedValue.nullValue())
+
+codex
+I have enough to judge it, but I’m grabbing line numbers so the justification can name concrete evidence instead of paraphrasing from memory.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java | sed -n '175,280p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java | sed -n '140,175p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/description/type/GenericSignatureResolutionTest.java | sed -n '45,75p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 210ms:
+   175	     */
+   176	    public static AssignerConfigurable self() {
+   177	        return new ForThisValue();
+   178	    }
+   179	
+   180	    /**
+   181	     * Returns a {@code null} value from an instrumented method.
+   182	     *
+   183	     * @return An implementation that returns {@code null} from a method.
+   184	     */
+   185	    public static Implementation nullValue() {
+   186	        return ForNullValue.INSTANCE;
+   187	    }
+   188	
+   189	    /**
+   190	     * Returns the origin type from an instrumented method.
+   191	     *
+   192	     * @return An implementation that returns the origin type of the current instrumented type.
+   193	     */
+   194	    public static AssignerConfigurable originType() {
+   195	        return new ForOriginType();
+   196	    }
+   197	
+   198	    /**
+   199	     * Blueprint method that for applying the actual implementation.
+   200	     *
+   201	     * @param methodVisitor         The method visitor to which the implementation is applied to.
+   202	     * @param implementationContext The implementation context for the given implementation.
+   203	     * @param instrumentedMethod    The instrumented method that is target of the implementation.
+   204	     * @param typeDescription       A description of the type of the fixed value that is loaded by the
+   205	     *                              {@code valueLoadingInstruction}.
+   206	     * @param stackManipulation     A stack manipulation that represents the loading of the fixed value onto the
+   207	     *                              operand stack.
+   208	     * @return A representation of the stack and variable array sized that are required for this implementation.
+   209	     */
+   210	    protected ByteCodeAppender.Size apply(MethodVisitor methodVisitor,
+   211	                                          Context implementationContext,
+   212	                                          MethodDescription instrumentedMethod,
+   213	                                          TypeDescription.Generic typeDescription,
+   214	                                          StackManipulation stackManipulation) {
+   215	        StackManipulation assignment = assigner.assign(typeDescription, instrumentedMethod.getReturnType(), typing);
+   216	        if (!assignment.isValid()) {
+   217	            throw new IllegalArgumentException("Cannot return value of type " + typeDescription + " for " + instrumentedMethod);
+   218	        }
+   219	        StackManipulation.Size stackSize = new StackManipulation.Compound(
+   220	                stackManipulation,
+   221	                assignment,
+   222	                MethodReturn.of(instrumentedMethod.getReturnType())
+   223	        ).apply(methodVisitor, implementationContext);
+   224	        return new ByteCodeAppender.Size(stackSize.getMaximalSize(), instrumentedMethod.getStackSize());
+   225	    }
+   226	
+   227	    /**
+   228	     * Represents a fixed value implementation that is using a default assigner for attempting to assign
+   229	     * the fixed value to the return type of the instrumented method.
+   230	     */
+   231	    public interface AssignerConfigurable extends Implementation {
+   232	
+   233	        /**
+   234	         * Defines an explicit assigner to this fixed value implementation.
+   235	         *
+   236	         * @param assigner The assigner to use for assigning the fixed value to the return type of the
+   237	         *                 instrumented value.
+   238	         * @param typing   Indicates if dynamic type castings should be attempted for incompatible assignments.
+   239	         * @return A fixed value implementation that makes use of the given assigner.
+   240	         */
+   241	        Implementation withAssigner(Assigner assigner, Assigner.Typing typing);
+   242	    }
+   243	
+   244	    /**
+   245	     * A fixed value of {@code null}.
+   246	     */
+   247	    protected enum ForNullValue implements Implementation, ByteCodeAppender {
+   248	
+   249	        /**
+   250	         * The singleton instance.
+   251	         */
+   252	        INSTANCE;
+   253	
+   254	        /**
+   255	         * {@inheritDoc}
+   256	         */
+   257	        public ByteCodeAppender appender(Target implementationTarget) {
+   258	            return this;
+   259	        }
+   260	
+   261	        /**
+   262	         * {@inheritDoc}
+   263	         */
+   264	        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+   265	            return instrumentedType;
+   266	        }
+   267	
+   268	        /**
+   269	         * {@inheritDoc}
+   270	         */
+   271	        public Size apply(MethodVisitor methodVisitor, Context implementationContext, MethodDescription instrumentedMethod) {
+   272	            if (instrumentedMethod.getReturnType().isPrimitive()) {
+   273	                throw new IllegalStateException("Cannot return null from " + instrumentedMethod);
+   274	            }
+   275	            return new ByteCodeAppender.Simple(
+   276	                    NullConstant.INSTANCE,
+   277	                    MethodReturn.REFERENCE
+   278	            ).apply(methodVisitor, implementationContext, instrumentedMethod);
+   279	        }
+   280	    }
+
+ succeeded in 177ms:
+    45	        assertThat(createdField.getType(), is(originalField.getType()));
+    46	    }
+    47	
+    48	    @Test
+    49	    public void testGenericMethod() throws Exception {
+    50	        DynamicType.Unloaded<?> unloaded = new ByteBuddy()
+    51	                .redefine(GenericMethod.class)
+    52	                .method(named(FOO))
+    53	                .intercept(FixedValue.nullValue())
+    54	                .make();
+    55	        Class<?> type = unloaded.load(ClassLoadingStrategy.BOOTSTRAP_LOADER, ClassLoadingStrategy.Default.WRAPPER).getLoaded();
+    56	        MethodDescription createdMethod = new MethodDescription.ForLoadedMethod(type.getDeclaredMethod(FOO, Exception.class));
+    57	        MethodDescription originalMethod = new MethodDescription.ForLoadedMethod(GenericMethod.class.getDeclaredMethod(FOO, Exception.class));
+    58	        assertThat(createdMethod.getTypeVariables(), is(originalMethod.getTypeVariables()));
+    59	        assertThat(createdMethod.getReturnType(), is(originalMethod.getReturnType()));
+    60	        assertThat(createdMethod.getParameters().getOnly().getType(), is(originalMethod.getParameters().getOnly().getType()));
+    61	        assertThat(createdMethod.getExceptionTypes().getOnly(), is(originalMethod.getExceptionTypes().getOnly()));
+    62	    }
+    63	
+    64	    @Test
+    65	    public void testGenericMethodWithoutGenericExceptionTypes() throws Exception {
+    66	        DynamicType.Unloaded<?> unloaded = new ByteBuddy()
+    67	                .redefine(GenericMethod.class)
+    68	                .method(named(BAR))
+    69	                .intercept(FixedValue.nullValue())
+    70	                .make();
+    71	        Class<?> type = unloaded.load(ClassLoadingStrategy.BOOTSTRAP_LOADER, ClassLoadingStrategy.Default.WRAPPER).getLoaded();
+    72	        MethodDescription createdMethod = new MethodDescription.ForLoadedMethod(type.getDeclaredMethod(BAR, Object.class));
+    73	        MethodDescription originalMethod = new MethodDescription.ForLoadedMethod(GenericMethod.class.getDeclaredMethod(BAR, Object.class));
+    74	        assertThat(createdMethod.getTypeVariables(), is(originalMethod.getTypeVariables()));
+    75	        assertThat(createdMethod.getReturnType(), is(originalMethod.getReturnType()));
+
+ succeeded in 204ms:
+   140	                .subclass(Foo.class)
+   141	                .method(isDeclaredBy(Foo.class))
+   142	                .intercept(FixedValue.reference(bar))
+   143	                .make();
+   144	    }
+   145	
+   146	    @Test
+   147	    public void testNullValue() throws Exception {
+   148	        Class<? extends Foo> foo = new ByteBuddy()
+   149	                .subclass(Foo.class)
+   150	                .method(isDeclaredBy(Foo.class))
+   151	                .intercept(FixedValue.nullValue())
+   152	                .make()
+   153	                .load(Foo.class.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+   154	                .getLoaded();
+   155	        assertThat(foo.getDeclaredFields().length, is(0));
+   156	        assertThat(foo.getDeclaredMethods().length, is(1));
+   157	        assertThat(foo.getDeclaredMethod(BAR).invoke(foo.getDeclaredConstructor().newInstance()), nullValue(Object.class));
+   158	    }
+   159	
+   160	    @Test(expected = IllegalStateException.class)
+   161	    public void testNullValueNonAssignable() throws Exception {
+   162	        new ByteBuddy()
+   163	                .subclass(FooBar.class)
+   164	                .method(isDeclaredBy(FooBar.class))
+   165	                .intercept(FixedValue.nullValue())
+   166	                .make();
+   167	    }
+   168	
+   169	    @Test
+   170	    public void testThisValue() throws Exception {
+   171	        Class<? extends QuxBaz> quxbaz = new ByteBuddy()
+   172	                .subclass(QuxBaz.class)
+   173	                .method(isDeclaredBy(QuxBaz.class))
+   174	                .intercept(FixedValue.self())
+   175	                .make()
+
+codex
+{"target":"net.bytebuddy.implementation.FixedValue.ForNullValue","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java, byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FixedValueTest.java, and byte-buddy-dep/src/test/java/net/bytebuddy/description/type/GenericSignatureResolutionTest.java. ForNullValue is a protected singleton enum used only by FixedValue.nullValue() at line 186; rg found no direct references to FixedValue.ForNullValue outside FixedValue.java. Its outgoing dependencies are limited to ByteCodeAppender, Implementation, InstrumentedType, MethodVisitor, MethodDescription, NullConstant, and MethodReturn, and the external uses observed are only through the public FixedValue.nullValue() API, so there is no strong fan-in/fan-out evidence of a dependency hub."}
+tokens used
+23,485

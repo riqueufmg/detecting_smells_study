@@ -1,0 +1,469 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6edf-7ee3-7f32-a064-2a6564c3a6ec
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.jsoup.safety.Safelist.TypedValue` in the repository located at:
+
+`data/repositories/jhy/jsoup`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.jsoup.safety.Safelist.TypedValue",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.jsoup.safety.Safelist.TypedValue`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing who depends on it and what it depends on, then I’ll decide whether the dependency pattern is hub-like.
+exec
+/bin/bash -lc 'rg --files . | rg "Safelist|safety|TypedValue"' in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc 'rg -n "class TypedValue|TypedValue" .' in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+./src/test/java/org/jsoup/integration/SafelistExtensionTest.java
+./src/test/java/org/jsoup/safety/CleanerTest.java
+./src/test/java/org/jsoup/safety/SafelistTest.java
+./src/main/java/org/jsoup/safety/Cleaner.java
+./src/main/java/org/jsoup/safety/Safelist.java
+./src/main/java/org/jsoup/safety/package-info.java
+
+ succeeded in 0ms:
+./src/main/java/org/jsoup/safety/Safelist.java:601:    static class TagName extends TypedValue {
+./src/main/java/org/jsoup/safety/Safelist.java:611:    static class AttributeKey extends TypedValue {
+./src/main/java/org/jsoup/safety/Safelist.java:621:    static class AttributeValue extends TypedValue {
+./src/main/java/org/jsoup/safety/Safelist.java:631:    static class Protocol extends TypedValue {
+./src/main/java/org/jsoup/safety/Safelist.java:641:    abstract static class TypedValue {
+./src/main/java/org/jsoup/safety/Safelist.java:644:        TypedValue(String value) {
+./src/main/java/org/jsoup/safety/Safelist.java:658:            TypedValue other = (TypedValue) obj;
+
+codex
+I found the target nested class in `src/main/java/org/jsoup/safety/Safelist.java`. Next I’m checking the surrounding code and references to see whether it has broad fan-in/fan-out or is just an internal helper.
+exec
+/bin/bash -lc "nl -ba src/main/java/org/jsoup/safety/Safelist.java | sed -n '560,690p'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+   560	
+   561	            if (prot.equals("#")) { // allows anchor links
+   562	                if (isValidAnchor(value)) {
+   563	                    return true;
+   564	                } else {
+   565	                    continue;
+   566	                }
+   567	            }
+   568	
+   569	            prot += ":";
+   570	
+   571	            if (lowerCase(value).startsWith(prot)) {
+   572	                return true;
+   573	            }
+   574	        }
+   575	        return false;
+   576	    }
+   577	
+   578	    private static boolean isValidAnchor(String value) {
+   579	        return value.startsWith("#") && !value.matches(".*\\s.*");
+   580	    }
+   581	
+   582	    /**
+   583	     Gets the Attributes that should be enforced for a given tag
+   584	     * @param tagName the tag
+   585	     * @return the attributes that will be enforced; empty if none are set for the given tag
+   586	     */
+   587	    public Attributes getEnforcedAttributes(String tagName) {
+   588	        Attributes attrs = new Attributes();
+   589	        TagName tag = TagName.valueOf(tagName);
+   590	        if (enforcedAttributes.containsKey(tag)) {
+   591	            Map<AttributeKey, AttributeValue> keyVals = enforcedAttributes.get(tag);
+   592	            for (Map.Entry<AttributeKey, AttributeValue> entry : keyVals.entrySet()) {
+   593	                attrs.put(entry.getKey().toString(), entry.getValue().toString());
+   594	            }
+   595	        }
+   596	        return attrs;
+   597	    }
+   598	    
+   599	    // named types for config. All just hold strings, but here for my sanity.
+   600	
+   601	    static class TagName extends TypedValue {
+   602	        TagName(String value) {
+   603	            super(value);
+   604	        }
+   605	
+   606	        static TagName valueOf(String value) {
+   607	            return new TagName(Normalizer.lowerCase(value));
+   608	        }
+   609	    }
+   610	
+   611	    static class AttributeKey extends TypedValue {
+   612	        AttributeKey(String value) {
+   613	            super(value);
+   614	        }
+   615	
+   616	        static AttributeKey valueOf(String value) {
+   617	            return new AttributeKey(Normalizer.lowerCase(value));
+   618	        }
+   619	    }
+   620	
+   621	    static class AttributeValue extends TypedValue {
+   622	        AttributeValue(String value) {
+   623	            super(value);
+   624	        }
+   625	
+   626	        static AttributeValue valueOf(String value) {
+   627	            return new AttributeValue(value);
+   628	        }
+   629	    }
+   630	
+   631	    static class Protocol extends TypedValue {
+   632	        Protocol(String value) {
+   633	            super(value);
+   634	        }
+   635	
+   636	        static Protocol valueOf(String value) {
+   637	            return new Protocol(value);
+   638	        }
+   639	    }
+   640	
+   641	    abstract static class TypedValue {
+   642	        private final String value;
+   643	
+   644	        TypedValue(String value) {
+   645	            Validate.notNull(value);
+   646	            this.value = value;
+   647	        }
+   648	
+   649	        @Override
+   650	        public int hashCode() {
+   651	            return value.hashCode();
+   652	        }
+   653	
+   654	        @Override
+   655	        public boolean equals(Object obj) {
+   656	            if (this == obj) return true;
+   657	            if (obj == null || getClass() != obj.getClass()) return false;
+   658	            TypedValue other = (TypedValue) obj;
+   659	            return Objects.equals(value, other.value);
+   660	        }
+   661	
+   662	        @Override
+   663	        public String toString() {
+   664	            return value;
+   665	        }
+   666	    }
+   667	}
+
+exec
+/bin/bash -lc 'rg -n "TypedValue|TagName|AttributeKey|AttributeValue|Protocol" src/main/java src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+src/main/java/org/jsoup/Connection.java:573:         * comma separated, per <a href="https://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2">rfc2616-sec4</a>.
+src/test/java/org/jsoup/integration/ConnectTest.java:103:    public void exceptOnUnsupportedProtocol() {
+src/test/java/org/jsoup/integration/ConnectTest.java:771:        // http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2
+src/main/java/org/jsoup/parser/Token.java:237:        final void appendTagName(String append) {
+src/main/java/org/jsoup/parser/Token.java:244:        final void appendTagName(char append) {
+src/main/java/org/jsoup/parser/Token.java:245:            appendTagName(String.valueOf(append)); // so that normalname gets updated too
+src/main/java/org/jsoup/parser/Token.java:260:        final void appendAttributeValue(String append, int startPos, int endPos) {
+src/main/java/org/jsoup/parser/Token.java:265:        final void appendAttributeValue(char append, int startPos, int endPos) {
+src/main/java/org/jsoup/parser/Token.java:270:        final void appendAttributeValue(int[] appendCodepoints, int startPos, int endPos) {
+src/main/java/org/jsoup/parser/Token.java:277:        final void setEmptyAttributeValue() {
+src/main/java/org/jsoup/safety/Safelist.java:43: <li>{@link #addProtocols(String tagName, String attribute, String... protocols)}
+src/main/java/org/jsoup/safety/Safelist.java:52: <li>{@link #removeProtocols(String tagName, String attribute, String... removeProtocols)}
+src/main/java/org/jsoup/safety/Safelist.java:69:    private final Set<TagName> tagNames; // tags allowed, lower case. e.g. [p, br, span]
+src/main/java/org/jsoup/safety/Safelist.java:70:    private final Map<TagName, Set<AttributeKey>> attributes; // tag -> attribute[]. allowed attributes [href] for a tag.
+src/main/java/org/jsoup/safety/Safelist.java:71:    private final Map<TagName, Map<AttributeKey, AttributeValue>> enforcedAttributes; // always set these attribute values
+src/main/java/org/jsoup/safety/Safelist.java:72:    private final Map<TagName, Map<AttributeKey, Set<Protocol>>> protocols; // allowed URL protocols for attributes
+src/main/java/org/jsoup/safety/Safelist.java:138:                .addProtocols("a", "href", "ftp", "http", "https", "mailto")
+src/main/java/org/jsoup/safety/Safelist.java:139:                .addProtocols("blockquote", "cite", "http", "https")
+src/main/java/org/jsoup/safety/Safelist.java:140:                .addProtocols("cite", "cite", "http", "https")
+src/main/java/org/jsoup/safety/Safelist.java:157:                .addProtocols("img", "src", "http", "https")
+src/main/java/org/jsoup/safety/Safelist.java:194:                .addProtocols("a", "href", "ftp", "http", "https", "mailto")
+src/main/java/org/jsoup/safety/Safelist.java:195:                .addProtocols("blockquote", "cite", "http", "https")
+src/main/java/org/jsoup/safety/Safelist.java:196:                .addProtocols("cite", "cite", "http", "https")
+src/main/java/org/jsoup/safety/Safelist.java:197:                .addProtocols("img", "src", "http", "https")
+src/main/java/org/jsoup/safety/Safelist.java:198:                .addProtocols("q", "cite", "http", "https")
+src/main/java/org/jsoup/safety/Safelist.java:225:        for (Map.Entry<TagName, Set<AttributeKey>> copyTagAttributes : copy.attributes.entrySet()) {
+src/main/java/org/jsoup/safety/Safelist.java:228:        for (Map.Entry<TagName, Map<AttributeKey, AttributeValue>> enforcedEntry : copy.enforcedAttributes.entrySet()) {
+src/main/java/org/jsoup/safety/Safelist.java:231:        for (Map.Entry<TagName, Map<AttributeKey, Set<Protocol>>> protocolsEntry : copy.protocols.entrySet()) {
+src/main/java/org/jsoup/safety/Safelist.java:232:            Map<AttributeKey, Set<Protocol>> attributeProtocolsCopy = new HashMap<>();
+src/main/java/org/jsoup/safety/Safelist.java:233:            for (Map.Entry<AttributeKey, Set<Protocol>> attributeProtocols : protocolsEntry.getValue().entrySet()) {
+src/main/java/org/jsoup/safety/Safelist.java:234:                attributeProtocolsCopy.put(attributeProtocols.getKey(), new HashSet<>(attributeProtocols.getValue()));
+src/main/java/org/jsoup/safety/Safelist.java:236:            protocols.put(protocolsEntry.getKey(), attributeProtocolsCopy);
+src/main/java/org/jsoup/safety/Safelist.java:254:            tagNames.add(TagName.valueOf(tagName));
+src/main/java/org/jsoup/safety/Safelist.java:270:            TagName tagName = TagName.valueOf(tag);
+src/main/java/org/jsoup/safety/Safelist.java:302:        TagName tagName = TagName.valueOf(tag);
+src/main/java/org/jsoup/safety/Safelist.java:303:        Set<AttributeKey> attributeSet = new HashSet<>();
+src/main/java/org/jsoup/safety/Safelist.java:306:            attributeSet.add(AttributeKey.valueOf(key));
+src/main/java/org/jsoup/safety/Safelist.java:308:        Set<AttributeKey> currentSet = this.attributes.computeIfAbsent(tagName, k -> new HashSet<>());
+src/main/java/org/jsoup/safety/Safelist.java:333:        TagName tagName = TagName.valueOf(tag);
+src/main/java/org/jsoup/safety/Safelist.java:334:        Set<AttributeKey> attributeSet = new HashSet<>();
+src/main/java/org/jsoup/safety/Safelist.java:337:            attributeSet.add(AttributeKey.valueOf(key));
+src/main/java/org/jsoup/safety/Safelist.java:340:            Set<AttributeKey> currentSet = this.attributes.get(tagName);
+src/main/java/org/jsoup/safety/Safelist.java:347:            Iterator<Map.Entry<TagName, Set<AttributeKey>>> it = this.attributes.entrySet().iterator();
+src/main/java/org/jsoup/safety/Safelist.java:349:                Map.Entry<TagName, Set<AttributeKey>> entry = it.next();
+src/main/java/org/jsoup/safety/Safelist.java:350:                Set<AttributeKey> currentSet = entry.getValue();
+src/main/java/org/jsoup/safety/Safelist.java:377:        TagName tagName = TagName.valueOf(tag);
+src/main/java/org/jsoup/safety/Safelist.java:379:        AttributeKey attrKey = AttributeKey.valueOf(attribute);
+src/main/java/org/jsoup/safety/Safelist.java:380:        AttributeValue attrVal = AttributeValue.valueOf(value);
+src/main/java/org/jsoup/safety/Safelist.java:382:        Map<AttributeKey, AttributeValue> attrMap = enforcedAttributes.computeIfAbsent(tagName, k -> new HashMap<>());
+src/main/java/org/jsoup/safety/Safelist.java:398:        TagName tagName = TagName.valueOf(tag);
+src/main/java/org/jsoup/safety/Safelist.java:400:            AttributeKey attrKey = AttributeKey.valueOf(attribute);
+src/main/java/org/jsoup/safety/Safelist.java:401:            Map<AttributeKey, AttributeValue> attrMap = enforcedAttributes.get(tagName);
+src/main/java/org/jsoup/safety/Safelist.java:417:     * @see #addProtocols
+src/main/java/org/jsoup/safety/Safelist.java:436:     E.g.: <code>addProtocols("a", "href", "ftp", "http", "https")</code>
+src/main/java/org/jsoup/safety/Safelist.java:440:     E.g.: <code>addProtocols("a", "href", "#")</code>
+src/main/java/org/jsoup/safety/Safelist.java:448:    public Safelist addProtocols(String tag, String attribute, String... protocols) {
+src/main/java/org/jsoup/safety/Safelist.java:453:        TagName tagName = TagName.valueOf(tag);
+src/main/java/org/jsoup/safety/Safelist.java:454:        AttributeKey attrKey = AttributeKey.valueOf(attribute);
+src/main/java/org/jsoup/safety/Safelist.java:455:        Map<AttributeKey, Set<Protocol>> attrMap = this.protocols.computeIfAbsent(tagName, k -> new HashMap<>());
+src/main/java/org/jsoup/safety/Safelist.java:456:        Set<Protocol> protSet = attrMap.computeIfAbsent(attrKey, k -> new HashSet<>());
+src/main/java/org/jsoup/safety/Safelist.java:460:            Protocol prot = Protocol.valueOf(protocol);
+src/main/java/org/jsoup/safety/Safelist.java:470:     E.g.: <code>removeProtocols("a", "href", "ftp")</code>
+src/main/java/org/jsoup/safety/Safelist.java:475:     @param removeProtocols List of invalid protocols
+src/main/java/org/jsoup/safety/Safelist.java:478:    public Safelist removeProtocols(String tag, String attribute, String... removeProtocols) {
+src/main/java/org/jsoup/safety/Safelist.java:481:        Validate.notNull(removeProtocols);
+src/main/java/org/jsoup/safety/Safelist.java:483:        TagName tagName = TagName.valueOf(tag);
+src/main/java/org/jsoup/safety/Safelist.java:484:        AttributeKey attr = AttributeKey.valueOf(attribute);
+src/main/java/org/jsoup/safety/Safelist.java:489:        Map<AttributeKey, Set<Protocol>> tagProtocols = protocols.get(tagName);
+src/main/java/org/jsoup/safety/Safelist.java:490:        Validate.isTrue(tagProtocols.containsKey(attr), "Cannot remove a protocol that is not set.");
+src/main/java/org/jsoup/safety/Safelist.java:492:        Set<Protocol> attrProtocols = tagProtocols.get(attr);
+src/main/java/org/jsoup/safety/Safelist.java:493:        for (String protocol : removeProtocols) {
+src/main/java/org/jsoup/safety/Safelist.java:495:            attrProtocols.remove(Protocol.valueOf(protocol));
+src/main/java/org/jsoup/safety/Safelist.java:498:        if (attrProtocols.isEmpty()) { // Remove protocol set if empty
+src/main/java/org/jsoup/safety/Safelist.java:499:            tagProtocols.remove(attr);
+src/main/java/org/jsoup/safety/Safelist.java:500:            if (tagProtocols.isEmpty()) // Remove entry for tag if empty
+src/main/java/org/jsoup/safety/Safelist.java:512:        return tagNames.contains(TagName.valueOf(tag));
+src/main/java/org/jsoup/safety/Safelist.java:523:        TagName tag = TagName.valueOf(tagName);
+src/main/java/org/jsoup/safety/Safelist.java:524:        AttributeKey key = AttributeKey.valueOf(attr.getKey());
+src/main/java/org/jsoup/safety/Safelist.java:526:        Set<AttributeKey> okSet = attributes.get(tag);
+src/main/java/org/jsoup/safety/Safelist.java:529:                Map<AttributeKey, Set<Protocol>> attrProts = protocols.get(tag);
+src/main/java/org/jsoup/safety/Safelist.java:531:                return !attrProts.containsKey(key) || testValidProtocol(el, attr, attrProts.get(key));
+src/main/java/org/jsoup/safety/Safelist.java:537:        Map<AttributeKey, AttributeValue> enforcedSet = enforcedAttributes.get(tag);
+src/main/java/org/jsoup/safety/Safelist.java:549:    private boolean testValidProtocol(Element el, Attribute attr, Set<Protocol> protocols) {
+src/main/java/org/jsoup/safety/Safelist.java:558:        for (Protocol protocol : protocols) {
+src/main/java/org/jsoup/safety/Safelist.java:589:        TagName tag = TagName.valueOf(tagName);
+src/main/java/org/jsoup/safety/Safelist.java:591:            Map<AttributeKey, AttributeValue> keyVals = enforcedAttributes.get(tag);
+src/main/java/org/jsoup/safety/Safelist.java:592:            for (Map.Entry<AttributeKey, AttributeValue> entry : keyVals.entrySet()) {
+src/main/java/org/jsoup/safety/Safelist.java:601:    static class TagName extends TypedValue {
+src/main/java/org/jsoup/safety/Safelist.java:602:        TagName(String value) {
+src/main/java/org/jsoup/safety/Safelist.java:606:        static TagName valueOf(String value) {
+src/main/java/org/jsoup/safety/Safelist.java:607:            return new TagName(Normalizer.lowerCase(value));
+src/main/java/org/jsoup/safety/Safelist.java:611:    static class AttributeKey extends TypedValue {
+src/main/java/org/jsoup/safety/Safelist.java:612:        AttributeKey(String value) {
+src/main/java/org/jsoup/safety/Safelist.java:616:        static AttributeKey valueOf(String value) {
+src/main/java/org/jsoup/safety/Safelist.java:617:            return new AttributeKey(Normalizer.lowerCase(value));
+src/main/java/org/jsoup/safety/Safelist.java:621:    static class AttributeValue extends TypedValue {
+src/main/java/org/jsoup/safety/Safelist.java:622:        AttributeValue(String value) {
+src/main/java/org/jsoup/safety/Safelist.java:626:        static AttributeValue valueOf(String value) {
+src/main/java/org/jsoup/safety/Safelist.java:627:            return new AttributeValue(value);
+src/main/java/org/jsoup/safety/Safelist.java:631:    static class Protocol extends TypedValue {
+src/main/java/org/jsoup/safety/Safelist.java:632:        Protocol(String value) {
+src/main/java/org/jsoup/safety/Safelist.java:636:        static Protocol valueOf(String value) {
+src/main/java/org/jsoup/safety/Safelist.java:637:            return new Protocol(value);
+src/main/java/org/jsoup/safety/Safelist.java:641:    abstract static class TypedValue {
+src/main/java/org/jsoup/safety/Safelist.java:644:        TypedValue(String value) {
+src/main/java/org/jsoup/safety/Safelist.java:658:            TypedValue other = (TypedValue) obj;
+src/main/java/org/jsoup/parser/Tokeniser.java:267:    @Nullable String appropriateEndTagName() {
+src/test/java/org/jsoup/parser/TokeniserStateTest.java:45:    public void testBeforeTagName() {
+src/test/java/org/jsoup/parser/TokeniserStateTest.java:104:    public void testRCDATAEndTagName() {
+src/main/java/org/jsoup/internal/Normalizer.java:35:    @Nullable public static String xmlSafeTagName(final String tagname) {
+src/test/java/org/jsoup/parser/TokeniserTest.java:43:    @Test public void handleSuperLargeTagNames() {
+src/test/java/org/jsoup/parser/TokeniserTest.java:48:            sb.append("LargeTagName");
+src/main/java/org/jsoup/internal/StringUtil.java:304:        return new URL(url.getProtocol(), url.getHost(), url.getPort(), fixedFile);
+src/main/java/org/jsoup/parser/TokeniserState.java:120:                        t.transition(TagName);
+src/main/java/org/jsoup/parser/TokeniserState.java:138:                t.transition(TagName);
+src/main/java/org/jsoup/parser/TokeniserState.java:150:    TagName {
+src/main/java/org/jsoup/parser/TokeniserState.java:154:            String tagName = r.consumeTagName();
+src/main/java/org/jsoup/parser/TokeniserState.java:155:            t.tagPending.appendTagName(tagName);
+src/main/java/org/jsoup/parser/TokeniserState.java:174:                    t.tagPending.appendTagName(replacementStr);
+src/main/java/org/jsoup/parser/TokeniserState.java:181:                    t.tagPending.appendTagName(c);
+src/main/java/org/jsoup/parser/TokeniserState.java:191:            } else if (r.readFully() && r.matchesAsciiAlpha() && t.appropriateEndTagName() != null &&  !r.containsIgnoreCase(t.appropriateEndTagSeq())) {
+src/main/java/org/jsoup/parser/TokeniserState.java:194:                t.tagPending = t.createTagPending(false).name(t.appropriateEndTagName());
+src/main/java/org/jsoup/parser/TokeniserState.java:207:                t.tagPending.appendTagName(r.current());
+src/main/java/org/jsoup/parser/TokeniserState.java:209:                t.advanceTransition(RCDATAEndTagName);
+src/main/java/org/jsoup/parser/TokeniserState.java:216:    RCDATAEndTagName {
+src/main/java/org/jsoup/parser/TokeniserState.java:219:                String name = r.consumeTagName();
+src/main/java/org/jsoup/parser/TokeniserState.java:220:                t.tagPending.appendTagName(name);
+src/main/java/org/jsoup/parser/TokeniserState.java:276:            readEndTag(t, r, RawtextEndTagName, Rawtext);
+src/main/java/org/jsoup/parser/TokeniserState.java:279:    RawtextEndTagName {
+src/main/java/org/jsoup/parser/TokeniserState.java:309:            readEndTag(t, r, ScriptDataEndTagName, ScriptData);
+src/main/java/org/jsoup/parser/TokeniserState.java:312:    ScriptDataEndTagName {
+src/main/java/org/jsoup/parser/TokeniserState.java:444:                t.tagPending.appendTagName(r.current());
+src/main/java/org/jsoup/parser/TokeniserState.java:446:                t.advanceTransition(ScriptDataEscapedEndTagName);
+src/main/java/org/jsoup/parser/TokeniserState.java:453:    ScriptDataEscapedEndTagName {
+src/main/java/org/jsoup/parser/TokeniserState.java:631:                    t.transition(BeforeAttributeValue);
+src/main/java/org/jsoup/parser/TokeniserState.java:672:                    t.transition(BeforeAttributeValue);
+src/main/java/org/jsoup/parser/TokeniserState.java:702:    BeforeAttributeValue {
+src/main/java/org/jsoup/parser/TokeniserState.java:714:                    t.transition(AttributeValue_doubleQuoted);
+src/main/java/org/jsoup/parser/TokeniserState.java:718:                    t.transition(AttributeValue_unquoted);
+src/main/java/org/jsoup/parser/TokeniserState.java:721:                    t.transition(AttributeValue_singleQuoted);
+src/main/java/org/jsoup/parser/TokeniserState.java:725:                    t.tagPending.appendAttributeValue(replacementChar, r.pos()-1, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:726:                    t.transition(AttributeValue_unquoted);
+src/main/java/org/jsoup/parser/TokeniserState.java:742:                    t.tagPending.appendAttributeValue(c, r.pos()-1, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:743:                    t.transition(AttributeValue_unquoted);
+src/main/java/org/jsoup/parser/TokeniserState.java:747:                    t.transition(AttributeValue_unquoted);
+src/main/java/org/jsoup/parser/TokeniserState.java:751:    AttributeValue_doubleQuoted {
+src/main/java/org/jsoup/parser/TokeniserState.java:756:                t.tagPending.appendAttributeValue(value, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:758:                t.tagPending.setEmptyAttributeValue();
+src/main/java/org/jsoup/parser/TokeniserState.java:764:                    t.transition(AfterAttributeValue_quoted);
+src/main/java/org/jsoup/parser/TokeniserState.java:769:                        t.tagPending.appendAttributeValue(ref, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:771:                        t.tagPending.appendAttributeValue('&', pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:775:                    t.tagPending.appendAttributeValue(replacementChar, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:782:                    t.tagPending.appendAttributeValue(c, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:786:    AttributeValue_singleQuoted {
+src/main/java/org/jsoup/parser/TokeniserState.java:791:                t.tagPending.appendAttributeValue(value, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:793:                t.tagPending.setEmptyAttributeValue();
+src/main/java/org/jsoup/parser/TokeniserState.java:799:                    t.transition(AfterAttributeValue_quoted);
+src/main/java/org/jsoup/parser/TokeniserState.java:804:                        t.tagPending.appendAttributeValue(ref, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:806:                        t.tagPending.appendAttributeValue('&', pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:810:                    t.tagPending.appendAttributeValue(replacementChar, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:817:                    t.tagPending.appendAttributeValue(c, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:821:    AttributeValue_unquoted {
+src/main/java/org/jsoup/parser/TokeniserState.java:826:                t.tagPending.appendAttributeValue(value, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:841:                        t.tagPending.appendAttributeValue(ref, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:843:                        t.tagPending.appendAttributeValue('&', pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:851:                    t.tagPending.appendAttributeValue(replacementChar, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:863:                    t.tagPending.appendAttributeValue(c, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:866:                    t.tagPending.appendAttributeValue(c, pos, r.pos());
+src/main/java/org/jsoup/parser/TokeniserState.java:871:    // CharacterReferenceInAttributeValue state handled inline
+src/main/java/org/jsoup/parser/TokeniserState.java:872:    AfterAttributeValue_quoted {
+src/main/java/org/jsoup/parser/TokeniserState.java:955:                    t.transition(TagName); // treat <!ENTITY as XML Declaration, with tag-like handling
+src/main/java/org/jsoup/parser/TokeniserState.java:968:                t.transition(TagName); // treat <?xml... as XML Declaration (processing instruction), with tag-like handling
+src/main/java/org/jsoup/parser/TokeniserState.java:1671:     * Handles RawtextEndTagName, ScriptDataEndTagName, and ScriptDataEscapedEndTagName. Same body impl, just
+src/main/java/org/jsoup/parser/TokeniserState.java:1676:            String name = r.consumeTagName();
+src/main/java/org/jsoup/parser/TokeniserState.java:1677:            t.tagPending.appendTagName(name);
+src/test/java/org/jsoup/parser/TagTest.java:133:    @Test public void unknownTagNamespace() {
+src/main/java/org/jsoup/parser/CharacterReader.java:461:    String consumeTagName() {
+src/test/java/org/jsoup/safety/CleanerTest.java:90:    @Test void removeProtocols() {
+src/test/java/org/jsoup/safety/CleanerTest.java:96:        safelist.removeProtocols("a", "href", "ftp", "http", "https", "mailto");
+src/test/java/org/jsoup/safety/CleanerTest.java:109:    @Test public void testRemoveProtocols() {
+src/test/java/org/jsoup/safety/CleanerTest.java:111:        String cleanHtml = Jsoup.clean(h, Safelist.basic().removeProtocols("a", "href", "ftp", "mailto"));
+src/test/java/org/jsoup/safety/CleanerTest.java:118:    public void safeListedProtocolShouldBeRetained(Locale locale) {
+src/test/java/org/jsoup/safety/CleanerTest.java:124:                .addProtocols("a", "href", "something");
+src/test/java/org/jsoup/safety/CleanerTest.java:161:    @Test public void testCleanAnchorProtocol() {
+src/test/java/org/jsoup/safety/CleanerTest.java:173:        Safelist relaxedWithAnchor = Safelist.relaxed().addProtocols("a", "href", "#");
+src/test/java/org/jsoup/safety/CleanerTest.java:254:    @Test void dropsConcealedJavascriptProtocolWhenRelativesLinksEnabled() {
+src/test/java/org/jsoup/safety/CleanerTest.java:267:    @Test void dropsConcealedJavascriptProtocolWhenRelativesLinksDisabled() {
+src/test/java/org/jsoup/safety/CleanerTest.java:275:    @Test public void handlesCustomProtocols() {
+src/test/java/org/jsoup/safety/CleanerTest.java:280:        String preserved = Jsoup.clean(html, Safelist.basicWithImages().addProtocols("img", "src", "cid", "data"));
+src/test/java/org/jsoup/safety/CleanerTest.java:350:    public void bailsIfRemovingProtocolThatsNotSet() {
+src/test/java/org/jsoup/safety/CleanerTest.java:357:            w.removeProtocols("a", "href", "javascript"); // with no protocols enforced, this was a noop. Now validates.
+src/test/java/org/jsoup/safety/CleanerTest.java:361:    @Test public void handlesControlCharactersAfterTagName() {
+src/test/java/org/jsoup/safety/CleanerTest.java:376:        Safelist relaxedWithAnchor = Safelist.relaxed().addProtocols("a", "href", "#");
+src/test/java/org/jsoup/safety/SafelistTest.java:48:    public void testCopyConstructor_noSideEffectOnProtocols() {
+src/test/java/org/jsoup/safety/SafelistTest.java:52:                .addProtocols(TEST_TAG, TEST_ATTRIBUTE, TEST_SCHEME);
+src/test/java/org/jsoup/safety/SafelistTest.java:54:        safelist1.addProtocols(TEST_TAG, TEST_ATTRIBUTE, invalidScheme);
+src/test/java/org/jsoup/parser/HtmlParserTest.java:339:    @Test public void handlesProtocolRelativeUrl() {
+src/test/java/org/jsoup/parser/HtmlParserTest.java:896:        assertEquals("<3:53>: Unexpectedly reached end of file (EOF) in input state [TagName]", errors.get(8).toString());
+src/main/java/org/jsoup/helper/UrlBuilder.java:37:                u.getProtocol(),
+src/main/java/org/jsoup/select/Evaluator.java:268:    public static final class AttributeWithValue extends AttributeKeyPair {
+src/main/java/org/jsoup/select/Evaluator.java:292:    public static final class AttributeWithValueNot extends AttributeKeyPair {
+src/main/java/org/jsoup/select/Evaluator.java:316:    public static final class AttributeWithValueStarting extends AttributeKeyPair {
+src/main/java/org/jsoup/select/Evaluator.java:339:    public static final class AttributeWithValueEnding extends AttributeKeyPair {
+src/main/java/org/jsoup/select/Evaluator.java:362:    public static final class AttributeWithValueContaining extends AttributeKeyPair {
+src/main/java/org/jsoup/select/Evaluator.java:418:    public abstract static class AttributeKeyPair extends Evaluator {
+src/main/java/org/jsoup/select/Evaluator.java:422:        public AttributeKeyPair(String key, String value) {
+src/main/java/org/jsoup/select/Evaluator.java:438:         @deprecated since 1.22.1, use {@link #AttributeKeyPair(String, String)}; the previous trimQuoted parameter is no longer used.
+src/main/java/org/jsoup/select/Evaluator.java:442:        public AttributeKeyPair(String key, String value, boolean ignored) {
+src/test/java/org/jsoup/parser/XmlTreeBuilderTest.java:263:    @Test public void xmlSyntaxAlwaysEscapesLtAndGtInAttributeValues() {
+src/main/java/org/jsoup/helper/HttpConnection.java:472:                // https://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2
+src/main/java/org/jsoup/helper/HttpConnection.java:874:            String protocol = url.getProtocol();
+src/main/java/org/jsoup/helper/W3CDom.java:362:                String tagName = Normalizer.xmlSafeTagName(sourceEl.tagName());
+src/test/java/org/jsoup/helper/W3CDomTest.java:68:        NodeList meta = wDoc.getElementsByTagName("META");
+src/test/java/org/jsoup/helper/W3CDomTest.java:76:        assertEquals("Text", roundTrip.getElementsByTagName("p").item(0).getTextContent());
+src/test/java/org/jsoup/helper/W3CDomTest.java:223:        NodeList w3cXmlNodes = w3cXml.getElementsByTagName("foo_bar");
+src/test/java/org/jsoup/helper/W3CDomTest.java:229:        NodeList w3cNodes = w3cDoc.getElementsByTagName("foo_bar");
+src/test/java/org/jsoup/helper/W3CDomTest.java:444:        org.w3c.dom.Element body = (org.w3c.dom.Element) doc.getDocumentElement().getElementsByTagName("body").item(0);
+src/test/java/org/jsoup/helper/W3CDomTest.java:445:        NodeList imgs = body.getElementsByTagName("img");
+src/test/java/org/jsoup/helper/W3CDomTest.java:480:        NodeList p = w3cDoc.getElementsByTagName("p");
+src/main/java/org/jsoup/nodes/Element.java:1352:    public Elements getElementsByAttributeValue(String key, String value) {
+src/main/java/org/jsoup/nodes/Element.java:1363:    public Elements getElementsByAttributeValueNot(String key, String value) {
+src/main/java/org/jsoup/nodes/Element.java:1374:    public Elements getElementsByAttributeValueStarting(String key, String valuePrefix) {
+src/main/java/org/jsoup/nodes/Element.java:1385:    public Elements getElementsByAttributeValueEnding(String key, String valueSuffix) {
+src/main/java/org/jsoup/nodes/Element.java:1396:    public Elements getElementsByAttributeValueContaining(String key, String match) {
+src/main/java/org/jsoup/nodes/Element.java:1406:    public Elements getElementsByAttributeValueMatching(String key, Pattern pattern) {
+src/main/java/org/jsoup/nodes/Element.java:1416:    public Elements getElementsByAttributeValueMatching(String key, String regex) {
+src/main/java/org/jsoup/nodes/Element.java:1925:        String tagName = safeTagName(out.syntax());
+src/main/java/org/jsoup/nodes/Element.java:1946:            accum.append("</").append(safeTagName(out.syntax())).append('>');
+src/main/java/org/jsoup/nodes/Element.java:1951:    @Nullable private String safeTagName(Document.OutputSettings.Syntax syntax) {
+src/main/java/org/jsoup/nodes/Element.java:1952:        return syntax == xml ? Normalizer.xmlSafeTagName(tagName()) : tagName();
+src/test/java/org/jsoup/nodes/AttributeTest.java:25:    @Test public void testWithSupplementaryCharacterInAttributeKeyAndValue() {
+src/test/java/org/jsoup/nodes/NodeTest.java:104:    public void handlesAbsOnProtocolessAbsoluteUris() {
+src/test/java/org/jsoup/nodes/NodeTest.java:137:    @Test public void handlesAbsOnUnknownProtocols() {
+src/test/java/org/jsoup/nodes/NodeTest.java:386:    @Test public void changingAttributeValueShouldReplaceExistingAttributeCaseInsensitive() {
+src/test/java/org/jsoup/nodes/EntitiesTest.java:155:    @Test public void alwaysEscapeLtAndGtInAttributeValues() {
+src/test/java/org/jsoup/nodes/ElementTest.java:78:    public void getElementsByTagName() {
+src/test/java/org/jsoup/nodes/ElementTest.java:384:    public void testGetElementsWithAttributeValue() {
+src/test/java/org/jsoup/nodes/ElementTest.java:386:        List<Element> els = doc.getElementsByAttributeValue("style", "bold");
+src/test/java/org/jsoup/nodes/ElementTest.java:390:        List<Element> none = doc.getElementsByAttributeValue("style", "none");
+src/test/java/org/jsoup/nodes/ElementTest.java:1064:    public void testTagNameSet() {
+src/test/java/org/jsoup/nodes/ElementTest.java:1576:    public void elementByTagName() {
+src/test/java/org/jsoup/nodes/ElementTest.java:2795:    @Test void getElementsByAttributeValueNot() {
+src/test/java/org/jsoup/nodes/ElementTest.java:2797:        Elements els = doc.body().getElementsByAttributeValueNot("data-one", "1");
+src/test/java/org/jsoup/nodes/ElementTest.java:2804:    @Test void getElementsByAttributeValueStarting() {
+src/test/java/org/jsoup/nodes/ElementTest.java:2806:        Elements els = doc.getElementsByAttributeValueStarting("href", "one");
+src/test/java/org/jsoup/nodes/ElementTest.java:2812:    @Test void getElementsByAttributeValueEnding() {
+src/test/java/org/jsoup/nodes/ElementTest.java:2814:        Elements els = doc.getElementsByAttributeValueEnding("href", "one");
+src/test/java/org/jsoup/nodes/ElementTest.java:2820:    @Test void getElementsByAttributeValueContaining() {
+src/test/java/org/jsoup/nodes/ElementTest.java:2822:        Elements els = doc.getElementsByAttributeValueContaining("href", "on");
+src/test/java/org/jsoup/nodes/ElementTest.java:2828:    @Test void getElementsByAttributeValueMatchingPattern() {
+src/test/java/org/jsoup/nodes/ElementTest.java:2830:        Elements els = doc.getElementsByAttributeValueMatching("href", Pattern.compile("^\\d\\w+"));
+src/test/java/org/jsoup/nodes/ElementTest.java:2836:    @Test void getElementsByAttributeValueMatching() {
+src/test/java/org/jsoup/nodes/ElementTest.java:2838:        Elements els = doc.getElementsByAttributeValueMatching("href", "^\\d\\w+");
+src/test/java/org/jsoup/nodes/ElementTest.java:2844:    @Test void getElementsByAttributeValueMatchingValidation() {
+src/test/java/org/jsoup/nodes/ElementTest.java:2847:            () -> doc.getElementsByAttributeValueMatching("key", "\\x"));
+
+codex
+{"target":"org.jsoup.safety.Safelist.TypedValue","detection":false,"justification":"Inspected `src/main/java/org/jsoup/safety/Safelist.java` and searched `src/main/java` and `src/test/java` for `TypedValue`. The class is an abstract nested value wrapper (lines 641-666) with only one field and trivial `Validate.notNull`, `Objects.equals/hashCode`, `toString` behavior. Its only incoming uses are the four inner subclasses in the same file (`TagName`, `AttributeKey`, `AttributeValue`, `Protocol` at lines 601-639); there are no external references to `TypedValue` and no evidence of many distinct classes depending on it. This is low fan-in/low fan-out, not a hub-like dependency center."}
+tokens used
+11,485

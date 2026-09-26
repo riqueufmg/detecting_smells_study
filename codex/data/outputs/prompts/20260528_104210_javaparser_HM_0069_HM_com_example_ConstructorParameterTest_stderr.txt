@@ -1,0 +1,470 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ed2-3965-7e43-9835-7ac7dacc3e10
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.example.ConstructorParameterTest` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.example.ConstructorParameterTest",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.example.ConstructorParameterTest`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `com.example.ConstructorParameterTest` and then I’ll inspect its direct references to judge fan-in/fan-out from the repository evidence.
+exec
+/bin/bash -lc "rg --files | rg 'ConstructorParameterTest\\.java"'$|pom'"\\.xml"'$|build'"\\.gradle"'$|settings'"\\.gradle"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-symbol-solver-testing/pom.xml
+javaparser-core-testing-bdd/pom.xml
+javaparser-core/pom.xml
+javaparser-symbol-solver-core/pom.xml
+javaparser-core-generators/pom.xml
+javaparser-core-testing/pom.xml
+javaparser-core-metamodel-generator/pom.xml
+javaparser-core-serialization/pom.xml
+pom.xml
+javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/original/ConstructorParameterTest.java
+javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/expected/ConstructorParameterTest.java
+
+exec
+/bin/bash -lc "rg -n \"class\\s+ConstructorParameterTest|ConstructorParameterTest\" -S ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+./javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/original/ConstructorParameterTest.java:27:class ConstructorParameterTest {
+./javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/original/ConstructorParameterTest.java:33:	public ConstructorParameterTest(@NotNull String notNullString, @Nullable String nullableString,
+./javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/expected/ConstructorParameterTest.java:28:class ConstructorParameterTest {
+./javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/expected/ConstructorParameterTest.java:36:    public ConstructorParameterTest(@NotNull String notNullString, @Nullable String nullableString, String otherString) {
+
+codex
+I found the only matching class name under generator test resources, so I’m checking that file and the related test to see whether it actually acts as a dependency hub or is just a small fixture.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/original/ConstructorParameterTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2021 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.example;
+
+import com.github.javaparser.quality.NotNull;
+import com.github.javaparser.quality.Nullable;
+
+class ConstructorParameterTest {
+
+	private final String a;
+	private final String b;
+	private final String c;
+
+	public ConstructorParameterTest(@NotNull String notNullString, @Nullable String nullableString,
+									String otherString) {
+		this.a = notNullString;
+		this.b = nullableString;
+		this.c = otherString;
+	}
+
+}
+
+exec
+/bin/bash -lc "sed -n '1,240p' javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/expected/ConstructorParameterTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2021 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.example;
+
+import com.github.javaparser.quality.NotNull;
+import com.github.javaparser.quality.Nullable;
+import com.github.javaparser.quality.Preconditions;
+
+class ConstructorParameterTest {
+
+    private final String a;
+
+    private final String b;
+
+    private final String c;
+
+    public ConstructorParameterTest(@NotNull String notNullString, @Nullable String nullableString, String otherString) {
+        Preconditions.checkNotNull(notNullString, "Parameter notNullString can't be null.");
+        this.a = notNullString;
+        this.b = nullableString;
+        this.c = otherString;
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core-generators/src/test/java/com/github/javaparser/generator/core/quality/NotNullGeneratorTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.generator.core.quality;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.printer.DefaultPrettyPrinter;
+import com.github.javaparser.utils.SourceRoot;
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+class NotNullGeneratorTest {
+
+    @Test
+    void testExecutionOfGenerator() throws Exception {
+
+        // Setup the
+        String resourcesFolderPath = getClass().getCanonicalName().replace(".", File.separator);
+
+        String basePath = Paths.get("src", "test", "resources").toString();
+        Path originalFile = Paths.get(basePath, resourcesFolderPath, "original");
+        Path expectedFile = Paths.get(basePath, resourcesFolderPath, "expected");
+
+        SourceRoot originalSources = new SourceRoot(originalFile);
+        SourceRoot expectedSources = new SourceRoot(expectedFile);
+        expectedSources.tryToParse();
+
+        // Generate the information
+        new NotNullGenerator(originalSources).generate();
+
+        List<CompilationUnit> editedSourceCus = originalSources.getCompilationUnits();
+        List<CompilationUnit> expectedSourcesCus = expectedSources.getCompilationUnits();
+        assertEquals(expectedSourcesCus.size(), editedSourceCus.size());
+
+        // Check if all the files match the expected result
+        for (int i = 0; i < editedSourceCus.size(); i++) {
+
+            DefaultPrettyPrinter printer = new DefaultPrettyPrinter();
+            String expectedCode = printer.print(expectedSourcesCus.get(i));
+            String editedCode = printer.print(editedSourceCus.get(i));
+
+            if (!expectedCode.equals(editedCode)) {
+                System.out.println("Expected:");
+                System.out.println("####");
+                System.out.println(expectedSourcesCus.get(i));
+                System.out.println("####");
+                System.out.println("Actual:");
+                System.out.println("####");
+                System.out.println(editedSourceCus.get(i));
+                System.out.println("####");
+                fail("Actual code doesn't match with the expected code.");
+            }
+        }
+    }
+}
+
+codex
+I have the class body and the generator test. Next I’m checking whether this class is referenced anywhere else, because hub-like modularization needs strong incoming and outgoing dependency evidence, not just a constructor with a few parameters.
+exec
+/bin/bash -lc 'rg -n "ConstructorParameterTest" javaparser-core-generators/src/test -S' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/original/ConstructorParameterTest.java:27:class ConstructorParameterTest {
+javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/original/ConstructorParameterTest.java:33:	public ConstructorParameterTest(@NotNull String notNullString, @Nullable String nullableString,
+javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/expected/ConstructorParameterTest.java:28:class ConstructorParameterTest {
+javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/expected/ConstructorParameterTest.java:36:    public ConstructorParameterTest(@NotNull String notNullString, @Nullable String nullableString, String otherString) {
+
+exec
+/bin/bash -lc 'rg -n "NotNullGeneratorTest|NotNullGenerator" javaparser-core-generators/src/test -S' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-core-generators/src/test/java/com/github/javaparser/generator/core/quality/NotNullGeneratorTest.java:36:class NotNullGeneratorTest {
+javaparser-core-generators/src/test/java/com/github/javaparser/generator/core/quality/NotNullGeneratorTest.java:53:        new NotNullGenerator(originalSources).generate();
+
+exec
+/bin/bash -lc "rg -n \"com\\.example\" javaparser-core-generators/src/test -S" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/original/ConstructorParameterTest.java:22:package com.example;
+javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/expected/ConstructorParameterTest.java:22:package com.example;
+
+codex
+I’ve confirmed the class appears only in its two fixture files. I’m grabbing line-numbered excerpts so the verdict can cite the exact dependency count and the absence of wider fan-in.
+exec
+/bin/bash -lc "nl -ba javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/original/ConstructorParameterTest.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+     3	 * Copyright (C) 2011, 2013-2021 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	
+    22	package com.example;
+    23	
+    24	import com.github.javaparser.quality.NotNull;
+    25	import com.github.javaparser.quality.Nullable;
+    26	
+    27	class ConstructorParameterTest {
+    28	
+    29		private final String a;
+    30		private final String b;
+    31		private final String c;
+    32	
+    33		public ConstructorParameterTest(@NotNull String notNullString, @Nullable String nullableString,
+    34										String otherString) {
+    35			this.a = notNullString;
+    36			this.b = nullableString;
+    37			this.c = otherString;
+    38		}
+    39	
+    40	}
+
+exec
+/bin/bash -lc "nl -ba javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/expected/ConstructorParameterTest.java | sed -n '1,140p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+     3	 * Copyright (C) 2011, 2013-2021 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	
+    22	package com.example;
+    23	
+    24	import com.github.javaparser.quality.NotNull;
+    25	import com.github.javaparser.quality.Nullable;
+    26	import com.github.javaparser.quality.Preconditions;
+    27	
+    28	class ConstructorParameterTest {
+    29	
+    30	    private final String a;
+    31	
+    32	    private final String b;
+    33	
+    34	    private final String c;
+    35	
+    36	    public ConstructorParameterTest(@NotNull String notNullString, @Nullable String nullableString, String otherString) {
+    37	        Preconditions.checkNotNull(notNullString, "Parameter notNullString can't be null.");
+    38	        this.a = notNullString;
+    39	        this.b = nullableString;
+    40	        this.c = otherString;
+    41	    }
+    42	}
+
+exec
+/bin/bash -lc "nl -ba javaparser-core-generators/src/test/java/com/github/javaparser/generator/core/quality/NotNullGeneratorTest.java | sed -n '1,140p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+     3	 * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	
+    22	package com.github.javaparser.generator.core.quality;
+    23	
+    24	import static org.junit.jupiter.api.Assertions.assertEquals;
+    25	import static org.junit.jupiter.api.Assertions.fail;
+    26	
+    27	import com.github.javaparser.ast.CompilationUnit;
+    28	import com.github.javaparser.printer.DefaultPrettyPrinter;
+    29	import com.github.javaparser.utils.SourceRoot;
+    30	import java.io.File;
+    31	import java.nio.file.Path;
+    32	import java.nio.file.Paths;
+    33	import java.util.List;
+    34	import org.junit.jupiter.api.Test;
+    35	
+    36	class NotNullGeneratorTest {
+    37	
+    38	    @Test
+    39	    void testExecutionOfGenerator() throws Exception {
+    40	
+    41	        // Setup the
+    42	        String resourcesFolderPath = getClass().getCanonicalName().replace(".", File.separator);
+    43	
+    44	        String basePath = Paths.get("src", "test", "resources").toString();
+    45	        Path originalFile = Paths.get(basePath, resourcesFolderPath, "original");
+    46	        Path expectedFile = Paths.get(basePath, resourcesFolderPath, "expected");
+    47	
+    48	        SourceRoot originalSources = new SourceRoot(originalFile);
+    49	        SourceRoot expectedSources = new SourceRoot(expectedFile);
+    50	        expectedSources.tryToParse();
+    51	
+    52	        // Generate the information
+    53	        new NotNullGenerator(originalSources).generate();
+    54	
+    55	        List<CompilationUnit> editedSourceCus = originalSources.getCompilationUnits();
+    56	        List<CompilationUnit> expectedSourcesCus = expectedSources.getCompilationUnits();
+    57	        assertEquals(expectedSourcesCus.size(), editedSourceCus.size());
+    58	
+    59	        // Check if all the files match the expected result
+    60	        for (int i = 0; i < editedSourceCus.size(); i++) {
+    61	
+    62	            DefaultPrettyPrinter printer = new DefaultPrettyPrinter();
+    63	            String expectedCode = printer.print(expectedSourcesCus.get(i));
+    64	            String editedCode = printer.print(editedSourceCus.get(i));
+    65	
+    66	            if (!expectedCode.equals(editedCode)) {
+    67	                System.out.println("Expected:");
+    68	                System.out.println("####");
+    69	                System.out.println(expectedSourcesCus.get(i));
+    70	                System.out.println("####");
+    71	                System.out.println("Actual:");
+    72	                System.out.println("####");
+    73	                System.out.println(editedSourceCus.get(i));
+    74	                System.out.println("####");
+    75	                fail("Actual code doesn't match with the expected code.");
+    76	            }
+    77	        }
+    78	    }
+    79	}
+
+codex
+{"target":"com.example.ConstructorParameterTest","detection":false,"justification":"Inspected javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/original/ConstructorParameterTest.java, javaparser-core-generators/src/test/resources/com/github/javaparser/generator/core/quality/NotNullGeneratorTest/expected/ConstructorParameterTest.java, and javaparser-core-generators/src/test/java/com/github/javaparser/generator/core/quality/NotNullGeneratorTest.java. The class is a tiny test fixture: 3 fields, 1 constructor, and only 2-3 external type references in the body/imports (NotNull, Nullable, and in the expected file Preconditions). Repository search found no other references to ConstructorParameterTest beyond these fixture files, so there is no evidence of high fan-in or high fan-out characteristic of hub-like modularization."}
+tokens used
+23,855

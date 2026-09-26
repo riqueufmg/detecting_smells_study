@@ -1,0 +1,514 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f15-8dcb-7352-b5ff-d0d220337c1b
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.apache.commons.lang3.compare.ObjectToStringComparator` in the repository located at:
+
+`data/repositories/apache/commons-lang`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.apache.commons.lang3.compare.ObjectToStringComparator",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.apache.commons.lang3.compare.ObjectToStringComparator`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct callers and imports to judge fan-in and fan-out from repository evidence only.
+exec
+/bin/bash -lc "rg --files | rg 'ObjectToStringComparator\\.java|Comparator'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java
+src/main/java/org/apache/commons/lang3/compare/ObjectToStringComparator.java
+
+exec
+/bin/bash -lc 'rg -n "ObjectToStringComparator" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+./RELEASE-NOTES.txt:55:o            Optimize ObjectToStringComparator.compare() method #1449. Thanks to mayuming, Gary Gregory.
+./RELEASE-NOTES.txt:138:o            Optimize ObjectToStringComparator.compare() method #1449. Thanks to mayuming, Gary Gregory.
+./RELEASE-NOTES.txt:565:o            Deprecate ObjectToStringComparator constructor for removal. Thanks to Gary Gregory.
+./RELEASE-NOTES.txt:1309:o LANG-1509: Add ObjectToStringComparator. #483. Thanks to Gary Gregory.
+./src/conf/spotbugs-exclude-filter.xml:209:    <Class name="org.apache.commons.lang3.compare.ObjectToStringComparator" />
+./src/changes/changes.xml:104:    <action                   type="fix" dev="ggregory" due-to="mayuming, Gary Gregory">Optimize ObjectToStringComparator.compare() method #1449.</action>
+./src/changes/changes.xml:361:    <action                   type="fix" dev="ggregory" due-to="Gary Gregory">Deprecate ObjectToStringComparator constructor for removal.</action>
+./src/changes/changes.xml:905:    <action issue="LANG-1509" type="add" dev="ggregory" due-to="Gary Gregory">Add ObjectToStringComparator. #483.</action>
+./src/site/resources/release-notes/RELEASE-NOTES-3.10.txt:64:o LANG-1509: Add ObjectToStringComparator. #483. Thanks to Gary Gregory.
+./src/main/java/org/apache/commons/lang3/compare/ObjectToStringComparator.java:30:public final class ObjectToStringComparator implements Comparator<Object>, Serializable {
+./src/main/java/org/apache/commons/lang3/compare/ObjectToStringComparator.java:37:    public static final ObjectToStringComparator INSTANCE = new ObjectToStringComparator();
+./src/main/java/org/apache/commons/lang3/compare/ObjectToStringComparator.java:50:    public ObjectToStringComparator() {
+./src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:31: * Tests {@link ObjectToStringComparator}.
+./src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:33:class ObjectToStringComparatorTest extends AbstractLangTest {
+./src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:53:        things.sort(ObjectToStringComparator.INSTANCE);
+./src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:64:        things.sort(ObjectToStringComparator.INSTANCE);
+./src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:74:        things.sort(ObjectToStringComparator.INSTANCE);
+./src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:85:        things.sort(ObjectToStringComparator.INSTANCE);
+./src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:94:        things.sort(ObjectToStringComparator.INSTANCE);
+./src/test/java/org/apache/commons/lang3/reflect/FieldUtilsTest.java:46:import org.apache.commons.lang3.compare.ObjectToStringComparator;
+./src/test/java/org/apache/commons/lang3/reflect/FieldUtilsTest.java:104:        return ArraySorter.sort(fields, ObjectToStringComparator.INSTANCE);
+
+codex
+I found the implementation and a small set of references. Next I’m checking the class body and all repo-wide call sites to see whether the dependency pattern is actually hub-like or just a narrow utility.
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/apache/commons/lang3/compare/ObjectToStringComparator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.lang3.compare;
+
+import java.io.Serializable;
+import java.util.Comparator;
+
+/**
+ * Compares Object's {@link Object#toString()} values.
+ *
+ * This class is stateless.
+ *
+ * @since 3.10
+ */
+public final class ObjectToStringComparator implements Comparator<Object>, Serializable {
+
+    /**
+     * The singleton instance.
+     *
+     * This class is stateless.
+     */
+    public static final ObjectToStringComparator INSTANCE = new ObjectToStringComparator();
+
+    /**
+     * For {@link Serializable}.
+     */
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Constructs a new instance.
+     *
+     * @deprecated Will be private in 4.0.0.
+     */
+    @Deprecated
+    public ObjectToStringComparator() {
+        // empty
+    }
+
+    @Override
+    public int compare(final Object o1, final Object o2) {
+        if (o1 == o2) {
+            return 0;
+        }
+        if (o1 == null) {
+            return 1;
+        }
+        if (o2 == null) {
+            return -1;
+        }
+        final String string1 = o1.toString();
+        final String string2 = o2.toString();
+        // No guarantee that toString() returns a non-null value, despite what Spotbugs thinks.
+        if (string1 == string2) {
+            return 0;
+        }
+        if (string1 == null) {
+            return 1;
+        }
+        if (string2 == null) {
+            return -1;
+        }
+        return string1.compareTo(string2);
+    }
+}
+
+exec
+/bin/bash -lc 'rg -n "ObjectToStringComparator" src/main/java src/test/java -S' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:31: * Tests {@link ObjectToStringComparator}.
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:33:class ObjectToStringComparatorTest extends AbstractLangTest {
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:53:        things.sort(ObjectToStringComparator.INSTANCE);
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:64:        things.sort(ObjectToStringComparator.INSTANCE);
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:74:        things.sort(ObjectToStringComparator.INSTANCE);
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:85:        things.sort(ObjectToStringComparator.INSTANCE);
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:94:        things.sort(ObjectToStringComparator.INSTANCE);
+src/test/java/org/apache/commons/lang3/reflect/FieldUtilsTest.java:46:import org.apache.commons.lang3.compare.ObjectToStringComparator;
+src/test/java/org/apache/commons/lang3/reflect/FieldUtilsTest.java:104:        return ArraySorter.sort(fields, ObjectToStringComparator.INSTANCE);
+src/main/java/org/apache/commons/lang3/compare/ObjectToStringComparator.java:30:public final class ObjectToStringComparator implements Comparator<Object>, Serializable {
+src/main/java/org/apache/commons/lang3/compare/ObjectToStringComparator.java:37:    public static final ObjectToStringComparator INSTANCE = new ObjectToStringComparator();
+src/main/java/org/apache/commons/lang3/compare/ObjectToStringComparator.java:50:    public ObjectToStringComparator() {
+
+exec
+/bin/bash -lc "sed -n '1,180p' src/test/java/org/apache/commons/lang3/reflect/FieldUtilsTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.lang3.reflect;
+
+import static org.apache.commons.lang3.LangAssertions.assertIllegalArgumentException;
+import static org.apache.commons.lang3.LangAssertions.assertNullPointerException;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+
+import org.apache.commons.lang3.AbstractLangTest;
+import org.apache.commons.lang3.ArraySorter;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.JavaVersion;
+import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.lang3.compare.ObjectToStringComparator;
+import org.apache.commons.lang3.reflect.testbed.Ambig;
+import org.apache.commons.lang3.reflect.testbed.Annotated;
+import org.apache.commons.lang3.reflect.testbed.AnotherParent;
+import org.apache.commons.lang3.reflect.testbed.Foo;
+import org.apache.commons.lang3.reflect.testbed.PrivatelyShadowedChild;
+import org.apache.commons.lang3.reflect.testbed.PublicChild;
+import org.apache.commons.lang3.reflect.testbed.PubliclyShadowedChild;
+import org.apache.commons.lang3.reflect.testbed.StaticContainer;
+import org.apache.commons.lang3.reflect.testbed.StaticContainerChild;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Tests FieldUtils
+ */
+class FieldUtilsTest extends AbstractLangTest {
+
+    private static final String JACOCO_DATA_FIELD_NAME = "$jacocoData";
+    static final Integer I0 = Integer.valueOf(0);
+    static final Integer I1 = Integer.valueOf(1);
+    static final Double D0 = Double.valueOf(0.0);
+    static final Double D1 = Double.valueOf(1.0);
+    @Annotated
+    private PublicChild publicChild;
+    private PubliclyShadowedChild publiclyShadowedChild;
+    @Annotated
+    private PrivatelyShadowedChild privatelyShadowedChild;
+    private final Class<? super PublicChild> parentClass = PublicChild.class.getSuperclass();
+
+    /**
+     * Reads the {@code @deprecated} notice on {@link FieldUtils#removeFinalModifier(Field, boolean)}.
+     *
+     * @param field       {@link Field} to be curried into {@link FieldUtils#removeFinalModifier(Field, boolean)}.
+     * @param forceAccess {@link Boolean} to be curried into {@link FieldUtils#removeFinalModifier(Field, boolean)}.
+     */
+    private void callRemoveFinalModifierCheckForException(final Field field, final Boolean forceAccess) {
+        try {
+            FieldUtils.removeFinalModifier(field, forceAccess);
+        } catch (final UnsupportedOperationException exception) {
+            if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_12)) {
+                assertInstanceOf(NoSuchFieldException.class, exception.getCause());
+            } else {
+                fail("No exception should be thrown for java prior to 12.0");
+            }
+        }
+    }
+
+    @BeforeEach
+    public void setUp() {
+        StaticContainer.reset();
+        publicChild = new PublicChild();
+        publiclyShadowedChild = new PubliclyShadowedChild();
+        privatelyShadowedChild = new PrivatelyShadowedChild();
+    }
+
+    private Field[] sort(final Field[] fields) {
+        // Field does not implement Comparable, so we use a KISS solution here.
+        return ArraySorter.sort(fields, ObjectToStringComparator.INSTANCE);
+    }
+
+    @Test
+    void testAmbig() {
+        assertIllegalArgumentException(() -> FieldUtils.getField(Ambig.class, "VALUE"));
+    }
+
+    @Test
+    void testConstructor() {
+        assertNotNull(new FieldUtils());
+        final Constructor<?>[] cons = FieldUtils.class.getDeclaredConstructors();
+        assertEquals(1, cons.length);
+        assertTrue(Modifier.isPublic(cons[0].getModifiers()));
+        assertTrue(Modifier.isPublic(FieldUtils.class.getModifiers()));
+        assertFalse(Modifier.isFinal(FieldUtils.class.getModifiers()));
+    }
+
+    @Test
+    void testGetAllFieldListsNullPointerException() {
+        assertNullPointerException(() -> FieldUtils.getAllFieldsList(null));
+    }
+
+    @Test
+    void testGetAllFields() {
+        assertArrayEquals(new Field[0], FieldUtils.getAllFields(Object.class));
+        final Field[] fieldsNumber = sort(Number.class.getDeclaredFields());
+        assertArrayEquals(fieldsNumber, sort(FieldUtils.getAllFields(Number.class)));
+        final Field[] fieldsInteger = Integer.class.getDeclaredFields();
+        assertArrayEquals(sort(ArrayUtils.addAll(fieldsInteger, fieldsNumber)), sort(FieldUtils.getAllFields(Integer.class)));
+        final Field[] allFields = FieldUtils.getAllFields(PublicChild.class);
+        // Under Jacoco,0.8.1 and Java 10, the field count is 7.
+        int expected = 5;
+        for (final Field field : allFields) {
+            if (field.getName().equals(JACOCO_DATA_FIELD_NAME)) {
+                expected++;
+            }
+        }
+        assertEquals(expected, allFields.length, Arrays.toString(allFields));
+    }
+
+    @Test
+    void testGetAllFieldsList() {
+        assertEquals(0, FieldUtils.getAllFieldsList(Object.class).size());
+        final List<Field> fieldsNumber = Arrays.asList(Number.class.getDeclaredFields());
+        assertEquals(fieldsNumber, FieldUtils.getAllFieldsList(Number.class));
+        final List<Field> fieldsInteger = Arrays.asList(Integer.class.getDeclaredFields());
+        final List<Field> allFieldsInteger = new ArrayList<>(fieldsInteger);
+        allFieldsInteger.addAll(fieldsNumber);
+        assertEquals(new HashSet<>(allFieldsInteger), new HashSet<>(FieldUtils.getAllFieldsList(Integer.class)));
+        final List<Field> allFields = FieldUtils.getAllFieldsList(PublicChild.class);
+        // Under Jacoco,0.8.1 and Java 10, the field count is 7.
+        int expected = 5;
+        for (final Field field : allFields) {
+            if (field.getName().equals(JACOCO_DATA_FIELD_NAME)) {
+                expected++;
+            }
+        }
+        assertEquals(expected, allFields.size(), allFields.toString());
+    }
+
+    @Test
+    void testGetAllFieldsNullPointerException() {
+        assertNullPointerException(() -> FieldUtils.getAllFields(null));
+    }
+
+    @Test
+    void testGetDeclaredField() {
+        assertNull(FieldUtils.getDeclaredField(PublicChild.class, "VALUE"));
+        assertNull(FieldUtils.getDeclaredField(PublicChild.class, "s"));
+        assertNull(FieldUtils.getDeclaredField(PublicChild.class, "b"));
+        assertNull(FieldUtils.getDeclaredField(PublicChild.class, "i"));
+        assertNull(FieldUtils.getDeclaredField(PublicChild.class, "d"));
+        assertNull(FieldUtils.getDeclaredField(PubliclyShadowedChild.class, "VALUE"));
+        assertEquals(PubliclyShadowedChild.class, FieldUtils.getDeclaredField(PubliclyShadowedChild.class, "s").getDeclaringClass());
+        assertEquals(PubliclyShadowedChild.class, FieldUtils.getDeclaredField(PubliclyShadowedChild.class, "b").getDeclaringClass());
+        assertEquals(PubliclyShadowedChild.class, FieldUtils.getDeclaredField(PubliclyShadowedChild.class, "i").getDeclaringClass());
+
+exec
+/bin/bash -lc "sed -n '1,180p' src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.lang3.compare;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.commons.lang3.AbstractLangTest;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Tests {@link ObjectToStringComparator}.
+ */
+class ObjectToStringComparatorTest extends AbstractLangTest {
+
+    private static final class Thing {
+
+        final String string;
+
+        Thing(final String string) {
+            this.string = string;
+        }
+
+        @Override
+        public String toString() {
+            return string;
+        }
+    }
+
+    @Test
+    void testNullLeft() {
+        final Thing thing = new Thing("y");
+        final List<Thing> things = Arrays.asList(null, thing);
+        things.sort(ObjectToStringComparator.INSTANCE);
+        assertEquals("y", things.get(0).string);
+        assertEquals(2, things.size());
+        assertSame(thing, things.get(0));
+        assertNull(things.get(1));
+    }
+
+    @Test
+    void testNullRight() {
+        final Thing thing = new Thing("y");
+        final List<Thing> things = Arrays.asList(thing, null);
+        things.sort(ObjectToStringComparator.INSTANCE);
+        assertEquals(2, things.size());
+        assertSame(thing, things.get(0));
+        assertNull(things.get(1));
+    }
+
+    @Test
+    void testNulls() {
+        final Thing thing = new Thing("y");
+        final List<Thing> things = Arrays.asList(null, thing, null);
+        things.sort(ObjectToStringComparator.INSTANCE);
+        assertEquals("y", things.get(0).string);
+        assertEquals(3, things.size());
+        assertSame(thing, things.get(0));
+        assertNull(things.get(1));
+        assertNull(things.get(2));
+    }
+
+    @Test
+    void testNullToString() {
+        final List<Thing> things = Arrays.asList(new Thing(null), new Thing("y"), new Thing(null));
+        things.sort(ObjectToStringComparator.INSTANCE);
+        assertEquals("y", things.get(0).string);
+        assertNull(things.get(1).string);
+        assertNull(things.get(2).string);
+    }
+
+    @Test
+    void testSortCollection() {
+        final List<Thing> things = Arrays.asList(new Thing("z"), new Thing("y"), new Thing("x"));
+        things.sort(ObjectToStringComparator.INSTANCE);
+        assertEquals("x", things.get(0).string);
+        assertEquals("y", things.get(1).string);
+        assertEquals("z", things.get(2).string);
+    }
+}
+
+codex
+The usage pattern looks sparse, so I’m confirming the exact number of distinct source files that depend on it before I decide.
+exec
+/bin/bash -lc 'rg -l "ObjectToStringComparator" src/main/java src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java
+src/test/java/org/apache/commons/lang3/reflect/FieldUtilsTest.java
+src/main/java/org/apache/commons/lang3/compare/ObjectToStringComparator.java
+
+exec
+/bin/bash -lc "rg -n \"import org\\.apache\\.commons\\.lang3\\.compare\\.ObjectToStringComparator|ObjectToStringComparator\\.INSTANCE\" src/main/java src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:53:        things.sort(ObjectToStringComparator.INSTANCE);
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:64:        things.sort(ObjectToStringComparator.INSTANCE);
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:74:        things.sort(ObjectToStringComparator.INSTANCE);
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:85:        things.sort(ObjectToStringComparator.INSTANCE);
+src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java:94:        things.sort(ObjectToStringComparator.INSTANCE);
+src/test/java/org/apache/commons/lang3/reflect/FieldUtilsTest.java:46:import org.apache.commons.lang3.compare.ObjectToStringComparator;
+src/test/java/org/apache/commons/lang3/reflect/FieldUtilsTest.java:104:        return ArraySorter.sort(fields, ObjectToStringComparator.INSTANCE);
+
+codex
+{"target":"org.apache.commons.lang3.compare.ObjectToStringComparator","detection":false,"justification":"Inspected src/main/java/org/apache/commons/lang3/compare/ObjectToStringComparator.java, src/test/java/org/apache/commons/lang3/compare/ObjectToStringComparatorTest.java, and src/test/java/org/apache/commons/lang3/reflect/FieldUtilsTest.java. The class has very low fan-out: it only implements java.util.Comparator<Object> and java.io.Serializable, with no repository-internal dependencies. Fan-in is also low: repository-wide searches found only one production caller (FieldUtilsTest via ObjectToStringComparator.INSTANCE in test code) plus its own dedicated test class; no main code classes depend on it. This is not hub-like modularization."}
+tokens used
+7,483

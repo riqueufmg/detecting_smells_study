@@ -1,0 +1,396 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ecf-ca52-7d22-a4de-20db1c58b380
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.apache.commons.lang3.function.FailableLongUnaryOperator` in the repository located at:
+
+`data/repositories/apache/commons-lang`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.apache.commons.lang3.function.FailableLongUnaryOperator",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.apache.commons.lang3.function.FailableLongUnaryOperator`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and checking its direct dependencies and who references it, then I’ll decide whether the fan-in/fan-out is strong enough to count as hub-like modularization.
+exec
+/bin/bash -lc 'rg -n "class FailableLongUnaryOperator|interface FailableLongUnaryOperator|FailableLongUnaryOperator" .' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "rg --files . | rg \"FailableLongUnaryOperator\\.java|FailableLongUnaryOperator\"" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java
+
+ succeeded in 0ms:
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:29:public interface FailableLongUnaryOperator<E extends Throwable> {
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:33:    FailableLongUnaryOperator NOP = t -> 0L;
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:41:    static <E extends Throwable> FailableLongUnaryOperator<E> identity() {
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:52:    static <E extends Throwable> FailableLongUnaryOperator<E> nop() {
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:60:     * @return a composed {@link FailableLongUnaryOperator} like {@link LongUnaryOperator#andThen(LongUnaryOperator)}.
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:62:     * @see #compose(FailableLongUnaryOperator)
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:64:    default FailableLongUnaryOperator<E> andThen(final FailableLongUnaryOperator<E> after) {
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:79:     * Returns a composed {@link FailableLongUnaryOperator} like {@link LongUnaryOperator#compose(LongUnaryOperator)}.
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:82:     * @return a composed {@link FailableLongUnaryOperator} like {@link LongUnaryOperator#compose(LongUnaryOperator)}.
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:84:     * @see #andThen(FailableLongUnaryOperator)
+./src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:86:    default FailableLongUnaryOperator<E> compose(final FailableLongUnaryOperator<E> before) {
+./src/test/java/org/apache/commons/lang3/function/FailableTest.java:1564:        final FailableLongUnaryOperator<Throwable> failing = t -> {
+./src/test/java/org/apache/commons/lang3/function/FailableTest.java:1569:        final FailableLongUnaryOperator<Throwable> nop = FailableLongUnaryOperator.nop();
+./src/test/java/org/apache/commons/lang3/function/FailableTest.java:1583:        final FailableLongUnaryOperator<Throwable> failing = t -> {
+./src/test/java/org/apache/commons/lang3/function/FailableTest.java:1588:        final FailableLongUnaryOperator<Throwable> nop = FailableLongUnaryOperator.nop();
+./src/test/java/org/apache/commons/lang3/function/FailableTest.java:1601:        final FailableLongUnaryOperator<Throwable> nop = FailableLongUnaryOperator.identity();
+
+codex
+I found the source file and the first-pass evidence already points to a very small surface area. I’m reading the interface itself and then checking how often it is referenced outside its own tests.
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.lang3.function;
+
+import java.util.Objects;
+import java.util.function.LongUnaryOperator;
+
+/**
+ * A functional interface like {@link LongUnaryOperator} that declares a {@link Throwable}.
+ *
+ * @param <E> The kind of thrown exception or error.
+ * @since 3.11
+ */
+public interface FailableLongUnaryOperator<E extends Throwable> {
+
+    /** NOP singleton */
+    @SuppressWarnings("rawtypes")
+    FailableLongUnaryOperator NOP = t -> 0L;
+
+    /**
+     * Returns a unary operator that always returns its input argument.
+     *
+     * @param <E> The kind of thrown exception or error.
+     * @return a unary operator that always returns its input argument
+     */
+    static <E extends Throwable> FailableLongUnaryOperator<E> identity() {
+        return t -> t;
+    }
+
+    /**
+     * Gets the NOP singleton.
+     *
+     * @param <E> The kind of thrown exception or error.
+     * @return The NOP singleton.
+     */
+    @SuppressWarnings("unchecked")
+    static <E extends Throwable> FailableLongUnaryOperator<E> nop() {
+        return NOP;
+    }
+
+    /**
+     * Returns a composed {@link FailableDoubleUnaryOperator} like {@link LongUnaryOperator#andThen(LongUnaryOperator)}.
+     *
+     * @param after the operator to apply after this one.
+     * @return a composed {@link FailableLongUnaryOperator} like {@link LongUnaryOperator#andThen(LongUnaryOperator)}.
+     * @throws NullPointerException if after is null.
+     * @see #compose(FailableLongUnaryOperator)
+     */
+    default FailableLongUnaryOperator<E> andThen(final FailableLongUnaryOperator<E> after) {
+        Objects.requireNonNull(after);
+        return (final long t) -> after.applyAsLong(applyAsLong(t));
+    }
+
+    /**
+     * Applies this operator to the given operand.
+     *
+     * @param operand the operand
+     * @return the operator result
+     * @throws E Thrown when a consumer fails.
+     */
+    long applyAsLong(long operand) throws E;
+
+    /**
+     * Returns a composed {@link FailableLongUnaryOperator} like {@link LongUnaryOperator#compose(LongUnaryOperator)}.
+     *
+     * @param before the operator to apply before this one.
+     * @return a composed {@link FailableLongUnaryOperator} like {@link LongUnaryOperator#compose(LongUnaryOperator)}.
+     * @throws NullPointerException if before is null.
+     * @see #andThen(FailableLongUnaryOperator)
+     */
+    default FailableLongUnaryOperator<E> compose(final FailableLongUnaryOperator<E> before) {
+        Objects.requireNonNull(before);
+        return (final long v) -> applyAsLong(before.applyAsLong(v));
+    }
+}
+
+exec
+/bin/bash -lc "rg -n \"\\bFailableLongUnaryOperator\\b\" src/main/java src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/test/java/org/apache/commons/lang3/function/FailableTest.java:1564:        final FailableLongUnaryOperator<Throwable> failing = t -> {
+src/test/java/org/apache/commons/lang3/function/FailableTest.java:1569:        final FailableLongUnaryOperator<Throwable> nop = FailableLongUnaryOperator.nop();
+src/test/java/org/apache/commons/lang3/function/FailableTest.java:1583:        final FailableLongUnaryOperator<Throwable> failing = t -> {
+src/test/java/org/apache/commons/lang3/function/FailableTest.java:1588:        final FailableLongUnaryOperator<Throwable> nop = FailableLongUnaryOperator.nop();
+src/test/java/org/apache/commons/lang3/function/FailableTest.java:1601:        final FailableLongUnaryOperator<Throwable> nop = FailableLongUnaryOperator.identity();
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:29:public interface FailableLongUnaryOperator<E extends Throwable> {
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:33:    FailableLongUnaryOperator NOP = t -> 0L;
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:41:    static <E extends Throwable> FailableLongUnaryOperator<E> identity() {
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:52:    static <E extends Throwable> FailableLongUnaryOperator<E> nop() {
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:60:     * @return a composed {@link FailableLongUnaryOperator} like {@link LongUnaryOperator#andThen(LongUnaryOperator)}.
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:62:     * @see #compose(FailableLongUnaryOperator)
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:64:    default FailableLongUnaryOperator<E> andThen(final FailableLongUnaryOperator<E> after) {
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:79:     * Returns a composed {@link FailableLongUnaryOperator} like {@link LongUnaryOperator#compose(LongUnaryOperator)}.
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:82:     * @return a composed {@link FailableLongUnaryOperator} like {@link LongUnaryOperator#compose(LongUnaryOperator)}.
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:84:     * @see #andThen(FailableLongUnaryOperator)
+src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java:86:    default FailableLongUnaryOperator<E> compose(final FailableLongUnaryOperator<E> before) {
+
+codex
+The reference search shows no production callers. I’m opening the test block to verify the only external uses are a few unit tests, which is a weak fan-in signal rather than a hub.
+exec
+/bin/bash -lc "sed -n '1540,1615p' src/test/java/org/apache/commons/lang3/function/FailableTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+    }
+
+    @Test
+    void testLongPredicateNegate() throws Throwable {
+        assertFalse(FailableLongPredicate.TRUE.negate().test(0L));
+        assertFalse(FailableLongPredicate.truePredicate().negate().test(0L));
+        assertTrue(FailableLongPredicate.FALSE.negate().test(0L));
+        assertTrue(FailableLongPredicate.falsePredicate().negate().test(0L));
+    }
+
+    @Test
+    void testLongPredicateOr() throws Throwable {
+        assertTrue(FailableLongPredicate.TRUE.or(FailableLongPredicate.TRUE).test(0));
+        assertTrue(FailableLongPredicate.TRUE.or(FailableLongPredicate.FALSE).test(0));
+        assertTrue(FailableLongPredicate.FALSE.or(FailableLongPredicate.TRUE).test(0));
+        assertFalse(FailableLongPredicate.FALSE.or(FailableLongPredicate.FALSE).test(0));
+        // null tests
+        assertNullPointerException(() -> assertFalse(FailableLongPredicate.falsePredicate().or(null).test(0)));
+        assertNullPointerException(() -> assertTrue(FailableLongPredicate.truePredicate().or(null).test(0)));
+    }
+
+    @Test
+    void testLongUnaryOperatorAndThen() throws Throwable {
+        final Testable<?, ?> testable = new Testable<>(null);
+        final FailableLongUnaryOperator<Throwable> failing = t -> {
+            testable.setThrowable(ERROR);
+            testable.test();
+            return 0L;
+        };
+        final FailableLongUnaryOperator<Throwable> nop = FailableLongUnaryOperator.nop();
+        Throwable e = assertThrows(OutOfMemoryError.class, () -> nop.andThen(failing).applyAsLong(0L));
+        assertSame(ERROR, e);
+        e = assertThrows(OutOfMemoryError.class, () -> failing.andThen(nop).applyAsLong(0L));
+        assertSame(ERROR, e);
+        // Does not throw
+        nop.andThen(nop);
+        // Documented in Javadoc edge-case.
+        assertNullPointerException(() -> failing.andThen(null));
+    }
+
+    @Test
+    void testLongUnaryOperatorCompose() throws Throwable {
+        final Testable<?, ?> testable = new Testable<>(null);
+        final FailableLongUnaryOperator<Throwable> failing = t -> {
+            testable.setThrowable(ERROR);
+            testable.test();
+            return 0L;
+        };
+        final FailableLongUnaryOperator<Throwable> nop = FailableLongUnaryOperator.nop();
+        Throwable e = assertThrows(OutOfMemoryError.class, () -> nop.compose(failing).applyAsLong(0L));
+        assertSame(ERROR, e);
+        e = assertThrows(OutOfMemoryError.class, () -> failing.compose(nop).applyAsLong(0L));
+        assertSame(ERROR, e);
+        // Does not throw
+        nop.compose(nop);
+        // Documented in Javadoc edge-case.
+        assertNullPointerException(() -> failing.compose(null));
+    }
+
+    @Test
+    void testLongUnaryOperatorIdentity() throws Throwable {
+        final FailableLongUnaryOperator<Throwable> nop = FailableLongUnaryOperator.identity();
+        // Does not throw
+        nop.compose(nop);
+        // Documented in Javadoc edge-case.
+        assertNullPointerException(() -> nop.compose(null));
+    }
+
+    @Test
+    /** Test that asPredicate(FailablePredicate) is converted to -> Predicate  */
+    void testPredicate() {
+        FailureOnOddInvocations.invocations = 0;
+        final FailablePredicate<Object, Throwable> failablePredicate = t -> FailureOnOddInvocations.testGetBool();
+        final Predicate<?> predicate = Failable.asPredicate(failablePredicate);
+        final UndeclaredThrowableException e = assertThrows(UndeclaredThrowableException.class,
+            () -> predicate.test(null));
+
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/apache/commons/lang3/function/FailableDoubleUnaryOperator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.lang3.function;
+
+import java.util.Objects;
+import java.util.function.DoubleUnaryOperator;
+
+/**
+ * A functional interface like {@link DoubleUnaryOperator} that declares a {@link Throwable}.
+ *
+ * @param <E> The kind of thrown exception or error.
+ * @since 3.11
+ */
+public interface FailableDoubleUnaryOperator<E extends Throwable> {
+
+    /** NOP singleton */
+    @SuppressWarnings("rawtypes")
+    FailableDoubleUnaryOperator NOP = t -> 0d;
+
+    /**
+     * Returns a unary operator that always returns its input argument.
+     *
+     * @param <E> The kind of thrown exception or error.
+     * @return a unary operator that always returns its input argument
+     */
+    static <E extends Throwable> FailableDoubleUnaryOperator<E> identity() {
+        return t -> t;
+    }
+
+    /**
+     * Gets the NOP singleton.
+     *
+     * @param <E> The kind of thrown exception or error.
+     * @return The NOP singleton.
+     */
+    @SuppressWarnings("unchecked")
+    static <E extends Throwable> FailableDoubleUnaryOperator<E> nop() {
+        return NOP;
+    }
+
+    /**
+     * Returns a composed {@link FailableDoubleUnaryOperator} like
+     * {@link DoubleUnaryOperator#andThen(DoubleUnaryOperator)}.
+     *
+     * @param after the operator to apply after this one.
+     * @return a composed {@link FailableDoubleUnaryOperator} like
+     *         {@link DoubleUnaryOperator#andThen(DoubleUnaryOperator)}.
+     * @throws NullPointerException if after is null.
+     * @see #compose(FailableDoubleUnaryOperator)
+     */
+    default FailableDoubleUnaryOperator<E> andThen(final FailableDoubleUnaryOperator<E> after) {
+        Objects.requireNonNull(after);
+        return (final double t) -> after.applyAsDouble(applyAsDouble(t));
+    }
+
+    /**
+     * Applies this operator to the given operand.
+     *
+     * @param operand the operand
+     * @return the operator result
+     * @throws E Thrown when a consumer fails.
+     */
+    double applyAsDouble(double operand) throws E;
+
+    /**
+     * Returns a composed {@link FailableDoubleUnaryOperator} like
+     * {@link DoubleUnaryOperator#compose(DoubleUnaryOperator)}.
+     *
+     * @param before the operator to apply before this one.
+     * @return a composed {@link FailableDoubleUnaryOperator} like
+     *         {@link DoubleUnaryOperator#compose(DoubleUnaryOperator)}.
+     * @throws NullPointerException if before is null.
+     * @see #andThen(FailableDoubleUnaryOperator)
+     */
+    default FailableDoubleUnaryOperator<E> compose(final FailableDoubleUnaryOperator<E> before) {
+        Objects.requireNonNull(before);
+        return (final double v) -> applyAsDouble(before.applyAsDouble(v));
+    }
+}
+
+codex
+{"target":"org.apache.commons.lang3.function.FailableLongUnaryOperator","detection":false,"justification":"Inspected src/main/java/org/apache/commons/lang3/function/FailableLongUnaryOperator.java and src/test/java/org/apache/commons/lang3/function/FailableTest.java. The target has very low fan-out: it only depends on java.util.Objects and java.util.function.LongUnaryOperator, plus self-references in its default methods and NOP/identity helpers. Repo-wide search found no production callers; the only external references are three unit-test methods in FailableTest that exercise nop(), identity(), and compose/andThen. This is not strong fan-in/fan-out evidence for a dependency hub."}
+tokens used
+6,600

@@ -1,0 +1,635 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f49-d367-7640-9556-af3e4f5c8243
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.symbolsolver.javaparsermodel.contexts.VariableDeclaratorContext` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.symbolsolver.javaparsermodel.contexts.VariableDeclaratorContext",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.symbolsolver.javaparsermodel.contexts.VariableDeclaratorContext`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct references to judge fan-in/fan-out from the repository itself. After that I’ll decide whether the class functions as a dependency hub and return the verdict JSON only.
+exec
+/bin/bash -lc "rg -n \"class VariableDeclaratorContext|interface VariableDeclaratorContext|new VariableDeclaratorContext|VariableDeclaratorContext\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg --files | rg 'VariableDeclaratorContext\\.java"'$|VariableDeclaratorContext'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 409ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/VariableDeclaratorContext.java
+
+ succeeded in 463ms:
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/VariableDeclaratorContext.java:33:public class VariableDeclaratorContext extends AbstractJavaParserContext<VariableDeclarator> {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/VariableDeclaratorContext.java:35:    public VariableDeclaratorContext(VariableDeclarator wrappedNode, TypeSolver typeSolver) {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFactory.java:128:            return new VariableDeclaratorContext((VariableDeclarator) node, typeSolver);
+
+codex
+I found the source file and one obvious creation site in the factory. Next I’m checking the class body and surrounding context classes to see how many external types it touches and whether there are multiple inbound references beyond that factory.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/VariableDeclaratorContext.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,260p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFactory.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,260p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/AbstractJavaParserContext.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 223ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.javaparsermodel.contexts;
+
+import static com.github.javaparser.ast.expr.MatchAllPatternExpr.UNNAMED_PLACEHOLDER;
+import static com.github.javaparser.resolution.Navigator.demandParentNode;
+import static java.util.Collections.singletonList;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.expr.*;
+import com.github.javaparser.ast.nodeTypes.NodeWithOptionalScope;
+import com.github.javaparser.resolution.*;
+import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
+import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
+import com.github.javaparser.resolution.declarations.ResolvedTypeParameterDeclaration;
+import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
+import com.github.javaparser.resolution.model.SymbolReference;
+import com.github.javaparser.resolution.model.Value;
+import com.github.javaparser.resolution.types.ResolvedReferenceType;
+import com.github.javaparser.resolution.types.ResolvedType;
+import com.github.javaparser.symbolsolver.core.resolution.TypeVariableResolutionCapability;
+import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade;
+import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFactory;
+import com.github.javaparser.symbolsolver.javaparsermodel.PatternVariableVisitor;
+import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserSymbolDeclaration;
+import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserTypePatternDeclaration;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * @author Federico Tomassetti
+ */
+public abstract class AbstractJavaParserContext<N extends Node> implements Context {
+
+    protected N wrappedNode;
+    protected TypeSolver typeSolver;
+
+    ///
+    /// Static methods
+    ///
+
+    public static SymbolReference<ResolvedValueDeclaration> solveWith(SymbolDeclarator symbolDeclarator, String name) {
+        for (ResolvedValueDeclaration decl : symbolDeclarator.getSymbolDeclarations()) {
+            if (decl.getName().equals(name)) {
+                return SymbolReference.solved(decl);
+            }
+        }
+        return SymbolReference.unsolved();
+    }
+
+    ///
+    /// Constructors
+    ///
+
+    public AbstractJavaParserContext(N wrappedNode, TypeSolver typeSolver) {
+        if (wrappedNode == null) {
+            throw new NullPointerException();
+        }
+        this.wrappedNode = wrappedNode;
+        this.typeSolver = typeSolver;
+    }
+
+    ///
+    /// Public methods
+    ///
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        AbstractJavaParserContext<?> that = (AbstractJavaParserContext<?>) o;
+
+        return wrappedNode != null ? wrappedNode.equals(that.wrappedNode) : that.wrappedNode == null;
+    }
+
+    @Override
+    public int hashCode() {
+        return wrappedNode == null ? 0 : wrappedNode.hashCode();
+    }
+
+    @Override
+    public final Optional<Context> getParent() {
+        Node parentNode = wrappedNode.getParentNode().orElse(null);
+
+        // Resolution of the scope of the method call expression is delegated to parent
+        // context.
+        if (parentNode instanceof MethodCallExpr) {
+            MethodCallExpr parentCall = (MethodCallExpr) parentNode;
+            boolean found = parentCall.getArguments().contains(wrappedNode);
+            if (found) {
+                Node notMethod = parentNode;
+                while (notMethod instanceof MethodCallExpr) {
+                    notMethod = demandParentNode(notMethod);
+                }
+                return Optional.of(JavaParserFactory.getContext(notMethod, typeSolver));
+            }
+        }
+        Node notMethodNode = parentNode;
+        // To avoid loops JP must ensure that the scope of the parent context
+        // is not the same as the current node.
+        // For most part, this can be achieved that the scope of the nodes is different,
+        // but in some cases, we may have loops of length > 1. This is the case for expressions
+        // that have something like a "receiver" - field accesses, method calls and the
+        // non-static inner class variant of constructor calls. We handle these by just
+        // skipping all method calls, field accesses, and all constructor calls that have
+        // a receiver (i.e., outer.new Inner()), as identified by hasScope.
+        while (notMethodNode instanceof MethodCallExpr
+                || notMethodNode instanceof FieldAccessExpr
+                || (notMethodNode instanceof ObjectCreationExpr && notMethodNode.hasScope())
+                || (notMethodNode != null
+                        && notMethodNode.hasScope()
+                        && getScope(notMethodNode).equals(wrappedNode))) {
+            notMethodNode = notMethodNode.getParentNode().orElse(null);
+        }
+        if (notMethodNode == null) {
+            return Optional.empty();
+        }
+        Context parentContext = JavaParserFactory.getContext(notMethodNode, typeSolver);
+        return Optional.of(parentContext);
+    }
+
+    // before to call this method verify the node has a scope
+    protected Node getScope(Node node) {
+        return (Node) ((NodeWithOptionalScope) node).getScope().get();
+    }
+
+    @Override
+    public SymbolReference<? extends ResolvedValueDeclaration> solveSymbolInParentContext(String name) {
+        Optional<Context> optionalParentContext = getParent();
+        if (!optionalParentContext.isPresent()) {
+            return SymbolReference.unsolved();
+        }
+
+        // First check if there are any pattern expressions available to this node.
+        Context parentContext = optionalParentContext.get();
+        if (parentContext instanceof BinaryExprContext
+                || parentContext instanceof IfStatementContext
+                || parentContext instanceof SwitchEntryContext) {
+            List<TypePatternExpr> typePatternExprs =
+                    parentContext.typePatternExprsExposedToChild(this.getWrappedNode());
+
+            List<TypePatternExpr> localResolutionResults = typePatternExprs.stream()
+                    .filter(vd -> vd.getNameAsString().equals(name))
+                    .collect(Collectors.toList());
+
+            switch (localResolutionResults.size()) {
+                case 0:
+                    // Delegate solving to the parent context.
+                    return parentContext.solveSymbol(name);
+
+                case 1:
+                    TypePatternExpr typePatternExpr =
+                            localResolutionResults.get(0).asTypePatternExpr();
+                    JavaParserTypePatternDeclaration decl =
+                            JavaParserSymbolDeclaration.patternVar(typePatternExpr, typeSolver);
+                    return SymbolReference.solved(decl);
+
+                default:
+                    throw new IllegalStateException("Unexpectedly more than one reference in scope");
+            }
+        }
+
+        return parentContext.solveSymbol(name);
+    }
+
+    ///
+    /// Protected methods
+    ///
+
+    protected Optional<Value> solveWithAsValue(SymbolDeclarator symbolDeclarator, String name) {
+        return symbolDeclarator.getSymbolDeclarations().stream()
+                .filter(d -> d.getName().equals(name))
+                .map(Value::from)
+                .findFirst();
+    }
+
+    protected Collection<ResolvedReferenceTypeDeclaration> findTypeDeclarations(Optional<Expression> optScope) {
+        if (optScope.isPresent()) {
+            Expression scope = optScope.get();
+
+            ResolvedType typeOfScope;
+            try {
+                typeOfScope = JavaParserFacade.get(typeSolver).getType(scope);
+            } catch (Exception e) {
+                // If the scope corresponds to a type we should treat it differently
+                if (scope instanceof FieldAccessExpr) {
+                    FieldAccessExpr scopeName = (FieldAccessExpr) scope;
+                    if (this.solveType(scopeName.toString()).isSolved()) {
+                        return Collections.emptyList();
+                    }
+                }
+                throw new UnsolvedSymbolException(scope.toString(), wrappedNode.toString(), e);
+            }
+            if (typeOfScope.isWildcard()) {
+                if (typeOfScope.asWildcard().isExtends()
+                        || typeOfScope.asWildcard().isSuper()) {
+                    // TODO: Figure out if it is appropriate to remove the orElseThrow() -- if so, how...
+                    return singletonList(typeOfScope
+                            .asWildcard()
+                            .getBoundedType()
+                            .asReferenceType()
+                            .getTypeDeclaration()
+                            .orElseThrow(() -> new RuntimeException("TypeDeclaration unexpectedly empty.")));
+                }
+                return singletonList(typeSolver.getSolvedJavaLangObject());
+            }
+            if (typeOfScope.isArray()) {
+                // method call on array are Object methods
+                return singletonList(typeSolver.getSolvedJavaLangObject());
+            }
+            if (typeOfScope.isTypeVariable()) {
+                Collection<ResolvedReferenceTypeDeclaration> result = new ArrayList<>();
+                for (ResolvedTypeParameterDeclaration.Bound bound :
+                        typeOfScope.asTypeParameter().getBounds()) {
+                    // TODO: Figure out if it is appropriate to remove the orElseThrow() -- if so, how...
+                    result.add(bound.getType()
+                            .asReferenceType()
+                            .getTypeDeclaration()
+                            .orElseThrow(() -> new RuntimeException("TypeDeclaration unexpectedly empty.")));
+                }
+                return result;
+            }
+            if (typeOfScope.isConstraint()) {
+                // TODO: Figure out if it is appropriate to remove the orElseThrow() -- if so, how...
+                ResolvedType type = typeOfScope.asConstraintType().getBound();
+                if (type.isReferenceType()) {
+                    return singletonList(type.asReferenceType()
+                            .getTypeDeclaration()
+                            .orElseThrow(() -> new RuntimeException("TypeDeclaration unexpectedly empty.")));
+                }
+                throw new UnsupportedOperationException(
+                        "The type declaration cannot be found on constraint " + type.describe());
+            }
+            if (typeOfScope.isUnionType()) {
+                return typeOfScope
+                        .asUnionType()
+                        .getCommonAncestor()
+                        .flatMap(ResolvedReferenceType::getTypeDeclaration)
+                        .map(Collections::singletonList)
+                        .orElseThrow(() -> new UnsolvedSymbolException(
+
+ succeeded in 266ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.javaparsermodel.contexts;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.resolution.TypeSolver;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * @author Federico Tomassetti
+ */
+public class VariableDeclaratorContext extends AbstractJavaParserContext<VariableDeclarator> {
+
+    public VariableDeclaratorContext(VariableDeclarator wrappedNode, TypeSolver typeSolver) {
+        super(wrappedNode, typeSolver);
+    }
+
+    @Override
+    public List<VariableDeclarator> localVariablesExposedToChild(Node child) {
+        if (wrappedNode.getInitializer().isPresent()
+                && wrappedNode.getInitializer().get() == child) {
+            return Collections.singletonList(wrappedNode);
+        }
+
+        return Collections.emptyList();
+    }
+}
+
+ succeeded in 424ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.javaparsermodel;
+
+import static com.github.javaparser.resolution.Navigator.demandParentNode;
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.body.*;
+import com.github.javaparser.ast.expr.*;
+import com.github.javaparser.ast.stmt.*;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import com.github.javaparser.resolution.Context;
+import com.github.javaparser.resolution.SymbolDeclarator;
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.symbolsolver.javaparsermodel.contexts.*;
+import com.github.javaparser.symbolsolver.javaparsermodel.declarators.*;
+import java.util.Optional;
+
+/**
+ * @author Federico Tomassetti
+ */
+public class JavaParserFactory {
+
+    public static Context getContext(Node node, TypeSolver typeSolver) {
+        if (node == null) {
+            throw new NullPointerException("Node should not be null");
+        }
+
+        if (node instanceof ArrayAccessExpr) {
+            return new ArrayAccessExprContext((ArrayAccessExpr) node, typeSolver);
+        }
+        if (node instanceof AnnotationDeclaration) {
+            return new AnnotationDeclarationContext((AnnotationDeclaration) node, typeSolver);
+        }
+        if (node instanceof BinaryExpr) {
+            return new BinaryExprContext((BinaryExpr) node, typeSolver);
+        }
+        if (node instanceof BlockStmt) {
+            return new BlockStmtContext((BlockStmt) node, typeSolver);
+        }
+        if (node instanceof CompilationUnit) {
+            return new CompilationUnitContext((CompilationUnit) node, typeSolver);
+        }
+        if (node instanceof EnclosedExpr) {
+            return new EnclosedExprContext((EnclosedExpr) node, typeSolver);
+        }
+        if (node instanceof ForEachStmt) {
+            return new ForEachStatementContext((ForEachStmt) node, typeSolver);
+        }
+        if (node instanceof ForStmt) {
+            return new ForStatementContext((ForStmt) node, typeSolver);
+        }
+        if (node instanceof IfStmt) {
+            return new IfStatementContext((IfStmt) node, typeSolver);
+        }
+        if (node instanceof WhileStmt) {
+            return new WhileStatementContext((WhileStmt) node, typeSolver);
+        }
+        if (node instanceof DoStmt) {
+            return new DoStatementContext((DoStmt) node, typeSolver);
+        }
+        if (node instanceof InstanceOfExpr) {
+            return new InstanceOfExprContext((InstanceOfExpr) node, typeSolver);
+        }
+        if (node instanceof LambdaExpr) {
+            return new LambdaExprContext((LambdaExpr) node, typeSolver);
+        }
+        if (node instanceof MethodDeclaration) {
+            return new MethodContext((MethodDeclaration) node, typeSolver);
+        }
+        if (node instanceof ConstructorDeclaration) {
+            return new ConstructorContext((ConstructorDeclaration) node, typeSolver);
+        }
+        if (node instanceof ClassOrInterfaceDeclaration) {
+            return new ClassOrInterfaceDeclarationContext((ClassOrInterfaceDeclaration) node, typeSolver);
+        }
+        if (node instanceof MethodCallExpr) {
+            return new MethodCallExprContext((MethodCallExpr) node, typeSolver);
+        }
+        if (node instanceof MethodReferenceExpr) {
+            return new MethodReferenceExprContext((MethodReferenceExpr) node, typeSolver);
+        }
+        if (node instanceof EnumDeclaration) {
+            return new EnumDeclarationContext((EnumDeclaration) node, typeSolver);
+        }
+        if (node instanceof RecordDeclaration) {
+            return new RecordDeclarationContext((RecordDeclaration) node, typeSolver);
+        }
+        if (node instanceof FieldAccessExpr) {
+            return new FieldAccessContext((FieldAccessExpr) node, typeSolver);
+        }
+        if (node instanceof SwitchEntry) {
+            return new SwitchEntryContext((SwitchEntry) node, typeSolver);
+        }
+        if (node instanceof TryStmt) {
+            return new TryWithResourceContext((TryStmt) node, typeSolver);
+        }
+        if (node instanceof Statement) {
+            return new StatementContext<>((Statement) node, typeSolver);
+        }
+        if (node instanceof CatchClause) {
+            return new CatchClauseContext((CatchClause) node, typeSolver);
+        }
+        if (node instanceof UnaryExpr) {
+            return new UnaryExprContext((UnaryExpr) node, typeSolver);
+        }
+        if (node instanceof VariableDeclarator) {
+            return new VariableDeclaratorContext((VariableDeclarator) node, typeSolver);
+        }
+        if (node instanceof VariableDeclarationExpr) {
+            return new VariableDeclarationExprContext((VariableDeclarationExpr) node, typeSolver);
+        }
+        if (node instanceof ObjectCreationExpr
+                && ((ObjectCreationExpr) node).getAnonymousClassBody().isPresent()) {
+            return new AnonymousClassDeclarationContext((ObjectCreationExpr) node, typeSolver);
+        }
+        if (node instanceof ObjectCreationExpr) {
+            return new ObjectCreationContext((ObjectCreationExpr) node, typeSolver);
+        }
+        if (node instanceof ConditionalExpr) {
+            return new ConditionalExprContext((ConditionalExpr) node, typeSolver);
+        }
+        if (node instanceof NameExpr) {
+            // to resolve a name when in a fieldAccess context, we can go up until we get a node other than
+            // FieldAccessExpr,
+            // in order to prevent a infinite loop if the name is the same as the field (ie x.x, x.y.x, or x.y.z.x)
+            if (node.getParentNode().isPresent() && node.getParentNode().get() instanceof FieldAccessExpr) {
+                Node ancestor = node.getParentNode().get();
+                while (ancestor.getParentNode().isPresent()) {
+                    ancestor = ancestor.getParentNode().get();
+                    if (!(ancestor instanceof FieldAccessExpr)) {
+                        break;
+                    }
+                }
+                return getContext(ancestor, typeSolver);
+            }
+            if (node.getParentNode().isPresent()
+                    && node.getParentNode().get() instanceof ObjectCreationExpr
+                    && node.getParentNode().get().getParentNode().isPresent()) {
+                return getContext(node.getParentNode().get().getParentNode().get(), typeSolver);
+            }
+        }
+        final Node parentNode = demandParentNode(node);
+        if (node instanceof ClassOrInterfaceType && parentNode instanceof ClassOrInterfaceDeclaration) {
+            ClassOrInterfaceDeclaration parentDeclaration = (ClassOrInterfaceDeclaration) parentNode;
+            if (parentDeclaration.getImplementedTypes().contains(node)
+                    || parentDeclaration.getExtendedTypes().contains(node)) {
+                // When resolving names in implements and extends the body of the declaration
+                // should not be searched so use limited context.
+                return new ClassOrInterfaceDeclarationExtendsContext(parentDeclaration, typeSolver);
+            }
+        }
+        return getContext(parentNode, typeSolver);
+    }
+
+    public static SymbolDeclarator getSymbolDeclarator(Node node, TypeSolver typeSolver) {
+        if (node instanceof FieldDeclaration) {
+            return new FieldSymbolDeclarator((FieldDeclaration) node, typeSolver);
+        }
+        if (node instanceof Parameter) {
+            return new ParameterSymbolDeclarator((Parameter) node, typeSolver);
+        }
+        if (node instanceof TypePatternExpr) {
+            return new TypePatternSymbolDeclarator((TypePatternExpr) node, typeSolver);
+        }
+        if (node instanceof ExpressionStmt) {
+            ExpressionStmt expressionStmt = (ExpressionStmt) node;
+            if (expressionStmt.getExpression().isVariableDeclarationExpr()) {
+                return new VariableSymbolDeclarator(
+                        expressionStmt.getExpression().asVariableDeclarationExpr(), typeSolver);
+            }
+            return new NoSymbolDeclarator<>(expressionStmt, typeSolver);
+        }
+        if (node instanceof ForEachStmt) {
+            ForEachStmt foreachStmt = (ForEachStmt) node;
+            return new VariableSymbolDeclarator(foreachStmt.getVariable(), typeSolver);
+        }
+        if (node instanceof ForStmt) {
+            ForStmt forStmt = (ForStmt) node;
+            Optional<VariableDeclarationExpr> variableDecl = forStmt.getInitialization().stream()
+                    .filter(expr -> expr.isVariableDeclarationExpr())
+                    .map(expr -> expr.asVariableDeclarationExpr())
+                    .findFirst();
+            if (variableDecl.isPresent()) {
+                return new VariableSymbolDeclarator(variableDecl.get(), typeSolver);
+            }
+        }
+        return new NoSymbolDeclarator<>(node, typeSolver);
+    }
+}
+
+codex
+The class itself is very small: one constructor, one override, and it only depends on `Node`, `VariableDeclarator`, `TypeSolver`, and `Collections/List`. I’m now counting actual inbound references across the repo so the decision is based on usage, not just intuition.
+exec
+/bin/bash -lc "rg -n \"\\bVariableDeclaratorContext\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"new\\s+VariableDeclaratorContext\\b|extends\\s+VariableDeclaratorContext\\b|VariableDeclaratorContext\\s*\\(\" javaparser-symbol-solver-core/src/test javaparser-symbol-solver-core/src/main" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ exited 2 in 212ms:
+rg: javaparser-symbol-solver-core/src/test: No such file or directory (os error 2)
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/VariableDeclaratorContext.java:35:    public VariableDeclaratorContext(VariableDeclarator wrappedNode, TypeSolver typeSolver) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFactory.java:128:            return new VariableDeclaratorContext((VariableDeclarator) node, typeSolver);
+
+ succeeded in 281ms:
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFactory.java:128:            return new VariableDeclaratorContext((VariableDeclarator) node, typeSolver);
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/VariableDeclaratorContext.java:33:public class VariableDeclaratorContext extends AbstractJavaParserContext<VariableDeclarator> {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/VariableDeclaratorContext.java:35:    public VariableDeclaratorContext(VariableDeclarator wrappedNode, TypeSolver typeSolver) {
+
+codex
+{"target":"com.github.javaparser.symbolsolver.javaparsermodel.contexts.VariableDeclaratorContext","detection":false,"justification":"Inspected `javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/VariableDeclaratorContext.java`, `.../JavaParserFactory.java`, and `.../AbstractJavaParserContext.java`. The target class is tiny: one constructor and one override, with only a few direct dependencies (`Node`, `VariableDeclarator`, `TypeSolver`, `Collections/List`). Repository-wide search for `VariableDeclaratorContext` found only the class definition and a single inbound creation site in `JavaParserFactory.getContext(...)`; no other classes or tests reference it. That is low fan-in and low fan-out, not a dependency hub."}
+tokens used
+8,450

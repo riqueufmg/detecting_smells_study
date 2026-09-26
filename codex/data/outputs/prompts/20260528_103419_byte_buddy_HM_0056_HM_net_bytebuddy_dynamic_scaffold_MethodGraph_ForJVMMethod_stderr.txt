@@ -1,0 +1,1095 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ecb-0c2d-7692-8ec6-a4419da11ba8
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.dynamic.scaffold.MethodGraph.ForJVMMethod` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.dynamic.scaffold.MethodGraph.ForJVMMethod",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.dynamic.scaffold.MethodGraph.ForJVMMethod`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct references so I can judge fan-in and fan-out from the source itself.
+exec
+/bin/bash -lc 'rg -n "class ForJVMMethod|interface ForJVMMethod|enum ForJVMMethod|ForJVMMethod" src' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 0ms:
+rg: src: IO error for operation on src: No such file or directory (os error 2)
+
+exec
+/bin/bash -lc 'rg --files src | rg "MethodGraph|ForJVMMethod"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 1 in 0ms:
+rg: src: IO error for operation on src: No such file or directory (os error 2)
+
+codex
+The repository layout is not the usual `src` root, so I’m resolving the actual source tree first and then I’ll inspect the target file and its callers.
+exec
+/bin/bash -lc "find . -maxdepth 3 -type d | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+.
+./.mvn
+./.mvn/wrapper-legacy
+./.mvn/wrapper
+./.mvn/checksum
+./byte-buddy-dep
+./byte-buddy-dep/src
+./byte-buddy-dep/src/main
+./byte-buddy-dep/src/test
+./byte-buddy
+./byte-buddy/src
+./byte-buddy/src/main
+./byte-buddy-benchmark
+./byte-buddy-benchmark/src
+./byte-buddy-benchmark/src/main
+./byte-buddy-benchmark/src/test
+./byte-buddy-maven-plugin
+./byte-buddy-maven-plugin/src
+./byte-buddy-maven-plugin/src/main
+./byte-buddy-maven-plugin/src/test
+./byte-buddy-android
+./byte-buddy-android/src
+./byte-buddy-android/src/main
+./byte-buddy-android/src/test
+./byte-buddy-gradle-plugin
+./byte-buddy-gradle-plugin/gradle
+./byte-buddy-gradle-plugin/gradle/wrapper-legacy
+./byte-buddy-gradle-plugin/gradle/wrapper
+./byte-buddy-gradle-plugin/android-plugin
+./byte-buddy-gradle-plugin/android-plugin/src
+./byte-buddy-gradle-plugin/src
+./byte-buddy-gradle-plugin/src/main
+./byte-buddy-gradle-plugin/src/test
+./byte-buddy-gradle-plugin/mavenBridge
+./byte-buddy-gradle-plugin/android-plugin-test
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-target
+./byte-buddy-gradle-plugin/android-plugin-test/app
+./byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin
+./byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib
+./byte-buddy-gradle-plugin/android-plugin-test/service-definition-lib
+./byte-buddy-agent
+./byte-buddy-agent/src
+./byte-buddy-agent/src/main
+./byte-buddy-agent/src/test
+./.github
+./.github/workflows
+./.git
+./.git/refs
+./.git/refs/tags
+./.git/refs/heads
+./.git/refs/remotes
+./.git/branches
+./.git/objects
+./.git/objects/pack
+./.git/objects/89
+./.git/objects/info
+./.git/objects/45
+./.git/info
+./.git/logs
+./.git/logs/refs
+./.git/hooks
+./byte-buddy-android-test
+./byte-buddy-android-test/src
+./byte-buddy-android-test/src/main
+./byte-buddy-android-test/res
+./byte-buddy-android-test/res/values
+./byte-buddy-android-test/res/drawable
+./byte-buddy-android-test/res/layout
+
+exec
+/bin/bash -lc 'pwd && rg --files . | rg "MethodGraph|ForJVMMethod|bytebuddy/dynamic/scaffold"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeInitializerDrainDefaultTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldLocatorForExactTypeTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterRecordComponentPoolDisabledTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphNodeUnresolvedTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryHandlerTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultKeyTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodNameTransformerSuffixingTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/DecoratingDynamicTypeBuilderTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/InlineImplementationMatcherTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolverDisabledTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RebaseImplementationTargetFactoryTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilderTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodNameTransformerPrefixingTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolverDefaultTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RebaseImplementationTargetSpecialMethodInvocationTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolverResolutionForRebasedConstructorTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolverResolutionForRebasedMethodTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolverResolutionPreservedTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilderTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/AbstractDynamicTypeBuilderForInliningTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RebaseImplementationTargetTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterRecordComponentPoolRecordTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldRegistryCompiledNoOpTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldLocatorNoOpTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldLocatorForTopLevelTypeTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultForInliningWithFullProcessingInitializationHandlerAppendingFrameWriterNoOpTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphNodeSimpleTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassImplementationTargetFactoryTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilderTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilderInstrumentableMatcherTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyForDefaultConstructorTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassImplementationTargetTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphNodeSortTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJavaMethodTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphEmptyTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultMergerDirectionalTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldLocatorResolutionTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeFrozenTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterFieldPoolDisabledTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeFactoryDefaultTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldLocatorForClassHierarchyTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphLinkedDelegationTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterFieldPoolRecordTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultForInliningWithFullProcessingInitializationHandlerAppendingFrameWriterActiveTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypePrepareableNoOpTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultForInliningWithFullProcessingInitializationHandlerAppendingFrameWriterExpandingTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphNodeListTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterInitializerRemapperTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphSimpleTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeValidationTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDeclarationPreservationTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldRegistryDefaultTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerForDeclaredMethodsTest.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/DecoratingDynamicTypeBuilder.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseImplementationTarget.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/InliningImplementationMatcher.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/AbstractInliningDynamicTypeBuilder.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolver.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/package-info.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/MethodNameTransformer.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeValidation.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilder.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassImplementationTarget.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/package-info.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldLocator.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/package-info.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeInitializer.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/ClassWriterStrategy.java
+
+codex
+I found the source tree in `byte-buddy-dep`; next I’m reading the target class and the surrounding tests to see whether it behaves like a dependency hub or just a local nested type.
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.dynamic.scaffold;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.MethodList;
+import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.matcher.FilterableList;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.objectweb.asm.Opcodes;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static net.bytebuddy.matcher.ElementMatchers.any;
+import static net.bytebuddy.matcher.ElementMatchers.isBridge;
+import static net.bytebuddy.matcher.ElementMatchers.isVirtual;
+import static net.bytebuddy.matcher.ElementMatchers.isVisibleTo;
+import static net.bytebuddy.matcher.ElementMatchers.not;
+
+/**
+ * A method graph represents a view on a set of methods as they are seen from a given type. Any method is represented as a node that represents
+ * a method, its bridge methods, its resolution state and information on if it was made visible by a visibility bridge.
+ */
+public interface MethodGraph {
+
+    /**
+     * Locates a node in this graph which represents the provided method token.
+     *
+     * @param token A method token that represents the method to be located.
+     * @return The node representing the given token.
+     */
+    Node locate(MethodDescription.SignatureToken token);
+
+    /**
+     * Lists all nodes of this method graph.
+     *
+     * @return A list of all nodes of this method graph.
+     */
+    NodeList listNodes();
+
+    /**
+     * A canonical implementation of an empty method graph.
+     */
+    enum Empty implements MethodGraph.Linked, MethodGraph.Compiler {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * {@inheritDoc}
+         */
+        public Node locate(MethodDescription.SignatureToken token) {
+            return Node.Unresolved.INSTANCE;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public NodeList listNodes() {
+            return new NodeList(Collections.<Node>emptyList());
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public MethodGraph getSuperClassGraph() {
+            return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public MethodGraph getInterfaceGraph(TypeDescription typeDescription) {
+            return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Linked compile(TypeDefinition typeDefinition) {
+            return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Deprecated
+        public Linked compile(TypeDescription typeDescription) {
+            return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Linked compile(TypeDefinition typeDefinition, TypeDescription viewPoint) {
+            return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Deprecated
+        public Linked compile(TypeDescription typeDefinition, TypeDescription viewPoint) {
+            return this;
+        }
+    }
+
+    /**
+     * A linked method graph represents a view that additionally exposes information of a given type's super type view and a
+     * view on this graph's directly implemented interfaces.
+     */
+    interface Linked extends MethodGraph {
+
+        /**
+         * Returns a graph representing the view on this represented type's super type.
+         *
+         * @return A graph representing the view on this represented type's super type.
+         */
+        MethodGraph getSuperClassGraph();
+
+        /**
+         * Returns a graph representing the view on this represented type's directly implemented interface type.
+         *
+         * @param typeDescription The interface type for which a view is to be returned.
+         * @return A graph representing the view on this represented type's directly implemented interface type.
+         */
+        MethodGraph getInterfaceGraph(TypeDescription typeDescription);
+
+        /**
+         * A simple implementation of a linked method graph that exposes views by delegation to given method graphs.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class Delegation implements Linked {
+
+            /**
+             * The represented type's method graph.
+             */
+            private final MethodGraph methodGraph;
+
+            /**
+             * The super class's method graph.
+             */
+            private final MethodGraph superClassGraph;
+
+            /**
+             * A mapping of method graphs of the represented type's directly implemented interfaces to their graph representatives.
+             */
+            private final Map<TypeDescription, MethodGraph> interfaceGraphs;
+
+            /**
+             * Creates a new delegation method graph.
+             *
+             * @param methodGraph     The represented type's method graph.
+             * @param superClassGraph The super class's method graph.
+             * @param interfaceGraphs A mapping of method graphs of the represented type's directly implemented interfaces to their graph representatives.
+             */
+            public Delegation(MethodGraph methodGraph, MethodGraph superClassGraph, Map<TypeDescription, MethodGraph> interfaceGraphs) {
+                this.methodGraph = methodGraph;
+                this.superClassGraph = superClassGraph;
+                this.interfaceGraphs = interfaceGraphs;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MethodGraph getSuperClassGraph() {
+                return superClassGraph;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MethodGraph getInterfaceGraph(TypeDescription typeDescription) {
+                MethodGraph interfaceGraph = interfaceGraphs.get(typeDescription);
+                return interfaceGraph == null
+                        ? Empty.INSTANCE
+                        : interfaceGraph;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Node locate(MethodDescription.SignatureToken token) {
+                return methodGraph.locate(token);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public NodeList listNodes() {
+                return methodGraph.listNodes();
+            }
+        }
+    }
+
+    /**
+     * Represents a node within a method graph.
+     */
+    interface Node {
+
+        /**
+         * Returns the sort of this node.
+         *
+         * @return The sort of this node.
+         */
+        Sort getSort();
+
+        /**
+         * Returns the method that is represented by this node.
+         *
+         * @return The method that is represented by this node.
+         */
+        MethodDescription getRepresentative();
+
+        /**
+         * Returns a set of type tokens that this method represents. This set contains the actual method's type including the
+         * types of all bridge methods.
+         *
+         * @return A set of type tokens that this method represents.
+         */
+        Set<MethodDescription.TypeToken> getMethodTypes();
+
+        /**
+         * Returns the minimal method visibility of all methods that are represented by this node.
+         *
+         * @return The minimal method visibility of all methods that are represented by this node.
+         */
+        Visibility getVisibility();
+
+        /**
+
+exec
+/bin/bash -lc 'rg -n "ForJVMMethod" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:674:                return of(Harmonizer.ForJVMMethod.INSTANCE, Merger.Directional.LEFT);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:843:                enum ForJVMMethod implements Harmonizer<ForJVMMethod.Token> {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java:19:public class MethodGraphCompilerDefaultHarmonizerForJVMMethodTest {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java:27:    private MethodGraph.Compiler.Default.Harmonizer<MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.Token> harmonizer;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java:31:        harmonizer = MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.INSTANCE;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java:73:                .Default<MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.Token>(MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.INSTANCE,
+
+codex
+I found the target as a nested enum inside `MethodGraph.java`. I’m now checking both its internal dependencies and how broadly it is referenced elsewhere to see whether it really acts as a hub.
+exec
+/bin/bash -lc "sed -n '760,940p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"Harmonizer\\.ForJVMMethod|ForJVMMethod\\.INSTANCE|ForJVMMethod\\.Token|MethodGraph\\.Compiler\\.Default\\.Harmonizer\\.ForJVMMethod\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 114ms:
+                    interfaceStore = interfaceStore.combineWith(analyze(interfaceType.accept(visitor), interfaceType, snapshots, relevanceMatcher));
+                }
+                return store.inject(interfaceStore).registerTopLevel(typeDefinition.getDeclaredMethods().filter(relevanceMatcher), harmonizer);
+            }
+
+            /**
+             * A harmonizer is responsible for creating a token that identifies a method's relevant attributes for considering
+             * two methods of being equal or not.
+             *
+             * @param <S> The type of the token that is created by the implementing harmonizer.
+             */
+            public interface Harmonizer<S> {
+
+                /**
+                 * Harmonizes the given type token.
+                 *
+                 * @param typeToken The type token to harmonize.
+                 * @return A token representing the given type token.
+                 */
+                S harmonize(MethodDescription.TypeToken typeToken);
+
+                /**
+                 * A harmonizer for the Java programming language that identifies a method by its parameter types only.
+                 */
+                enum ForJavaMethod implements Harmonizer<ForJavaMethod.Token> {
+
+                    /**
+                     * The singleton instance.
+                     */
+                    INSTANCE;
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public Token harmonize(MethodDescription.TypeToken typeToken) {
+                        return new Token(typeToken);
+                    }
+
+                    /**
+                     * A token that identifies a Java method's type by its parameter types only.
+                     */
+                    protected static class Token {
+
+                        /**
+                         * The represented type token.
+                         */
+                        private final MethodDescription.TypeToken typeToken;
+
+                        /**
+                         * The hash code of this token which is precomputed for to improve performance.
+                         */
+                        private final int hashCode;
+
+                        /**
+                         * Creates a new type token for a Java method.
+                         *
+                         * @param typeToken The represented type token.
+                         */
+                        protected Token(MethodDescription.TypeToken typeToken) {
+                            this.typeToken = typeToken;
+                            hashCode = typeToken.getParameterTypes().hashCode();
+                        }
+
+                        @Override
+                        public int hashCode() {
+                            return hashCode;
+                        }
+
+                        @Override
+                        public boolean equals(@MaybeNull Object other) {
+                            return this == other || other instanceof Token && typeToken.getParameterTypes().equals(((Token) other).typeToken.getParameterTypes());
+                        }
+
+                        @Override
+                        public String toString() {
+                            return typeToken.getParameterTypes().toString();
+                        }
+                    }
+                }
+
+                /**
+                 * A harmonizer for the Java virtual machine's method dispatching rules that identifies a method by its parameter types and return type.
+                 */
+                enum ForJVMMethod implements Harmonizer<ForJVMMethod.Token> {
+
+                    /**
+                     * The singleton instance.
+                     */
+                    INSTANCE;
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public Token harmonize(MethodDescription.TypeToken typeToken) {
+                        return new Token(typeToken);
+                    }
+
+                    /**
+                     * A token that identifies a Java method's type by its parameter types and return type.
+                     */
+                    protected static class Token {
+
+                        /**
+                         * The represented type token.
+                         */
+                        private final MethodDescription.TypeToken typeToken;
+
+                        /**
+                         * The hash code of this token which is precomputed for to improve performance.
+                         */
+                        private final int hashCode;
+
+                        /**
+                         * Creates a new type token for a JVM method.
+                         *
+                         * @param typeToken The represented type token.
+                         */
+                        public Token(MethodDescription.TypeToken typeToken) {
+                            this.typeToken = typeToken;
+                            hashCode = typeToken.getReturnType().hashCode() + 31 * typeToken.getParameterTypes().hashCode();
+                        }
+
+                        @Override
+                        public int hashCode() {
+                            return hashCode;
+                        }
+
+                        @Override
+                        public boolean equals(@MaybeNull Object other) {
+                            if (this == other) {
+                                return true;
+                            } else if (!(other instanceof Token)) {
+                                return false;
+                            }
+                            Token token = (Token) other;
+                            return typeToken.getReturnType().equals(token.typeToken.getReturnType())
+                                    && typeToken.getParameterTypes().equals(token.typeToken.getParameterTypes());
+                        }
+
+                        @Override
+                        public String toString() {
+                            return typeToken.toString();
+                        }
+                    }
+                }
+            }
+
+            /**
+             * Implementations are responsible for identifying a representative method for a {@link net.bytebuddy.dynamic.scaffold.MethodGraph.Node}
+             * between several ambiguously resolved methods.
+             */
+            public interface Merger {
+
+                /**
+                 * Merges two ambiguously resolved methods to yield a single representative.
+                 *
+                 * @param left  The left method description, i.e. the method that was discovered first or was previously merged.
+                 * @param right The right method description, i.e. the method that was discovered last.
+                 * @return A method description compatible to both method's types that is used as a representative.
+                 */
+                MethodDescription merge(MethodDescription left, MethodDescription right);
+
+                /**
+                 * A directional merger that always returns either the left or right method description.
+                 */
+                enum Directional implements Merger {
+
+                    /**
+                     * A merger that always returns the left method, i.e. the method that was discovered first or was previously merged.
+                     */
+                    LEFT(true),
+
+                    /**
+                     * A merger that always returns the right method, i.e. the method that was discovered last.
+                     */
+                    RIGHT(false);
+
+                    /**
+                     * {@code true} if the left method should be returned when merging methods.
+                     */
+                    private final boolean left;
+
+ succeeded in 115ms:
+package net.bytebuddy.dynamic.scaffold;
+
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+
+import java.util.Collections;
+
+import static net.bytebuddy.test.utility.FieldByFieldComparison.hasPrototype;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+public class MethodGraphCompilerDefaultHarmonizerForJVMMethodTest {
+
+    @Rule
+    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+
+    @Mock
+    private TypeDescription first, second;
+
+    private MethodGraph.Compiler.Default.Harmonizer<MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.Token> harmonizer;
+
+    @Before
+    public void setUp() throws Exception {
+        harmonizer = MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.INSTANCE;
+    }
+
+    @Test
+    public void testMethodEqualityHashCode() throws Exception {
+        assertThat(harmonizer.harmonize(new MethodDescription.TypeToken(first, Collections.singletonList(first))).hashCode(),
+                is(harmonizer.harmonize(new MethodDescription.TypeToken(first, Collections.singletonList(first))).hashCode()));
+    }
+
+    @Test
+    public void testMethodEquality() throws Exception {
+        assertThat(harmonizer.harmonize(new MethodDescription.TypeToken(first, Collections.singletonList(first))),
+                is(harmonizer.harmonize(new MethodDescription.TypeToken(first, Collections.singletonList(first)))));
+    }
+
+    @Test
+    public void testMethodReturnTypeInequalityHashCode() throws Exception {
+        assertThat(harmonizer.harmonize(new MethodDescription.TypeToken(first, Collections.singletonList(first))).hashCode(),
+                not(harmonizer.harmonize(new MethodDescription.TypeToken(second, Collections.singletonList(first))).hashCode()));
+    }
+
+    @Test
+    public void testMethodReturnTypeInequality() throws Exception {
+        assertThat(harmonizer.harmonize(new MethodDescription.TypeToken(first, Collections.singletonList(first))),
+                not(harmonizer.harmonize(new MethodDescription.TypeToken(second, Collections.singletonList(first)))));
+    }
+
+    @Test
+    public void testMethodParameterTypesHashCode() throws Exception {
+        assertThat(harmonizer.harmonize(new MethodDescription.TypeToken(first, Collections.singletonList(first))).hashCode(),
+                not(harmonizer.harmonize(new MethodDescription.TypeToken(first, Collections.singletonList(second))).hashCode()));
+    }
+
+    @Test
+    public void testMethodParameterTypesEquality() throws Exception {
+        assertThat(harmonizer.harmonize(new MethodDescription.TypeToken(first, Collections.singletonList(first))),
+                not(harmonizer.harmonize(new MethodDescription.TypeToken(first, Collections.singletonList(second)))));
+    }
+
+    @Test
+    public void testFactory() throws Exception {
+        assertThat(MethodGraph.Compiler.Default.forJVMHierarchy(), hasPrototype((MethodGraph.Compiler) new MethodGraph.Compiler
+                .Default<MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.Token>(MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.INSTANCE,
+                MethodGraph.Compiler.Default.Merger.Directional.LEFT, TypeDescription.Generic.Visitor.Reifying.INITIATING)));
+    }
+}
+
+ succeeded in 171ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java:27:    private MethodGraph.Compiler.Default.Harmonizer<MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.Token> harmonizer;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java:31:        harmonizer = MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.INSTANCE;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java:73:                .Default<MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.Token>(MethodGraph.Compiler.Default.Harmonizer.ForJVMMethod.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:674:                return of(Harmonizer.ForJVMMethod.INSTANCE, Merger.Directional.LEFT);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:843:                enum ForJVMMethod implements Harmonizer<ForJVMMethod.Token> {
+
+codex
+The first pass suggests this enum is narrowly scoped, but I want a precise count of production and test references before I conclude. I’m checking whether anything outside `MethodGraph.java` depends on it directly.
+exec
+/bin/bash -lc "rg -l \"Harmonizer\\.ForJVMMethod|ForJVMMethod\\.INSTANCE|forJVMHierarchy\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java
+
+exec
+/bin/bash -lc "sed -n '620,690p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 132ms:
+             * Creates a default compiler using the given harmonizer and merger. All raw types are reified before analyzing their properties.
+             *
+             * @param harmonizer The harmonizer to be used for creating tokens that uniquely identify a method hierarchy.
+             * @param merger     The merger to be used for identifying a method to represent an ambiguous method resolution.
+             * @param matcher    A matcher to filter methods from the graph.
+             * @param <S>        The type of the harmonizer token.
+             * @return A default compiler for the given harmonizer and merger.
+             */
+            public static <S> Compiler of(Harmonizer<S> harmonizer, Merger merger, ElementMatcher<? super MethodDescription> matcher) {
+                return new Default<S>(harmonizer, merger, TypeDescription.Generic.Visitor.Reifying.INITIATING, matcher);
+            }
+
+            /**
+             * Creates a default compiler using the given harmonizer and merger.
+             *
+             * @param harmonizer The harmonizer to be used for creating tokens that uniquely identify a method hierarchy.
+             * @param merger     The merger to be used for identifying a method to represent an ambiguous method resolution.
+             * @param visitor    A visitor to apply to all type descriptions before analyzing their methods or resolving super types.
+             * @param <S>        The type of the harmonizer token.
+             * @return A default compiler for the given harmonizer and merger.
+             */
+            public static <S> Compiler of(Harmonizer<S> harmonizer, Merger merger, TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor) {
+                return new Default<S>(harmonizer, merger, visitor);
+            }
+
+            /**
+             * <p>
+             * Creates a default compiler for a method hierarchy following the rules of the Java programming language. According
+             * to these rules, two methods of the same name are only different if their parameter types represent different raw
+             * types. The return type is not considered as a part of the signature.
+             * </p>
+             * <p>
+             * Ambiguous methods are merged by considering the method that was discovered first.
+             * </p>
+             *
+             * @return A compiler for resolving a method hierarchy following the rules of the Java programming language.
+             */
+            public static Compiler forJavaHierarchy() {
+                return of(Harmonizer.ForJavaMethod.INSTANCE, Merger.Directional.LEFT);
+            }
+
+            /**
+             * <p>
+             * Creates a default compiler for a method hierarchy following the rules of the Java virtual machine. According
+             * to these rules, two methods of the same name are different if their parameter types and return types represent
+             * different type erasures.
+             * </p>
+             * <p>
+             * Ambiguous methods are merged by considering the method that was discovered first.
+             * </p>
+             *
+             * @return A compiler for resolving a method hierarchy following the rules of the Java programming language.
+             */
+            public static Compiler forJVMHierarchy() {
+                return of(Harmonizer.ForJVMMethod.INSTANCE, Merger.Directional.LEFT);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MethodGraph.Linked compile(TypeDefinition typeDefinition, TypeDescription viewPoint) {
+                Map<TypeDefinition, Key.Store<T>> snapshots = new HashMap<TypeDefinition, Key.Store<T>>();
+                Key.Store<?> rootStore = doAnalyze(typeDefinition, snapshots, isVirtual().and(isVisibleTo(viewPoint)).and(matcher));
+                TypeDescription.Generic superClass = typeDefinition.getSuperClass();
+                List<TypeDescription.Generic> interfaceTypes = typeDefinition.getInterfaces();
+                Map<TypeDescription, MethodGraph> interfaceGraphs = new HashMap<TypeDescription, MethodGraph>();
+                for (TypeDescription.Generic interfaceType : interfaceTypes) {
+                    Key.Store<T> store = snapshots.get(interfaceType);
+                    if (store == null) {
+                        throw new IllegalStateException("Failed to resolve interface type " + interfaceType + " from " + snapshots.keySet());
+                    }
+
+exec
+/bin/bash -lc 'rg -n "forJVMHierarchy|ForJavaMethod|Harmonizer" byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,180p' byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 105ms:
+package net.bytebuddy.dynamic.scaffold;
+
+import net.bytebuddy.description.annotation.AnnotationDescription;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.description.module.ModuleDescription;
+import net.bytebuddy.description.type.RecordComponentDescription;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.description.type.TypeVariableToken;
+import net.bytebuddy.dynamic.TargetType;
+import net.bytebuddy.implementation.LoadedTypeInitializer;
+import net.bytebuddy.matcher.ElementMatchers;
+import net.bytebuddy.test.utility.JavaVersionRule;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.objectweb.asm.Opcodes;
+
+import java.util.Collections;
+
+import static net.bytebuddy.matcher.ElementMatchers.definedMethod;
+import static net.bytebuddy.matcher.ElementMatchers.erasure;
+import static net.bytebuddy.matcher.ElementMatchers.isBridge;
+import static net.bytebuddy.matcher.ElementMatchers.isMethod;
+import static net.bytebuddy.matcher.ElementMatchers.isVirtual;
+import static net.bytebuddy.matcher.ElementMatchers.returns;
+import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+import static net.bytebuddy.test.utility.FieldByFieldComparison.hasPrototype;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
+
+public class MethodGraphCompilerDefaultTest {
+
+    private static final String TYPE_VARIABLE_INTERFACE_BRIDGE = "net.bytebuddy.test.precompiled.v8.TypeVariableInterfaceBridge";
+
+    private static final String RETURN_TYPE_INTERFACE_BRIDGE = "net.bytebuddy.test.precompiled.v8.ReturnTypeInterfaceBridge";
+
+    @Rule
+    public MethodRule javaVersionRule = new JavaVersionRule();
+
+    @Test
+    public void testTrivialJavaHierarchy() throws Exception {
+        MethodGraph.Linked methodGraph = MethodGraph.Compiler.Default.forJavaHierarchy().compile((TypeDefinition) TypeDescription.ForLoadedType.of(Object.class));
+        assertThat(methodGraph.listNodes().size(), is(TypeDescription.ForLoadedType.of(Object.class).getDeclaredMethods().filter(isVirtual()).size()));
+        assertThat(methodGraph.getSuperClassGraph().listNodes().size(), is(0));
+        assertThat(methodGraph.getInterfaceGraph(mock(TypeDescription.class)).listNodes().size(), is(0));
+        for (MethodDescription methodDescription : TypeDescription.ForLoadedType.of(Object.class).getDeclaredMethods().filter(isVirtual())) {
+            MethodGraph.Node node = methodGraph.locate(methodDescription.asSignatureToken());
+            assertThat(node.getSort(), is(MethodGraph.Node.Sort.RESOLVED));
+            assertThat(node.getMethodTypes().size(), is(1));
+            assertThat(node.getMethodTypes().contains(methodDescription.asTypeToken()), is(true));
+            assertThat(node.getRepresentative(), is(methodDescription));
+            assertThat(node.getVisibility(), is(methodDescription.getVisibility()));
+            assertThat(methodGraph.listNodes().contains(node), is(true));
+        }
+    }
+
+    @Test
+    public void testTrivialJVMHierarchy() throws Exception {
+        MethodGraph.Linked methodGraph = MethodGraph.Compiler.Default.forJVMHierarchy().compile((TypeDefinition) TypeDescription.ForLoadedType.of(Object.class));
+        assertThat(methodGraph.listNodes().size(), is(TypeDescription.ForLoadedType.of(Object.class).getDeclaredMethods().filter(isVirtual()).size()));
+        assertThat(methodGraph.getSuperClassGraph().listNodes().size(), is(0));
+        assertThat(methodGraph.getInterfaceGraph(mock(TypeDescription.class)).listNodes().size(), is(0));
+        for (MethodDescription methodDescription : TypeDescription.ForLoadedType.of(Object.class).getDeclaredMethods().filter(isVirtual())) {
+            MethodGraph.Node node = methodGraph.locate(methodDescription.asSignatureToken());
+            assertThat(node.getSort(), is(MethodGraph.Node.Sort.RESOLVED));
+            assertThat(node.getMethodTypes().size(), is(1));
+            assertThat(node.getMethodTypes().contains(methodDescription.asTypeToken()), is(true));
+            assertThat(node.getRepresentative(), is(methodDescription));
+            assertThat(node.getVisibility(), is(methodDescription.getVisibility()));
+            assertThat(methodGraph.listNodes().contains(node), is(true));
+        }
+    }
+
+    @Test
+    public void testSimpleClass() throws Exception {
+        TypeDescription typeDescription = TypeDescription.ForLoadedType.of(SimpleClass.class);
+        MethodGraph.Linked methodGraph = MethodGraph.Compiler.Default.forJavaHierarchy().compile((TypeDefinition) typeDescription);
+        assertThat(methodGraph.listNodes().size(), is(TypeDescription.ForLoadedType.of(Object.class).getDeclaredMethods().filter(isVirtual()).size()));
+        assertThat(methodGraph.getSuperClassGraph().listNodes().size(), is(TypeDescription.ForLoadedType.of(Object.class).getDeclaredMethods().filter(isVirtual()).size()));
+        assertThat(methodGraph.getInterfaceGraph(mock(TypeDescription.class)).listNodes().size(), is(0));
+        for (MethodDescription methodDescription : TypeDescription.ForLoadedType.of(Object.class).getDeclaredMethods().filter(isVirtual())) {
+            MethodGraph.Node node = methodGraph.locate(methodDescription.asSignatureToken());
+            assertThat(node.getSort(), is(MethodGraph.Node.Sort.RESOLVED));
+            assertThat(node.getMethodTypes().size(), is(1));
+            assertThat(node.getMethodTypes().contains(methodDescription.asTypeToken()), is(true));
+            assertThat(node.getRepresentative(), is(methodDescription));
+            assertThat(node.getVisibility(), is(methodDescription.getVisibility()));
+            assertThat(methodGraph.listNodes().contains(node), is(true));
+        }
+    }
+
+    @Test
+    public void testSimpleInterface() throws Exception {
+        TypeDescription typeDescription = TypeDescription.ForLoadedType.of(SimpleInterface.class);
+        MethodGraph.Linked methodGraph = MethodGraph.Compiler.Default.forJavaHierarchy().compile((TypeDefinition) typeDescription);
+        assertThat(methodGraph.listNodes().size(), is(0));
+    }
+
+    @Test
+    public void testClassInheritance() throws Exception {
+        TypeDescription typeDescription = TypeDescription.ForLoadedType.of(ClassBase.Inner.class);
+        MethodGraph.Linked methodGraph = MethodGraph.Compiler.Default.forJavaHierarchy().compile((TypeDefinition) typeDescription);
+        assertThat(methodGraph.listNodes().size(), is(TypeDescription.ForLoadedType.of(Object.class).getDeclaredMethods().filter(isVirtual()).size() + 1));
+        MethodDescription method = typeDescription.getDeclaredMethods().filter(isMethod()).getOnly();
+        MethodGraph.Node node = methodGraph.locate(method.asSignatureToken());
+        assertThat(node.getSort(), is(MethodGraph.Node.Sort.RESOLVED));
+        assertThat(node.getMethodTypes().size(), is(1));
+        assertThat(node.getMethodTypes().contains(method.asTypeToken()), is(true));
+        assertThat(node.getRepresentative(), is(method));
+        assertThat(node.getVisibility(), is(method.getVisibility()));
+        assertThat(methodGraph.listNodes().contains(node), is(true));
+        MethodGraph.Node baseNode = methodGraph.getSuperClassGraph().locate(method.asSignatureToken());
+        assertThat(node, not(baseNode));
+        assertThat(typeDescription.getSuperClass().getDeclaredMethods().filter(ElementMatchers.is(baseNode.getRepresentative())).getOnly(),
+                is(baseNode.getRepresentative()));
+    }
+
+    @Test
+    public void testInterfaceImplementation() throws Exception {
+        TypeDescription typeDescription = TypeDescription.ForLoadedType.of(InterfaceBase.InnerClass.class);
+        MethodGraph.Linked methodGraph = MethodGraph.Compiler.Default.forJavaHierarchy().compile((TypeDefinition) typeDescription);
+        assertThat(methodGraph.listNodes().size(), is(TypeDescription.ForLoadedType.of(Object.class).getDeclaredMethods().filter(isVirtual()).size() + 1));
+        MethodDescription method = typeDescription.getInterfaces().getOnly().getDeclaredMethods().getOnly();
+        MethodGraph.Node node = methodGraph.locate(method.asSignatureToken());
+        assertThat(node.getSort(), is(MethodGraph.Node.Sort.RESOLVED));
+        assertThat(node.getMethodTypes().size(), is(1));
+        assertThat(node.getMethodTypes().contains(method.asTypeToken()), is(true));
+        assertThat(node.getRepresentative(), is(method));
+        assertThat(node.getVisibility(), is(method.getVisibility()));
+        assertThat(methodGraph.listNodes().contains(node), is(true));
+    }
+
+    @Test
+    public void testInterfaceExtension() throws Exception {
+        TypeDescription typeDescription = TypeDescription.ForLoadedType.of(InterfaceBase.InnerInterface.class);
+        MethodGraph.Linked methodGraph = MethodGraph.Compiler.Default.forJavaHierarchy().compile((TypeDefinition) typeDescription);
+        assertThat(methodGraph.listNodes().size(), is(1));
+        MethodDescription method = typeDescription.getInterfaces().getOnly().getDeclaredMethods().getOnly();
+        MethodGraph.Node node = methodGraph.locate(method.asSignatureToken());
+        assertThat(node.getSort(), is(MethodGraph.Node.Sort.RESOLVED));
+        assertThat(node.getMethodTypes().size(), is(1));
+        assertThat(node.getMethodTypes().contains(method.asTypeToken()), is(true));
+        assertThat(node.getRepresentative(), is(method));
+        assertThat(node.getVisibility(), is(method.getVisibility()));
+        assertThat(methodGraph.listNodes().contains(node), is(true));
+    }
+
+    @Test
+    public void testInterfaceDuplicateInHierarchyImplementation() throws Exception {
+        TypeDescription typeDescription = TypeDescription.ForLoadedType.of(InterfaceBase.InterfaceDuplicate.class);
+        MethodGraph.Linked methodGraph = MethodGraph.Compiler.Default.forJavaHierarchy().compile((TypeDefinition) typeDescription);
+        assertThat(methodGraph.listNodes().size(), is(1));
+        MethodDescription method = typeDescription.getInterfaces().filter(ElementMatchers.is(InterfaceBase.class)).getOnly().getDeclaredMethods().getOnly();
+        MethodGraph.Node node = methodGraph.locate(method.asSignatureToken());
+        assertThat(node.getSort(), is(MethodGraph.Node.Sort.RESOLVED));
+        assertThat(node.getMethodTypes().size(), is(1));
+        assertThat(node.getMethodTypes().contains(method.asTypeToken()), is(true));
+        assertThat(node.getRepresentative(), is(method));
+        assertThat(node.getVisibility(), is(method.getVisibility()));
+        assertThat(methodGraph.listNodes().contains(node), is(true));
+    }
+
+    @Test
+    public void testClassAndInterfaceDominantInheritance() throws Exception {
+        TypeDescription typeDescription = TypeDescription.ForLoadedType.of(ClassAndInterfaceInheritance.class);
+        MethodGraph.Linked methodGraph = MethodGraph.Compiler.Default.forJavaHierarchy().compile((TypeDefinition) typeDescription);
+        assertThat(methodGraph.listNodes().size(), is(TypeDescription.ForLoadedType.of(Object.class).getDeclaredMethods().filter(isVirtual()).size() + 1));
+        MethodDescription method = typeDescription.getSuperClass().getDeclaredMethods().filter(isMethod()).getOnly();
+        MethodGraph.Node node = methodGraph.locate(method.asSignatureToken());
+        assertThat(node.getSort(), is(MethodGraph.Node.Sort.RESOLVED));
+        assertThat(node.getMethodTypes().size(), is(1));
+        assertThat(node.getMethodTypes().contains(method.asTypeToken()), is(true));
+        assertThat(node.getRepresentative(), is(method));
+        assertThat(node.getVisibility(), is(method.getVisibility()));
+
+ succeeded in 154ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:65:        MethodGraph.Linked methodGraph = MethodGraph.Compiler.Default.forJVMHierarchy().compile((TypeDefinition) TypeDescription.ForLoadedType.of(Object.class));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:564:            private final Harmonizer<T> harmonizer;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:588:            protected Default(Harmonizer<T> harmonizer, Merger merger, TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:600:            public Default(Harmonizer<T> harmonizer, Merger merger, TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor, ElementMatcher<? super MethodDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:615:            public static <S> Compiler of(Harmonizer<S> harmonizer, Merger merger) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:628:            public static <S> Compiler of(Harmonizer<S> harmonizer, Merger merger, ElementMatcher<? super MethodDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:641:            public static <S> Compiler of(Harmonizer<S> harmonizer, Merger merger, TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:658:                return of(Harmonizer.ForJavaMethod.INSTANCE, Merger.Directional.LEFT);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:673:            public static Compiler forJVMHierarchy() {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:674:                return of(Harmonizer.ForJVMMethod.INSTANCE, Merger.Directional.LEFT);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:771:            public interface Harmonizer<S> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:784:                enum ForJavaMethod implements Harmonizer<ForJavaMethod.Token> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:843:                enum ForJVMMethod implements Harmonizer<ForJVMMethod.Token> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:1018:                 * {@link net.bytebuddy.dynamic.scaffold.MethodGraph.Compiler.Default.Harmonizer}.
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:1049:                    protected static <Q> Harmonized<Q> of(MethodDescription methodDescription, Harmonizer<Q> harmonizer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:1099:                    protected Harmonized<V> extend(MethodDescription.InDefinedShape methodDescription, Harmonizer<V> harmonizer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:1229:                    protected Store<V> registerTopLevel(List<? extends MethodDescription> methodDescriptions, Harmonizer<V> harmonizer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:1338:                        Entry<W> extendBy(MethodDescription methodDescription, Harmonizer<W> harmonizer);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:1401:                            public Entry<U> extendBy(MethodDescription methodDescription, Harmonizer<U> harmonizer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:1545:                            public Entry<U> extendBy(MethodDescription methodDescription, Harmonizer<U> harmonizer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:1734:                            public Entry<U> extendBy(MethodDescription methodDescription, Harmonizer<U> harmonizer) {
+
+codex
+{"target":"net.bytebuddy.dynamic.scaffold.MethodGraph.ForJVMMethod","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java`, `byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java`, and `byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java`. `rg` found only 3 files mentioning `ForJVMMethod`/`forJVMHierarchy()`: the enum’s own declaration, one factory call in `MethodGraph.java` (`forJVMHierarchy()`), and two test classes. The enum’s outgoing dependencies are also small: it only implements `Harmonizer<ForJVMMethod.Token>` and its token logic depends on `MethodDescription.TypeToken` plus basic `hashCode`/`equals`/`toString` handling, so it is not acting as a high fan-in/high fan-out dependency hub."}
+tokens used
+16,125

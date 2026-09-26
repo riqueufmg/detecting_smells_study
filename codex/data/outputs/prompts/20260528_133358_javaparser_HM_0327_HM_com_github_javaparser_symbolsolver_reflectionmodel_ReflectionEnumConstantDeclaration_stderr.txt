@@ -1,0 +1,673 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f6f-91a1-7451-9a70-12c5310ba688
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.symbolsolver.reflectionmodel.ReflectionEnumConstantDeclaration` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.symbolsolver.reflectionmodel.ReflectionEnumConstantDeclaration",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.symbolsolver.reflectionmodel.ReflectionEnumConstantDeclaration`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and checking its imports, fields, methods, and references from other code so I can judge fan-out and fan-in from repository evidence only.
+exec
+/bin/bash -lc "rg --files | rg 'ReflectionEnumConstantDeclaration\\.java"'$|ReflectionEnumConstantDeclaration'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "ReflectionEnumConstantDeclaration" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 336ms:
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumConstantDeclaration.java:31:public class ReflectionEnumConstantDeclaration implements ResolvedEnumConstantDeclaration {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumConstantDeclaration.java:36:    public ReflectionEnumConstantDeclaration(Field enumConstant, TypeSolver typeSolver) {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumDeclaration.java:254:                .map(c -> new ReflectionEnumConstantDeclaration(c, typeSolver))
+
+ succeeded in 344ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumConstantDeclaration.java
+
+codex
+I found the class file and one direct construction site. Next I’m reading the class and a few adjacent reflection-model files to measure how central it is structurally.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumConstantDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '220,320p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,200p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedEnumConstantDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 149ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.reflectionmodel;
+
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.declarations.ResolvedEnumConstantDeclaration;
+import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
+import com.github.javaparser.resolution.model.typesystem.ReferenceTypeImpl;
+import com.github.javaparser.resolution.types.ResolvedType;
+import java.lang.reflect.Field;
+
+public class ReflectionEnumConstantDeclaration implements ResolvedEnumConstantDeclaration {
+
+    private Field enumConstant;
+    private TypeSolver typeSolver;
+
+    public ReflectionEnumConstantDeclaration(Field enumConstant, TypeSolver typeSolver) {
+        if (!enumConstant.isEnumConstant()) {
+            throw new IllegalArgumentException("The given field does not represent an enum constant");
+        }
+        this.enumConstant = enumConstant;
+        this.typeSolver = typeSolver;
+    }
+
+    @Override
+    public String getName() {
+        return enumConstant.getName();
+    }
+
+    @Override
+    public ResolvedType getType() {
+        Class<?> enumClass = enumConstant.getDeclaringClass();
+        ResolvedReferenceTypeDeclaration typeDeclaration = new ReflectionEnumDeclaration(enumClass, typeSolver);
+        return new ReferenceTypeImpl(typeDeclaration);
+    }
+}
+
+ succeeded in 174ms:
+                ResolvedType formalType = methodUsage.getParamType(i);
+                // We need to replace the class type typeParametersValues (while we derive the method ones)
+
+                parameters.add(inferenceContext.addPair(formalType, actualType));
+                i++;
+            }
+            try {
+                ResolvedType returnType = inferenceContext.addSingle(methodUsage.returnType());
+                for (int j = 0; j < parameters.size(); j++) {
+                    methodUsage = methodUsage.replaceParamType(j, inferenceContext.resolve(parameters.get(j)));
+                }
+                methodUsage = methodUsage.replaceReturnType(inferenceContext.resolve(returnType));
+                return Optional.of(methodUsage);
+            } catch (ConflictingGenericTypesException e) {
+                return Optional.empty();
+            }
+        } else {
+            return res;
+        }
+    }
+
+    @Override
+    public SymbolReference<? extends ResolvedValueDeclaration> solveSymbol(String name, TypeSolver typeSolver) {
+        if (hasEnumConstant(name)) {
+            ResolvedEnumConstantDeclaration enumConstant = getEnumConstant(name);
+            return SymbolReference.solved(enumConstant);
+        }
+        return SymbolReference.unsolved();
+    }
+
+    @Override
+    public List<ResolvedEnumConstantDeclaration> getEnumConstants() {
+        return Arrays.stream(clazz.getFields())
+                .filter(Field::isEnumConstant)
+                .map(c -> new ReflectionEnumConstantDeclaration(c, typeSolver))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Set<ResolvedReferenceTypeDeclaration> internalTypes() {
+        return Arrays.stream(this.clazz.getDeclaredClasses())
+                .map(ic -> ReflectionFactory.typeDeclarationFor(ic, typeSolver))
+                .collect(Collectors.toSet());
+    }
+
+    @Override
+    public List<ResolvedConstructorDeclaration> getConstructors() {
+        return reflectionClassAdapter.getConstructors();
+    }
+}
+
+ exited 2 in 185ms:
+sed: can't read javaparser-symbol-solver-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedEnumConstantDeclaration.java: No such file or directory
+
+codex
+The class itself is very small. I’m now checking the interface and other repository references to see whether this class is a dependency hub or just a leaf used by one caller.
+exec
+/bin/bash -lc "rg --files | rg 'ResolvedEnumConstantDeclaration\\.java"'$|ResolvedValueDeclaration'"\\.java"'$|ResolvedReferenceTypeDeclaration'"\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"new ReflectionEnumConstantDeclaration\\(|ReflectionEnumConstantDeclaration\\b\" javaparser-symbol-solver-core javaparser-core javaparser-symbol-solver-testing -S" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 365ms:
+javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedEnumConstantDeclaration.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedReferenceTypeDeclaration.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedValueDeclaration.java
+
+ succeeded in 388ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumConstantDeclaration.java:31:public class ReflectionEnumConstantDeclaration implements ResolvedEnumConstantDeclaration {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumConstantDeclaration.java:36:    public ReflectionEnumConstantDeclaration(Field enumConstant, TypeSolver typeSolver) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumDeclaration.java:254:                .map(c -> new ReflectionEnumConstantDeclaration(c, typeSolver))
+
+exec
+/bin/bash -lc "sed -n '1,200p' javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedEnumConstantDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedValueDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,240p' javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedReferenceTypeDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 182ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.resolution.declarations;
+
+import com.github.javaparser.resolution.types.ResolvedType;
+
+/**
+ * Declaration of a value.
+ *
+ * @author Federico Tomassetti
+ */
+public interface ResolvedValueDeclaration extends ResolvedDeclaration {
+
+    /**
+     * Type of the declaration.
+     */
+    ResolvedType getType();
+}
+
+ succeeded in 241ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.resolution.declarations;
+
+/**
+ * @author Federico Tomassetti
+ */
+public interface ResolvedEnumConstantDeclaration extends ResolvedValueDeclaration {
+
+    String getName();
+
+    @Override
+    default boolean isEnumConstant() {
+        return true;
+    }
+
+    @Override
+    default ResolvedEnumConstantDeclaration asEnumConstant() {
+        return this;
+    }
+}
+
+ succeeded in 270ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.resolution.declarations;
+
+import com.github.javaparser.ast.AccessSpecifier;
+import com.github.javaparser.resolution.MethodUsage;
+import com.github.javaparser.resolution.UnsolvedSymbolException;
+import com.github.javaparser.resolution.types.ResolvedReferenceType;
+import com.github.javaparser.resolution.types.ResolvedType;
+import java.io.Serializable;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * @author Federico Tomassetti
+ */
+public interface ResolvedReferenceTypeDeclaration extends ResolvedTypeDeclaration, ResolvedTypeParametrizable {
+
+    String JAVA_LANG_ENUM = java.lang.Enum.class.getCanonicalName();
+
+    String JAVA_LANG_COMPARABLE = java.lang.Comparable.class.getCanonicalName();
+
+    String JAVA_IO_SERIALIZABLE = Serializable.class.getCanonicalName();
+
+    String JAVA_LANG_OBJECT = java.lang.Object.class.getCanonicalName();
+
+    // Can't use java.lang.Record.class.getCanonicalName() since records were only added in Java 14.
+    String JAVA_LANG_RECORD = "java.lang.Record";
+
+    @Override
+    default ResolvedReferenceTypeDeclaration asReferenceType() {
+        return this;
+    }
+
+    @Override
+    default boolean isReferenceType() {
+        return true;
+    }
+
+    // /
+    // / Ancestors
+    // /
+    /**
+     * Resolves the types of all direct ancestors (i.e., the directly extended class and the directly implemented
+     * interfaces) and returns the list of ancestors as a list of resolved reference types.
+     * <p>
+     * In case any ancestor cannot be resolved, an {@code UnsolvedSymbolException} is thrown. In order to obtain a list
+     * of only the resolvable direct ancestors, use {@link #getAncestors(boolean)} and pass the value {@code true}.
+     * <p>
+     * Note that an ancestor can be parametrized types with values specified. For example:
+     * <p>
+     * class A implements Comparable&lt;String&gt; {}
+     * <p>
+     * In this case the ancestor is Comparable&lt;String&gt;
+     *
+     * @return The list of resolved ancestors.
+     * @throws UnsolvedSymbolException if some ancestor could not be resolved.
+     */
+    default List<ResolvedReferenceType> getAncestors() {
+        return getAncestors(false);
+    }
+
+    /**
+     * Resolves the types of all direct ancestors (i.e., the directly extended class and the directly implemented
+     * interfaces) and returns the list of ancestors as a list of resolved reference types.
+     * <p>
+     * If {@code acceptIncompleteList} is {@code false}, then an {@code UnsolvedSymbolException} is thrown if any
+     * ancestor cannot be resolved. Otherwise, a list of only the resolvable direct ancestors is returned.
+     *
+     * @param acceptIncompleteList When set to {@code false}, this method throws an {@link UnsolvedSymbolException} if
+     *                             one or more ancestor could not be resolved. When set to {@code true}, this method
+     *                             does not throw an {@link UnsolvedSymbolException}, but the list of returned ancestors
+     *                             may be incomplete in case one or more ancestor could not be resolved.
+     * @return The list of resolved ancestors.
+     * @throws UnsolvedSymbolException if some ancestor could not be resolved and {@code acceptIncompleteList} is set to
+     *                                 {@code false}.
+     */
+    List<ResolvedReferenceType> getAncestors(boolean acceptIncompleteList);
+
+    /**
+     * The list of all the ancestors of the current declaration, direct and indirect.
+     * This list does not contains duplicates with the exact same type parameters.
+     * For example
+     * if A inherits from B, and B inherits from C and implements D, and C inherits from E
+     * By default the traversal is depth first
+     */
+    default List<ResolvedReferenceType> getAllAncestors() {
+        return getAllAncestors(depthFirstFunc);
+    }
+
+    /**
+     * The list of all the ancestors of the current declaration, direct and indirect.
+     * This list does not contains duplicates with the exact same type parameters.
+     * For example
+     * if A inherits from B, and B inherits from C and implements D, and C inherits from E
+     * Apply the specified traversal
+     */
+    default List<ResolvedReferenceType> getAllAncestors(
+            Function<ResolvedReferenceTypeDeclaration, List<ResolvedReferenceType>> traverser) {
+        return traverser.apply(this);
+    }
+
+    /*
+     * depth first search all ancestors
+     * In the example above, this method returns B,C,E,D
+     */
+    Function<ResolvedReferenceTypeDeclaration, List<ResolvedReferenceType>> depthFirstFunc = (rrtd) -> {
+        List<ResolvedReferenceType> ancestors = new ArrayList<>();
+        // We want to avoid infinite recursion in case of Object having Object as ancestor
+        if (!rrtd.isJavaLangObject()) {
+            for (ResolvedReferenceType ancestor : rrtd.getAncestors()) {
+                ancestors.add(ancestor);
+                for (ResolvedReferenceType inheritedAncestor : ancestor.getAllAncestors()) {
+                    if (!ancestors.contains(inheritedAncestor)) {
+                        ancestors.add(inheritedAncestor);
+                    }
+                }
+            }
+        }
+        return ancestors;
+    };
+
+    /*
+     * breadth first search all ancestors
+     * In the example above, this method returns B,C,D,E
+     */
+    Function<ResolvedReferenceTypeDeclaration, List<ResolvedReferenceType>> breadthFirstFunc = (rrtd) -> {
+        List<ResolvedReferenceType> ancestors = new ArrayList<>();
+        // We want to avoid infinite recursion in case of Object having Object as ancestor
+        if (!rrtd.isJavaLangObject()) {
+            // init direct ancestors
+            Deque<ResolvedReferenceType> queuedAncestors = new LinkedList<>(rrtd.getAncestors());
+            ancestors.addAll(queuedAncestors);
+            while (!queuedAncestors.isEmpty()) {
+                ResolvedReferenceType queuedAncestor = queuedAncestors.removeFirst();
+                queuedAncestor.getTypeDeclaration().ifPresent(rtd -> new LinkedHashSet<>(
+                                queuedAncestor.getDirectAncestors())
+                        .stream().forEach(ancestor -> {
+                            // add this ancestor to the queue (for a deferred search)
+                            queuedAncestors.add(ancestor);
+                            // add this ancestor to the list of ancestors
+                            if (!ancestors.contains(ancestor)) {
+                                ancestors.add(ancestor);
+                            }
+                        }));
+            }
+        }
+        return ancestors;
+    };
+
+    // /
+    // / Fields
+    // /
+    /**
+     * Note that the type of the field should be expressed using the type variables of this particular type.
+     * Consider for example:
+     * <p>
+     * class Foo<E> { E field; }
+     * <p>
+     * class Bar extends Foo<String> { }
+     * <p>
+     * When calling getField("field") on Foo I should get a FieldDeclaration with type E, while calling it on
+     * Bar I should get a FieldDeclaration with type String.
+     */
+    default ResolvedFieldDeclaration getField(String name) {
+        Optional<ResolvedFieldDeclaration> field = this.getAllFields().stream()
+                .filter(f -> f.getName().equals(name))
+                .findFirst();
+        if (field.isPresent()) {
+            return field.get();
+        }
+        throw new UnsolvedSymbolException("Field not found: " + name);
+    }
+
+    /**
+     * Consider only field or inherited field which is not private.
+     */
+    default ResolvedFieldDeclaration getVisibleField(String name) {
+        Optional<ResolvedFieldDeclaration> field = getVisibleFields().stream()
+                .filter(f -> f.getName().equals(name))
+                .findFirst();
+        if (field.isPresent()) {
+            return field.get();
+        }
+        throw new IllegalArgumentException();
+    }
+
+    /**
+     * Has this type a field with the given name?
+     */
+    default boolean hasField(String name) {
+        return this.getAllFields().stream().anyMatch(f -> f.getName().equals(name));
+    }
+
+    /**
+     * Either a declared field or inherited field which is not private.
+     */
+    default boolean hasVisibleField(String name) {
+        return getVisibleFields().stream().anyMatch(f -> f.getName().equals(name));
+    }
+
+    /**
+     * Return a list of all fields, either declared in this declaration or inherited.
+     */
+    List<ResolvedFieldDeclaration> getAllFields();
+
+    /**
+     * Return a list of all fields declared and the inherited ones which are not private.
+     */
+    default List<ResolvedFieldDeclaration> getVisibleFields() {
+        return getAllFields().stream()
+                .filter(f -> f.declaringType().equals(this) || f.accessSpecifier() != AccessSpecifier.PRIVATE)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Return a list of all the non static fields, either declared or inherited.
+     */
+    default List<ResolvedFieldDeclaration> getAllNonStaticFields() {
+        return getAllFields().stream().filter(it -> !it.isStatic()).collect(Collectors.toList());
+    }
+
+codex
+I have enough to classify it, but I’m grabbing line numbers so the justification can cite the exact source file and the single construction site precisely.
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumConstantDeclaration.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumDeclaration.java | sed -n '246,260p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "nl -ba javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedEnumConstantDeclaration.java | sed -n '1,80p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 266ms:
+   246	        }
+   247	        return SymbolReference.unsolved();
+   248	    }
+   249	
+   250	    @Override
+   251	    public List<ResolvedEnumConstantDeclaration> getEnumConstants() {
+   252	        return Arrays.stream(clazz.getFields())
+   253	                .filter(Field::isEnumConstant)
+   254	                .map(c -> new ReflectionEnumConstantDeclaration(c, typeSolver))
+   255	                .collect(Collectors.toList());
+   256	    }
+   257	
+   258	    @Override
+   259	    public Set<ResolvedReferenceTypeDeclaration> internalTypes() {
+   260	        return Arrays.stream(this.clazz.getDeclaredClasses())
+
+ succeeded in 287ms:
+     1	/*
+     2	 * Copyright (C) 2015-2016 Federico Tomassetti
+     3	 * Copyright (C) 2017-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	
+    22	package com.github.javaparser.symbolsolver.reflectionmodel;
+    23	
+    24	import com.github.javaparser.resolution.TypeSolver;
+    25	import com.github.javaparser.resolution.declarations.ResolvedEnumConstantDeclaration;
+    26	import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
+    27	import com.github.javaparser.resolution.model.typesystem.ReferenceTypeImpl;
+    28	import com.github.javaparser.resolution.types.ResolvedType;
+    29	import java.lang.reflect.Field;
+    30	
+    31	public class ReflectionEnumConstantDeclaration implements ResolvedEnumConstantDeclaration {
+    32	
+    33	    private Field enumConstant;
+    34	    private TypeSolver typeSolver;
+    35	
+    36	    public ReflectionEnumConstantDeclaration(Field enumConstant, TypeSolver typeSolver) {
+    37	        if (!enumConstant.isEnumConstant()) {
+    38	            throw new IllegalArgumentException("The given field does not represent an enum constant");
+    39	        }
+    40	        this.enumConstant = enumConstant;
+    41	        this.typeSolver = typeSolver;
+    42	    }
+    43	
+    44	    @Override
+    45	    public String getName() {
+    46	        return enumConstant.getName();
+    47	    }
+    48	
+    49	    @Override
+    50	    public ResolvedType getType() {
+    51	        Class<?> enumClass = enumConstant.getDeclaringClass();
+    52	        ResolvedReferenceTypeDeclaration typeDeclaration = new ReflectionEnumDeclaration(enumClass, typeSolver);
+    53	        return new ReferenceTypeImpl(typeDeclaration);
+    54	    }
+    55	}
+
+ succeeded in 358ms:
+     1	/*
+     2	 * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+     3	 * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	package com.github.javaparser.resolution.declarations;
+    22	
+    23	/**
+    24	 * @author Federico Tomassetti
+    25	 */
+    26	public interface ResolvedEnumConstantDeclaration extends ResolvedValueDeclaration {
+    27	
+    28	    String getName();
+    29	
+    30	    @Override
+    31	    default boolean isEnumConstant() {
+    32	        return true;
+    33	    }
+    34	
+    35	    @Override
+    36	    default ResolvedEnumConstantDeclaration asEnumConstant() {
+    37	        return this;
+    38	    }
+    39	}
+
+codex
+{"target":"com.github.javaparser.symbolsolver.reflectionmodel.ReflectionEnumConstantDeclaration","detection":false,"justification":"Inspected `javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumConstantDeclaration.java` and `ReflectionEnumDeclaration.java`. The target class is a tiny adapter with 2 fields and 2 methods, and its only nontrivial outgoing dependency is a single creation of `ReflectionEnumDeclaration` in `getType()`. Repository search found only one instantiation site, in `ReflectionEnumDeclaration#getEnumConstants()` (`ReflectionEnumDeclaration.java:251-255`), and no other classes reference the target by name, so there is no evidence of high fan-in/fan-out or hub-like modularization."}
+tokens used
+11,371

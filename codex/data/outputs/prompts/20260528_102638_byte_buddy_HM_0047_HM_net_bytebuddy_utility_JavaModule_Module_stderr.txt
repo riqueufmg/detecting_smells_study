@@ -1,0 +1,1609 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ec4-0354-7f13-9027-f586f1354ab9
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.utility.JavaModule.Module` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.utility.JavaModule.Module",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.utility.JavaModule.Module`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class definition first, then I’ll trace who depends on it and what it depends on so the hub-like modularization call is evidence-based.
+exec
+/bin/bash -lc 'rg --files . | rg "JavaModule|module"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-gradle-plugin/android-plugin-test/service-definition-lib/src/main/java/module-info.java
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/java/module-info.java
+./byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/java/module-info.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/module/package-info.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/module/ModuleDescription.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/module/ModuleDescriptionForLoadedModuleTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/module/AbstractModuleDescriptionTest.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaModuleTest.java
+
+exec
+/bin/bash -lc 'rg -n "class Module|interface Module|enum Module" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/module/ModuleDescription.java:43:public interface ModuleDescription extends NamedElement,
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/module/ModuleDescription.java:776:        protected interface Module {
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/module/ModuleDescription.java:824:        protected interface ModuleDescriptor {
+./byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2364:        class ModuleReadEdgeCompleting extends Adapter {
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:6291:            protected static class ModuleToken {
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:9408:            protected class ModuleExtractor extends ModuleVisitor {
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:268:    protected interface Module {
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/ModuleVersionPluginTest.java:12:public class ModuleVersionPluginTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/module/ModuleDescriptionForLoadedModuleTest.java:20:public class ModuleDescriptionForLoadedModuleTest extends AbstractModuleDescriptionTest {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:1660:        interface ModuleDefinition<S> extends Builder<S> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:5657:                protected class ModuleDefinitionAdapter extends ModuleDefinition.AbstractBase<U> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ModuleLayerFromSingleClassLoaderDecorator.java:57:public class ModuleLayerFromSingleClassLoaderDecorator implements ClassLoaderDecorator {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ModuleLayerFromSingleClassLoaderDecorator.java:220:    protected interface ModuleDescriptor {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ModuleLayerFromSingleClassLoaderDecorator.java:253:    protected interface ModuleLayer {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ModuleLayerFromSingleClassLoaderDecorator.java:299:    protected interface ModuleLayerController {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ModuleLayerFromSingleClassLoaderDecorator.java:335:    protected interface ModuleFinder {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/ModuleVersionPlugin.java:27:public class ModuleVersionPlugin implements Plugin, Plugin.Factory {
+
+codex
+I found the target in `byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java`. Next I’m checking how widely it is used and how many external types it wraps, because hub-like modularization needs both fan-in and fan-out evidence.
+exec
+/bin/bash -lc "sed -n '1,380p' byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.utility;
+
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.build.AccessControllerPlugin;
+import net.bytebuddy.description.NamedElement;
+import net.bytebuddy.description.annotation.AnnotationList;
+import net.bytebuddy.description.annotation.AnnotationSource;
+import net.bytebuddy.description.module.ModuleDescription;
+import net.bytebuddy.description.type.PackageDescription;
+import net.bytebuddy.utility.dispatcher.JavaDispatcher;
+import net.bytebuddy.utility.nullability.AlwaysNull;
+import net.bytebuddy.utility.nullability.MaybeNull;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.AnnotatedElement;
+import java.security.PrivilegedAction;
+import java.util.Set;
+
+/**
+ * Type-safe representation of a {@code java.lang.Module}. On platforms that do not support the module API, modules are represented by {@code null}.
+ */
+public class JavaModule implements NamedElement.WithOptionalName, AnnotationSource {
+
+    /**
+     * Canonical representation of a Java module on a JVM that does not support the module API.
+     */
+    @AlwaysNull
+    public static final JavaModule UNSUPPORTED = null;
+
+    /**
+     * A dispatcher to resolve a {@link Class}'s {@code java.lang.Module}.
+     */
+    protected static final Resolver RESOLVER = doPrivileged(JavaDispatcher.of(Resolver.class));
+
+    /**
+     * A dispatcher to interact with {@code java.lang.Module}.
+     */
+    protected static final Module MODULE = doPrivileged(JavaDispatcher.of(Module.class));
+
+    /**
+     * The {@code java.lang.Module} instance this wrapper represents.
+     */
+    private final AnnotatedElement module;
+
+    /**
+     * Creates a new Java module representation.
+     *
+     * @param module The {@code java.lang.Module} instance this wrapper represents.
+     */
+    protected JavaModule(AnnotatedElement module) {
+        this.module = module;
+    }
+
+    /**
+     * A proxy for {@code java.security.AccessController#doPrivileged} that is activated if available.
+     *
+     * @param action The action to execute from a privileged context.
+     * @param <T>    The type of the action's resolved value.
+     * @return The action's resolved value.
+     */
+    @AccessControllerPlugin.Enhance
+    private static <T> T doPrivileged(PrivilegedAction<T> action) {
+        return action.run();
+    }
+
+    /**
+     * Returns a representation of the supplied type's {@code java.lang.Module} or {@code null} if the current VM does not support modules.
+     *
+     * @param type The type for which to describe the module.
+     * @return A representation of the type's module or {@code null} if the current VM does not support modules.
+     */
+    @MaybeNull
+    public static JavaModule ofType(Class<?> type) {
+        Object module = RESOLVER.getModule(type);
+        return module == null
+                ? UNSUPPORTED
+                : new JavaModule((AnnotatedElement) module);
+    }
+
+    /**
+     * Represents the supplied {@code java.lang.Module} as an instance of this class and validates that the
+     * supplied instance really represents a Java {@code Module}.
+     *
+     * @param module The module to represent.
+     * @return A representation of the supplied Java module.
+     */
+    public static JavaModule of(Object module) {
+        if (!MODULE.isInstance(module)) {
+            throw new IllegalArgumentException("Not a Java module: " + module);
+        }
+        return new JavaModule((AnnotatedElement) module);
+    }
+
+    /**
+     * Checks if the current VM supports the {@code java.lang.Module} API.
+     *
+     * @return {@code true} if the current VM supports modules.
+     */
+    public static boolean isSupported() {
+        return ClassFileVersion.ofThisVm(ClassFileVersion.JAVA_V5).isAtLeast(ClassFileVersion.JAVA_V9);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isNamed() {
+        return MODULE.isNamed(module);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getActualName() {
+        return MODULE.getName(module);
+    }
+
+    /**
+     * Returns the packages of this module.
+     *
+     * @return A set of the names of the packages that are defined by this module.
+     */
+    public Set<String> getPackages() {
+        return MODULE.getPackages(module);
+    }
+
+    /**
+     * Returns a resource stream for this module for a resource of the given name or {@code null} if such a resource does not exist.
+     *
+     * @param name The name of the resource.
+     * @return An input stream for the resource or {@code null} if it does not exist.
+     * @throws IOException If an I/O exception occurs.
+     */
+    @MaybeNull
+    public InputStream getResourceAsStream(String name) throws IOException {
+        return MODULE.getResourceAsStream(module, name);
+    }
+
+    /**
+     * Returns the class loader of this module.
+     *
+     * @return The class loader of the represented module.
+     */
+    @MaybeNull
+    public ClassLoader getClassLoader() {
+        return MODULE.getClassLoader(module);
+    }
+
+    /**
+     * Unwraps this instance to a {@code java.lang.Module}.
+     *
+     * @return The represented {@code java.lang.Module}.
+     */
+    public Object unwrap() {
+        return module;
+    }
+
+    /**
+     * Checks if this module can read the exported packages of the supplied module.
+     *
+     * @param module The module to check for its readability by this module.
+     * @return {@code true} if this module can read the supplied module.
+     */
+    public boolean canRead(JavaModule module) {
+        return MODULE.canRead(this.module, module.unwrap());
+    }
+
+    /**
+     * Returns {@code true} if this module exports the supplied package to this module.
+     *
+     * @param packageDescription The package to check for
+     * @param module             The target module.
+     * @return {@code true} if this module exports the supplied package to this module.
+     */
+    public boolean isExported(@MaybeNull PackageDescription packageDescription, JavaModule module) {
+        return packageDescription == null
+                || packageDescription.isDefault()
+                || MODULE.isExported(this.module, packageDescription.getName(), module.unwrap());
+    }
+
+    /**
+     * Returns {@code true} if this module opens the supplied package to this module.
+     *
+     * @param packageDescription The package to check for.
+     * @param module             The target module.
+     * @return {@code true} if this module opens the supplied package to this module.
+     */
+    public boolean isOpened(@MaybeNull PackageDescription packageDescription, JavaModule module) {
+        return packageDescription == null
+                || packageDescription.isDefault()
+                || MODULE.isOpen(this.module, packageDescription.getName(), module.unwrap());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public AnnotationList getDeclaredAnnotations() {
+        return new AnnotationList.ForLoadedAnnotations(module.getDeclaredAnnotations());
+    }
+
+    /**
+     * Returns a description of the module if the current module is a named module. Otherwise,
+     * an exception is thrown.
+     *
+     * @return A description of the current module.
+     */
+    public ModuleDescription toDescription() {
+        return ModuleDescription.ForLoadedModule.of(module);
+    }
+
+    @Override
+    public int hashCode() {
+        return module.hashCode();
+    }
+
+    @Override
+    public boolean equals(@MaybeNull Object other) {
+        if (this == other) {
+            return true;
+        } else if (!(other instanceof JavaModule)) {
+            return false;
+        }
+        JavaModule javaModule = (JavaModule) other;
+        return module.equals(javaModule.module);
+    }
+
+    @Override
+    public String toString() {
+        return module.toString();
+    }
+
+    /**
+     * A proxy for resolving a {@link Class}'s {@code java.lang.Module}.
+     */
+    @JavaDispatcher.Proxied("java.lang.Class")
+    protected interface Resolver {
+
+        /**
+         * Resolves the {@code java.lang.Module} of the supplied type.
+         *
+         * @param type The type for which to resolve the module.
+         * @return The type's module or {@code null} if the module system is not supported.
+         */
+        @MaybeNull
+        @JavaDispatcher.Defaults
+        Object getModule(Class<?> type);
+    }
+
+    /**
+     * A proxy for interacting with {@code java.lang.Module}.
+     */
+    @JavaDispatcher.Proxied("java.lang.Module")
+    protected interface Module {
+
+        /**
+         * Returns {@code true} if the supplied instance is of type {@code java.lang.Module}.
+         *
+         * @param value The instance to investigate.
+         * @return {@code true} if the supplied value is a {@code java.lang.Module}.
+         */
+        @JavaDispatcher.Instance
+        boolean isInstance(Object value);
+
+        /**
+         * Returns {@code true} if the supplied module is named.
+         *
+         * @param value The {@code java.lang.Module} to check for the existence of a name.
+         * @return {@code true} if the supplied module is named.
+         */
+        boolean isNamed(Object value);
+
+        /**
+         * Returns the module's name.
+         *
+         * @param value The {@code java.lang.Module} to check for its name.
+         * @return The module's (implicit or explicit) name.
+         */
+        String getName(Object value);
+
+        /**
+         * Returns the module's exported packages.
+         *
+         * @param value The {@code java.lang.Module} to check for its packages.
+         * @return The module's packages.
+         */
+        Set<String> getPackages(Object value);
+
+        /**
+         * Returns the class loader of a module.
+         *
+         * @param value The {@code java.lang.Module} for which to return a class loader.
+         * @return The module's class loader.
+         */
+        @MaybeNull
+        ClassLoader getClassLoader(Object value);
+
+        /**
+         * Returns a resource stream for this module for a resource of the given name or {@code null} if such a resource does not exist.
+         *
+         * @param value The {@code java.lang.Module} instance to apply this method upon.
+         * @param name  The name of the resource.
+         * @return An input stream for the resource or {@code null} if it does not exist.
+         * @throws IOException If an I/O exception occurs.
+         */
+        @MaybeNull
+        InputStream getResourceAsStream(Object value, String name) throws IOException;
+
+        /**
+         * Returns {@code true} if the source module exports the supplied package to the target module.
+         *
+         * @param value    The source module.
+         * @param aPackage The name of the package to check.
+         * @param target   The target module.
+         * @return {@code true} if the source module exports the supplied package to the target module.
+         */
+        boolean isExported(Object value, String aPackage, @JavaDispatcher.Proxied("java.lang.Module") Object target);
+
+        /**
+         * Returns {@code true} if the source module opens the supplied package to the target module.
+         *
+         * @param value    The source module.
+         * @param aPackage The name of the package to check.
+         * @param target   The target module.
+         * @return {@code true} if the source module opens the supplied package to the target module.
+         */
+        boolean isOpen(Object value, String aPackage, @JavaDispatcher.Proxied("java.lang.Module") Object target);
+
+        /**
+         * Checks if the source module can read the target module.
+         *
+         * @param value  The source module.
+         * @param target The target module.
+         * @return {@code true} if the source module can read the target module.
+         */
+        boolean canRead(Object value, @JavaDispatcher.Proxied("java.lang.Module") Object target);
+    }
+}
+
+exec
+/bin/bash -lc "rg -n \"JavaModule(\\.Module)?\\b|JavaModule\\.of|JavaModule\\.isSupported|JavaModule\\.isNamed|JavaModule\\.getResource|JavaModule\\.canRead|JavaModule\\.unwrap\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:35:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:2357:    public static <T extends JavaModule> ElementMatcher.Junction<T> supportsModules() {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForClassLoaderTest.java:5:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForClassLoaderTest.java:69:        JavaModule module = JavaModule.ofType(Object.class);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForClassLoaderTest.java:102:        JavaModule module = JavaModule.ofType(Object.class);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForClassLoaderTest.java:123:        JavaModule module = JavaModule.ofType(Object.class);
+byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTutorialExamplesTest.java:41:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/ByteBuddyTutorialExamplesTest.java:187:                                                    JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:27:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:654:        private final JavaModule module;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:661:        protected ForModule(JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:678:                    ClassFileLocator classFileLocator = ForModule.of(JavaModule.of(rawModule));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:696:        public static ClassFileLocator of(JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:715:        protected static Resolution locate(JavaModule module, String typeName) throws IOException {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:769:            public static ClassFileLocator of(JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:782:                return module == null ? new Resolution.Illegal(name) : ForModule.locate(JavaModule.of(module), name);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:1483:                JavaModule source = JavaModule.ofType(AgentBuilder.class), target = JavaModule.ofType(installer);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/NexusAccessor.java:36:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/NexusAccessor.java:250:                        JavaModule source = JavaModule.ofType(NexusAccessor.class), target = JavaModule.ofType(nexusType);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:28:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:62:                                                @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:436:                                                           @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:516:                                                               @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:723:                JavaModule module = JavaModule.of(rawModule);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:903:            T onBeforeTransform(@MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:923:                                  @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:76:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:431:    AgentBuilder assureReadEdgeTo(Instrumentation instrumentation, JavaModule... module);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:441:    AgentBuilder assureReadEdgeTo(Instrumentation instrumentation, Collection<? extends JavaModule> modules);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:464:    AgentBuilder assureReadEdgeFromAndTo(Instrumentation instrumentation, JavaModule... module);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:475:    AgentBuilder assureReadEdgeFromAndTo(Instrumentation instrumentation, Collection<? extends JavaModule> modules);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:560:     * @param moduleMatcher      An {@link net.bytebuddy.matcher.ElementMatcher} that is applied to the {@link JavaModule}
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:570:                               ElementMatcher<? super JavaModule> moduleMatcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:696:                   ElementMatcher<? super JavaModule> moduleMatcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:918:              ElementMatcher<? super JavaModule> moduleMatcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:956:             ElementMatcher<? super JavaModule> moduleMatcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1017:            boolean matches(Throwable throwable, String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1051:                public boolean matches(Throwable throwable, String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1095:                public boolean matches(Throwable throwable, String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1144:                public boolean matches(Throwable throwable, String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1178:                private final ElementMatcher<? super JavaModule> moduleMatcher;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1191:                                          ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1201:                public boolean matches(Throwable throwable, String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1223:            boolean matches(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1257:                public boolean matches(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1301:                public boolean matches(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1350:                public boolean matches(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1379:                private final ElementMatcher<? super JavaModule> moduleMatcher;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1390:                                          ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1399:                public boolean matches(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1466:                                                          ElementMatcher<? super JavaModule> moduleMatcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1516:                                                            ElementMatcher<? super JavaModule> moduleMatcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1639:                        @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1677:                                   @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1718:                                   @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1741:                                   @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1806:                                   @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1859:                                   @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1896:                                   @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1924:            private final ElementMatcher<? super JavaModule> moduleMatcher;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1961:                                      ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1972:                                   @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:1998:        void onDiscovery(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2009:        void onTransformation(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, DynamicType dynamicType);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2019:        void onIgnored(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2030:        void onError(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, Throwable throwable);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2040:        void onComplete(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2055:            public void onDiscovery(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2062:            public void onTransformation(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, DynamicType dynamicType) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2069:            public void onIgnored(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2076:            public void onError(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, Throwable throwable) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2083:            public void onComplete(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2096:            public void onDiscovery(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2103:            public void onTransformation(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, DynamicType dynamicType) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2110:            public void onIgnored(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2117:            public void onError(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, Throwable throwable) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2124:            public void onComplete(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2194:            public void onDiscovery(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2201:            public void onTransformation(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, DynamicType dynamicType) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2208:            public void onIgnored(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2215:            public void onError(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, Throwable throwable) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2225:            public void onComplete(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2260:            public void onDiscovery(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2269:            public void onTransformation(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, DynamicType dynamicType) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2278:            public void onIgnored(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2287:            public void onError(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, Throwable throwable) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2296:            public void onComplete(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2324:            public void onTransformation(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, DynamicType dynamicType) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2329:            public void onError(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, Throwable throwable) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2355:            public void onError(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, Throwable throwable) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2380:            private final Set<? extends JavaModule> modules;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2391:            public ModuleReadEdgeCompleting(Instrumentation instrumentation, boolean addTargetEdge, Set<? extends JavaModule> modules) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2408:                Set<JavaModule> modules = new HashSet<JavaModule>();
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2410:                    modules.add(JavaModule.ofType(aType));
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2418:            public void onTransformation(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, DynamicType dynamicType) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2419:                if (module != JavaModule.UNSUPPORTED && module.isNamed()) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2420:                    for (JavaModule target : modules) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2426:                                    Collections.<String, Set<JavaModule>>emptyMap(),
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2428:                                            ? Collections.<String, Set<JavaModule>>emptyMap()
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2437:                                    Collections.<String, Set<JavaModule>>emptyMap(),
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2438:                                    Collections.<String, Set<JavaModule>>emptyMap(),
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2486:            public void onDiscovery(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2495:            public void onTransformation(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, DynamicType dynamicType) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2504:            public void onIgnored(TypeDescription typeDescription, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2513:            public void onError(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, Throwable throwable) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2522:            public void onComplete(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2807:                                       @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2825:                                                      @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2851:                                                      @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2878:                                                      @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2911:                                                      @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2946:                                                  @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2972:                                         @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:3002:                                                    @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:3117:                                                    @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:3150:                                                                                     @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:4619:        TypeDescription apply(String name, @MaybeNull Class<?> type, TypePool typePool, CircularityLock circularityLock, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:4645:                                             @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:4672:                                             @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:4696:                                             @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:4794:                                         @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:4903:                                             @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:5053:        ClassFileLocator classFileLocator(@MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:5068:            public ClassFileLocator classFileLocator(@MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:5083:                public ClassFileLocator classFileLocator(@MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:5094:                public ClassFileLocator classFileLocator(@MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:5172:            public ClassFileLocator classFileLocator(@MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:5216:            public ClassFileLocator classFileLocator(@MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:5811:                                 @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:5838:                                                @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:5865:                                                @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:7849:                    public void onError(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, boolean loaded, Throwable throwable) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:7867:                    public boolean isEnforced(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, @MaybeNull Class<?> classBeingRedefined) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:8293:            boolean isEnforced(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, @MaybeNull Class<?> classBeingRedefined);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:8308:                public boolean isEnforced(String typeName, @MaybeNull ClassLoader classLoader, @MaybeNull JavaModule module, @MaybeNull Class<?> classBeingRedefined) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:8428:                JavaModule module = JavaModule.ofType(type);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:8485:                                    @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:8647:                                classDefinitions.add(new ClassDefinition(type, locationStrategy.classFileLocator(type.getClassLoader(), JavaModule.ofType(type))
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:8651:                                JavaModule module = JavaModule.ofType(type);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11570:            return JavaModule.isSupported()
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11578:        public AgentBuilder assureReadEdgeTo(Instrumentation instrumentation, JavaModule... module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11585:        public AgentBuilder assureReadEdgeTo(Instrumentation instrumentation, Collection<? extends JavaModule> modules) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11586:            return with(new Listener.ModuleReadEdgeCompleting(instrumentation, false, new HashSet<JavaModule>(modules)));
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11593:            return JavaModule.isSupported()
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11601:        public AgentBuilder assureReadEdgeFromAndTo(Instrumentation instrumentation, JavaModule... module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11608:        public AgentBuilder assureReadEdgeFromAndTo(Instrumentation instrumentation, Collection<? extends JavaModule> modules) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11609:            return with(new Listener.ModuleReadEdgeCompleting(instrumentation, true, new HashSet<JavaModule>(modules)));
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11638:                                          ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11661:                              ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:11718:                JavaModule source = JavaModule.ofType(AgentBuilder.class), target = JavaModule.ofType(installer);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:12088:                            JavaModule module = JavaModule.ofType(type);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:12281:                                       @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:12337:                                       @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:12377:                private final JavaModule module;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:12413:                                              @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:12728:            private byte[] transform(@MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:12789:            private byte[] doTransform(@MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:12835:                                                  @MaybeNull JavaModule module,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:13168:                    return transform(JavaModule.UNSUPPORTED,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:13250:                    return transform(JavaModule.of(rawModule),
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:13429:            public AgentBuilder assureReadEdgeTo(Instrumentation instrumentation, JavaModule... module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:13436:            public AgentBuilder assureReadEdgeTo(Instrumentation instrumentation, Collection<? extends JavaModule> modules) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:13450:            public AgentBuilder assureReadEdgeFromAndTo(Instrumentation instrumentation, JavaModule... module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:13457:            public AgentBuilder assureReadEdgeFromAndTo(Instrumentation instrumentation, Collection<? extends JavaModule> modules) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:13480:                                              ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:13510:                                  ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:13610:                             ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:13633:                            ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:14088:                    return resubmitOnError(exceptionMatcher, typeNameMatcher, classLoaderMatcher, ElementMatchers.<JavaModule>any());
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:14097:                                                                     ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:14129:                    return resubmitImmediate(typeNameMatcher, classLoaderMatcher, ElementMatchers.<JavaModule>any());
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:14137:                                                                       ElementMatcher<? super JavaModule> moduleMatcher) {
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:14:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/matcher/ElementMatchersTest.java:1291:        assertThat(ElementMatchers.supportsModules().matches(mock(JavaModule.class)), is(true));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:24:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:766:                if (JavaModule.isSupported()) { // Avoid accidental lookup of method with same name in Java 8 J9 VM.
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaModuleTest.java:15:        JavaModule.of(mock(Object.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaModuleTest.java:21:        JavaModule module = new JavaModule(object);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassReloadingStrategy.java:23:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassReloadingStrategy.java:158:            JavaModule source = JavaModule.ofType(AgentBuilder.class), target = JavaModule.ofType(installer);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleWeaklyReferencedTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleWeaklyReferencedTest.java:27:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleWeaklyReferencedTest.java:100:        ClassFileLocator classFileLocator = new ClassFileLocator.ForModule.WeaklyReferenced(JavaModule.ofType(Object.class).unwrap());
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:41:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:605:                        if (JavaModule.isSupported()) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:682:                    if (JavaModule.isSupported()) { // Avoid accidental lookup of method with same name in Java 8 J9 VM.
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:998:                    if (JavaModule.isSupported()) { // Avoid accidental lookup of method with same name in Java 8 J9 VM.
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:1284:                    if (JavaModule.isSupported()) { // Avoid accidental lookup of method with same name in Java 8 J9 VM.
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2287:                if (ClassInjector.UsingUnsafe.isAvailable() || !JavaModule.isSupported()) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2293:                        JavaModule source = JavaModule.ofType(type), target = JavaModule.ofType(ClassInjector.UsingUnsafe.class);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2297:                            JavaModule module = JavaModule.ofType(AccessResolver.Default.class);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2301:                                    Collections.<String, Set<JavaModule>>emptyMap(),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2316:                            JavaModule module = JavaModule.ofType(resolver);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2320:                                    Collections.<String, Set<JavaModule>>emptyMap(),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2496:                                          JavaModule target,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2497:                                          Set<JavaModule> reads,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2498:                                          Map<String, Set<JavaModule>> exports,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2499:                                          Map<String, Set<JavaModule>> opens,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2506:            for (JavaModule read : reads) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2510:            for (Map.Entry<String, Set<JavaModule>> entry : exports.entrySet()) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2512:                for (JavaModule module : entry.getValue()) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2518:            for (Map.Entry<String, Set<JavaModule>> entry : opens.entrySet()) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2520:                for (JavaModule module : entry.getValue()) {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleTest.java:33:    private JavaModule module;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/LoadedTypeInitializer.java:22:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/LoadedTypeInitializer.java:166:                        || JavaModule.isSupported()
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/LoadedTypeInitializer.java:167:                        && !JavaModule.ofType(type).isExported(TypeDescription.ForLoadedType.of(type).getPackage(), JavaModule.ofType(ForStaticField.class))) {
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationRedefineTest.java:19:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationRedefineTest.java:301:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationRedefineTest.java:312:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderTransformerForBuildPluginTest.java:7:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderTransformerForBuildPluginTest.java:42:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:5:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:66:        when(locationStrategy.classFileLocator(null, JavaModule.ofType(Object.class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:74:                JavaModule.ofType(Object.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:81:        verify(locationStrategy).classFileLocator(null, JavaModule.ofType(Object.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:94:        when(locationStrategy.classFileLocator(null, JavaModule.ofType(Object.class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:97:                JavaModule.ofType(Object.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:109:                JavaModule.ofType(Object.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:116:        verify(locationStrategy).classFileLocator(null, JavaModule.ofType(Object.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:134:        when(locationStrategy.classFileLocator(null, JavaModule.ofType(Object.class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:142:                JavaModule.ofType(Object.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:149:                JavaModule.ofType(Object.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:156:        verify(locationStrategy).classFileLocator(null, JavaModule.ofType(Object.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:168:        when(locationStrategy.classFileLocator(null, JavaModule.ofType(Object.class)))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:171:                JavaModule.ofType(Object.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:183:                JavaModule.ofType(Object.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:190:        verify(locationStrategy).classFileLocator(null, JavaModule.ofType(Object.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultWarmupStrategyTest.java:214:                                    JavaModule javaModule,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionListenableResubmissionOnErrorMatcherTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionListenableResubmissionOnErrorMatcherTest.java:31:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/RawMatcherForResolvableTypesTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/RawMatcherForResolvableTypesTest.java:16:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/RawMatcherForResolvableTypesTest.java:25:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/RawMatcherForResolvableTypesTest.java:34:                JavaModule.ofType(Bar.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerWithDelegationWithCallbackTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerWithDelegationWithCallbackTest.java:92:                JavaModule.ofType(Foo.class).unwrap(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerWithDelegationWithCallbackTest.java:98:        when(callback.onBeforeTransform(JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerWithDelegationWithCallbackTest.java:105:                JavaModule.ofType(Foo.class).unwrap(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerWithDelegationWithCallbackTest.java:111:        verify(callback).onBeforeTransform(JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerWithDelegationWithCallbackTest.java:118:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionListenableResubmissionImmediateMatcherTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionListenableResubmissionImmediateMatcherTest.java:28:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherInversionTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherInversionTest.java:32:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDescriptionStrategyTest.java:6:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDescriptionStrategyTest.java:40:        when(locationStrategy.classFileLocator(Object.class.getClassLoader(), JavaModule.ofType(Object.class))).thenReturn(classFileLocator);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDescriptionStrategyTest.java:46:                JavaModule.ofType(Object.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDescriptionStrategyTest.java:59:                JavaModule.ofType(Object.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDescriptionStrategyTest.java:71:                JavaModule.ofType(Object.class)), is(typeDescription));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:7:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:101:        when(locationStrategy.classFileLocator(Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(classFileLocator);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:108:                JavaModule.ofType(Foo.class))).thenReturn(TypeDescription.ForLoadedType.of(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:122:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:125:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:143:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:154:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:160:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:162:        verify(resubmissionOnErrorMatcher).matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:177:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:180:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:199:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:214:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:220:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:222:        verify(resubmissionOnErrorMatcher).matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:237:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:240:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:258:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:269:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:270:        verify(listener).onDiscovery(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:271:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(Foo.class), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:272:        verify(listener).onComplete(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:274:        verify(resubmissionOnErrorMatcher).matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:289:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:292:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:311:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:322:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:323:        verify(listener).onDiscovery(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:324:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(Foo.class), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:325:        verify(listener).onComplete(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:327:        verify(resubmissionOnErrorMatcher).matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:342:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:345:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:363:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:373:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:379:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:380:        verify(listener).onDiscovery(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:381:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(Foo.class), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:382:        verify(listener).onComplete(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:384:        verify(resubmissionOnErrorMatcher).matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:399:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:402:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:421:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:431:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:437:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:438:        verify(listener).onDiscovery(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:439:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(Foo.class), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:440:        verify(listener).onComplete(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:442:        verify(resubmissionOnErrorMatcher).matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:457:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:460:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:478:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:488:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:504:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:507:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:526:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:536:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:552:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:555:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:573:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:583:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:585:        verify(resubmissionOnErrorMatcher).matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:600:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:603:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:622:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:632:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:634:        verify(resubmissionOnErrorMatcher).matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:650:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:653:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:671:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:681:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:687:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:688:        verify(listener).onDiscovery(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:689:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true, runtimeException);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:690:        verify(listener).onComplete(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:692:        verify(resubmissionOnErrorMatcher).matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:708:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:711:        when(resubmissionOnErrorMatcher.matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class))).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:730:        installation.getListener().onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:740:                JavaModule.ofType(Foo.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:746:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), false, error);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:747:        verify(listener).onDiscovery(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:748:        verify(listener).onError(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true, runtimeException);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:749:        verify(listener).onComplete(Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRedefinitionStrategyResubmissionStrategyTest.java:751:        verify(resubmissionOnErrorMatcher).matches(error, Foo.class.getName(), Foo.class.getClassLoader(), JavaModule.ofType(Foo.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderLocationStrategySimpleTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderLocationStrategySimpleTest.java:16:        assertThat(new AgentBuilder.LocationStrategy.Simple(classFileLocator).classFileLocator(mock(ClassLoader.class), mock(JavaModule.class)), is(classFileLocator));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderLocationStrategyNoOpTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderLocationStrategyNoOpTest.java:15:        assertThat(AgentBuilder.LocationStrategy.NoOp.INSTANCE.classFileLocator(mock(ClassLoader.class), mock(JavaModule.class)),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationResubmissionTest.java:16:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationResubmissionTest.java:151:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderLocationStrategyCompoundTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderLocationStrategyCompoundTest.java:32:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:25:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:878:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:903:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:932:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:961:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:991:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:1008:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:1019:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationTest.java:1030:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderClassFileBufferStrategyTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderClassFileBufferStrategyTest.java:20:                mock(JavaModule.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderClassFileBufferStrategyTest.java:32:                mock(JavaModule.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderLocationStrategyForClassLoaderTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderLocationStrategyForClassLoaderTest.java:23:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherForElementMatchersTest.java:5:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherForElementMatchersTest.java:32:    private ElementMatcher<JavaModule> moduleMatcher;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherForElementMatchersTest.java:41:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherDisjunctionTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherDisjunctionTest.java:34:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultNativeApplicationTest.java:15:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultNativeApplicationTest.java:104:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerSubstitutableTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerSubstitutableTest.java:58:        Object module = JavaModule.ofType(Foo.class).unwrap();
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderTypeStrategyTest.java:11:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderTypeStrategyTest.java:47:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherTrivialTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherTrivialTest.java:19:                mock(JavaModule.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherTrivialTest.java:28:                mock(JavaModule.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderTypeStrategyForBuildEntryPointTest.java:9:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderTypeStrategyForBuildEntryPointTest.java:48:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationSuperTypeLoadingTest.java:13:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultApplicationSuperTypeLoadingTest.java:120:                                                JavaModule module,
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherConjunctionTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherConjunctionTest.java:34:    private JavaModule module;
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:38:public class JavaModule implements NamedElement.WithOptionalName, AnnotationSource {
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:44:    public static final JavaModule UNSUPPORTED = null;
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:66:    protected JavaModule(AnnotatedElement module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:89:    public static JavaModule ofType(Class<?> type) {
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:93:                : new JavaModule((AnnotatedElement) module);
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:103:    public static JavaModule of(Object module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:107:        return new JavaModule((AnnotatedElement) module);
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:179:    public boolean canRead(JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:190:    public boolean isExported(@MaybeNull PackageDescription packageDescription, JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:203:    public boolean isOpened(@MaybeNull PackageDescription packageDescription, JavaModule module) {
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:235:        } else if (!(other instanceof JavaModule)) {
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:238:        JavaModule javaModule = (JavaModule) other;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:8:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:55:    private JavaModule module;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:266:        AgentBuilder.Listener listener = new AgentBuilder.Listener.ModuleReadEdgeCompleting(instrumentation, false, Collections.<JavaModule>emptySet());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:267:        listener.onTransformation(mock(TypeDescription.class), mock(ClassLoader.class), JavaModule.UNSUPPORTED, LOADED, mock(DynamicType.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:273:        JavaModule source = mock(JavaModule.class), target = mock(JavaModule.class);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:284:        JavaModule source = mock(JavaModule.class), target = mock(JavaModule.class);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:299:        JavaModule source = mock(JavaModule.class), target = mock(JavaModule.class);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:316:                Collections.<String, Set<JavaModule>>emptyMap(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:317:                Collections.<String, Set<JavaModule>>emptyMap(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:329:        AgentBuilder.Listener listener = new AgentBuilder.Listener.ModuleReadEdgeCompleting(instrumentation, true, Collections.<JavaModule>emptySet());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:330:        listener.onTransformation(mock(TypeDescription.class), mock(ClassLoader.class), JavaModule.UNSUPPORTED, LOADED, mock(DynamicType.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:336:        JavaModule source = mock(JavaModule.class), target = mock(JavaModule.class);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:347:        JavaModule source = mock(JavaModule.class), target = mock(JavaModule.class);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:369:        JavaModule source = mock(JavaModule.class), target = mock(JavaModule.class);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:385:                Collections.<String, Set<JavaModule>>emptyMap(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:386:                Collections.<String, Set<JavaModule>>emptyMap(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherForLoadStateTest.java:4:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherForLoadStateTest.java:19:                mock(JavaModule.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherForLoadStateTest.java:28:                mock(JavaModule.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherForLoadStateTest.java:37:                mock(JavaModule.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherForLoadStateTest.java:46:                mock(JavaModule.class),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:18:import net.bytebuddy.utility.JavaModule;
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:136:                Mockito.<JavaModule>any(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:142:        when(transformer.transform(builder, TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:156:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:168:        assertThat(transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), null, REDEFINED.getProtectionDomain(), QUX), is(BAZ));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:169:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:170:        verify(listener).onTransformation(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false, dynamicType);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:171:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:183:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:185:        verify(transformer).transform(builder, TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:196:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:208:        assertThat(transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), null, REDEFINED.getProtectionDomain(), QUX), is(BAZ));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:209:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:210:        verify(listener).onTransformation(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false, dynamicType);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:211:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:232:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:244:        assertThat(transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), null, REDEFINED.getProtectionDomain(), QUX), is(BAZ));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:245:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:246:        verify(listener).onTransformation(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false, dynamicType);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:247:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:267:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:279:        assertThat(transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), REDEFINED, REDEFINED.getProtectionDomain(), QUX), is(BAZ));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:280:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:281:        verify(listener).onTransformation(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, dynamicType);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:282:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:302:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:304:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:318:        assertThat(transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), REDEFINED, REDEFINED.getProtectionDomain(), QUX), is(BAZ));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:319:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:320:        verify(listener).onTransformation(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, dynamicType);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:321:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:427:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:437:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:458:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:468:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:491:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:493:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:503:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:504:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:527:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:529:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:539:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:540:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:546:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:567:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:578:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:580:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:604:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:605:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:615:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:639:        verify(typeMatcher, times(2)).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:650:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:652:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:679:        verify(typeMatcher, times(2)).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:680:        verify(typeMatcher, times(2)).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:693:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:707:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:708:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:709:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:727:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:742:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:743:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:744:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:751:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:763:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:768:        doThrow(exception).when(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:780:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:781:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:782:        verify(listener).onError(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, exception);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:783:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:790:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:802:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:806:        doThrow(new RuntimeException()).when(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:818:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:819:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:820:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:827:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:839:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:840:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:870:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:871:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:889:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:890:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:923:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:924:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:943:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:944:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:980:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:981:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1002:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1003:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1030:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1031:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1042:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1047:        when(previous.iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(Collections.<AgentBuilder.Transformer>emptySet().iterator());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1066:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1074:        verify(previous).iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1080:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1085:        when(previous.iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(Collections.singleton(transformer).iterator());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1097:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1098:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1099:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1105:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1113:        verify(previous).iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1119:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1124:        when(previous.iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(Collections.singleton(transformer).iterator());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1146:        verify(previous).iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1152:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1157:        when(previous.iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(Collections.singleton(mock(AgentBuilder.Transformer.class)).iterator());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1174:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1182:        verify(previous).iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1201:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1223:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1233:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1235:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1259:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1260:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1270:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1295:        verify(typeMatcher, times(2)).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1306:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1308:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1335:        verify(typeMatcher, times(2)).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1336:        verify(typeMatcher, times(2)).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1348:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1363:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1364:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1365:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1383:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1398:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1399:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1400:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1407:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1435:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1436:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1437:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1476:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1477:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1478:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1516:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1517:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1518:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1554:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1555:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1556:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1576:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1581:        doThrow(exception).when(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1593:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1594:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1595:        verify(listener).onError(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, exception);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1596:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1603:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1615:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1619:        doThrow(new RuntimeException()).when(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1631:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1632:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1633:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1640:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1652:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1653:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1682:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1683:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1701:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1702:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1735:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1736:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1755:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1756:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1792:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1793:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1814:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1815:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1842:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1843:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(OTHER), OTHER.getClassLoader(), JavaModule.ofType(OTHER), OTHER, OTHER.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1854:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1859:        when(previous.iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(Collections.<AgentBuilder.Transformer>emptySet().iterator());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1878:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1886:        verify(previous).iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1892:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1897:        when(previous.iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(Collections.singleton(transformer).iterator());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1909:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1910:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1911:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1917:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1925:        verify(previous).iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1931:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1936:        when(previous.iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(Collections.singleton(transformer).iterator());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1958:        verify(previous).iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1964:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1969:        when(previous.iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain())).thenReturn(Collections.singleton(mock(AgentBuilder.Transformer.class)).iterator());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1986:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:1994:        verify(previous).iterator(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2029:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2041:            transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), null, REDEFINED.getProtectionDomain(), QUX);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2046:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2047:        verify(listener).onError(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false, exception);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2048:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2062:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2073:        assertThat(transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), REDEFINED, REDEFINED.getProtectionDomain(), QUX),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2075:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2076:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2077:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2096:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2109:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2110:        verify(listener).onTransformation(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false, dynamicType);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2111:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), false);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2123:        verify(typeMatcher).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), null, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2125:        verify(transformer).transform(builder, TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2166:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2178:        assertThat(transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), REDEFINED, REDEFINED.getProtectionDomain(), QUX), is(BAZ));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2179:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2180:        verify(listener).onTransformation(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, dynamicType);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2181:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2204:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2218:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2219:        verify(listener).onError(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, exception);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2220:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2233:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2247:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2248:        verify(listener).onError(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, exception);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2249:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2262:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2264:        doThrow(new RuntimeException()).when(listener).onError(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, exception);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2277:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2278:        verify(listener).onError(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, exception);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2279:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2292:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2294:        doThrow(new RuntimeException()).when(listener).onError(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, exception);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2307:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2308:        verify(listener).onError(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, exception);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2309:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2320:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2333:        assertThat(transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), REDEFINED, REDEFINED.getProtectionDomain(), QUX), is(BAZ));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2334:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2335:        verify(listener).onTransformation(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true, dynamicType);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2336:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2348:        verify(typeMatcher, times(2)).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2350:        verify(transformer, times(2)).transform(builder, TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2422:        }).when(listener).onComplete(FOO, classLoader, JavaModule.UNSUPPORTED, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2428:        verify(listener).onComplete(FOO, classLoader, JavaModule.UNSUPPORTED, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2457:                assertThat(executingTransformer.transform(JavaModule.ofType(Object.class).unwrap(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2465:        }).when(listener).onComplete(FOO, classLoader, JavaModule.ofType(Object.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2466:        assertThat(executingTransformer.transform(JavaModule.ofType(Object.class).unwrap(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2472:        verify(listener).onComplete(FOO, classLoader, JavaModule.ofType(Object.class), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2489:        assertThat(transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), REDEFINED, REDEFINED.getProtectionDomain(), QUX), nullValue(byte[].class));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2490:        verify(listener).onDiscovery(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2491:        verify(listener).onIgnored(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2492:        verify(listener).onComplete(REDEFINED.getName(), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2494:        verify(ignored).matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2503:        when(first.transform(builder, TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2505:        when(second.transform(builder, TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2507:        when(typeMatcher.matches(TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED, REDEFINED.getProtectionDomain()))
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2520:        assertThat(transform(classFileTransformer, JavaModule.ofType(REDEFINED), REDEFINED.getClassLoader(), REDEFINED.getName(), REDEFINED, REDEFINED.getProtectionDomain(), QUX), equalTo(new byte[]{4, 5, 6}));
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2522:        inOrder.verify(first).transform(builder, TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2523:        inOrder.verify(second).transform(builder, TypeDescription.ForLoadedType.of(REDEFINED), REDEFINED.getClassLoader(), JavaModule.ofType(REDEFINED), REDEFINED.getProtectionDomain());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderDefaultTest.java:2590:                                    JavaModule javaModule,
+
+codex
+The target looks like an internal proxy interface, not a broadly shared type. I’m now checking whether any other source file references that nested `Module` directly; if not, the fan-in side is effectively confined to `JavaModule` itself.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java | sed -n '1,360p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy.utility;
+    17	
+    18	import net.bytebuddy.ClassFileVersion;
+    19	import net.bytebuddy.build.AccessControllerPlugin;
+    20	import net.bytebuddy.description.NamedElement;
+    21	import net.bytebuddy.description.annotation.AnnotationList;
+    22	import net.bytebuddy.description.annotation.AnnotationSource;
+    23	import net.bytebuddy.description.module.ModuleDescription;
+    24	import net.bytebuddy.description.type.PackageDescription;
+    25	import net.bytebuddy.utility.dispatcher.JavaDispatcher;
+    26	import net.bytebuddy.utility.nullability.AlwaysNull;
+    27	import net.bytebuddy.utility.nullability.MaybeNull;
+    28	
+    29	import java.io.IOException;
+    30	import java.io.InputStream;
+    31	import java.lang.reflect.AnnotatedElement;
+    32	import java.security.PrivilegedAction;
+    33	import java.util.Set;
+    34	
+    35	/**
+    36	 * Type-safe representation of a {@code java.lang.Module}. On platforms that do not support the module API, modules are represented by {@code null}.
+    37	 */
+    38	public class JavaModule implements NamedElement.WithOptionalName, AnnotationSource {
+    39	
+    40	    /**
+    41	     * Canonical representation of a Java module on a JVM that does not support the module API.
+    42	     */
+    43	    @AlwaysNull
+    44	    public static final JavaModule UNSUPPORTED = null;
+    45	
+    46	    /**
+    47	     * A dispatcher to resolve a {@link Class}'s {@code java.lang.Module}.
+    48	     */
+    49	    protected static final Resolver RESOLVER = doPrivileged(JavaDispatcher.of(Resolver.class));
+    50	
+    51	    /**
+    52	     * A dispatcher to interact with {@code java.lang.Module}.
+    53	     */
+    54	    protected static final Module MODULE = doPrivileged(JavaDispatcher.of(Module.class));
+    55	
+    56	    /**
+    57	     * The {@code java.lang.Module} instance this wrapper represents.
+    58	     */
+    59	    private final AnnotatedElement module;
+    60	
+    61	    /**
+    62	     * Creates a new Java module representation.
+    63	     *
+    64	     * @param module The {@code java.lang.Module} instance this wrapper represents.
+    65	     */
+    66	    protected JavaModule(AnnotatedElement module) {
+    67	        this.module = module;
+    68	    }
+    69	
+    70	    /**
+    71	     * A proxy for {@code java.security.AccessController#doPrivileged} that is activated if available.
+    72	     *
+    73	     * @param action The action to execute from a privileged context.
+    74	     * @param <T>    The type of the action's resolved value.
+    75	     * @return The action's resolved value.
+    76	     */
+    77	    @AccessControllerPlugin.Enhance
+    78	    private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    79	        return action.run();
+    80	    }
+    81	
+    82	    /**
+    83	     * Returns a representation of the supplied type's {@code java.lang.Module} or {@code null} if the current VM does not support modules.
+    84	     *
+    85	     * @param type The type for which to describe the module.
+    86	     * @return A representation of the type's module or {@code null} if the current VM does not support modules.
+    87	     */
+    88	    @MaybeNull
+    89	    public static JavaModule ofType(Class<?> type) {
+    90	        Object module = RESOLVER.getModule(type);
+    91	        return module == null
+    92	                ? UNSUPPORTED
+    93	                : new JavaModule((AnnotatedElement) module);
+    94	    }
+    95	
+    96	    /**
+    97	     * Represents the supplied {@code java.lang.Module} as an instance of this class and validates that the
+    98	     * supplied instance really represents a Java {@code Module}.
+    99	     *
+   100	     * @param module The module to represent.
+   101	     * @return A representation of the supplied Java module.
+   102	     */
+   103	    public static JavaModule of(Object module) {
+   104	        if (!MODULE.isInstance(module)) {
+   105	            throw new IllegalArgumentException("Not a Java module: " + module);
+   106	        }
+   107	        return new JavaModule((AnnotatedElement) module);
+   108	    }
+   109	
+   110	    /**
+   111	     * Checks if the current VM supports the {@code java.lang.Module} API.
+   112	     *
+   113	     * @return {@code true} if the current VM supports modules.
+   114	     */
+   115	    public static boolean isSupported() {
+   116	        return ClassFileVersion.ofThisVm(ClassFileVersion.JAVA_V5).isAtLeast(ClassFileVersion.JAVA_V9);
+   117	    }
+   118	
+   119	    /**
+   120	     * {@inheritDoc}
+   121	     */
+   122	    public boolean isNamed() {
+   123	        return MODULE.isNamed(module);
+   124	    }
+   125	
+   126	    /**
+   127	     * {@inheritDoc}
+   128	     */
+   129	    public String getActualName() {
+   130	        return MODULE.getName(module);
+   131	    }
+   132	
+   133	    /**
+   134	     * Returns the packages of this module.
+   135	     *
+   136	     * @return A set of the names of the packages that are defined by this module.
+   137	     */
+   138	    public Set<String> getPackages() {
+   139	        return MODULE.getPackages(module);
+   140	    }
+   141	
+   142	    /**
+   143	     * Returns a resource stream for this module for a resource of the given name or {@code null} if such a resource does not exist.
+   144	     *
+   145	     * @param name The name of the resource.
+   146	     * @return An input stream for the resource or {@code null} if it does not exist.
+   147	     * @throws IOException If an I/O exception occurs.
+   148	     */
+   149	    @MaybeNull
+   150	    public InputStream getResourceAsStream(String name) throws IOException {
+   151	        return MODULE.getResourceAsStream(module, name);
+   152	    }
+   153	
+   154	    /**
+   155	     * Returns the class loader of this module.
+   156	     *
+   157	     * @return The class loader of the represented module.
+   158	     */
+   159	    @MaybeNull
+   160	    public ClassLoader getClassLoader() {
+   161	        return MODULE.getClassLoader(module);
+   162	    }
+   163	
+   164	    /**
+   165	     * Unwraps this instance to a {@code java.lang.Module}.
+   166	     *
+   167	     * @return The represented {@code java.lang.Module}.
+   168	     */
+   169	    public Object unwrap() {
+   170	        return module;
+   171	    }
+   172	
+   173	    /**
+   174	     * Checks if this module can read the exported packages of the supplied module.
+   175	     *
+   176	     * @param module The module to check for its readability by this module.
+   177	     * @return {@code true} if this module can read the supplied module.
+   178	     */
+   179	    public boolean canRead(JavaModule module) {
+   180	        return MODULE.canRead(this.module, module.unwrap());
+   181	    }
+   182	
+   183	    /**
+   184	     * Returns {@code true} if this module exports the supplied package to this module.
+   185	     *
+   186	     * @param packageDescription The package to check for
+   187	     * @param module             The target module.
+   188	     * @return {@code true} if this module exports the supplied package to this module.
+   189	     */
+   190	    public boolean isExported(@MaybeNull PackageDescription packageDescription, JavaModule module) {
+   191	        return packageDescription == null
+   192	                || packageDescription.isDefault()
+   193	                || MODULE.isExported(this.module, packageDescription.getName(), module.unwrap());
+   194	    }
+   195	
+   196	    /**
+   197	     * Returns {@code true} if this module opens the supplied package to this module.
+   198	     *
+   199	     * @param packageDescription The package to check for.
+   200	     * @param module             The target module.
+   201	     * @return {@code true} if this module opens the supplied package to this module.
+   202	     */
+   203	    public boolean isOpened(@MaybeNull PackageDescription packageDescription, JavaModule module) {
+   204	        return packageDescription == null
+   205	                || packageDescription.isDefault()
+   206	                || MODULE.isOpen(this.module, packageDescription.getName(), module.unwrap());
+   207	    }
+   208	
+   209	    /**
+   210	     * {@inheritDoc}
+   211	     */
+   212	    public AnnotationList getDeclaredAnnotations() {
+   213	        return new AnnotationList.ForLoadedAnnotations(module.getDeclaredAnnotations());
+   214	    }
+   215	
+   216	    /**
+   217	     * Returns a description of the module if the current module is a named module. Otherwise,
+   218	     * an exception is thrown.
+   219	     *
+   220	     * @return A description of the current module.
+   221	     */
+   222	    public ModuleDescription toDescription() {
+   223	        return ModuleDescription.ForLoadedModule.of(module);
+   224	    }
+   225	
+   226	    @Override
+   227	    public int hashCode() {
+   228	        return module.hashCode();
+   229	    }
+   230	
+   231	    @Override
+   232	    public boolean equals(@MaybeNull Object other) {
+   233	        if (this == other) {
+   234	            return true;
+   235	        } else if (!(other instanceof JavaModule)) {
+   236	            return false;
+   237	        }
+   238	        JavaModule javaModule = (JavaModule) other;
+   239	        return module.equals(javaModule.module);
+   240	    }
+   241	
+   242	    @Override
+   243	    public String toString() {
+   244	        return module.toString();
+   245	    }
+   246	
+   247	    /**
+   248	     * A proxy for resolving a {@link Class}'s {@code java.lang.Module}.
+   249	     */
+   250	    @JavaDispatcher.Proxied("java.lang.Class")
+   251	    protected interface Resolver {
+   252	
+   253	        /**
+   254	         * Resolves the {@code java.lang.Module} of the supplied type.
+   255	         *
+   256	         * @param type The type for which to resolve the module.
+   257	         * @return The type's module or {@code null} if the module system is not supported.
+   258	         */
+   259	        @MaybeNull
+   260	        @JavaDispatcher.Defaults
+   261	        Object getModule(Class<?> type);
+   262	    }
+   263	
+   264	    /**
+   265	     * A proxy for interacting with {@code java.lang.Module}.
+   266	     */
+   267	    @JavaDispatcher.Proxied("java.lang.Module")
+   268	    protected interface Module {
+   269	
+   270	        /**
+   271	         * Returns {@code true} if the supplied instance is of type {@code java.lang.Module}.
+   272	         *
+   273	         * @param value The instance to investigate.
+   274	         * @return {@code true} if the supplied value is a {@code java.lang.Module}.
+   275	         */
+   276	        @JavaDispatcher.Instance
+   277	        boolean isInstance(Object value);
+   278	
+   279	        /**
+   280	         * Returns {@code true} if the supplied module is named.
+   281	         *
+   282	         * @param value The {@code java.lang.Module} to check for the existence of a name.
+   283	         * @return {@code true} if the supplied module is named.
+   284	         */
+   285	        boolean isNamed(Object value);
+   286	
+   287	        /**
+   288	         * Returns the module's name.
+   289	         *
+   290	         * @param value The {@code java.lang.Module} to check for its name.
+   291	         * @return The module's (implicit or explicit) name.
+   292	         */
+   293	        String getName(Object value);
+   294	
+   295	        /**
+   296	         * Returns the module's exported packages.
+   297	         *
+   298	         * @param value The {@code java.lang.Module} to check for its packages.
+   299	         * @return The module's packages.
+   300	         */
+   301	        Set<String> getPackages(Object value);
+   302	
+   303	        /**
+   304	         * Returns the class loader of a module.
+   305	         *
+   306	         * @param value The {@code java.lang.Module} for which to return a class loader.
+   307	         * @return The module's class loader.
+   308	         */
+   309	        @MaybeNull
+   310	        ClassLoader getClassLoader(Object value);
+   311	
+   312	        /**
+   313	         * Returns a resource stream for this module for a resource of the given name or {@code null} if such a resource does not exist.
+   314	         *
+   315	         * @param value The {@code java.lang.Module} instance to apply this method upon.
+   316	         * @param name  The name of the resource.
+   317	         * @return An input stream for the resource or {@code null} if it does not exist.
+   318	         * @throws IOException If an I/O exception occurs.
+   319	         */
+   320	        @MaybeNull
+   321	        InputStream getResourceAsStream(Object value, String name) throws IOException;
+   322	
+   323	        /**
+   324	         * Returns {@code true} if the source module exports the supplied package to the target module.
+   325	         *
+   326	         * @param value    The source module.
+   327	         * @param aPackage The name of the package to check.
+   328	         * @param target   The target module.
+   329	         * @return {@code true} if the source module exports the supplied package to the target module.
+   330	         */
+   331	        boolean isExported(Object value, String aPackage, @JavaDispatcher.Proxied("java.lang.Module") Object target);
+   332	
+   333	        /**
+   334	         * Returns {@code true} if the source module opens the supplied package to the target module.
+   335	         *
+   336	         * @param value    The source module.
+   337	         * @param aPackage The name of the package to check.
+   338	         * @param target   The target module.
+   339	         * @return {@code true} if the source module opens the supplied package to the target module.
+   340	         */
+   341	        boolean isOpen(Object value, String aPackage, @JavaDispatcher.Proxied("java.lang.Module") Object target);
+   342	
+   343	        /**
+   344	         * Checks if the source module can read the target module.
+   345	         *
+   346	         * @param value  The source module.
+   347	         * @param target The target module.
+   348	         * @return {@code true} if the source module can read the target module.
+   349	         */
+   350	        boolean canRead(Object value, @JavaDispatcher.Proxied("java.lang.Module") Object target);
+   351	    }
+   352	}
+
+exec
+/bin/bash -lc "rg -n \"JavaModule\\.Module|JavaDispatcher\\.of\\(Module\\.class\\)|MODULE = doPrivileged\\(JavaDispatcher\\.of\\(Module\\.class\\)\\)\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/description/module/ModuleDescription.java:544:        protected static final Module MODULE = doPrivileged(JavaDispatcher.of(Module.class));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:54:    protected static final Module MODULE = doPrivileged(JavaDispatcher.of(Module.class));
+
+exec
+/bin/bash -lc "rg -n \"import net.bytebuddy.utility.JavaModule;|JavaModule\\b\" byte-buddy-dep/src/main/java | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+205
+
+codex
+I’ve confirmed the nested proxy is not a shared API. I’m checking one analogous class in `ModuleDescription` only to separate “this codebase uses a similar proxy pattern” from “this specific nested type is a dependency hub.”
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/description/module/ModuleDescription.java | sed -n '520,590p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   520	
+   521	        @Override
+   522	        public boolean equals(Object other) {
+   523	            if (!(other instanceof ModuleDescription)) return false;
+   524	            ModuleDescription module = (ModuleDescription) other;
+   525	            return getActualName().equals(module.getActualName());
+   526	        }
+   527	
+   528	        @Override
+   529	        public String toString() {
+   530	            return "module " + getActualName();
+   531	        }
+   532	    }
+   533	
+   534	    /**
+   535	     * A {@link ModuleDescription} implementation that represents a loaded Java module.
+   536	     * This implementation uses reflection and Java dispatchers to access module information
+   537	     * from the runtime module system.
+   538	     */
+   539	    class ForLoadedModule extends AbstractBase {
+   540	
+   541	        /**
+   542	         * A dispatcher for accessing {@code java.lang.Module} methods.
+   543	         */
+   544	        protected static final Module MODULE = doPrivileged(JavaDispatcher.of(Module.class));
+   545	
+   546	        /**
+   547	         * A dispatcher for accessing {@code java.lang.ModuleDescriptor} methods.
+   548	         */
+   549	        protected static final ModuleDescriptor MODULE_DESCRIPTOR = doPrivileged(JavaDispatcher.of(ModuleDescriptor.class));
+   550	
+   551	        /**
+   552	         * A dispatcher for accessing {@code java.lang.ModuleDescriptor.Exports} methods.
+   553	         */
+   554	        protected static final ModuleDescriptor.Exports MODULE_DESCRIPTOR_EXPORTS = doPrivileged(JavaDispatcher.of(ModuleDescriptor.Exports.class));
+   555	
+   556	        /**
+   557	         * A dispatcher for accessing {@code java.lang.ModuleDescriptor.Opens} methods.
+   558	         */
+   559	        protected static final ModuleDescriptor.Opens MODULE_DESCRIPTOR_OPENS = doPrivileged(JavaDispatcher.of(ModuleDescriptor.Opens.class));
+   560	
+   561	        /**
+   562	         * A dispatcher for accessing {@code java.lang.ModuleDescriptor.Requires} methods.
+   563	         */
+   564	        protected static final ModuleDescriptor.Requires MODULE_DESCRIPTOR_REQUIRES = doPrivileged(JavaDispatcher.of(ModuleDescriptor.Requires.class));
+   565	
+   566	        /**
+   567	         * A dispatcher for accessing {@code java.lang.ModuleDescriptor.Provides} methods.
+   568	         */
+   569	        protected static final ModuleDescriptor.Provides MODULE_DESCRIPTOR_PROVIDES = doPrivileged(JavaDispatcher.of(ModuleDescriptor.Provides.class));
+   570	
+   571	        /**
+   572	         * A dispatcher for accessing {@code java.util.Optional} methods.
+   573	         */
+   574	        protected static final Optional OPTIONAL = doPrivileged(JavaDispatcher.of(Optional.class));
+   575	
+   576	        /**
+   577	         * The module represented by this description.
+   578	         */
+   579	        private final AnnotatedElement module;
+   580	
+   581	        /**
+   582	         * Creates a module description for the supplied module.
+   583	         *
+   584	         * @param module The module to represent.
+   585	         * @return A module description for the supplied module.
+   586	         * @throws IllegalArgumentException If the supplied instance is not a module or if the module is unnamed.
+   587	         */
+   588	        public static ModuleDescription of(Object module) {
+   589	            if (!MODULE.isInstance(module)) {
+   590	                throw new IllegalArgumentException("Not a Java module: " + module);
+
+exec
+/bin/bash -lc "rg -n \"JavaModule\\.Module|\\.MODULE\\b|JavaDispatcher\\.of\\(Module\\.class\\)\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java | sed -n '1,80p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/description/module/ModuleDescription.java:544:        protected static final Module MODULE = doPrivileged(JavaDispatcher.of(Module.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaTypeTest.java:139:        assertThat(JavaType.MODULE.getTypeStub().getName(), is("java.lang.Module"));
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaTypeTest.java:140:        assertThat(JavaType.MODULE.getTypeStub().getModifiers(), is(Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL));
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaTypeTest.java:141:        assertThat(JavaType.MODULE.getTypeStub().getSuperClass(), is(TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(Object.class)));
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaTypeTest.java:142:        assertThat(JavaType.MODULE.getTypeStub().getInterfaces().size(), is(1));
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaTypeTest.java:143:        assertThat(JavaType.MODULE.getTypeStub().getInterfaces(),
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaTypeTest.java:174:        assertThat(JavaType.MODULE.load(), notNullValue(Class.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/JavaTypeTest.java:175:        assertThat(JavaType.MODULE.loadAsDescription(), notNullValue(TypeDescription.class));
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:12941:                                    .method(named("transform").and(takesArgument(0, JavaType.MODULE.load())))
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:583:                                    .method(named("transform").and(takesArgument(0, JavaType.MODULE.load())))
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:585:                                            JavaType.MODULE.load(),
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:788:                                    .method(named("transform").and(takesArguments(JavaType.MODULE.load(),
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/ResettableClassFileTransformer.java:808:                                            JavaType.MODULE.load(),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:676:                Method getPackages = JavaType.MODULE.load().getMethod("getPackages");
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:1735:            return JavaType.MODULE.isAvailable();
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:303:        when(Instrumentation.class.getMethod("isModifiableModule", JavaType.MODULE.load()).invoke(instrumentation, (Object) null)).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:308:                JavaType.MODULE.load(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:373:        when(Instrumentation.class.getMethod("isModifiableModule", JavaType.MODULE.load()).invoke(instrumentation, (Object) null)).thenReturn(true);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:377:                JavaType.MODULE.load(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerSubstitutableTest.java:52:                JavaType.MODULE.load(),
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/ResettableClassFileTransformerWithDelegationWithCallbackTest.java:85:                JavaType.MODULE.load(),
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java:54:    protected static final Module MODULE = doPrivileged(JavaDispatcher.of(Module.class));
+
+codex
+{"target":"net.bytebuddy.utility.JavaModule.Module","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaModule.java` and found `Module` is only a protected nested JavaDispatcher proxy, created once via `JavaModule.MODULE` at line 54 and used only by the enclosing `JavaModule` methods (`isNamed`, `getName`, `getPackages`, `getResourceAsStream`, `getClassLoader`, `canRead`, `isExported`, `isOpened`). A repo-wide search found no direct references to `JavaModule.Module` from other source files; the only similar proxy pattern is the separate `ModuleDescription.ForLoadedModule` in `byte-buddy-dep/src/main/java/net/bytebuddy/description/module/ModuleDescription.java`. This means the nested type has very low fan-in and limited fan-out, so it is not a hub-like dependency class."}
+tokens used
+23,138

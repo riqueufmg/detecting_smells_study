@@ -1,0 +1,826 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f5d-239e-7f72-b9b7-504eb5a45320
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.zxing.web.DoSTracker.TrackerTask` in the repository located at:
+
+`data/repositories/zxing/zxing`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.zxing.web.DoSTracker.TrackerTask",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.zxing.web.DoSTracker.TrackerTask`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and its direct references first, then I’ll check how many dependencies it has and how many places depend on it so the verdict is evidence-based.
+exec
+/bin/bash -lc "rg --files --hidden --glob '"'!**/target/**'"' --glob '"'!**/build/**'"' | rg \"DoSTracker|TrackerTask\"" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "rg -n --hidden --glob '"'!**/target/**'"' --glob '"'!**/build/**'"' \"class TrackerTask|DoSTracker\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 347ms:
+./docs/apidocs/serialized-form.html:161:<pre>com.google.zxing.web.DoSTracker destHostTracker</pre>
+./zxingorg/src/test/java/com/google/zxing/web/DoSTrackerTestCase.java:25: * Tests {@link DoSTracker}.
+./zxingorg/src/test/java/com/google/zxing/web/DoSTrackerTestCase.java:27:public final class DoSTrackerTestCase extends Assert {
+./zxingorg/src/test/java/com/google/zxing/web/DoSTrackerTestCase.java:34:    DoSTracker tracker = new DoSTracker(timer, "test", maxAccessPerTime, timerTimeMS, 3, null);
+./zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java:33:final class DoSTracker {
+./zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java:35:  private static final Logger log = Logger.getLogger(DoSTracker.class.getName());
+./zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java:49:  DoSTracker(Timer timer,
+./zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java:75:  private final class TrackerTask extends TimerTask {
+./zxingorg/src/main/java/com/google/zxing/web/DecodeServlet.java:118:  private DoSTracker destHostTracker;
+./zxingorg/src/main/java/com/google/zxing/web/DecodeServlet.java:145:    destHostTracker = new DoSTracker(timer, name, maxAccessPerTime, accessTimeMS, maxEntries, null);
+./zxingorg/src/main/java/com/google/zxing/web/DoSFilter.java:42:  private DoSTracker sourceAddrTracker;
+./zxingorg/src/main/java/com/google/zxing/web/DoSFilter.java:69:    sourceAddrTracker = new DoSTracker(timer, name, maxAccessPerTime, accessTimeMS, maxEntries, maxLoad);
+
+ succeeded in 388ms:
+zxingorg/src/test/java/com/google/zxing/web/DoSTrackerTestCase.java
+zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java
+
+codex
+I found the target in `zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java`. Next I’m reading that class and the code that instantiates it to see whether `TrackerTask` is actually a dependency hub or just an internal helper.
+exec
+/bin/bash -lc "sed -n '1,240p' zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' zxingorg/src/main/java/com/google/zxing/web/DoSFilter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,240p' zxingorg/src/main/java/com/google/zxing/web/DecodeServlet.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' zxingorg/src/test/java/com/google/zxing/web/DoSTrackerTestCase.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 178ms:
+/*
+ * Copyright 2015 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.web;
+
+import com.google.common.base.Preconditions;
+
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Timer;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * A simplistic {@link Filter} that rejects requests from hosts that are sending too many
+ * requests in too short a time.
+ *
+ * @author Sean Owen
+ */
+public abstract class DoSFilter implements Filter {
+
+  private Timer timer;
+  private DoSTracker sourceAddrTracker;
+
+  @Override
+  public void init(FilterConfig filterConfig) {
+    int maxAccessPerTime = Integer.parseInt(filterConfig.getInitParameter("maxAccessPerTime"));
+    Preconditions.checkArgument(maxAccessPerTime > 0);
+
+    int accessTimeSec = Integer.parseInt(filterConfig.getInitParameter("accessTimeSec"));
+    Preconditions.checkArgument(accessTimeSec > 0);
+    long accessTimeMS = TimeUnit.MILLISECONDS.convert(accessTimeSec, TimeUnit.SECONDS);
+
+    String maxEntriesValue = filterConfig.getInitParameter("maxEntries");
+    int maxEntries = Integer.MAX_VALUE;
+    if (maxEntriesValue != null) {
+      maxEntries = Integer.parseInt(maxEntriesValue);
+      Preconditions.checkArgument(maxEntries > 0);
+    }
+
+    String maxLoadValue = filterConfig.getInitParameter("maxLoad");
+    Double maxLoad = null;
+    if (maxLoadValue != null) {
+      maxLoad = Double.valueOf(maxLoadValue);
+      Preconditions.checkArgument(maxLoad > 0.0);
+    }
+
+    String name = getClass().getSimpleName();
+    timer = new Timer(name);
+    sourceAddrTracker = new DoSTracker(timer, name, maxAccessPerTime, accessTimeMS, maxEntries, maxLoad);
+  }
+
+  @Override
+  public void doFilter(ServletRequest request,
+                       ServletResponse response,
+                       FilterChain chain) throws IOException, ServletException {
+    if (isBanned((HttpServletRequest) request)) {
+      HttpServletResponse servletResponse = (HttpServletResponse) response;
+      // Send very short response as requests may be very frequent
+      servletResponse.setStatus(429); // 429 = Too Many Requests from RFC 6585
+      servletResponse.getWriter().write("Forbidden");
+    } else {
+      chain.doFilter(request, response);
+    }
+  }
+
+  private boolean isBanned(HttpServletRequest request) {
+    String remoteHost = request.getHeader("x-forwarded-for");
+    if (remoteHost != null) {
+      int comma = remoteHost.indexOf(',');
+      if (comma >= 0) {
+        remoteHost = remoteHost.substring(0, comma);
+      }
+      remoteHost = remoteHost.trim();
+    }
+    // Non-short-circuit "|" below is on purpose
+    return
+      (remoteHost != null && sourceAddrTracker.isBanned(remoteHost)) |
+      sourceAddrTracker.isBanned(request.getRemoteAddr());
+  }
+
+  @Override
+  public void destroy() {
+    if (timer != null) {
+      timer.cancel();
+    }
+  }
+
+}
+
+ succeeded in 201ms:
+/*
+ * Copyright 2008 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.web;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.ChecksumException;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.FormatException;
+import com.google.zxing.LuminanceSource;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.Reader;
+import com.google.zxing.ReaderException;
+import com.google.zxing.Result;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.client.j2se.ImageReader;
+import com.google.zxing.common.GlobalHistogramBinarizer;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.multi.GenericMultipleBarcodeReader;
+import com.google.zxing.multi.MultipleBarcodeReader;
+
+import com.google.common.io.Resources;
+import com.google.common.net.HttpHeaders;
+import com.google.common.net.MediaType;
+
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.Locale;
+import java.util.Map;
+import java.util.ResourceBundle;
+import java.util.Timer;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Pattern;
+
+import javax.imageio.ImageIO;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.annotation.WebInitParam;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
+
+/**
+ * {@link HttpServlet} which decodes images containing barcodes. Given a URL, it will
+ * retrieve the image and decode it. It can also process image files uploaded via POST.
+ *
+ * @author Sean Owen
+ */
+@MultipartConfig(
+    maxFileSize = 1L << 26, // ~64MB
+    maxRequestSize = 1L << 26, // ~64MB
+    fileSizeThreshold = 1 << 23, // ~8MB
+    location = "/tmp")
+@WebServlet(value = "/w/decode", loadOnStartup = 1, initParams = {
+  @WebInitParam(name = "maxAccessPerTime", value = "120"),
+  @WebInitParam(name = "accessTimeSec", value = "120"),
+  @WebInitParam(name = "maxEntries", value = "100000")
+})
+public final class DecodeServlet extends HttpServlet {
+
+  private static final Logger log = Logger.getLogger(DecodeServlet.class.getName());
+
+  private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+  // No real reason to let people upload more than ~64MB
+  private static final long MAX_IMAGE_SIZE = 1L << 26;
+  // No real reason to deal with more than ~32 megapixels
+  private static final int MAX_PIXELS = 1 << 25;
+  private static final Map<DecodeHintType,Object> HINTS;
+  private static final Map<DecodeHintType,Object> HINTS_PURE;
+
+  static {
+    HINTS = new EnumMap<>(DecodeHintType.class);
+    HINTS.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
+    HINTS.put(DecodeHintType.POSSIBLE_FORMATS, EnumSet.allOf(BarcodeFormat.class));
+    HINTS_PURE = new EnumMap<>(HINTS);
+    HINTS_PURE.put(DecodeHintType.PURE_BARCODE, Boolean.TRUE);
+  }
+
+  private Collection<String> blockedURLSubstrings;
+  private Timer timer;
+  private DoSTracker destHostTracker;
+
+  @Override
+  public void init(ServletConfig servletConfig) throws ServletException {
+    Logger logger = Logger.getLogger("com.google.zxing");
+    ServletContext context = servletConfig.getServletContext();
+    logger.addHandler(new ServletContextLogHandler(context));
+
+    URL blockURL = context.getClassLoader().getResource("/private/uri-block-substrings.txt");
+    if (blockURL == null) {
+      blockedURLSubstrings = Collections.emptyList();
+    } else {
+      try {
+        blockedURLSubstrings = Resources.readLines(blockURL, StandardCharsets.UTF_8);
+      } catch (IOException ioe) {
+        throw new ServletException(ioe);
+      }
+      log.info("Blocking URIs containing: " + blockedURLSubstrings);
+    }
+
+    int maxAccessPerTime = Integer.parseInt(servletConfig.getInitParameter("maxAccessPerTime"));
+    int accessTimeSec = Integer.parseInt(servletConfig.getInitParameter("accessTimeSec"));
+    long accessTimeMS = TimeUnit.MILLISECONDS.convert(accessTimeSec, TimeUnit.SECONDS);
+    int maxEntries = Integer.parseInt(servletConfig.getInitParameter("maxEntries"));
+
+    String name = getClass().getSimpleName();
+    timer = new Timer(name);
+    destHostTracker = new DoSTracker(timer, name, maxAccessPerTime, accessTimeMS, maxEntries, null);
+  }
+
+  @Override
+  public void destroy() {
+    if (timer != null) {
+      timer.cancel();
+    }
+  }
+
+  @Override
+  protected void doGet(HttpServletRequest request,
+                       HttpServletResponse response) throws ServletException, IOException {
+
+    String imageURIString = request.getParameter("u");
+    if (imageURIString == null || imageURIString.isEmpty()) {
+      log.info("URI was empty");
+      errorResponse(request, response, "badurl");
+      return;
+    }
+
+    // Remove any whitespace to sanitize; none is valid anyway
+    imageURIString = WHITESPACE.matcher(imageURIString).replaceAll("");
+
+    if (!blockedURLSubstrings.isEmpty()) {
+      for (CharSequence substring : blockedURLSubstrings) {
+        if (imageURIString.contains(substring)) {
+          log.info("Disallowed URI " + imageURIString);
+          errorResponse(request, response, HttpServletResponse.SC_FORBIDDEN, "badurl");
+          return;
+        }
+      }
+    }
+
+    URI imageURI;
+    try {
+      imageURI = new URI(imageURIString);
+      // Assume http: if not specified
+      if (imageURI.getScheme() == null) {
+        imageURI = new URI("http://" + imageURIString);
+      }
+    } catch (URISyntaxException e) {
+      log.info("Error " + e + " while parsing URI: " + imageURIString);
+      errorResponse(request, response, "badurl");
+      return;
+    }
+
+    // Shortcut for data URI
+    if ("data".equals(imageURI.getScheme())) {
+      BufferedImage image;
+      try {
+        image = ImageReader.readDataURIImage(imageURI);
+      } catch (Exception e) {
+        log.info("Error " + e + " while reading data URI: " + imageURIString);
+        errorResponse(request, response, "badurl");
+        return;
+      }
+      if (image == null) {
+        log.info("Couldn't read data URI: " + imageURIString);
+        errorResponse(request, response, "badimage");
+        return;
+      }
+      try {
+        processImage(image, request, response);
+      } finally {
+        image.flush();
+      }
+      return;
+    }
+
+    String host = imageURI.getHost();
+    // Also should parse for 172.x subnets
+    if (host == null || host.startsWith("10.") || host.startsWith("192.168.") ||
+        "127.0.0.1".equals(host) || "localhost".equals(host) ||
+        destHostTracker.isBanned(host)) {
+      errorResponse(request, response, HttpServletResponse.SC_FORBIDDEN, "badurl");
+      return;
+    }
+
+    URL imageURL;
+    try {
+      imageURL = imageURI.toURL();
+    } catch (MalformedURLException ignored) {
+      log.info("URI is not a URL: " + imageURIString);
+      errorResponse(request, response, "badurl");
+      return;
+    }
+
+    String protocol = imageURL.getProtocol();
+    if (!"http".equalsIgnoreCase(protocol) && !"https".equalsIgnoreCase(protocol)) {
+      log.info("URL protocol was not valid: " + imageURIString);
+      errorResponse(request, response, "badurl");
+      return;
+    }
+
+    HttpURLConnection connection;
+
+ succeeded in 228ms:
+/*
+ * Copyright 2017 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.web;
+
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
+
+/**
+ * Simple class which tracks a number of actions that happen per time and can flag when an action has
+ * happened too frequently recently. This can be used for example to track and temporarily block access
+ * from certain IPs or to certain hosts.
+ */
+final class DoSTracker {
+
+  private static final Logger log = Logger.getLogger(DoSTracker.class.getName());
+
+  private volatile int maxAccessesPerTime;
+  private final Map<String,AtomicInteger> numRecentAccesses;
+
+  /**
+   * @param timer {@link Timer} to use for scheduling update tasks
+   * @param name identifier for this tracker
+   * @param maxAccessesPerTime maximum number of accesses allowed from one source per {@code accessTimeMS}
+   * @param accessTimeMS interval in milliseconds over which up to {@code maxAccessesPerTime} accesses are allowed
+   * @param maxEntries maximum number of source entries to track before forgetting least recent ones
+   * @param maxLoad if set, dynamically adjust {@code maxAccessesPerTime} downwards when average load per core
+   *                exceeds this value, and upwards when below this value
+   */
+  DoSTracker(Timer timer,
+             String name,
+             int maxAccessesPerTime,
+             long accessTimeMS,
+             int maxEntries,
+             Double maxLoad) {
+    this.maxAccessesPerTime = maxAccessesPerTime;
+    this.numRecentAccesses = new LRUMap<>(maxEntries);
+    timer.schedule(new TrackerTask(name, maxLoad), accessTimeMS, accessTimeMS);
+  }
+
+  boolean isBanned(String event) {
+    if (event == null) {
+      return true;
+    }
+    AtomicInteger count;
+    synchronized (numRecentAccesses) {
+      count = numRecentAccesses.get(event);
+      if (count == null) {
+        numRecentAccesses.put(event, new AtomicInteger(1));
+        return false;
+      }
+    }
+    return count.incrementAndGet() > maxAccessesPerTime;
+  }
+
+  private final class TrackerTask extends TimerTask {
+
+    private final String name;
+    private final Double maxLoad;
+
+    private TrackerTask(String name, Double maxLoad) {
+      this.name = name;
+      this.maxLoad = maxLoad;
+    }
+
+    @Override
+    public void run() {
+      // largest count <= maxAccessesPerTime
+      int maxAllowedCount = 1;
+      // smallest count > maxAccessesPerTime
+      int minDisallowedCount = Integer.MAX_VALUE;
+      int localMAPT = maxAccessesPerTime;
+      int totalEntries;
+      int clearedEntries = 0;
+      synchronized (numRecentAccesses) {
+        totalEntries = numRecentAccesses.size();
+        Iterator<Map.Entry<String,AtomicInteger>> accessIt = numRecentAccesses.entrySet().iterator();
+        while (accessIt.hasNext()) {
+          Map.Entry<String,AtomicInteger> entry = accessIt.next();
+          AtomicInteger atomicCount = entry.getValue();
+          int count = atomicCount.get();
+          // If number of accesses is below the threshold, remove it entirely
+          if (count <= localMAPT) {
+            accessIt.remove();
+            maxAllowedCount = Math.max(maxAllowedCount, count);
+            clearedEntries++;
+          } else {
+            // Reduce count of accesses held against the host
+            atomicCount.getAndAdd(-localMAPT);
+            minDisallowedCount = Math.min(minDisallowedCount, count);
+          }
+        }
+      }
+      log.info(name + ": " + clearedEntries + " of " + totalEntries + " cleared");
+
+      if (maxLoad != null) {
+        OperatingSystemMXBean mxBean = ManagementFactory.getOperatingSystemMXBean();
+        if (mxBean == null) {
+          log.warning("Could not obtain OperatingSystemMXBean; ignoring load");
+        } else {
+          double loadAvg = mxBean.getSystemLoadAverage();
+          if (loadAvg >= 0.0) {
+            int cores = mxBean.getAvailableProcessors();
+            double loadRatio = loadAvg / cores;
+            int newMaxAccessesPerTime = loadRatio > maxLoad ?
+                Math.min(maxAllowedCount, Math.max(1, maxAccessesPerTime - 1)) :
+                Math.max(minDisallowedCount, maxAccessesPerTime);
+            log.info(name + ": Load ratio: " + loadRatio +
+                " (" + loadAvg + '/' + cores + ") vs " + maxLoad +
+                " ; new maxAccessesPerTime: " + newMaxAccessesPerTime);
+            maxAccessesPerTime = newMaxAccessesPerTime;
+          }
+        }
+      }
+    }
+
+  }
+
+}
+
+ succeeded in 218ms:
+/*
+ * Copyright 2018 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.web;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.Timer;
+
+/**
+ * Tests {@link DoSTracker}.
+ */
+public final class DoSTrackerTestCase extends Assert {
+
+  @Test
+  public void testDoS() throws Exception {
+    Timer timer = new Timer();
+    long timerTimeMS = 500;
+    int maxAccessPerTime = 2;
+    DoSTracker tracker = new DoSTracker(timer, "test", maxAccessPerTime, timerTimeMS, 3, null);
+
+    // 2 requests allowed per time; 3rd should be banned
+    assertFalse(tracker.isBanned("A"));
+    assertFalse(tracker.isBanned("A"));
+    assertTrue(tracker.isBanned("A"));
+
+    // After max 3 others are tracked, A should be reset/evicted and un-ban
+    assertFalse(tracker.isBanned("B"));
+    assertFalse(tracker.isBanned("C"));
+    assertFalse(tracker.isBanned("D"));
+    assertFalse(tracker.isBanned("A"));
+
+    // After building up a ban again, and letting plenty of time elapse, should un-ban
+    assertFalse(tracker.isBanned("A"));
+    assertTrue(tracker.isBanned("A"));
+    Thread.sleep(timerTimeMS * 3);
+    assertFalse(tracker.isBanned("A"));
+
+    // Build up a lot of hits
+    for (int i = 0; i < maxAccessPerTime * 5; i++) {
+      tracker.isBanned("A");
+    }
+    // After one interval, should still have enough hits to be banned
+    Thread.sleep(timerTimeMS * 2);
+    assertTrue(tracker.isBanned("A"));
+  }
+
+}
+
+codex
+I’ve confirmed `TrackerTask` is a `private` inner class, so external fan-in is already constrained. I’m now checking whether it still acts as an internal dependency hub by looking for all references to it and how broad its own dependencies are.
+exec
+/bin/bash -lc "rg -n \"new DoSTracker\\(|isBanned\\(\" zxingorg/src/main/java/com/google/zxing/web" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "rg -n \"TrackerTask\" zxingorg/src/main/java zxingorg/src/test/java docs | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "nl -ba zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 304ms:
+zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java:57:    timer.schedule(new TrackerTask(name, maxLoad), accessTimeMS, accessTimeMS);
+zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java:75:  private final class TrackerTask extends TimerTask {
+zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java:80:    private TrackerTask(String name, Double maxLoad) {
+
+ succeeded in 338ms:
+     1	/*
+     2	 * Copyright 2017 ZXing authors
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *      http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	
+    17	package com.google.zxing.web;
+    18	
+    19	import java.lang.management.ManagementFactory;
+    20	import java.lang.management.OperatingSystemMXBean;
+    21	import java.util.Iterator;
+    22	import java.util.Map;
+    23	import java.util.Timer;
+    24	import java.util.TimerTask;
+    25	import java.util.concurrent.atomic.AtomicInteger;
+    26	import java.util.logging.Logger;
+    27	
+    28	/**
+    29	 * Simple class which tracks a number of actions that happen per time and can flag when an action has
+    30	 * happened too frequently recently. This can be used for example to track and temporarily block access
+    31	 * from certain IPs or to certain hosts.
+    32	 */
+    33	final class DoSTracker {
+    34	
+    35	  private static final Logger log = Logger.getLogger(DoSTracker.class.getName());
+    36	
+    37	  private volatile int maxAccessesPerTime;
+    38	  private final Map<String,AtomicInteger> numRecentAccesses;
+    39	
+    40	  /**
+    41	   * @param timer {@link Timer} to use for scheduling update tasks
+    42	   * @param name identifier for this tracker
+    43	   * @param maxAccessesPerTime maximum number of accesses allowed from one source per {@code accessTimeMS}
+    44	   * @param accessTimeMS interval in milliseconds over which up to {@code maxAccessesPerTime} accesses are allowed
+    45	   * @param maxEntries maximum number of source entries to track before forgetting least recent ones
+    46	   * @param maxLoad if set, dynamically adjust {@code maxAccessesPerTime} downwards when average load per core
+    47	   *                exceeds this value, and upwards when below this value
+    48	   */
+    49	  DoSTracker(Timer timer,
+    50	             String name,
+    51	             int maxAccessesPerTime,
+    52	             long accessTimeMS,
+    53	             int maxEntries,
+    54	             Double maxLoad) {
+    55	    this.maxAccessesPerTime = maxAccessesPerTime;
+    56	    this.numRecentAccesses = new LRUMap<>(maxEntries);
+    57	    timer.schedule(new TrackerTask(name, maxLoad), accessTimeMS, accessTimeMS);
+    58	  }
+    59	
+    60	  boolean isBanned(String event) {
+    61	    if (event == null) {
+    62	      return true;
+    63	    }
+    64	    AtomicInteger count;
+    65	    synchronized (numRecentAccesses) {
+    66	      count = numRecentAccesses.get(event);
+    67	      if (count == null) {
+    68	        numRecentAccesses.put(event, new AtomicInteger(1));
+    69	        return false;
+    70	      }
+    71	    }
+    72	    return count.incrementAndGet() > maxAccessesPerTime;
+    73	  }
+    74	
+    75	  private final class TrackerTask extends TimerTask {
+    76	
+    77	    private final String name;
+    78	    private final Double maxLoad;
+    79	
+    80	    private TrackerTask(String name, Double maxLoad) {
+    81	      this.name = name;
+    82	      this.maxLoad = maxLoad;
+    83	    }
+    84	
+    85	    @Override
+    86	    public void run() {
+    87	      // largest count <= maxAccessesPerTime
+    88	      int maxAllowedCount = 1;
+    89	      // smallest count > maxAccessesPerTime
+    90	      int minDisallowedCount = Integer.MAX_VALUE;
+    91	      int localMAPT = maxAccessesPerTime;
+    92	      int totalEntries;
+    93	      int clearedEntries = 0;
+    94	      synchronized (numRecentAccesses) {
+    95	        totalEntries = numRecentAccesses.size();
+    96	        Iterator<Map.Entry<String,AtomicInteger>> accessIt = numRecentAccesses.entrySet().iterator();
+    97	        while (accessIt.hasNext()) {
+    98	          Map.Entry<String,AtomicInteger> entry = accessIt.next();
+    99	          AtomicInteger atomicCount = entry.getValue();
+   100	          int count = atomicCount.get();
+   101	          // If number of accesses is below the threshold, remove it entirely
+   102	          if (count <= localMAPT) {
+   103	            accessIt.remove();
+   104	            maxAllowedCount = Math.max(maxAllowedCount, count);
+   105	            clearedEntries++;
+   106	          } else {
+   107	            // Reduce count of accesses held against the host
+   108	            atomicCount.getAndAdd(-localMAPT);
+   109	            minDisallowedCount = Math.min(minDisallowedCount, count);
+   110	          }
+   111	        }
+   112	      }
+   113	      log.info(name + ": " + clearedEntries + " of " + totalEntries + " cleared");
+   114	
+   115	      if (maxLoad != null) {
+   116	        OperatingSystemMXBean mxBean = ManagementFactory.getOperatingSystemMXBean();
+   117	        if (mxBean == null) {
+   118	          log.warning("Could not obtain OperatingSystemMXBean; ignoring load");
+   119	        } else {
+   120	          double loadAvg = mxBean.getSystemLoadAverage();
+   121	          if (loadAvg >= 0.0) {
+   122	            int cores = mxBean.getAvailableProcessors();
+   123	            double loadRatio = loadAvg / cores;
+   124	            int newMaxAccessesPerTime = loadRatio > maxLoad ?
+   125	                Math.min(maxAllowedCount, Math.max(1, maxAccessesPerTime - 1)) :
+   126	                Math.max(minDisallowedCount, maxAccessesPerTime);
+   127	            log.info(name + ": Load ratio: " + loadRatio +
+   128	                " (" + loadAvg + '/' + cores + ") vs " + maxLoad +
+   129	                " ; new maxAccessesPerTime: " + newMaxAccessesPerTime);
+   130	            maxAccessesPerTime = newMaxAccessesPerTime;
+   131	          }
+   132	        }
+   133	      }
+   134	    }
+   135	
+   136	  }
+   137	
+   138	}
+
+ succeeded in 403ms:
+zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java:60:  boolean isBanned(String event) {
+zxingorg/src/main/java/com/google/zxing/web/DoSFilter.java:69:    sourceAddrTracker = new DoSTracker(timer, name, maxAccessPerTime, accessTimeMS, maxEntries, maxLoad);
+zxingorg/src/main/java/com/google/zxing/web/DoSFilter.java:76:    if (isBanned((HttpServletRequest) request)) {
+zxingorg/src/main/java/com/google/zxing/web/DoSFilter.java:86:  private boolean isBanned(HttpServletRequest request) {
+zxingorg/src/main/java/com/google/zxing/web/DoSFilter.java:97:      (remoteHost != null && sourceAddrTracker.isBanned(remoteHost)) |
+zxingorg/src/main/java/com/google/zxing/web/DoSFilter.java:98:      sourceAddrTracker.isBanned(request.getRemoteAddr());
+zxingorg/src/main/java/com/google/zxing/web/DecodeServlet.java:145:    destHostTracker = new DoSTracker(timer, name, maxAccessPerTime, accessTimeMS, maxEntries, null);
+zxingorg/src/main/java/com/google/zxing/web/DecodeServlet.java:219:        destHostTracker.isBanned(host)) {
+
+codex
+{"target":"com.google.zxing.web.DoSTracker.TrackerTask","detection":false,"justification":"Inspected `zxingorg/src/main/java/com/google/zxing/web/DoSTracker.java`, `zxingorg/src/main/java/com/google/zxing/web/DoSFilter.java`, `zxingorg/src/main/java/com/google/zxing/web/DecodeServlet.java`, and `zxingorg/src/test/java/com/google/zxing/web/DoSTrackerTestCase.java`. `TrackerTask` is a `private final` inner class created only once in `DoSTracker`'s constructor (`timer.schedule(new TrackerTask(...))`), and no other source file references `TrackerTask` directly. Its outgoing dependencies are limited to `TimerTask`, `Map`/`Iterator`, `AtomicInteger`, `Logger`, and `ManagementFactory`/`OperatingSystemMXBean`, which is not strong fan-out or hub-like fan-in."}
+tokens used
+10,483

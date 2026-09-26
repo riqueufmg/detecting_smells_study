@@ -1,0 +1,1066 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f82-7872-7f02-89a3-0e817ec12b39
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.description.modifier.MethodStrictness` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.description.modifier.MethodStrictness",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.description.modifier.MethodStrictness`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and then tracing its references so I can judge fan-in and fan-out from the repository itself.
+exec
+/bin/bash -lc "rg -n \"\\bMethodStrictness\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files | rg 'MethodStrictness\\.java"'$|Strictness'"\\.java"'$|MethodStrictness'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 245ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/modifier/MethodStrictnessTest.java:24:                {MethodStrictness.PLAIN, 0, true},
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/modifier/MethodStrictnessTest.java:25:                {MethodStrictness.STRICT, Opcodes.ACC_STRICT, false}
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/modifier/MethodStrictnessTest.java:31:        assertThat(((MethodStrictness) modifierContributor).isStrict(), is(expectedModifier != 0));
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/modifier/ModifierContributorTest.java:29:                {MethodStrictness.class},
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ModifierReviewableTest.java:8:import net.bytebuddy.description.modifier.MethodStrictness;
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ModifierReviewableTest.java:98:                {Opcodes.ACC_STRICT, "getMethodStrictness", MethodStrictness.STRICT},
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ModifierReviewableTest.java:99:                {ModifierReviewable.EMPTY_MASK, "getMethodStrictness", MethodStrictness.PLAIN}
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java:23:import net.bytebuddy.description.modifier.MethodStrictness;
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java:304:        MethodStrictness getMethodStrictness();
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java:704:        public MethodStrictness getMethodStrictness() {
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java:706:                    ? MethodStrictness.STRICT
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java:707:                    : MethodStrictness.PLAIN;
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/modifier/MethodStrictness.java:23:public enum MethodStrictness implements ModifierContributor.ForMethod, ModifierContributor.ForType {
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/modifier/MethodStrictness.java:45:    MethodStrictness(int mask) {
+
+ succeeded in 346ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/description/modifier/MethodStrictnessTest.java
+byte-buddy-dep/src/main/java/net/bytebuddy/description/modifier/MethodStrictness.java
+
+codex
+I found the class and its direct usages. Next I’m checking the class body and the surrounding API to see whether it actually functions as a dependency hub or just a small enum used by one accessor and a few tests.
+exec
+/bin/bash -lc "sed -n '1,140p' byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ModifierReviewableTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '260,740p' byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/main/java/net/bytebuddy/description/modifier/MethodStrictness.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/test/java/net/bytebuddy/description/modifier/MethodStrictnessTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 154ms:
+package net.bytebuddy.description.modifier;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.objectweb.asm.Opcodes;
+
+import java.util.Arrays;
+import java.util.Collection;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+@RunWith(Parameterized.class)
+public class MethodStrictnessTest extends AbstractModifierContributorTest {
+
+    public MethodStrictnessTest(ModifierContributor modifierContributor, int expectedModifier, boolean defaultModifier) {
+        super(modifierContributor, expectedModifier, defaultModifier);
+    }
+
+    @Parameterized.Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][]{
+                {MethodStrictness.PLAIN, 0, true},
+                {MethodStrictness.STRICT, Opcodes.ACC_STRICT, false}
+        });
+    }
+
+    @Test
+    public void testState() throws Exception {
+        assertThat(((MethodStrictness) modifierContributor).isStrict(), is(expectedModifier != 0));
+    }
+}
+
+ succeeded in 193ms:
+package net.bytebuddy.implementation;
+
+import net.bytebuddy.description.ModifierReviewable;
+import net.bytebuddy.description.modifier.EnumerationState;
+import net.bytebuddy.description.modifier.FieldManifestation;
+import net.bytebuddy.description.modifier.FieldPersistence;
+import net.bytebuddy.description.modifier.MethodManifestation;
+import net.bytebuddy.description.modifier.MethodStrictness;
+import net.bytebuddy.description.modifier.Ownership;
+import net.bytebuddy.description.modifier.ParameterManifestation;
+import net.bytebuddy.description.modifier.ProvisioningState;
+import net.bytebuddy.description.modifier.SynchronizationState;
+import net.bytebuddy.description.modifier.SyntheticState;
+import net.bytebuddy.description.modifier.TypeManifestation;
+import net.bytebuddy.description.modifier.Visibility;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.objectweb.asm.Opcodes;
+
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Collection;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+@RunWith(Parameterized.class)
+public class ModifierReviewableTest {
+
+    private final SimpleModifierReviewable simpleModifierReviewable;
+
+    private final Method method;
+
+    private final Object expected;
+
+    public ModifierReviewableTest(int modifiers, String methodName, Object expected) throws Exception {
+        simpleModifierReviewable = new SimpleModifierReviewable(modifiers);
+        method = ModifierReviewable.AbstractBase.class.getMethod(methodName);
+        this.expected = expected;
+    }
+
+    @Parameterized.Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][]{
+                {Opcodes.ACC_ABSTRACT, "isAbstract", true},
+                {Opcodes.ACC_ANNOTATION, "isAnnotation", true},
+                {Opcodes.ACC_BRIDGE, "isBridge", true},
+                {Opcodes.ACC_DEPRECATED, "isDeprecated", true},
+                {Opcodes.ACC_ENUM, "isEnum", true},
+                {Opcodes.ACC_FINAL, "isFinal", true},
+                {Opcodes.ACC_INTERFACE, "isInterface", true},
+                {Opcodes.ACC_MANDATED, "isMandated", true},
+                {Opcodes.ACC_NATIVE, "isNative", true},
+                {Opcodes.ACC_PRIVATE, "isPrivate", true},
+                {Opcodes.ACC_PROTECTED, "isProtected", true},
+                {Opcodes.ACC_PUBLIC, "isPublic", true},
+                {Opcodes.ACC_STATIC, "isStatic", true},
+                {Opcodes.ACC_STRICT, "isStrict", true},
+                {Opcodes.ACC_SYNCHRONIZED, "isSynchronized", true},
+                {Opcodes.ACC_SYNTHETIC, "isSynthetic", true},
+                {Opcodes.ACC_TRANSIENT, "isTransient", true},
+                {Opcodes.ACC_VARARGS, "isVarArgs", true},
+                {Opcodes.ACC_VOLATILE, "isVolatile", true},
+                {ModifierReviewable.EMPTY_MASK, "isPackagePrivate", true},
+                {Opcodes.ACC_SYNTHETIC, "getSyntheticState", SyntheticState.SYNTHETIC},
+                {ModifierReviewable.EMPTY_MASK, "getSyntheticState", SyntheticState.PLAIN},
+                {Opcodes.ACC_PUBLIC, "getVisibility", Visibility.PUBLIC},
+                {ModifierReviewable.EMPTY_MASK, "getVisibility", Visibility.PACKAGE_PRIVATE},
+                {Opcodes.ACC_PROTECTED, "getVisibility", Visibility.PROTECTED},
+                {Opcodes.ACC_PRIVATE, "getVisibility", Visibility.PRIVATE},
+                {Opcodes.ACC_STATIC, "getOwnership", Ownership.STATIC},
+                {ModifierReviewable.EMPTY_MASK, "getOwnership", Ownership.MEMBER},
+                {Opcodes.ACC_ENUM, "getEnumerationState", EnumerationState.ENUMERATION},
+                {ModifierReviewable.EMPTY_MASK, "getEnumerationState", EnumerationState.PLAIN},
+                {Opcodes.ACC_ABSTRACT, "getTypeManifestation", TypeManifestation.ABSTRACT},
+                {Opcodes.ACC_FINAL, "getTypeManifestation", TypeManifestation.FINAL},
+                {Opcodes.ACC_ABSTRACT | Opcodes.ACC_INTERFACE, "getTypeManifestation", TypeManifestation.INTERFACE},
+                {Opcodes.ACC_ABSTRACT | Opcodes.ACC_INTERFACE | Opcodes.ACC_ANNOTATION, "getTypeManifestation", TypeManifestation.ANNOTATION},
+                {ModifierReviewable.EMPTY_MASK, "getTypeManifestation", TypeManifestation.PLAIN},
+                {Opcodes.ACC_FINAL, "getFieldManifestation", FieldManifestation.FINAL},
+                {Opcodes.ACC_VOLATILE, "getFieldManifestation", FieldManifestation.VOLATILE},
+                {Opcodes.ACC_TRANSIENT, "getFieldPersistence", FieldPersistence.TRANSIENT},
+                {ModifierReviewable.EMPTY_MASK, "getFieldPersistence", FieldPersistence.PLAIN},
+                {Opcodes.ACC_SYNCHRONIZED, "getSynchronizationState", SynchronizationState.SYNCHRONIZED},
+                {ModifierReviewable.EMPTY_MASK, "getSynchronizationState", SynchronizationState.PLAIN},
+                {Opcodes.ACC_FINAL, "getParameterManifestation", ParameterManifestation.FINAL},
+                {ModifierReviewable.EMPTY_MASK, "getParameterManifestation", ParameterManifestation.PLAIN},
+                {Opcodes.ACC_MANDATED, "getProvisioningState", ProvisioningState.MANDATED},
+                {ModifierReviewable.EMPTY_MASK, "getProvisioningState", ProvisioningState.PLAIN},
+                {Opcodes.ACC_BRIDGE, "getMethodManifestation", MethodManifestation.BRIDGE},
+                {Opcodes.ACC_ABSTRACT, "getMethodManifestation", MethodManifestation.ABSTRACT},
+                {Opcodes.ACC_FINAL, "getMethodManifestation", MethodManifestation.FINAL},
+                {Opcodes.ACC_NATIVE, "getMethodManifestation", MethodManifestation.NATIVE},
+                {Opcodes.ACC_NATIVE | Opcodes.ACC_FINAL, "getMethodManifestation", MethodManifestation.FINAL_NATIVE},
+                {Opcodes.ACC_BRIDGE | Opcodes.ACC_FINAL, "getMethodManifestation", MethodManifestation.FINAL_BRIDGE},
+                {ModifierReviewable.EMPTY_MASK, "getMethodManifestation", MethodManifestation.PLAIN},
+                {Opcodes.ACC_STRICT, "getMethodStrictness", MethodStrictness.STRICT},
+                {ModifierReviewable.EMPTY_MASK, "getMethodStrictness", MethodStrictness.PLAIN}
+        });
+    }
+
+    @Test
+    public void testModifierProperty() throws Exception {
+        assertThat(method.invoke(simpleModifierReviewable), is(expected));
+    }
+
+    private static class SimpleModifierReviewable extends ModifierReviewable.AbstractBase {
+
+        private final int modifiers;
+
+        private SimpleModifierReviewable(int modifiers) {
+            this.modifiers = modifiers;
+        }
+
+        public int getModifiers() {
+            return modifiers;
+        }
+    }
+}
+
+ succeeded in 187ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.description.modifier;
+
+import org.objectweb.asm.Opcodes;
+
+/**
+ * A modifier contributor to determine the use of {@code strictfp} on a method.
+ */
+public enum MethodStrictness implements ModifierContributor.ForMethod, ModifierContributor.ForType {
+
+    /**
+     * Modifier for a non-strict method. (This is the default modifier.)
+     */
+    PLAIN(EMPTY_MASK),
+
+    /**
+     * Modifier for a method that applies strict floating-point computation.
+     */
+    STRICT(Opcodes.ACC_STRICT);
+
+    /**
+     * The modifier contributors mask.
+     */
+    private final int mask;
+
+    /**
+     * Creates a new modifier contributor for a method.
+     *
+     * @param mask The modifier contributors mask.
+     */
+    MethodStrictness(int mask) {
+        this.mask = mask;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public int getMask() {
+        return mask;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public int getRange() {
+        return Opcodes.ACC_STRICT;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isDefault() {
+        return this == PLAIN;
+    }
+
+    /**
+     * Returns {@code true} if this modifier contributor indicates strict floating-point computation.
+     *
+     * @return {@code true} if this modifier contributor indicates strict floating-point computation.
+     */
+    public boolean isStrict() {
+        return this == STRICT;
+    }
+}
+
+ succeeded in 200ms:
+         * @return {@code true} if the modifier described by this object is {@code synchronized}.
+         */
+        boolean isSynchronized();
+
+        /**
+         * Specifies if the modifier described by this object represents the var args flag.
+         *
+         * @return {@code true} if the modifier described by this object represents the var args flag.
+         */
+        boolean isVarArgs();
+
+        /**
+         * Specifies if the modifier described by this object is {@code native}.
+         *
+         * @return {@code true} if the modifier described by this object is {@code native}.
+         */
+        boolean isNative();
+
+        /**
+         * Specifies if the modifier described by this object represents the bridge flag.
+         *
+         * @return {@code true} if the modifier described by this object represents the bridge flag
+         */
+        boolean isBridge();
+
+        /**
+         * Specifies if the modifier described by this object is {@code strictfp}.
+         *
+         * @return {@code true} if the modifier described by this object is {@code strictfp}.
+         */
+        boolean isStrict();
+
+        /**
+         * Returns this method's synchronization state.
+         *
+         * @return This method's synchronization state.
+         */
+        SynchronizationState getSynchronizationState();
+
+        /**
+         * Returns this method's strictness in floating-point computation.
+         *
+         * @return This method's strictness in floating-point computation.
+         */
+        MethodStrictness getMethodStrictness();
+
+        /**
+         * Returns this method's manifestation.
+         *
+         * @return This method's manifestation.
+         */
+        MethodManifestation getMethodManifestation();
+    }
+
+    /**
+     * A modifier reviewable for a {@link net.bytebuddy.description.method.ParameterDescription}.
+     */
+    interface ForParameterDescription extends OfMandatable {
+
+        /**
+         * Returns this parameter's manifestation.
+         *
+         * @return This parameter's manifestation.
+         */
+        ParameterManifestation getParameterManifestation();
+
+        /**
+         * Returns this parameter's provisioning state.
+         *
+         * @return This parameter's provisioning state.
+         */
+        ProvisioningState getProvisioningState();
+    }
+
+    /**
+     * Declares modifiers as they can be observed on a Java module.
+     */
+    interface ForModuleDescription extends ModifierReviewable {
+
+        /**
+         * Returns {@code true} if the module is open.
+         *
+         * @return {@code true} if the module is open.
+         */
+        boolean isOpen();
+
+        /**
+         * Returns the openness of this module.
+         *
+         * @return A description of the openness of this module.
+         */
+        Openness getOpenness();
+    }
+
+    /**
+     * Declares modifiers as they can be observed on a module requirement declaration.
+     */
+    interface ForModuleRequirement extends OfMandatable {
+
+        /**
+         * Returns {@code true} if the module requirement is transitive.
+         *
+         * @return {@code true} if the module requirement is transitive.
+         */
+        boolean isTransitive();
+
+        /**
+         * Returns {@code true} if the module requirement is during the static phase only.
+         *
+         * @return {@code true} if the module requirement is during the static phase only.
+         */
+        boolean isStaticPhase();
+
+        /**
+         * Returns the transitivity of this module requirement.
+         *
+         * @return The transitivity of this module requirement.
+         */
+        Transitivity getTransitivity();
+
+        /**
+         * Returns the phase in which this module requirement is relevant.
+         *
+         * @return The phase in which this module requirement is relevant.
+         */
+        RequiredPhase getRequiredPhase();
+    }
+
+    /**
+     * An abstract base implementation of a {@link ModifierReviewable} class.
+     */
+    abstract class AbstractBase implements ForTypeDefinition,
+            ForFieldDescription,
+            ForMethodDescription,
+            ForParameterDescription,
+            ForModuleDescription,
+            ForModuleRequirement {
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isAbstract() {
+            return matchesMask(Opcodes.ACC_ABSTRACT);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isFinal() {
+            return matchesMask(Opcodes.ACC_FINAL);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isStatic() {
+            return matchesMask(Opcodes.ACC_STATIC);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isPublic() {
+            return matchesMask(Opcodes.ACC_PUBLIC);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isProtected() {
+            return matchesMask(Opcodes.ACC_PROTECTED);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isPackagePrivate() {
+            return !isPublic() && !isProtected() && !isPrivate();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isPrivate() {
+            return matchesMask(Opcodes.ACC_PRIVATE);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isNative() {
+            return matchesMask(Opcodes.ACC_NATIVE);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isSynchronized() {
+            return matchesMask(Opcodes.ACC_SYNCHRONIZED);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isStrict() {
+            return matchesMask(Opcodes.ACC_STRICT);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isMandated() {
+            return matchesMask(Opcodes.ACC_MANDATED);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isSynthetic() {
+            return matchesMask(Opcodes.ACC_SYNTHETIC);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isBridge() {
+            return matchesMask(Opcodes.ACC_BRIDGE);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isDeprecated() {
+            return matchesMask(Opcodes.ACC_DEPRECATED);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isAnnotation() {
+            return matchesMask(Opcodes.ACC_ANNOTATION);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isEnum() {
+            return matchesMask(Opcodes.ACC_ENUM);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isInterface() {
+            return matchesMask(Opcodes.ACC_INTERFACE);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isTransient() {
+            return matchesMask(Opcodes.ACC_TRANSIENT);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isVolatile() {
+            return matchesMask(Opcodes.ACC_VOLATILE);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isVarArgs() {
+            return matchesMask(Opcodes.ACC_VARARGS);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isOpen() {
+            return matchesMask(Opcodes.ACC_OPEN);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isStaticPhase() {
+            return matchesMask(Opcodes.ACC_STATIC_PHASE);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isTransitive() {
+            return matchesMask(Opcodes.ACC_TRANSITIVE);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public SyntheticState getSyntheticState() {
+            return isSynthetic()
+                    ? SyntheticState.SYNTHETIC
+                    : SyntheticState.PLAIN;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Mandate getMandate() {
+            return isMandated()
+                    ? Mandate.MANDATED
+                    : Mandate.PLAIN;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Visibility getVisibility() {
+            int modifiers = getModifiers();
+            switch (modifiers & (Opcodes.ACC_PUBLIC | Opcodes.ACC_PROTECTED | Opcodes.ACC_PRIVATE)) {
+                case Opcodes.ACC_PUBLIC:
+                    return Visibility.PUBLIC;
+                case Opcodes.ACC_PROTECTED:
+                    return Visibility.PROTECTED;
+                case EMPTY_MASK:
+                    return Visibility.PACKAGE_PRIVATE;
+                case Opcodes.ACC_PRIVATE:
+                    return Visibility.PRIVATE;
+                default:
+                    throw new IllegalStateException("Unexpected modifiers: " + modifiers);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Ownership getOwnership() {
+            return isStatic()
+                    ? Ownership.STATIC
+                    : Ownership.MEMBER;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public EnumerationState getEnumerationState() {
+            return isEnum()
+                    ? EnumerationState.ENUMERATION
+                    : EnumerationState.PLAIN;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeManifestation getTypeManifestation() {
+            int modifiers = getModifiers();
+            switch (modifiers & (Opcodes.ACC_ANNOTATION | Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT | Opcodes.ACC_FINAL)) {
+                case Opcodes.ACC_FINAL:
+                    return TypeManifestation.FINAL;
+                case Opcodes.ACC_ABSTRACT:
+                    return TypeManifestation.ABSTRACT;
+                case Opcodes.ACC_ABSTRACT | Opcodes.ACC_INTERFACE:
+                    return TypeManifestation.INTERFACE;
+                case Opcodes.ACC_ABSTRACT | Opcodes.ACC_INTERFACE | Opcodes.ACC_ANNOTATION:
+                    return TypeManifestation.ANNOTATION;
+                case EMPTY_MASK:
+                    return TypeManifestation.PLAIN;
+                default:
+                    throw new IllegalStateException("Unexpected modifiers: " + modifiers);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public FieldManifestation getFieldManifestation() {
+            int modifiers = getModifiers();
+            switch (modifiers & (Opcodes.ACC_VOLATILE | Opcodes.ACC_FINAL)) {
+                case Opcodes.ACC_FINAL:
+                    return FieldManifestation.FINAL;
+                case Opcodes.ACC_VOLATILE:
+                    return FieldManifestation.VOLATILE;
+                case EMPTY_MASK:
+                    return FieldManifestation.PLAIN;
+                default:
+                    throw new IllegalStateException("Unexpected modifiers: " + modifiers);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public FieldPersistence getFieldPersistence() {
+            int modifiers = getModifiers();
+            switch (modifiers & Opcodes.ACC_TRANSIENT) {
+                case Opcodes.ACC_TRANSIENT:
+                    return FieldPersistence.TRANSIENT;
+                case EMPTY_MASK:
+                    return FieldPersistence.PLAIN;
+                default:
+                    throw new IllegalStateException("Unexpected modifiers: " + modifiers);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public SynchronizationState getSynchronizationState() {
+            return isSynchronized()
+                    ? SynchronizationState.SYNCHRONIZED
+                    : SynchronizationState.PLAIN;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public MethodManifestation getMethodManifestation() {
+            int modifiers = getModifiers();
+            switch (modifiers & (Opcodes.ACC_NATIVE | Opcodes.ACC_ABSTRACT | Opcodes.ACC_FINAL | Opcodes.ACC_BRIDGE)) {
+                case Opcodes.ACC_NATIVE | Opcodes.ACC_FINAL:
+                    return MethodManifestation.FINAL_NATIVE;
+                case Opcodes.ACC_NATIVE:
+                    return MethodManifestation.NATIVE;
+                case Opcodes.ACC_FINAL:
+                    return MethodManifestation.FINAL;
+                case Opcodes.ACC_BRIDGE:
+                    return MethodManifestation.BRIDGE;
+                case Opcodes.ACC_BRIDGE | Opcodes.ACC_FINAL:
+                    return MethodManifestation.FINAL_BRIDGE;
+                case Opcodes.ACC_ABSTRACT:
+                    return MethodManifestation.ABSTRACT;
+                case EMPTY_MASK:
+                    return MethodManifestation.PLAIN;
+                default:
+                    throw new IllegalStateException("Unexpected modifiers: " + modifiers);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public MethodStrictness getMethodStrictness() {
+            return isStrict()
+                    ? MethodStrictness.STRICT
+                    : MethodStrictness.PLAIN;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ParameterManifestation getParameterManifestation() {
+            return isFinal()
+                    ? ParameterManifestation.FINAL
+                    : ParameterManifestation.PLAIN;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ProvisioningState getProvisioningState() {
+            return isMandated()
+                    ? ProvisioningState.MANDATED
+                    : ProvisioningState.PLAIN;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Openness getOpenness() {
+            return isOpen()
+                    ? Openness.OPEN
+                    : Openness.CLOSED;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Transitivity getTransitivity() {
+
+codex
+I have enough context to quantify the class’s role. I’m doing one last pass for exact references so the verdict rests on repository evidence rather than inference.
+exec
+/bin/bash -lc "rg -n \"getMethodStrictness\\(|MethodStrictness\\b\" byte-buddy-dep/src/main/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/main/java/net/bytebuddy/description/modifier/ModifierContributor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 384ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.description.modifier;
+
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import org.objectweb.asm.Opcodes;
+
+import java.util.Arrays;
+import java.util.Collection;
+
+/**
+ * An element that describes a type modifier as described in the
+ * <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html">JVMS</a>.
+ * <p>&nbsp;</p>
+ * This allows for a more expressive and type safe alternative of defining a type's or type member's modifiers.
+ * However, note that modifier's that apply competing modifiers (such as {@code private} and {@code protected}
+ * should not be combined and will result in invalid types. An exception is thrown when built-in modifiers that
+ * cannot be combined are used together.
+ */
+public interface ModifierContributor {
+
+    /**
+     * The empty modifier.
+     */
+    int EMPTY_MASK = 0;
+
+    /**
+     * Returns the mask of this modifier.
+     *
+     * @return The modifier mask that is to be applied to the target type or type member.
+     */
+    int getMask();
+
+    /**
+     * Returns the entire range of modifiers that address this contributor's property.
+     *
+     * @return The range of this contributor's property.
+     */
+    int getRange();
+
+    /**
+     * Determines if this is the default modifier.
+     *
+     * @return {@code true} if this contributor represents the default modifier.
+     */
+    boolean isDefault();
+
+    /**
+     * A marker interface for modifiers that can be applied to types.
+     */
+    interface ForType extends ModifierContributor {
+
+        /**
+         * A mask for all legal modifiers of a Java type.
+         */
+        int MASK = Opcodes.ACC_PUBLIC | Opcodes.ACC_PROTECTED | Opcodes.ACC_PRIVATE | Opcodes.ACC_SYNTHETIC
+                | Opcodes.ACC_ABSTRACT | Opcodes.ACC_INTERFACE | Opcodes.ACC_ANNOTATION | Opcodes.ACC_DEPRECATED
+                | Opcodes.ACC_ENUM | Opcodes.ACC_FINAL | Opcodes.ACC_STATIC | Opcodes.ACC_STRICT | 0x00000020; // ACC_IDENTITY.
+    }
+
+    /**
+     * A marker interface for modifiers that can be applied to modules.
+     */
+    interface ForModule extends ModifierContributor {
+
+        /**
+         * A mask for all legal modifiers of a Java module.
+         */
+        int MASK = Opcodes.ACC_OPEN | Opcodes.ACC_MANDATED | Opcodes.ACC_SYNTHETIC;
+
+        /**
+         * A marker interface for modifiers that can be applied to module requirement.
+         */
+        interface OfRequire extends ModifierContributor {
+
+            /**
+             * A mask for all legal modifiers of a Java module requirement.
+             */
+            int MASK = Opcodes.ACC_STATIC_PHASE | Opcodes.ACC_TRANSITIVE | Opcodes.ACC_MANDATED | Opcodes.ACC_SYNTHETIC;
+        }
+
+        /**
+         * A marker interface for modifiers that can be applied to module exports.
+         */
+        interface OfExport extends ModifierContributor {
+
+            /**
+             * A mask for all legal modifiers of a Java module export.
+             */
+            int MASK = Opcodes.ACC_MANDATED | Opcodes.ACC_SYNTHETIC;
+        }
+
+        /**
+         * A marker interface for modifiers that can be applied to module opening.
+         */
+        interface OfOpen extends ModifierContributor {
+
+            /**
+             * A mask for all legal modifiers of a Java module opening.
+             */
+            int MASK = Opcodes.ACC_MANDATED | Opcodes.ACC_SYNTHETIC;
+        }
+    }
+
+    /**
+     * A marker interface for modifiers that can be applied to fields.
+     */
+    interface ForField extends ModifierContributor {
+
+        /**
+         * A mask for all legal modifiers of a Java field.
+         */
+        int MASK = Opcodes.ACC_PUBLIC | Opcodes.ACC_PROTECTED | Opcodes.ACC_PRIVATE
+                | Opcodes.ACC_DEPRECATED | Opcodes.ACC_ENUM | Opcodes.ACC_FINAL | Opcodes.ACC_STATIC
+                | Opcodes.ACC_SYNTHETIC | Opcodes.ACC_TRANSIENT | Opcodes.ACC_VOLATILE;
+    }
+
+    /**
+     * A marker interface for modifiers that can be applied to methods.
+     */
+    interface ForMethod extends ModifierContributor {
+
+        /**
+         * A mask for all legal modifiers of a Java method.
+         */
+        int MASK = Opcodes.ACC_PUBLIC | Opcodes.ACC_PROTECTED | Opcodes.ACC_PRIVATE | Opcodes.ACC_SYNTHETIC
+                | Opcodes.ACC_BRIDGE | Opcodes.ACC_FINAL | Opcodes.ACC_NATIVE | Opcodes.ACC_ABSTRACT
+                | Opcodes.ACC_STATIC | Opcodes.ACC_STRICT | Opcodes.ACC_SYNCHRONIZED
+                | Opcodes.ACC_VARARGS;
+    }
+
+    /**
+     * A marker interface for modifiers that can be applied to method parameters.
+     */
+    interface ForParameter extends ModifierContributor {
+
+        /**
+         * A mask for all legal modifiers of a Java parameter.
+         */
+        int MASK = Opcodes.ACC_MANDATED | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC;
+    }
+
+    /**
+     * A resolver for Java modifiers represented by {@link ModifierContributor}s.
+     *
+     * @param <T> The type of the {@link ModifierContributor}s being resolved.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class Resolver<T extends ModifierContributor> {
+
+        /**
+         * The modifier contributors to resolve.
+         */
+        private final Collection<? extends T> modifierContributors;
+
+        /**
+         * Creates a new resolver.
+         *
+         * @param modifierContributors The modifier contributors to resolve.
+         */
+        protected Resolver(Collection<? extends T> modifierContributors) {
+            this.modifierContributors = modifierContributors;
+        }
+
+        /**
+         * Creates a new resolver for modifier contributors to a type.
+         *
+         * @param modifierContributor The modifier contributors to resolve.
+         * @return A resolver for the provided modifier contributors.
+         */
+        public static Resolver<ForType> of(ForType... modifierContributor) {
+            return of(Arrays.asList(modifierContributor));
+        }
+
+        /**
+         * Creates a new resolver for modifier contributors to a module.
+         *
+         * @param modifierContributor The modifier contributors to resolve.
+         * @return A resolver for the provided modifier contributors.
+         */
+        public static Resolver<ForModule> of(ForModule... modifierContributor) {
+            return of(Arrays.asList(modifierContributor));
+        }
+
+        /**
+         * Creates a new resolver for modifier contributors to a module requirement.
+         *
+         * @param modifierContributor The modifier contributors to resolve.
+         * @return A resolver for the provided modifier contributors.
+         */
+        public static Resolver<ForModule.OfRequire> of(ForModule.OfRequire... modifierContributor) {
+            return of(Arrays.asList(modifierContributor));
+        }
+
+        /**
+         * Creates a new resolver for modifier contributors to a module export.
+         *
+         * @param modifierContributor The modifier contributors to resolve.
+         * @return A resolver for the provided modifier contributors.
+         */
+        public static Resolver<ForModule.OfExport> of(ForModule.OfExport... modifierContributor) {
+            return of(Arrays.asList(modifierContributor));
+        }
+
+        /**
+         * Creates a new resolver for modifier contributors to a module opening.
+         *
+
+ succeeded in 533ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java:23:import net.bytebuddy.description.modifier.MethodStrictness;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java:304:        MethodStrictness getMethodStrictness();
+byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java:704:        public MethodStrictness getMethodStrictness() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java:706:                    ? MethodStrictness.STRICT
+byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java:707:                    : MethodStrictness.PLAIN;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/modifier/MethodStrictness.java:23:public enum MethodStrictness implements ModifierContributor.ForMethod, ModifierContributor.ForType {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/modifier/MethodStrictness.java:45:    MethodStrictness(int mask) {
+
+codex
+{"target":"net.bytebuddy.description.modifier.MethodStrictness","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/description/modifier/MethodStrictness.java and found a tiny enum with only two constants and simple accessors, depending only on Opcodes and ModifierContributor.ForMethod/ForType. Repository search showed only one production consumer in byte-buddy-dep/src/main/java/net/bytebuddy/description/ModifierReviewable.java (the getMethodStrictness API and its implementation) plus two test files, so the class does not exhibit high fan-in/high fan-out hub behavior."}
+tokens used
+10,196

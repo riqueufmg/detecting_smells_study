@@ -1,0 +1,811 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f76-ce44-79a0-a7e6-7948c5f65b66
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.inline.HeadlessInlineVisitor` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.inline.HeadlessInlineVisitor",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.inline.HeadlessInlineVisitor`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and mapping its dependencies first, then I’ll check how widely it is referenced so the verdict is grounded in repository evidence.
+exec
+/bin/bash -lc "rg -n \"class\\s+HeadlessInlineVisitor|interface\\s+HeadlessInlineVisitor|new\\s+HeadlessInlineVisitor\\b|HeadlessInlineVisitor\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "rg --files | rg 'HeadlessInlineVisitor\\.java"'$|InlineVisitor|HeadlessInlineVisitor'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 277ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java
+
+ succeeded in 316ms:
+./core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java:41:public class HeadlessInlineVisitor implements ITreeVisitable
+./core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java:43:    private static final Logger logger = LoggerFactory.getLogger(HeadlessInlineVisitor.class);
+./core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java:48:    public HeadlessInlineVisitor(IReadOnlyJITDataModel model)
+./core/src/main/java/org/adoptopenjdk/jitwatch/launch/LaunchHeadless.java:22:import org.adoptopenjdk.jitwatch.inline.HeadlessInlineVisitor;
+./core/src/main/java/org/adoptopenjdk/jitwatch/launch/LaunchHeadless.java:231:			HeadlessInlineVisitor inlineVisitor = new HeadlessInlineVisitor(parser.getModel());
+
+codex
+I found the target source and one direct caller. Next I’m reading the class body and the launcher path that constructs it to judge whether this is a dependency hub or just a narrowly used helper.
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,320p' core/src/main/java/org/adoptopenjdk/jitwatch/launch/LaunchHeadless.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/inline/ITreeVisitable.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 289ms:
+/*
+ * Copyright (c) 2015-2021 Jean Phillipe BEMPEL
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.inline;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_BYTES;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_ID;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_METHOD;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_NAME;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_REASON;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_PARSE_HIR;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_CALL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INLINE_FAIL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INLINE_SUCCESS;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_METHOD;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PARSE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PHASE;
+
+import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import org.adoptopenjdk.jitwatch.compilation.AbstractCompilationVisitable;
+import org.adoptopenjdk.jitwatch.compilation.ICompilationVisitable;
+import org.adoptopenjdk.jitwatch.compilation.CompilationUtil;
+import org.adoptopenjdk.jitwatch.model.Compilation;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IParseDictionary;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.model.LogParseException;
+import org.adoptopenjdk.jitwatch.model.Tag;
+import org.adoptopenjdk.jitwatch.treevisitor.ITreeVisitable;
+import org.adoptopenjdk.jitwatch.util.ParseUtil;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+public class HeadlessInlineVisitor implements ITreeVisitable
+{
+    private static final Logger logger = LoggerFactory.getLogger(HeadlessInlineVisitor.class);
+
+    private final Map<String, Map<String, InlineFailureInfo>> failures = new HashMap<>();
+    private final IReadOnlyJITDataModel model;
+
+    public HeadlessInlineVisitor(IReadOnlyJITDataModel model)
+    {
+        this.model = model;
+    }
+
+    @Override
+    public void visit(IMetaMember metaMember)
+    {
+        if (metaMember == null)
+        {
+            return;
+        }
+        
+        if (!metaMember.isCompiled())
+        {
+            return;
+        }
+        
+        try
+        {
+            String callerName = metaMember.toString();
+            InlineJournalVisitor inlineJournalVisitor = new InlineJournalVisitor(failures,  model, callerName);
+            
+			for (Compilation compilation : metaMember.getCompilations())
+			{
+				CompilationUtil.visitParseTagsOfCompilation(compilation, inlineJournalVisitor);
+			}            
+        }
+        catch (LogParseException e)
+        {
+            logger.error("Error building inlining stats", e);
+        }
+    }
+
+    @Override
+    public void reset()
+    {
+
+    }
+
+    public void printFailedList(PrintStream out)
+    {
+        for (Map.Entry<String, Map<String, InlineFailureInfo>> entry : failures.entrySet())
+        {
+            out.println("=== " + entry.getKey() + " ===");
+            Map<String, InlineFailureInfo> members = entry.getValue();
+            for (InlineFailureInfo inlineFailureInfo : members.values())
+            {
+                out.println(inlineFailureInfo);
+            }
+        }
+    }
+
+    private static class InlineJournalVisitor extends AbstractCompilationVisitable  implements ICompilationVisitable
+    {
+        private final Map<String, Map<String, InlineFailureInfo>> failures;
+        private final IReadOnlyJITDataModel model;
+        private final String callerName;
+
+        public InlineJournalVisitor(Map<String, Map<String, InlineFailureInfo>> failures, IReadOnlyJITDataModel model, String callerName)
+        {
+            this.failures = failures;
+            this.model = model;
+            this.callerName = callerName;
+        }
+
+        @Override
+        public void visitTag(Tag parseTag, IParseDictionary parseDictionary) throws LogParseException
+        {
+            processParseTag(parseTag, parseDictionary);
+        }
+
+        private void processParseTag(Tag parseTag, IParseDictionary parseDictionary)
+        {
+            String methodID = null;
+            
+            for (Tag child : parseTag.getChildren())
+            {
+                String tagName = child.getName();
+                
+                Map<String, String> tagAttrs = child.getAttributes();
+                
+                switch (tagName)
+                {
+                    case TAG_METHOD:
+                    {
+                        methodID = tagAttrs.get(ATTR_ID);
+                        break;
+                    }
+                    
+                    case TAG_CALL:
+                    {
+                        methodID = tagAttrs.get(ATTR_METHOD);
+                        break;
+                    }
+                    
+                    case TAG_INLINE_FAIL:
+                    {
+                        String reason = tagAttrs.get(ATTR_REASON);
+                        Map<String, InlineFailureInfo> inlineFailureInfos = failures.get(reason);
+                   
+                        if (inlineFailureInfos == null)
+                        {
+                            inlineFailureInfos = new HashMap<>();
+                            failures.put(reason, inlineFailureInfos);
+                        }
+                     
+                        IMetaMember metaMember = ParseUtil.lookupMember(methodID, parseDictionary, model);
+                     
+                        if (metaMember == null)
+                        {
+                            logger.warn("Cannot find name of methodId: ", methodID);
+                        }
+                        else
+                        {
+                            String memberName = metaMember.toString();
+                            InlineFailureInfo inlineFailureInfo = inlineFailureInfos.get(memberName);
+                            if (inlineFailureInfo == null)
+                            {
+                                Tag methodTag = parseDictionary.getMethod(methodID);
+                                int byteCodeSize = Integer.parseInt(methodTag.getAttributes().get(ATTR_BYTES));
+                                inlineFailureInfo = new InlineFailureInfo(memberName, byteCodeSize);
+                                inlineFailureInfos.put(memberName, inlineFailureInfo);
+                            }
+                            inlineFailureInfo.addCaller(callerName);
+                            inlineFailureInfo.incFailureCount();
+                        }
+                        methodID = null;
+                        
+                        break;
+                    }
+
+                    case TAG_INLINE_SUCCESS:
+                    {
+                        break;
+                    }
+                    
+                    case TAG_PARSE:
+                    {
+                        processParseTag(child, parseDictionary);
+                        break;
+                    }
+        			
+        			case TAG_PHASE:
+        			{
+        				String phaseName = tagAttrs.get(ATTR_NAME);
+        				
+        				if (S_PARSE_HIR.equals(phaseName))
+        				{
+        					processParseTag(child, parseDictionary);
+        				}
+        				else
+        				{
+        					logger.warn("Don't know how to handle phase {}", phaseName);
+        				}
+        				
+        				break;
+        			}
+                    
+                    default:
+                    	handleOther(child);
+                        break;
+                }
+            }
+        }
+    }
+
+    private static class InlineFailureInfo
+    {
+        private String memberName;
+        private int byteCodeSize;
+        private int failureCount;
+        private Set<String> callers = new HashSet<>();
+
+        public InlineFailureInfo(String memberName, int byteCodeSize)
+        {
+            this.memberName = memberName;
+            this.byteCodeSize = byteCodeSize;
+        }
+
+        public void incFailureCount()
+        {
+            failureCount++;
+        }
+
+        public void addCaller(String name)
+        {
+            callers.add(name);
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o)
+            {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass())
+            {
+                return false;
+            }
+            InlineFailureInfo that = (InlineFailureInfo) o;
+            return memberName.equals(that.memberName);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return memberName.hashCode();
+        }
+
+        @Override
+        public String toString()
+
+ exited 2 in 282ms:
+sed: can't read core/src/main/java/org/adoptopenjdk/jitwatch/inline/ITreeVisitable.java: No such file or directory
+
+ succeeded in 297ms:
+/*
+ * Copyright (c) 2013-2021 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.launch;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_NEWLINE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_SPACE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.HEADLESS_SEPARATOR;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
+
+import com.chrisnewland.freelogj.LoggerFactory;
+import org.adoptopenjdk.jitwatch.core.IJITListener;
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.inline.HeadlessInlineVisitor;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.model.JITEvent;
+import org.adoptopenjdk.jitwatch.parser.ILogParseErrorListener;
+import org.adoptopenjdk.jitwatch.parser.ILogParser;
+import org.adoptopenjdk.jitwatch.parser.ParserFactory;
+import org.adoptopenjdk.jitwatch.parser.ParserType;
+import org.adoptopenjdk.jitwatch.report.Report;
+import org.adoptopenjdk.jitwatch.report.comparator.ScoreComparator;
+import org.adoptopenjdk.jitwatch.report.suggestion.SuggestionWalker;
+import org.adoptopenjdk.jitwatch.treevisitor.TreeVisitor;
+import org.adoptopenjdk.jitwatch.util.HeadlessUtil;
+import org.adoptopenjdk.jitwatch.util.StringUtil;
+
+public class LaunchHeadless implements IJITListener, ILogParseErrorListener
+{
+	private boolean showTimeLine;
+	private boolean showErrors;
+	private boolean showModel;
+	private boolean showOnlyCompiledMethods;
+	private boolean showSuggestions;
+	private boolean outputFile;
+	private boolean showInlineFailedCalls;
+
+	private ILogParser parser;
+	private JITWatchConfig config;
+
+	private StringBuilder timelineBuilder = new StringBuilder();
+	private StringBuilder errorBuilder = new StringBuilder();
+
+	public LaunchHeadless(String[] args) throws IOException
+	{
+		LoggerFactory.setLogFile(Paths.get("jitwatch.out"));
+
+		String compilationLog = args[args.length - 1];
+
+		parseOptions(args);
+
+		timelineBuilder.append("Timestamp").append(HEADLESS_SEPARATOR);
+		timelineBuilder.append("Event").append(HEADLESS_SEPARATOR);
+		timelineBuilder.append("Class").append(HEADLESS_SEPARATOR);
+		timelineBuilder.append("Member").append(S_NEWLINE);
+
+		config = new JITWatchConfig();
+
+		String parserProperty = System.getProperty("jitwatch.parser", ParserType.HOTSPOT.toString());
+
+		ParserType parserType = ParserType.fromString(parserProperty);
+
+		parser = ParserFactory.getParser(parserType, this);
+
+		parser.setConfig(config);
+
+		parser.processLogFile(new File(compilationLog), this);
+	}
+
+	@Override public void handleLogEntry(String entry)
+	{
+	}
+
+	@Override public void handleErrorEntry(String entry)
+	{
+		if (showErrors)
+		{
+			errorBuilder.append(entry).append(S_NEWLINE);
+		}
+	}
+
+	@Override public void handleJITEvent(JITEvent event)
+	{
+		if (showTimeLine)
+		{
+			timelineBuilder.append(StringUtil.formatTimestamp(event.getStamp(), true)).append(HEADLESS_SEPARATOR);
+			timelineBuilder.append(event.getEventType().getText()).append(HEADLESS_SEPARATOR);
+			timelineBuilder.append(event.getEventMember().getMetaClass().getFullyQualifiedName()).append(HEADLESS_SEPARATOR);
+			timelineBuilder.append(event.getEventMember().toStringUnqualifiedMethodName(true, true)).append(S_NEWLINE);
+		}
+	}
+
+	@Override public void handleReadStart()
+	{
+	}
+
+	@Override public void handleError(String title, String body)
+	{
+		if (showErrors)
+		{
+			errorBuilder.append(title).append(HEADLESS_SEPARATOR).append(body).append(S_NEWLINE);
+		}
+	}
+
+	public static void main(String[] args) throws IOException
+	{
+		if (args.length < 2)
+		{
+			System.err.println("Usage: LaunchHeadless <options> <hotspot log file>");
+			System.err.println("options:");
+			System.err.println("-e\tShow parse errors");
+			System.err.println("-m\tShow model");
+			System.err.println("-c\tShow only compiled methods in model (use with -m)");
+			System.err.println("-s\tShow code suggestions");
+			System.err.println("-t\tShow compilation timeline");
+			System.err.println("-f\tWrite output to headless.csv");
+			System.err.println("-i\tShow inline failed calls");
+			// System.err.println("-o\tShow optimized virtual calls");
+
+			System.exit(-1);
+		}
+
+		new LaunchHeadless(args);
+	}
+
+	private void parseOptions(String[] args)
+	{
+		for (int i = 0; i < args.length - 1; i++)
+		{
+			String arg = args[i];
+
+			switch (arg)
+			{
+			case "-c":
+				showOnlyCompiledMethods = true;
+				break;
+
+			case "-e":
+				showErrors = true;
+				break;
+
+			case "-m":
+				showModel = true;
+				break;
+
+			case "-s":
+				showSuggestions = true;
+				break;
+
+			case "-t":
+				showTimeLine = true;
+				break;
+
+			case "-f":
+				outputFile = true;
+				break;
+
+			case "-i":
+				showInlineFailedCalls = true;
+				break;
+
+			// case "-o":
+			// showOptimizedVirtualCalls = true;
+			// break;s
+			}
+		}
+	}
+
+	@Override public void handleReadComplete()
+	{
+		StringBuilder outputBuilder = new StringBuilder();
+
+		if (showTimeLine)
+		{
+			outputBuilder.append(timelineBuilder.toString()).append(S_NEWLINE);
+		}
+
+		if (showErrors)
+		{
+			outputBuilder.append(errorBuilder.toString()).append(S_NEWLINE);
+		}
+
+		if (showModel)
+		{
+			IReadOnlyJITDataModel model = parser.getModel();
+
+			String modelString = HeadlessUtil.modelToString(model, showOnlyCompiledMethods);
+
+			outputBuilder.append(modelString).append(S_NEWLINE);
+		}
+
+		if (showSuggestions)
+		{
+			SuggestionWalker walker = new SuggestionWalker(parser.getModel());
+
+			List<Report> suggestions = walker.getReports(new ScoreComparator());
+
+			outputBuilder.append(getSuggestions(suggestions));
+		}
+
+		if (outputFile)
+		{
+			outputBuilder.insert(0, "sep=" + HEADLESS_SEPARATOR + S_NEWLINE);
+
+			try
+			{
+				Files.write(Paths.get("headless.csv"), outputBuilder.toString().getBytes());
+
+				System.out.println("Wrote to headless.csv");
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+			}
+		}
+		else
+		{
+			System.out.println(outputBuilder.toString());
+		}
+
+		if (showInlineFailedCalls)
+		{
+			HeadlessInlineVisitor inlineVisitor = new HeadlessInlineVisitor(parser.getModel());
+			TreeVisitor.walkTree(parser.getModel(), inlineVisitor);
+			inlineVisitor.printFailedList(System.out);
+		}
+
+		// if (showOptimizedVirtualCalls)
+		// {
+		// OptimizedVirtualCallVisitable optimizedVCallVisitable = new
+		// OptimizedVirtualCallVisitable();
+		//
+		// List<OptimizedVirtualCall> optimizedVirtualCalls =
+		// optimizedVCallVisitable.buildOptimizedCalleeReport(parser.getModel(),
+		// config.getAllClassLocations());
+		//
+		// showOptimizedVCalls(optimizedVirtualCalls);
+		// }
+
+	}
+
+	private String getSuggestions(List<Report> suggestions)
+	{
+		StringBuilder builder = new StringBuilder();
+
+		builder.append("Type").append(HEADLESS_SEPARATOR);
+		builder.append("Score").append(HEADLESS_SEPARATOR);
+		builder.append("Caller Class").append(HEADLESS_SEPARATOR);
+		builder.append("Caller Member").append(HEADLESS_SEPARATOR);
+		builder.append("BCI").append(HEADLESS_SEPARATOR);
+		builder.append("Suggestion").append(S_NEWLINE);
+
+		for (Report suggestion : suggestions)
+		{
+			String callerClass;
+			String callerMember;
+
+			if (suggestion.getCaller() != null)
+			{
+				callerClass = suggestion.getCaller().getMetaClass().getFullyQualifiedName();
+				callerMember = suggestion.getCaller().toStringUnqualifiedMethodName(true, true);
+			}
+			else
+			{
+				callerClass = "Unknown";
+				callerMember = "Unknown";
+			}
+
+			String cleanText = suggestion.getText().replace(C_NEWLINE, C_SPACE);
+
+			builder.append(suggestion.getType()).append(HEADLESS_SEPARATOR);
+			builder.append(suggestion.getScore()).append(HEADLESS_SEPARATOR);
+			builder.append(callerClass).append(HEADLESS_SEPARATOR);
+			builder.append(callerMember).append(HEADLESS_SEPARATOR);
+			builder.append(suggestion.getBytecodeOffset()).append(HEADLESS_SEPARATOR);
+			builder.append(cleanText).append(S_NEWLINE);
+		}
+
+		return builder.toString();
+	}
+
+	// private void showOptimizedVCalls(List<OptimizedVirtualCall> vCalls)
+	// {
+	// StringBuilder builder = new StringBuilder();
+	//
+	// builder.append("Caller class").append(HEADLESS_SEPARATOR);
+	// builder.append("Caller member").append(HEADLESS_SEPARATOR);
+	// builder.append("Source line").append(HEADLESS_SEPARATOR);
+	// builder.append("BCI").append(HEADLESS_SEPARATOR);
+	// builder.append("Instruction").append(HEADLESS_SEPARATOR);
+	// builder.append("Callee class").append(HEADLESS_SEPARATOR);
+	// builder.append("Callee member").append(S_NEWLINE);
+	//
+	// for (OptimizedVirtualCall vCall : vCalls)
+	// {
+	// builder.append(vCall.getCallerMember().getMetaClass().getFullyQualifiedName()).append(HEADLESS_SEPARATOR);
+	// builder.append(vCall.getCallerMember().toString()).append(HEADLESS_SEPARATOR);
+	// builder.append(vCall.getCallsite().getSourceLine()).append(HEADLESS_SEPARATOR);
+	// builder.append(vCall.getCallsite().getBytecodeOffset()).append(HEADLESS_SEPARATOR);
+	// builder.append(vCall.getBytecodeInstruction().getOpcode()).append(HEADLESS_SEPARATOR);
+	// builder.append(vCall.getCallerMember().getMetaClass().getFullyQualifiedName()).append(HEADLESS_SEPARATOR);
+	// builder.append(vCall.getCalleeMember().toString()).append(S_NEWLINE);
+	// }
+	//
+	// System.out.println(builder.toString());
+	// }
+}
+
+codex
+The target has one direct construction site so far. I’m checking whether there are additional callers or subclasses and whether its dependencies are broad enough to qualify as a hub.
+exec
+/bin/bash -lc 'rg -n "HeadlessInlineVisitor" core/src/main/java test || true' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/treevisitor/ITreeVisitable.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "rg -n \"interface\\s+ITreeVisitable|class\\s+.*ITreeVisitable|package\\s+org\\.adoptopenjdk\\.jitwatch\\.treevisitor\" core/src/main/java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 261ms:
+rg: test: No such file or directory (os error 2)
+core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java:41:public class HeadlessInlineVisitor implements ITreeVisitable
+core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java:43:    private static final Logger logger = LoggerFactory.getLogger(HeadlessInlineVisitor.class);
+core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java:48:    public HeadlessInlineVisitor(IReadOnlyJITDataModel model)
+core/src/main/java/org/adoptopenjdk/jitwatch/launch/LaunchHeadless.java:22:import org.adoptopenjdk.jitwatch.inline.HeadlessInlineVisitor;
+core/src/main/java/org/adoptopenjdk/jitwatch/launch/LaunchHeadless.java:231:			HeadlessInlineVisitor inlineVisitor = new HeadlessInlineVisitor(parser.getModel());
+
+ succeeded in 293ms:
+/*
+ * Copyright (c) 2013-2015 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.treevisitor;
+
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+
+public interface ITreeVisitable
+{
+    void visit(IMetaMember mm);
+    void reset();
+}
+ succeeded in 363ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java:41:public class HeadlessInlineVisitor implements ITreeVisitable
+core/src/main/java/org/adoptopenjdk/jitwatch/compilation/AbstractCompilationWalker.java:15:public abstract class AbstractCompilationWalker extends AbstractCompilationVisitable implements ITreeVisitable
+core/src/main/java/org/adoptopenjdk/jitwatch/treevisitor/ITreeVisitable.java:6:package org.adoptopenjdk.jitwatch.treevisitor;
+core/src/main/java/org/adoptopenjdk/jitwatch/treevisitor/ITreeVisitable.java:10:public interface ITreeVisitable
+core/src/main/java/org/adoptopenjdk/jitwatch/treevisitor/TreeVisitor.java:6:package org.adoptopenjdk.jitwatch.treevisitor;
+core/src/main/java/org/adoptopenjdk/jitwatch/report/AbstractReportBuilder.java:18:public abstract class AbstractReportBuilder extends AbstractCompilationVisitable implements ITreeVisitable
+
+codex
+I have the direct call graph now. I’m checking the size and role of the `inline` package so I can distinguish a specialized visitor from a true hub that many units depend on.
+exec
+/bin/bash -lc 'rg --files core/src/main/java/org/adoptopenjdk/jitwatch/inline' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/main/java/org/adoptopenjdk/jitwatch/compilation/AbstractCompilationWalker.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/main/java/org/adoptopenjdk/jitwatch/report/AbstractReportBuilder.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 255ms:
+/*
+ * Copyright (c) 2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.compilation;
+
+import org.adoptopenjdk.jitwatch.model.IParseDictionary;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.model.LogParseException;
+import org.adoptopenjdk.jitwatch.model.Tag;
+import org.adoptopenjdk.jitwatch.treevisitor.ITreeVisitable;
+import org.adoptopenjdk.jitwatch.treevisitor.TreeVisitor;
+
+public abstract class AbstractCompilationWalker extends AbstractCompilationVisitable implements ITreeVisitable
+{
+    protected IReadOnlyJITDataModel model;
+
+	public AbstractCompilationWalker(IReadOnlyJITDataModel model)
+	{
+		this.model = model;
+	}
+
+	public void walkCompilations()
+	{
+		TreeVisitor.walkTree(model, this);
+	}
+
+	@Override
+	public void visitTag(Tag toVisit, IParseDictionary parseDictionary) throws LogParseException
+	{		
+	}
+}
+ succeeded in 250ms:
+/*
+ * Copyright (c) 2013-2016 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.report;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
+import org.adoptopenjdk.jitwatch.compilation.AbstractCompilationVisitable;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.treevisitor.ITreeVisitable;
+import org.adoptopenjdk.jitwatch.treevisitor.TreeVisitor;
+
+public abstract class AbstractReportBuilder extends AbstractCompilationVisitable implements ITreeVisitable
+{
+    protected IReadOnlyJITDataModel model;
+    protected List<Report> reportList;
+
+	public AbstractReportBuilder(IReadOnlyJITDataModel model)
+	{
+		this.model = model;
+		reportList = new ArrayList<>();
+	}
+
+	public List<Report> getReports(Comparator<Report> comparator)
+	{
+		TreeVisitor.walkTree(model, this);
+		
+		findNonMemberReports();
+
+		Collections.sort(reportList, comparator);
+
+		return reportList;
+	}
+	
+	protected abstract void findNonMemberReports();
+
+	@Override
+	public void reset()
+	{
+		reportList.clear();
+	}
+}
+ succeeded in 325ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.inline.HeadlessInlineVisitor","detection":false,"justification":"Inspected core/src/main/java/org/adoptopenjdk/jitwatch/inline/HeadlessInlineVisitor.java, core/src/main/java/org/adoptopenjdk/jitwatch/launch/LaunchHeadless.java, and the inline package contents (rg --files showed only this one source file). HeadlessInlineVisitor has one direct construction/use site in LaunchHeadless.handleReadComplete(), and the repository search found no other callers. The class is a narrow visitor over IReadOnlyJITDataModel with a small local set of collaborators (e.g. CompilationUtil, ParseUtil, Tag), so the evidence shows low fan-in and limited fan-out rather than a dependency hub."}
+tokens used
+9,349

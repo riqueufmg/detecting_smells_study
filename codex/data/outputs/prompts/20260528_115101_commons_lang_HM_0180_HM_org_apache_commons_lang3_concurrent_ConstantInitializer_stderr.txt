@@ -1,0 +1,1799 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f11-4127-7a01-82bd-a46839ae6aed
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.apache.commons.lang3.concurrent.ConstantInitializer` in the repository located at:
+
+`data/repositories/apache/commons-lang`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.apache.commons.lang3.concurrent.ConstantInitializer",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.apache.commons.lang3.concurrent.ConstantInitializer`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and its direct references first, then I’ll check whether it actually behaves like a dependency hub from both fan-in and fan-out evidence.
+exec
+/bin/bash -lc "rg -n \"class ConstantInitializer|interface ConstantInitializer|ConstantInitializer\" src -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:39:public class ConstantInitializer<T> implements ConcurrentInitializer<T> {
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:42:    private static final String FMT_TO_STRING = "ConstantInitializer@%d [ object = %s ]";
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:48:     * Creates a new instance of {@link ConstantInitializer} and initializes it
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:56:    public ConstantInitializer(final T obj) {
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:63:     * {@link ConstantInitializer} which refers to an object equals to the
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:74:        if (!(obj instanceof ConstantInitializer<?>)) {
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:78:        final ConstantInitializer<?> c = (ConstantInitializer<?>) obj;
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:117:     * As a {@link ConstantInitializer} is initialized on construction this will
+src/main/java/org/apache/commons/lang3/concurrent/package-info.java:43: * {@link org.apache.commons.lang3.concurrent.ConstantInitializer} is a very straightforward implementation of the
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:29: * Test class for {@code ConstantInitializer}.
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:31:class ConstantInitializerTest extends AbstractLangTest {
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:36:    private ConstantInitializer<Integer> init;
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:56:        init = new ConstantInitializer<>(VALUE);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:64:        ConstantInitializer<Integer> init2 = new ConstantInitializer<>(
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:67:        init2 = new ConstantInitializer<>(VALUE + 1);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:77:        ConstantInitializer<Integer> init2 = new ConstantInitializer<>(
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:80:        init = new ConstantInitializer<>(null);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:81:        init2 = new ConstantInitializer<>(null);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:92:        checkEquals(new ConstantInitializer<>("Test"), false);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:130:                .compile("ConstantInitializer@-?\\d+ \\[ object = " + VALUE
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:140:        final String s = new ConstantInitializer<>(null).toString();
+src/test/java/org/apache/commons/lang3/concurrent/ConcurrentUtilsTest.java:167:        assertEquals(value, ConcurrentUtils.createIfAbsentUnchecked(map, key, new ConstantInitializer<>(value)), "Wrong result");
+
+exec
+/bin/bash -lc "rg --files src | rg 'ConstantInitializer\\.java"'$|concurrent'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/main/java/org/apache/commons/lang3/concurrent/MultiBackgroundInitializer.java
+src/main/java/org/apache/commons/lang3/concurrent/ConcurrentInitializer.java
+src/main/java/org/apache/commons/lang3/concurrent/BackgroundInitializer.java
+src/main/java/org/apache/commons/lang3/concurrent/BasicThreadFactory.java
+src/main/java/org/apache/commons/lang3/concurrent/CallableBackgroundInitializer.java
+src/main/java/org/apache/commons/lang3/concurrent/ConcurrentUtils.java
+src/main/java/org/apache/commons/lang3/concurrent/TimedSemaphore.java
+src/main/java/org/apache/commons/lang3/concurrent/ConcurrentRuntimeException.java
+src/main/java/org/apache/commons/lang3/concurrent/AtomicInitializer.java
+src/main/java/org/apache/commons/lang3/concurrent/ThresholdCircuitBreaker.java
+src/main/java/org/apache/commons/lang3/concurrent/AbstractFutureProxy.java
+src/main/java/org/apache/commons/lang3/concurrent/CircuitBreakingException.java
+src/main/java/org/apache/commons/lang3/concurrent/UncheckedFuture.java
+src/main/java/org/apache/commons/lang3/concurrent/UncheckedExecutionException.java
+src/main/java/org/apache/commons/lang3/concurrent/AbstractCircuitBreaker.java
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java
+src/main/java/org/apache/commons/lang3/concurrent/ConcurrentException.java
+src/main/java/org/apache/commons/lang3/concurrent/Computable.java
+src/main/java/org/apache/commons/lang3/concurrent/Memoizer.java
+src/main/java/org/apache/commons/lang3/concurrent/AbstractConcurrentInitializer.java
+src/main/java/org/apache/commons/lang3/concurrent/FutureTasks.java
+src/main/java/org/apache/commons/lang3/concurrent/CircuitBreaker.java
+src/main/java/org/apache/commons/lang3/concurrent/EventCountCircuitBreaker.java
+src/main/java/org/apache/commons/lang3/concurrent/UncheckedFutureImpl.java
+src/main/java/org/apache/commons/lang3/concurrent/UncheckedTimeoutException.java
+src/main/java/org/apache/commons/lang3/concurrent/package-info.java
+src/main/java/org/apache/commons/lang3/concurrent/locks/LockingVisitors.java
+src/main/java/org/apache/commons/lang3/concurrent/locks/package-info.java
+src/main/java/org/apache/commons/lang3/concurrent/AtomicSafeInitializer.java
+src/main/java/org/apache/commons/lang3/concurrent/LazyInitializer.java
+src/test/java/org/apache/commons/lang3/concurrent/ConcurrentRuntimeExceptionTest.java
+src/test/java/org/apache/commons/lang3/concurrent/LazyInitializerAnonClassTest.java
+src/test/java/org/apache/commons/lang3/concurrent/LazyInitializerFailableCloserTest.java
+src/test/java/org/apache/commons/lang3/concurrent/FutureTasksTest.java
+src/test/java/org/apache/commons/lang3/concurrent/LazyInitializerSingleInstanceTest.java
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java
+src/test/java/org/apache/commons/lang3/concurrent/UncheckedFutureTest.java
+src/test/java/org/apache/commons/lang3/concurrent/LazyInitializerSupplierTest.java
+src/test/java/org/apache/commons/lang3/concurrent/CircuitBreakingExceptionTest.java
+src/test/java/org/apache/commons/lang3/concurrent/EventCountCircuitBreakerTest.java
+src/test/java/org/apache/commons/lang3/concurrent/LazyInitializerCloserTest.java
+src/test/java/org/apache/commons/lang3/concurrent/AtomicSafeInitializerSupplierTest.java
+src/test/java/org/apache/commons/lang3/concurrent/TimedSemaphoreTest.java
+src/test/java/org/apache/commons/lang3/concurrent/AtomicInitializerNonObjectTest.java
+src/test/java/org/apache/commons/lang3/concurrent/ThresholdCircuitBreakerTest.java
+src/test/java/org/apache/commons/lang3/concurrent/MultiBackgroundInitializerTest.java
+src/test/java/org/apache/commons/lang3/concurrent/ConcurrentUtilsTest.java
+src/test/java/org/apache/commons/lang3/concurrent/CallableBackgroundInitializerTest.java
+src/test/java/org/apache/commons/lang3/concurrent/AbstractConcurrentInitializerCloseAndExceptionsTest.java
+src/test/java/org/apache/commons/lang3/concurrent/BasicThreadFactoryTest.java
+src/test/java/org/apache/commons/lang3/concurrent/AtomicInitializerObjectTest.java
+src/test/java/org/apache/commons/lang3/concurrent/BackgroundInitializerSupplierTest.java
+src/test/java/org/apache/commons/lang3/concurrent/AbstractConcurrentInitializerTest.java
+src/test/java/org/apache/commons/lang3/concurrent/UncheckedExecutionExceptionTest.java
+src/test/java/org/apache/commons/lang3/concurrent/LazyInitializerSimpleTest.java
+src/test/java/org/apache/commons/lang3/concurrent/AtomicInitializerSupplierTest.java
+src/test/java/org/apache/commons/lang3/concurrent/MultiBackgroundInitializerSupplierTest.java
+src/test/java/org/apache/commons/lang3/concurrent/MemoizerComputableTest.java
+src/test/java/org/apache/commons/lang3/concurrent/AtomicSafeInitializerTest.java
+src/test/java/org/apache/commons/lang3/concurrent/UncheckedTimeoutExceptionTest.java
+src/test/java/org/apache/commons/lang3/concurrent/locks/LockingVisitorsTest.java
+src/test/java/org/apache/commons/lang3/concurrent/BackgroundInitializerTest.java
+src/test/java/org/apache/commons/lang3/concurrent/ConcurrentExceptionTest.java
+src/test/java/org/apache/commons/lang3/concurrent/MemoizerFunctionTest.java
+
+codex
+I found the target in `src/main/java/.../ConstantInitializer.java` and a small set of direct uses in tests and one production helper. Next I’m checking the class body and its actual call graph so I can judge whether the dependency pattern is really hub-like or just a simple utility.
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.lang3.concurrent;
+
+import java.util.Objects;
+
+/**
+ * A very simple implementation of the {@link ConcurrentInitializer} interface
+ * which always returns the same object.
+ *
+ * <p>
+ * An instance of this class is passed a reference to an object when it is
+ * constructed. The {@link #get()} method just returns this object. No
+ * synchronization is required.
+ * </p>
+ * <p>
+ * This class is useful for instance for unit testing or in cases where a
+ * specific object has to be passed to an object which expects a
+ * {@link ConcurrentInitializer}.
+ * </p>
+ *
+ * @param <T> the type of the object managed by this initializer
+ * @since 3.0
+ */
+public class ConstantInitializer<T> implements ConcurrentInitializer<T> {
+
+    /** Constant for the format of the string representation. */
+    private static final String FMT_TO_STRING = "ConstantInitializer@%d [ object = %s ]";
+
+    /** Stores the managed object. */
+    private final T object;
+
+    /**
+     * Creates a new instance of {@link ConstantInitializer} and initializes it
+     * with the object to be managed. The {@code get()} method will always
+     * return the object passed here. This class does not place any restrictions
+     * on the object. It may be <strong>null</strong>, then {@code get()} will return
+     * <strong>null</strong>, too.
+     *
+     * @param obj the object to be managed by this initializer
+     */
+    public ConstantInitializer(final T obj) {
+        object = obj;
+    }
+
+    /**
+     * Compares this object with another one. This implementation returns
+     * <strong>true</strong> if and only if the passed in object is an instance of
+     * {@link ConstantInitializer} which refers to an object equals to the
+     * object managed by this instance.
+     *
+     * @param obj the object to compare to
+     * @return a flag whether the objects are equal
+     */
+    @Override
+    public boolean equals(final Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof ConstantInitializer<?>)) {
+            return false;
+        }
+
+        final ConstantInitializer<?> c = (ConstantInitializer<?>) obj;
+        return Objects.equals(getObject(), c.getObject());
+    }
+
+    /**
+     * Gets the object managed by this initializer. This implementation just
+     * returns the object passed to the constructor.
+     *
+     * @return the object managed by this initializer
+     * @throws ConcurrentException if an error occurs
+     */
+    @Override
+    public T get() throws ConcurrentException {
+        return getObject();
+    }
+
+    /**
+     * Directly returns the object that was passed to the constructor. This is
+     * the same object as returned by {@code get()}. However, this method does
+     * not declare that it throws an exception.
+     *
+     * @return the object managed by this initializer
+     */
+    public final T getObject() {
+        return object;
+    }
+
+    /**
+     * Returns a hash code for this object. This implementation returns the hash
+     * code of the managed object.
+     *
+     * @return a hash code for this object
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(object);
+    }
+
+    /**
+     * As a {@link ConstantInitializer} is initialized on construction this will
+     * always return true.
+     *
+     * @return true.
+     * @since 3.14.0
+     */
+    public boolean isInitialized() {
+        return true;
+    }
+
+    /**
+     * Returns a string representation for this object. This string also
+     * contains a string representation of the object managed by this
+     * initializer.
+     *
+     * @return a string for this object
+     */
+    @Override
+    public String toString() {
+        return String.format(FMT_TO_STRING, Integer.valueOf(System.identityHashCode(this)), getObject());
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/apache/commons/lang3/concurrent/ConcurrentInitializer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.lang3.concurrent;
+
+import org.apache.commons.lang3.function.FailableSupplier;
+
+/**
+ * Defines the thread-safe initialization of objects.
+ * <p>
+ * The idea behind this interface is to provide access to an object in a thread-safe manner. A {@link ConcurrentInitializer} can be passed to multiple threads
+ * which can all access the object produced by the initializer. Through the {@link #get()} method the object can be queried.
+ * </p>
+ * <p>
+ * Concrete implementations of this interface will use different strategies for the creation of the managed object, e.g. lazy initialization or initialization
+ * in a background thread. This is completely transparent to client code, so it is possible to change the initialization strategy without affecting clients.
+ * </p>
+ * <p>
+ * An implementation of {@link #get()} returns the fully initialized object produced by this {@code
+ * ConcurrentInitializer}. A concrete implementation here returns the results of the initialization process. This method may block until results are available.
+ * Typically, once created the result object is always the same.
+ * </p>
+ * <p>
+ * An implementation throws {@link ConcurrentException} if an error occurred during initialization of the object.
+ * </p>
+ *
+ * @param <T> the type of the object managed by this initializer class.
+ * @since 3.0
+ */
+public interface ConcurrentInitializer<T> extends FailableSupplier<T, ConcurrentException> {
+    // empty
+}
+
+exec
+/bin/bash -lc "sed -n '1,240p' src/main/java/org/apache/commons/lang3/concurrent/ConcurrentUtils.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "sed -n '1,180p' src/main/java/org/apache/commons/lang3/concurrent/package-info.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "sed -n '1,220p' src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.lang3.concurrent;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.regex.Pattern;
+
+import org.apache.commons.lang3.AbstractLangTest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Test class for {@code ConstantInitializer}.
+ */
+class ConstantInitializerTest extends AbstractLangTest {
+    /** Constant for the object managed by the initializer. */
+    private static final Integer VALUE = 42;
+
+    /** The initializer to be tested. */
+    private ConstantInitializer<Integer> init;
+
+    /**
+     * Helper method for testing equals() and hashCode().
+     *
+     * @param obj the object to compare with the test instance
+     * @param expected the expected result
+     */
+    private void checkEquals(final Object obj, final boolean expected) {
+        assertEquals(expected, init.equals(obj), "Wrong result of equals");
+        if (obj != null) {
+            assertEquals(expected, obj.equals(init), "Not symmetric");
+            if (expected) {
+                assertEquals(init.hashCode(), obj.hashCode(), "Different hash codes");
+            }
+        }
+    }
+
+    @BeforeEach
+    public void setUp() {
+        init = new ConstantInitializer<>(VALUE);
+    }
+
+    /**
+     * Tests equals() if the expected result is false.
+     */
+    @Test
+    void testEqualsFalse() {
+        ConstantInitializer<Integer> init2 = new ConstantInitializer<>(
+                null);
+        checkEquals(init2, false);
+        init2 = new ConstantInitializer<>(VALUE + 1);
+        checkEquals(init2, false);
+    }
+
+    /**
+     * Tests equals() if the expected result is true.
+     */
+    @Test
+    void testEqualsTrue() {
+        checkEquals(init, true);
+        ConstantInitializer<Integer> init2 = new ConstantInitializer<>(
+                Integer.valueOf(VALUE.intValue()));
+        checkEquals(init2, true);
+        init = new ConstantInitializer<>(null);
+        init2 = new ConstantInitializer<>(null);
+        checkEquals(init2, true);
+    }
+
+    /**
+     * Tests equals() with objects of other classes.
+     */
+    @Test
+    void testEqualsWithOtherObjects() {
+        checkEquals(null, false);
+        checkEquals(this, false);
+        checkEquals(new ConstantInitializer<>("Test"), false);
+    }
+
+    /**
+     * Tests whether get() returns the correct object.
+     *
+     * @throws org.apache.commons.lang3.concurrent.ConcurrentException so we don't have to catch it
+     */
+    @Test
+    void testGet() throws ConcurrentException {
+        assertEquals(VALUE, init.get(), "Wrong object");
+    }
+
+    /**
+     * Tests whether the correct object is returned.
+     */
+    @Test
+    void testGetObject() {
+        assertEquals(VALUE, init.getObject(), "Wrong object");
+    }
+
+    /**
+     * Tests a simple invocation of the isInitialized() method.
+     */
+    @Test
+    void testisInitialized() {
+        assertTrue(init.isInitialized(), "was not initialized before get()");
+        assertEquals(VALUE, init.getObject(), "Wrong object");
+        assertTrue(init.isInitialized(), "was not initialized after get()");
+    }
+
+    /**
+     * Tests the string representation.
+     */
+    @Test
+    void testToString() {
+        final String s = init.toString();
+        final Pattern pattern = Pattern
+                .compile("ConstantInitializer@-?\\d+ \\[ object = " + VALUE
+                        + " \\]");
+        assertTrue(pattern.matcher(s).matches(), "Wrong string: " + s);
+    }
+
+    /**
+     * Tests the string representation if the managed object is null.
+     */
+    @Test
+    void testToStringNull() {
+        final String s = new ConstantInitializer<>(null).toString();
+        assertTrue(s.indexOf("object = null") > 0, "Object not found: " + s);
+    }
+}
+
+ succeeded in 119ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Provides support classes for multi-threaded programming. This package is intended to be an extension to
+ * {@link java.util.concurrent}. These classes are thread-safe.
+ *
+ * <p>
+ * A group of classes deals with the correct creation and initialization of objects that are accessed by multiple
+ * threads. All these classes implement the {@link org.apache.commons.lang3.concurrent.ConcurrentInitializer} interface
+ * which provides just a single method:
+ * </p>
+ *
+ * <pre>{@code
+ * public interface ConcurrentInitializer<T> {
+ *    T get() throws ConcurrentException;
+ * }
+ * }
+ * </pre>
+ *
+ * <p>
+ * A {@link org.apache.commons.lang3.concurrent.ConcurrentInitializer} produces an object. By calling the
+ * {@link org.apache.commons.lang3.concurrent.ConcurrentInitializer#get() get()} method the object managed by the
+ * initializer can be obtained. There are different implementations of the interface available addressing various use
+ * cases:
+ * </p>
+ *
+ * <p>
+ * {@link org.apache.commons.lang3.concurrent.ConstantInitializer} is a very straightforward implementation of the
+ * {@link org.apache.commons.lang3.concurrent.ConcurrentInitializer} interface: An instance is passed an object when it
+ * is constructed. In its {@code get()} method it simply returns this object. This is useful, for instance in unit tests
+ * or in cases when you want to pass a specific object to a component which expects a
+ * {@link org.apache.commons.lang3.concurrent.ConcurrentInitializer}.
+ * </p>
+ *
+ * <p>
+ * The {@link org.apache.commons.lang3.concurrent.LazyInitializer} class can be used to defer the creation of an object
+ * until it is actually used. This makes sense, for instance, if the creation of the object is expensive and would slow
+ * down application startup or if the object is needed only for special executions.
+ * {@link org.apache.commons.lang3.concurrent.LazyInitializer} implements the <em>double-check idiom for an instance
+ * field</em> as discussed in Joshua Bloch's "Effective Java", 2nd edition, item 71. It uses <strong>volatile</strong>
+ * fields to reduce the amount of synchronization. Note that this idiom is appropriate for instance fields only. For
+ * <strong>static</strong> fields there are superior alternatives.
+ * </p>
+ *
+ * <p>
+ * We provide an example use case to demonstrate the usage of this class: A server application uses multiple worker
+ * threads to process client requests. If such a request causes a fatal error, an administrator is to be notified using
+ * a special messaging service. We assume that the creation of the messaging service is an expensive operation. So it
+ * should only be performed if an error actually occurs. Here is where
+ * {@link org.apache.commons.lang3.concurrent.LazyInitializer} comes into play. We create a specialized subclass for
+ * creating and initializing an instance of our messaging service.
+ * {@link org.apache.commons.lang3.concurrent.LazyInitializer} declares an abstract
+ * {@link org.apache.commons.lang3.concurrent.LazyInitializer#initialize() initialize()} method which we have to
+ * implement to create the messaging service object:
+ * </p>
+ *
+ * <pre>{@code
+ * public class MessagingServiceInitializer extends LazyInitializer<MessagingService> {
+ *   protected MessagingService initialize() throws ConcurrentException {
+ *     // Do all necessary steps to create and initialize the service object
+ *     MessagingService service = ...
+ *     return service;
+ *   }
+ * }
+ * }
+ * </pre>
+ *
+ * <p>
+ * Now each server thread is passed a reference to a shared instance of our new {@code MessagingServiceInitializer}
+ * class. The threads run in a loop processing client requests. If an error is detected, the messaging service is
+ * obtained from the initializer, and the administrator is notified:
+ * </p>
+ *
+ * <pre>{@code
+ * public class ServerThread implements Runnable {
+ *  // The initializer for obtaining the messaging service.
+ *  private final ConcurrentInitializer<MessagingService> initializer;
+ *
+ *  public ServerThread(ConcurrentInitializer<MessagingService> init) {
+ *    initializer = init;
+ *  }
+ *
+ *  public void run() {
+ *    while (true) {
+ *      try {
+ *        // wait for request
+ *        // process request
+ *      } catch (FatalServerException ex) {
+ *        // get messaging service
+ *        try {
+ *          MessagingService svc = initializer.get();
+ *          svc.notifyAdministrator(ex);
+ *        } catch (ConcurrentException cex) {
+ *          cex.printStackTrace();
+ *        }
+ *      }
+ *    }
+ *  }
+ * }
+ * }
+ * </pre>
+ *
+ * <p>
+ * The {@link org.apache.commons.lang3.concurrent.AtomicInitializer} class is very similar to
+ * {@link org.apache.commons.lang3.concurrent.LazyInitializer}. It serves the same purpose: to defer the creation of an
+ * object until it is needed. The internal structure is also very similar. Again there is an abstract
+ * {@link org.apache.commons.lang3.concurrent.AtomicInitializer#initialize() initialize()} method which has to be
+ * implemented by concrete subclasses in order to create and initialize the managed object. Actually, in our example
+ * above we can turn the {@code MessagingServiceInitializer} into an atomic initializer by simply changing the
+ * <strong>extends</strong> declaration to refer to {@code AtomicInitializer<MessagingService>} as super class.
+ * </p>
+ *
+ * <p>
+ * With {@link org.apache.commons.lang3.concurrent.AtomicSafeInitializer} there is yet another variant implementing the
+ * lazy initializing pattern. Its implementation is close to
+ * {@link org.apache.commons.lang3.concurrent.AtomicInitializer}; it also uses atomic variables internally and therefore
+ * does not need synchronization. The name &quot;Safe&quot; is derived from the fact that it implements an additional
+ * check which guarantees that the {@link org.apache.commons.lang3.concurrent.AtomicSafeInitializer#initialize()
+ * initialize()} method is called only once. So it behaves exactly in the same way as
+ * {@link org.apache.commons.lang3.concurrent.LazyInitializer}.
+ * </p>
+ *
+ * <p>
+ * Now, which one of the lazy initializer implementations should you use? First of all we have to state that is
+ * problematic to give general recommendations regarding the performance of these classes. The initializers make use of
+ * low-level functionality whose efficiency depends on multiple factors including the target platform and the number of
+ * concurrent threads. So developers should make their own benchmarks in scenarios close to their specific use cases.
+ * The following statements are rules of thumb which have to be verified in practice.
+ * </p>
+ *
+ * <p>
+ * {@link org.apache.commons.lang3.concurrent.AtomicInitializer} is probably the most efficient implementation due to
+ * its lack of synchronization and further checks. Its main drawback is that the {@code initialize()} method can be
+ * called multiple times. In cases where this is not an issue
+ * {@link org.apache.commons.lang3.concurrent.AtomicInitializer} is a good choice.
+ * {@link org.apache.commons.lang3.concurrent.AtomicSafeInitializer} and
+ * {@link org.apache.commons.lang3.concurrent.LazyInitializer} both guarantee that the initialization method is called
+ * only once. Because {@link org.apache.commons.lang3.concurrent.AtomicSafeInitializer} does not use synchronization it
+ * is probably slightly more efficient than {@link org.apache.commons.lang3.concurrent.LazyInitializer}, but the
+ * concrete numbers might depend on the level of concurrency.
+ * </p>
+ *
+ * <p>
+ * Another implementation of the {@link org.apache.commons.lang3.concurrent.ConcurrentInitializer} interface is
+ * {@link org.apache.commons.lang3.concurrent.BackgroundInitializer}. It is again an abstract base class with an
+ * {@link org.apache.commons.lang3.concurrent.BackgroundInitializer#initialize() initialize()} method that has to be
+ * defined by concrete subclasses. The idea of {@link org.apache.commons.lang3.concurrent.BackgroundInitializer} is that
+ * it calls the {@code initialize()} method in a separate worker thread. An application creates a background initializer
+ * and starts it. Then it can continue with its work while the initializer runs in parallel. When the application needs
+ * the results of the initializer it calls its {@code get()} method. {@code get()} blocks until the initialization is
+ * complete. This is useful for instance at application startup. Here initialization steps (e.g. reading configuration
+ * files, opening a database connection, etc.) can be run in background threads while the application shows a splash
+ * screen and constructs its UI.
+ * </p>
+ *
+ * <p>
+ * As a concrete example consider an application that has to read the content of a URL - maybe a page with news - which
+ * is to be displayed to the user after login. Because loading the data over the network can take some time a
+ * specialized implementation of {@link org.apache.commons.lang3.concurrent.BackgroundInitializer} can be created for
+ * this purpose:
+ * </p>
+ *
+ * <pre>{@code
+ * public class URLLoader extends BackgroundInitializer<String> {
+ *   // The URL to be loaded.
+
+ succeeded in 122ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.lang3.concurrent;
+
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.lang3.Validate;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+
+/**
+ * A utility class providing functionality related to the {@code
+ * java.util.concurrent} package.
+ *
+ * @since 3.0
+ */
+public class ConcurrentUtils {
+
+    /**
+     * A specialized {@link Future} implementation which wraps a constant value.
+     *
+     * @param <T> the type of the value wrapped by this class
+     */
+    static final class ConstantFuture<T> implements Future<T> {
+        /** The constant value. */
+        private final T value;
+
+        /**
+         * Creates a new instance of {@link ConstantFuture} and initializes it
+         * with the constant value.
+         *
+         * @param value the value (may be <strong>null</strong>)
+         */
+        ConstantFuture(final T value) {
+            this.value = value;
+        }
+
+        /**
+         * {@inheritDoc} The cancel operation is not supported. This
+         * implementation always returns <strong>false</strong>.
+         */
+        @Override
+        public boolean cancel(final boolean mayInterruptIfRunning) {
+            return false;
+        }
+
+        /**
+         * {@inheritDoc} This implementation just returns the constant value.
+         */
+        @Override
+        public T get() {
+            return value;
+        }
+
+        /**
+         * {@inheritDoc} This implementation just returns the constant value; it
+         * does not block, therefore the timeout has no meaning.
+         */
+        @Override
+        public T get(final long timeout, final TimeUnit unit) {
+            return value;
+        }
+
+        /**
+         * {@inheritDoc} This implementation always returns <strong>false</strong>; there
+         * is no background process which could be canceled.
+         */
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        /**
+         * {@inheritDoc} This implementation always returns <strong>true</strong> because
+         * the constant object managed by this {@link Future} implementation is
+         * always available.
+         */
+        @Override
+        public boolean isDone() {
+            return true;
+        }
+    }
+
+    /**
+     * Tests whether the specified {@link Throwable} is a checked exception. If
+     * not, an exception is thrown.
+     *
+     * @param ex the {@link Throwable} to check
+     * @return a flag whether the passed in exception is a checked exception
+     * @throws IllegalArgumentException if the {@link Throwable} is not a
+     * checked exception
+     */
+    static Throwable checkedException(final Throwable ex) {
+        Validate.isTrue(ExceptionUtils.isChecked(ex), "Not a checked exception: %s", ex);
+        return ex;
+    }
+
+    /**
+     * Gets an implementation of {@link Future} that is immediately done
+     * and returns the specified constant value.
+     *
+     * <p>
+     * This can be useful to return a simple constant immediately from the
+     * concurrent processing, perhaps as part of avoiding nulls.
+     * A constant future can also be useful in testing.
+     * </p>
+     *
+     * @param <T> the type of the value used by this {@link Future} object
+     * @param value  the constant value to return, may be null
+     * @return an instance of Future that will return the value, never null
+     */
+    public static <T> Future<T> constantFuture(final T value) {
+        return new ConstantFuture<>(value);
+    }
+
+    /**
+     * Checks if a concurrent map contains a key and creates a corresponding
+     * value if not. This method first checks the presence of the key in the
+     * given map. If it is already contained, its value is returned. Otherwise
+     * the {@code get()} method of the passed in {@link ConcurrentInitializer}
+     * is called. With the resulting object
+     * {@link #putIfAbsent(ConcurrentMap, Object, Object)} is called. This
+     * handles the case that in the meantime another thread has added the key to
+     * the map. Both the map and the initializer can be <strong>null</strong>; in this
+     * case this method simply returns <strong>null</strong>.
+     *
+     * @param <K> the type of the keys of the map
+     * @param <V> the type of the values of the map
+     * @param map the map to be modified
+     * @param key the key of the value to be added
+     * @param init the {@link ConcurrentInitializer} for creating the value
+     * @return the value stored in the map after this operation; this may or may
+     * not be the object created by the {@link ConcurrentInitializer}
+     * @throws ConcurrentException if the initializer throws an exception
+     */
+    public static <K, V> V createIfAbsent(final ConcurrentMap<K, V> map, final K key,
+            final ConcurrentInitializer<V> init) throws ConcurrentException {
+        if (map == null || init == null) {
+            return null;
+        }
+
+        final V value = map.get(key);
+        if (value == null) {
+            return putIfAbsent(map, key, init.get());
+        }
+        return value;
+    }
+
+    /**
+     * Checks if a concurrent map contains a key and creates a corresponding
+     * value if not, suppressing checked exceptions. This method calls
+     * {@code createIfAbsent()}. If a {@link ConcurrentException} is thrown, it
+     * is caught and re-thrown as a {@link ConcurrentRuntimeException}.
+     *
+     * @param <K> the type of the keys of the map
+     * @param <V> the type of the values of the map
+     * @param map the map to be modified
+     * @param key the key of the value to be added
+     * @param init the {@link ConcurrentInitializer} for creating the value
+     * @return the value stored in the map after this operation; this may or may
+     * not be the object created by the {@link ConcurrentInitializer}
+     * @throws ConcurrentRuntimeException if the initializer throws an exception
+     */
+    public static <K, V> V createIfAbsentUnchecked(final ConcurrentMap<K, V> map,
+            final K key, final ConcurrentInitializer<V> init) {
+        try {
+            return createIfAbsent(map, key, init);
+        } catch (final ConcurrentException cex) {
+            throw new ConcurrentRuntimeException(cex.getCause());
+        }
+    }
+
+    /**
+     * Inspects the cause of the specified {@link ExecutionException} and
+     * creates a {@link ConcurrentException} with the checked cause if
+     * necessary. This method performs the following checks on the cause of the
+     * passed in exception:
+     * <ul>
+     * <li>If the passed in exception is <strong>null</strong> or the cause is
+     * <strong>null</strong>, this method returns <strong>null</strong>.</li>
+     * <li>If the cause is a runtime exception, it is directly thrown.</li>
+     * <li>If the cause is an error, it is directly thrown, too.</li>
+     * <li>In any other case the cause is a checked exception. The method then
+     * creates a {@link ConcurrentException}, initializes it with the cause, and
+     * returns it.</li>
+     * </ul>
+     *
+     * @param ex the exception to be processed
+     * @return a {@link ConcurrentException} with the checked cause
+     */
+    public static ConcurrentException extractCause(final ExecutionException ex) {
+        if (ex == null || ex.getCause() == null) {
+            return null;
+        }
+        ExceptionUtils.throwUnchecked(ex.getCause());
+        return new ConcurrentException(ex.getMessage(), ex.getCause());
+    }
+
+    /**
+     * Inspects the cause of the specified {@link ExecutionException} and
+     * creates a {@link ConcurrentRuntimeException} with the checked cause if
+     * necessary. This method works exactly like
+     * {@link #extractCause(ExecutionException)}. The only difference is that
+     * the cause of the specified {@link ExecutionException} is extracted as a
+     * runtime exception. This is an alternative for client code that does not
+     * want to deal with checked exceptions.
+     *
+     * @param ex the exception to be processed
+     * @return a {@link ConcurrentRuntimeException} with the checked cause
+     */
+    public static ConcurrentRuntimeException extractCauseUnchecked(final ExecutionException ex) {
+        if (ex == null || ex.getCause() == null) {
+            return null;
+        }
+        ExceptionUtils.throwUnchecked(ex.getCause());
+        return new ConcurrentRuntimeException(ex.getMessage(), ex.getCause());
+    }
+
+    /**
+     * Handles the specified {@link ExecutionException}. This method calls
+     * {@link #extractCause(ExecutionException)} for obtaining the cause of the
+     * exception - which might already cause an unchecked exception or an error
+     * being thrown. If the cause is a checked exception however, it is wrapped
+     * in a {@link ConcurrentException}, which is thrown. If the passed in
+
+codex
+I’ve confirmed the class is tiny and self-contained. I’m now counting concrete references so the verdict can rest on actual fan-in/fan-out evidence rather than the package-level documentation.
+exec
+/bin/bash -lc "rg -n \"\\bConstantInitializer\\b\" src/main src/test -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:29: * Test class for {@code ConstantInitializer}.
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:36:    private ConstantInitializer<Integer> init;
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:56:        init = new ConstantInitializer<>(VALUE);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:64:        ConstantInitializer<Integer> init2 = new ConstantInitializer<>(
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:67:        init2 = new ConstantInitializer<>(VALUE + 1);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:77:        ConstantInitializer<Integer> init2 = new ConstantInitializer<>(
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:80:        init = new ConstantInitializer<>(null);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:81:        init2 = new ConstantInitializer<>(null);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:92:        checkEquals(new ConstantInitializer<>("Test"), false);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:130:                .compile("ConstantInitializer@-?\\d+ \\[ object = " + VALUE
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:140:        final String s = new ConstantInitializer<>(null).toString();
+src/test/java/org/apache/commons/lang3/concurrent/ConcurrentUtilsTest.java:167:        assertEquals(value, ConcurrentUtils.createIfAbsentUnchecked(map, key, new ConstantInitializer<>(value)), "Wrong result");
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:39:public class ConstantInitializer<T> implements ConcurrentInitializer<T> {
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:42:    private static final String FMT_TO_STRING = "ConstantInitializer@%d [ object = %s ]";
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:48:     * Creates a new instance of {@link ConstantInitializer} and initializes it
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:56:    public ConstantInitializer(final T obj) {
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:63:     * {@link ConstantInitializer} which refers to an object equals to the
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:74:        if (!(obj instanceof ConstantInitializer<?>)) {
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:78:        final ConstantInitializer<?> c = (ConstantInitializer<?>) obj;
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:117:     * As a {@link ConstantInitializer} is initialized on construction this will
+src/main/java/org/apache/commons/lang3/concurrent/package-info.java:43: * {@link org.apache.commons.lang3.concurrent.ConstantInitializer} is a very straightforward implementation of the
+
+exec
+/bin/bash -lc "sed -n '1,240p' src/main/java/org/apache/commons/lang3/concurrent/LazyInitializer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.lang3.concurrent;
+
+import org.apache.commons.lang3.function.FailableConsumer;
+import org.apache.commons.lang3.function.FailableSupplier;
+
+/**
+ * This class provides a generic implementation of the lazy initialization pattern.
+ *
+ * <p>
+ * Sometimes an application has to deal with an object only under certain circumstances, e.g. when the user selects a specific menu item or if a special event
+ * is received. If the creation of the object is costly or the consumption of memory or other system resources is significant, it may make sense to defer the
+ * creation of this object until it is really needed. This is a use case for the lazy initialization pattern.
+ * </p>
+ * <p>
+ * This abstract base class provides an implementation of the double-check idiom for an instance field as discussed in Joshua Bloch's "Effective Java", 2nd
+ * edition, item 71. The class already implements all necessary synchronization. A concrete subclass has to implement the {@code initialize()} method, which
+ * actually creates the wrapped data object.
+ * </p>
+ * <p>
+ * As an usage example consider that we have a class {@code ComplexObject} whose instantiation is a complex operation. In order to apply lazy initialization to
+ * this class, a subclass of {@link LazyInitializer} has to be created:
+ * </p>
+ *
+ * <pre>{@code
+ * public class ComplexObjectInitializer extends LazyInitializer<ComplexObject> {
+ *     &#064;Override
+ *     protected ComplexObject initialize() {
+ *         return new ComplexObject();
+ *     }
+ * }
+ * }
+ * </pre>
+ *
+ * <p>
+ * Access to the data object is provided through the {@code get()} method. So, code that wants to obtain the {@code ComplexObject} instance would simply look
+ * like this:
+ * </p>
+ *
+ * <pre>
+ * // Create an instance of the lazy initializer
+ * ComplexObjectInitializer initializer = new ComplexObjectInitializer();
+ * ...
+ * // When the object is actually needed:
+ * ComplexObject cobj = initializer.get();
+ * </pre>
+ *
+ * <p>
+ * If multiple threads call the {@code get()} method when the object has not yet been created, they are blocked until initialization completes. The algorithm
+ * guarantees that only a single instance of the wrapped object class is created, which is passed to all callers. Once initialized, calls to the {@code get()}
+ * method are pretty fast because no synchronization is needed (only an access to a <strong>volatile</strong> member field).
+ * </p>
+ *
+ * @param <T> the type of the object managed by the initializer.
+ * @since 3.0
+ */
+public class LazyInitializer<T> extends AbstractConcurrentInitializer<T, ConcurrentException> {
+
+    /**
+     * Builds a new instance.
+     *
+     * @param <T> The type of results supplied by this builder.
+     * @param <I> The type of the initializer managed by this builder.
+     * @since 3.14.0
+     */
+    public static class Builder<I extends LazyInitializer<T>, T> extends AbstractBuilder<I, T, Builder<I, T>, ConcurrentException> {
+
+        /**
+         * Constructs a new instance.
+         */
+        public Builder() {
+            // empty
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public I get() {
+            return (I) new LazyInitializer(getInitializer(), getCloser());
+        }
+
+    }
+
+    /**
+     * A unique value indicating an un-initialized instance.
+     */
+    private static final Object NO_INIT = new Object();
+
+    /**
+     * Creates a new builder.
+     *
+     * @param <T> the type of object to build.
+     * @return a new builder.
+     * @since 3.14.0
+     */
+    public static <T> Builder<LazyInitializer<T>, T> builder() {
+        return new Builder<>();
+    }
+
+    /** Stores the managed object. */
+    @SuppressWarnings("unchecked")
+    private volatile T object = (T) NO_INIT;
+
+    /**
+     * Constructs a new instance.
+     */
+    public LazyInitializer() {
+        // empty
+    }
+
+    /**
+     * Constructs a new instance.
+     *
+     * @param initializer the initializer supplier called by {@link #initialize()}.
+     * @param closer the closer consumer called by {@link #close()}.
+     */
+    private LazyInitializer(final FailableSupplier<T, ConcurrentException> initializer, final FailableConsumer<T, ConcurrentException> closer) {
+        super(initializer, closer);
+    }
+
+    /**
+     * Gets the object wrapped by this instance. On first access the object is created. After that it is cached and can be accessed pretty fast.
+     *
+     * @return the object initialized by this {@link LazyInitializer}.
+     * @throws ConcurrentException if an error occurred during initialization of the object.
+     */
+    @Override
+    public T get() throws ConcurrentException {
+        // use a temporary variable to reduce the number of reads of the
+        // volatile field
+        T result = object;
+        if (result == NO_INIT) {
+            synchronized (this) {
+                result = object;
+                if (result == NO_INIT) {
+                    object = result = initialize();
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected ConcurrentException getTypedException(final Exception e) {
+        return new ConcurrentException(e);
+    }
+
+    /**
+     * Tests whether this instance is initialized. Once initialized, always returns true.
+     *
+     * @return whether this instance is initialized. Once initialized, always returns true.
+     * @since 3.14.0
+     */
+    @Override
+    public boolean isInitialized() {
+        return object != NO_INIT;
+    }
+
+}
+
+exec
+/bin/bash -lc "sed -n '1,240p' src/main/java/org/apache/commons/lang3/concurrent/AtomicInitializer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.lang3.concurrent;
+
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.apache.commons.lang3.function.FailableConsumer;
+import org.apache.commons.lang3.function.FailableSupplier;
+
+/**
+ * A specialized implementation of the {@link ConcurrentInitializer} interface
+ * based on an {@link AtomicReference} variable.
+ *
+ * <p>
+ * This class maintains a member field of type {@link AtomicReference}. It
+ * implements the following algorithm to create and initialize an object in its
+ * {@link #get()} method:
+ * </p>
+ * <ul>
+ * <li>First it is checked whether the {@link AtomicReference} variable contains
+ * already a value. If this is the case, the value is directly returned.</li>
+ * <li>Otherwise the {@link #initialize()} method is called. This method must be
+ * defined in concrete subclasses to actually create the managed object.</li>
+ * <li>After the object was created by {@link #initialize()} it is checked
+ * whether the {@link AtomicReference} variable is still undefined. This has to
+ * be done because in the meantime another thread may have initialized the
+ * object. If the reference is still empty, the newly created object is stored
+ * in it and returned by this method.</li>
+ * <li>Otherwise the value stored in the {@link AtomicReference} is returned.</li>
+ * </ul>
+ * <p>
+ * Because atomic variables are used this class does not need any
+ * synchronization. So there is no danger of deadlock, and access to the managed
+ * object is efficient. However, if multiple threads access the {@code
+ * AtomicInitializer} object before it has been initialized almost at the same
+ * time, it can happen that {@link #initialize()} is called multiple times. The
+ * algorithm outlined above guarantees that {@link #get()} always returns the
+ * same object though.
+ * </p>
+ * <p>
+ * Compared with the {@link LazyInitializer} class, this class can be more
+ * efficient because it does not need synchronization. The drawback is that the
+ * {@link #initialize()} method can be called multiple times which may be
+ * problematic if the creation of the managed object is expensive. As a rule of
+ * thumb this initializer implementation is preferable if there are not too many
+ * threads involved and the probability that multiple threads access an
+ * uninitialized object is small. If there is high parallelism,
+ * {@link LazyInitializer} is more appropriate.
+ * </p>
+ *
+ * @param <T> the type of the object managed by this initializer class.
+ * @since 3.0
+ */
+public class AtomicInitializer<T> extends AbstractConcurrentInitializer<T, ConcurrentException> {
+
+    /**
+     * Builds a new instance.
+     *
+     * @param <T> The type of results supplied by this builder.
+     * @param <I> The type of the initializer managed by this builder.
+     * @since 3.14.0
+     */
+    public static class Builder<I extends AtomicInitializer<T>, T> extends AbstractBuilder<I, T, Builder<I, T>, ConcurrentException> {
+
+        /**
+         * Constructs a new instance.
+         */
+        public Builder() {
+            // empty
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public I get() {
+            return (I) new AtomicInitializer(getInitializer(), getCloser());
+        }
+
+    }
+
+    private static final Object NO_INIT = new Object();
+
+    /**
+     * Creates a new builder.
+     *
+     * @param <T> the type of object to build.
+     * @return a new builder.
+     * @since 3.14.0
+     */
+    public static <T> Builder<AtomicInitializer<T>, T> builder() {
+        return new Builder<>();
+    }
+
+    /** Holds the reference to the managed object. */
+    private final AtomicReference<T> reference = new AtomicReference<>(getNoInit());
+
+    /**
+     * Constructs a new instance.
+     */
+    public AtomicInitializer() {
+        // empty
+    }
+
+    /**
+     * Constructs a new instance.
+     *
+     * @param initializer the initializer supplier called by {@link #initialize()}.
+     * @param closer the closer consumer called by {@link #close()}.
+     */
+    private AtomicInitializer(final FailableSupplier<T, ConcurrentException> initializer, final FailableConsumer<T, ConcurrentException> closer) {
+        super(initializer, closer);
+    }
+
+    /**
+     * Gets the object managed by this initializer. The object is created if it is not available yet and stored internally. This method always returns the same
+     * object.
+     *
+     * @return the object created by this {@link AtomicInitializer}.
+     * @throws ConcurrentException if an error occurred during initialization of the object.
+     */
+    @Override
+    public T get() throws ConcurrentException {
+        T result = reference.get();
+        if (result == getNoInit()) {
+            result = initialize();
+            if (!reference.compareAndSet(getNoInit(), result)) {
+                // another thread has initialized the reference
+                result = reference.get();
+            }
+        }
+        return result;
+    }
+
+    /** Gets the internal no-init object cast for this instance. */
+    @SuppressWarnings("unchecked")
+    private T getNoInit() {
+        return (T) NO_INIT;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected ConcurrentException getTypedException(final Exception e) {
+        return new ConcurrentException(e);
+    }
+
+    /**
+     * Tests whether this instance is initialized. Once initialized, always returns true.
+     *
+     * @return whether this instance is initialized. Once initialized, always returns true.
+     * @since 3.14.0
+     */
+    @Override
+    public boolean isInitialized() {
+        return reference.get() != NO_INIT;
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,240p' src/main/java/org/apache/commons/lang3/concurrent/AtomicSafeInitializer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.lang3.concurrent;
+
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.function.FailableConsumer;
+import org.apache.commons.lang3.function.FailableSupplier;
+
+/**
+ * A specialized {@link ConcurrentInitializer} implementation which is similar
+ * to {@link AtomicInitializer}, but ensures that the {@link #initialize()}
+ * method is called only once.
+ *
+ * <p>
+ * As {@link AtomicInitializer} this class is based on atomic variables, so it
+ * can create an object under concurrent access without synchronization.
+ * However, it implements an additional check to guarantee that the
+ * {@link #initialize()} method which actually creates the object cannot be
+ * called multiple times.
+ * </p>
+ * <p>
+ * Because of this additional check this implementation is slightly less
+ * efficient than {@link AtomicInitializer}, but if the object creation in the
+ * {@code initialize()} method is expensive or if multiple invocations of
+ * {@code initialize()} are problematic, it is the better alternative.
+ * </p>
+ * <p>
+ * From its semantics this class has the same properties as
+ * {@link LazyInitializer}. It is a &quot;save&quot; implementation of the lazy
+ * initializer pattern. Comparing both classes in terms of efficiency is
+ * difficult because which one is faster depends on multiple factors. Because
+ * {@link AtomicSafeInitializer} does not use synchronization at all it probably
+ * outruns {@link LazyInitializer}, at least under low or moderate concurrent
+ * access. Developers should run their own benchmarks on the expected target
+ * platform to decide which implementation is suitable for their specific use
+ * case.
+ * </p>
+ *
+ * @param <T> the type of the object managed by this initializer class
+ * @since 3.0
+ */
+public class AtomicSafeInitializer<T> extends AbstractConcurrentInitializer<T, ConcurrentException> {
+
+    /**
+     * Builds a new instance.
+     *
+     * @param <T> The type of results supplied by this builder.
+     * @param <I> The type of the initializer managed by this builder.
+     * @since 3.14.0
+     */
+    public static class Builder<I extends AtomicSafeInitializer<T>, T> extends AbstractBuilder<I, T, Builder<I, T>, ConcurrentException> {
+
+        /**
+         * Constructs a new instance.
+         */
+        public Builder() {
+            // empty
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public I get() {
+            return (I) new AtomicSafeInitializer(getInitializer(), getCloser());
+        }
+
+    }
+
+    private static final Object NO_INIT = new Object();
+
+    /**
+     * Creates a new builder.
+     *
+     * @param <T> the type of object to build.
+     * @return a new builder.
+     * @since 3.14.0
+     */
+    public static <T> Builder<AtomicSafeInitializer<T>, T> builder() {
+        return new Builder<>();
+    }
+
+    /** A guard which ensures that initialize() is called only once. */
+    private final AtomicReference<AtomicSafeInitializer<T>> factory = new AtomicReference<>();
+
+    /** Holds the reference to the managed object. */
+    private final AtomicReference<T> reference = new AtomicReference<>(getNoInit());
+
+    /**
+     * Constructs a new instance.
+     */
+    public AtomicSafeInitializer() {
+        // empty
+    }
+
+    /**
+     * Constructs a new instance.
+     *
+     * @param initializer the initializer supplier called by {@link #initialize()}.
+     * @param closer the closer consumer called by {@link #close()}.
+     */
+    private AtomicSafeInitializer(final FailableSupplier<T, ConcurrentException> initializer, final FailableConsumer<T, ConcurrentException> closer) {
+        super(initializer, closer);
+    }
+
+    /**
+     * Gets (and initialize, if not initialized yet) the required object.
+     *
+     * @return lazily initialized object.
+     * @throws ConcurrentException if the initialization of the object causes an exception.
+     */
+    @Override
+    public final T get() throws ConcurrentException {
+        T result;
+        while ((result = reference.get()) == getNoInit()) {
+            if (factory.compareAndSet(null, this)) {
+                try {
+                    reference.set(initialize());
+                } catch (final Throwable t) {
+                    // Allow retry on failure; otherwise callers spin forever.
+                    factory.set(null);
+                    // Rethrow preserving original semantics: unchecked as-is, checked wrapped.
+                    final Throwable checked = ExceptionUtils.throwUnchecked(t);
+                    throw checked instanceof ConcurrentException ? (ConcurrentException) checked : new ConcurrentException(checked);
+                }
+            }
+        }
+        return result;
+    }
+
+    /** Gets the internal no-init object cast for this instance. */
+    @SuppressWarnings("unchecked")
+    private T getNoInit() {
+        return (T) NO_INIT;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected ConcurrentException getTypedException(final Exception e) {
+        return new ConcurrentException(e);
+    }
+
+    /**
+     * Tests whether this instance is initialized. Once initialized, always returns true.
+     *
+     * @return whether this instance is initialized. Once initialized, always returns true.
+     * @since 3.14.0
+     */
+    @Override
+    public boolean isInitialized() {
+        return reference.get() != NO_INIT;
+    }
+}
+
+exec
+/bin/bash -lc "rg -n \"new\\s+ConstantInitializer<|ConstantInitializer<\" src/main src/test -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:36:    private ConstantInitializer<Integer> init;
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:56:        init = new ConstantInitializer<>(VALUE);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:64:        ConstantInitializer<Integer> init2 = new ConstantInitializer<>(
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:67:        init2 = new ConstantInitializer<>(VALUE + 1);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:77:        ConstantInitializer<Integer> init2 = new ConstantInitializer<>(
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:80:        init = new ConstantInitializer<>(null);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:81:        init2 = new ConstantInitializer<>(null);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:92:        checkEquals(new ConstantInitializer<>("Test"), false);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:140:        final String s = new ConstantInitializer<>(null).toString();
+src/test/java/org/apache/commons/lang3/concurrent/ConcurrentUtilsTest.java:167:        assertEquals(value, ConcurrentUtils.createIfAbsentUnchecked(map, key, new ConstantInitializer<>(value)), "Wrong result");
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:39:public class ConstantInitializer<T> implements ConcurrentInitializer<T> {
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:74:        if (!(obj instanceof ConstantInitializer<?>)) {
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:78:        final ConstantInitializer<?> c = (ConstantInitializer<?>) obj;
+
+codex
+I’ve got enough to judge the structure, but I want the file-level fan-in picture to be explicit. I’m pulling the exact set of source files that mention the class so the final verdict can cite counts, not impressions.
+exec
+/bin/bash -lc "rg -l \"\\bConstantInitializer\\b\" src/main src/test -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java
+src/test/java/org/apache/commons/lang3/concurrent/ConcurrentUtilsTest.java
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java
+src/main/java/org/apache/commons/lang3/concurrent/package-info.java
+
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/apache/commons/lang3/concurrent/AbstractConcurrentInitializer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.lang3.concurrent;
+
+import java.util.Objects;
+
+import org.apache.commons.lang3.builder.AbstractSupplier;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.function.FailableConsumer;
+import org.apache.commons.lang3.function.FailableSupplier;
+
+/**
+ * Abstracts and defines operations for {@link ConcurrentInitializer} implementations.
+ *
+ * @param <T> the type of the object managed by this initializer class.
+ * @param <E> The exception type thrown by {@link #initialize()}.
+ * @since 3.14.0
+ */
+public abstract class AbstractConcurrentInitializer<T, E extends Exception> implements ConcurrentInitializer<T> {
+
+    /**
+     * Builds a new instance for subclasses.
+     *
+     * @param <I> The type of results supplied by this builder.
+     * @param <T> The type of the object managed by the initializer class.
+     * @param <B> The type of builder.
+     * @param <E> The exception type thrown by {@link #initialize()}.
+     */
+    public abstract static class AbstractBuilder<I extends AbstractConcurrentInitializer<T, E>, T, B extends AbstractBuilder<I, T, B, E>, E extends Exception>
+            extends AbstractSupplier<I, B, E> {
+
+        /**
+         * Closer consumer called by {@link #close()}.
+         */
+        private FailableConsumer<T, ? extends Exception> closer = FailableConsumer.nop();
+
+        /**
+         * Initializer supplier called by {@link #initialize()}.
+         */
+        private FailableSupplier<T, ? extends Exception> initializer = FailableSupplier.nul();
+
+        /**
+         * Constructs a new instance.
+         */
+        public AbstractBuilder() {
+            // empty
+        }
+
+        /**
+         * Gets the closer consumer called by {@link #close()}.
+         *
+         * @return the closer consumer called by {@link #close()}.
+         */
+        public FailableConsumer<T, ? extends Exception> getCloser() {
+            return closer;
+        }
+
+        /**
+         * Gets the initializer supplier called by {@link #initialize()}.
+         *
+         * @return the initializer supplier called by {@link #initialize()}.
+         */
+        public FailableSupplier<T, ? extends Exception> getInitializer() {
+            return initializer;
+        }
+
+        /**
+         * Sets the closer consumer called by {@link #close()}.
+         *
+         * @param closer the consumer called by {@link #close()}.
+         * @return {@code this} instance.
+         */
+        public B setCloser(final FailableConsumer<T, ? extends Exception> closer) {
+            this.closer = closer != null ? closer : FailableConsumer.nop();
+            return asThis();
+        }
+
+        /**
+         * Sets the initializer supplier called by {@link #initialize()}.
+         *
+         * @param initializer the supplier called by {@link #initialize()}.
+         * @return {@code this} instance.
+         */
+        public B setInitializer(final FailableSupplier<T, ? extends Exception> initializer) {
+            this.initializer = initializer != null ? initializer : FailableSupplier.nul();
+            return asThis();
+        }
+
+    }
+
+    /**
+     * Closer consumer called by {@link #close()}.
+     */
+    private final FailableConsumer<? super T, ? extends Exception> closer;
+
+    /**
+     * Initializer supplier called by {@link #initialize()}.
+     */
+    private final FailableSupplier<? extends T, ? extends Exception> initializer;
+
+    /**
+     * Constructs a new instance.
+     */
+    public AbstractConcurrentInitializer() {
+        this(FailableSupplier.nul(), FailableConsumer.nop());
+    }
+
+    /**
+     * Constructs a new instance.
+     *
+     * @param initializer the initializer supplier called by {@link #initialize()}.
+     * @param closer the closer consumer called by {@link #close()}.
+     */
+    AbstractConcurrentInitializer(final FailableSupplier<? extends T, ? extends Exception> initializer, final FailableConsumer<? super T, ? extends Exception> closer) {
+        this.closer = Objects.requireNonNull(closer, "closer");
+        this.initializer = Objects.requireNonNull(initializer, "initializer");
+    }
+
+    /**
+     * Calls the closer with the manager object.
+     *
+     * @throws ConcurrentException Thrown by the closer.
+     * @since 3.14.0
+     */
+    public void close() throws ConcurrentException {
+        if (isInitialized()) {
+            try {
+                closer.accept(get());
+            } catch (final Exception e) {
+                // This intentionally does not duplicate the logic in initialize
+                // or care about the generic type E.
+                //
+                // initialize may run inside a Future and it does not make sense
+                // to wrap an exception stored inside a Future. However close()
+                // always runs on the current thread so it always wraps in a
+                // ConcurrentException
+                throw new ConcurrentException(ExceptionUtils.throwUnchecked(e));
+            }
+        }
+    }
+
+    /**
+     * Gets an Exception with a type of E as defined by a concrete subclass of this class.
+     *
+     * @param e The actual exception that was thrown.
+     * @return a new exception with the actual type of E, that wraps e.
+     */
+    protected abstract E getTypedException(Exception e);
+
+    /**
+     * Creates and initializes the object managed by this {@code
+     * ConcurrentInitializer}. This method is called by {@link #get()} when the object is accessed for the first time. An implementation can focus on the
+     * creation of the object. No synchronization is needed, as this is already handled by {@code get()}.
+     * <p>
+     * Subclasses and clients that do not provide an initializer are expected to implement this method.
+     * </p>
+     *
+     * @return the managed data object.
+     * @throws E if an error occurs during object creation.
+     */
+    @SuppressWarnings("unchecked")
+    protected T initialize() throws E {
+        try {
+            return initializer.get();
+        } catch (final Exception e) {
+            // Do this first so we don't pass a RuntimeException or Error into an exception constructor
+            ExceptionUtils.throwUnchecked(e);
+            // Depending on the subclass of AbstractConcurrentInitializer E can be Exception or ConcurrentException
+            // if E is Exception the if statement below will always be true, and the new Exception object created
+            // in getTypedException will never be thrown. If E is ConcurrentException and the if statement is false
+            // we throw the ConcurrentException returned from getTypedException, which wraps the original exception.
+            final E typedException = getTypedException(e);
+            if (typedException.getClass().isAssignableFrom(e.getClass())) {
+                throw (E) e;
+            }
+            throw typedException;
+        }
+    }
+
+    /**
+     * Tests whether initialization has been completed. If initialization threw an exception this will return false, but it will return true if a subsequent
+     * call to initialize completes successfully. If the implementation of ConcurrentInitializer can initialize multiple objects, this will only return true if
+     * all objects have been initialized.
+     *
+     * @return true if all initialization is complete, otherwise false.
+     */
+    protected abstract boolean isInitialized();
+
+}
+
+exec
+/bin/bash -lc "rg -n \"import org\\.apache\\.commons\\.lang3\\.concurrent\\.ConstantInitializer|new ConstantInitializer<|ConstantInitializer<\" src/main/java src/test/java -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:36:    private ConstantInitializer<Integer> init;
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:56:        init = new ConstantInitializer<>(VALUE);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:64:        ConstantInitializer<Integer> init2 = new ConstantInitializer<>(
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:67:        init2 = new ConstantInitializer<>(VALUE + 1);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:77:        ConstantInitializer<Integer> init2 = new ConstantInitializer<>(
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:80:        init = new ConstantInitializer<>(null);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:81:        init2 = new ConstantInitializer<>(null);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:92:        checkEquals(new ConstantInitializer<>("Test"), false);
+src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java:140:        final String s = new ConstantInitializer<>(null).toString();
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:39:public class ConstantInitializer<T> implements ConcurrentInitializer<T> {
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:74:        if (!(obj instanceof ConstantInitializer<?>)) {
+src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java:78:        final ConstantInitializer<?> c = (ConstantInitializer<?>) obj;
+src/test/java/org/apache/commons/lang3/concurrent/ConcurrentUtilsTest.java:167:        assertEquals(value, ConcurrentUtils.createIfAbsentUnchecked(map, key, new ConstantInitializer<>(value)), "Wrong result");
+
+exec
+/bin/bash -lc "sed -n '140,190p' src/test/java/org/apache/commons/lang3/concurrent/ConcurrentUtilsTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+    }
+
+    /**
+     * Tests createIfAbsentUnchecked() if an exception is thrown.
+     *
+     * @throws org.apache.commons.lang3.concurrent.ConcurrentException so we don't have to catch it
+     */
+    @Test
+    void testCreateIfAbsentUncheckedException() throws ConcurrentException {
+        final ConcurrentInitializer<Integer> init = EasyMock.createMock(ConcurrentInitializer.class);
+        final Exception ex = new Exception();
+        EasyMock.expect(init.get()).andThrow(new ConcurrentException(ex));
+        EasyMock.replay(init);
+        final ConcurrentRuntimeException crex = assertThrows(ConcurrentRuntimeException.class,
+            () -> ConcurrentUtils.createIfAbsentUnchecked(new ConcurrentHashMap<>(), "test", init));
+        assertEquals(ex, crex.getCause(), "Wrong cause");
+        EasyMock.verify(init);
+    }
+
+    /**
+     * Tests createIfAbsentUnchecked() if no exception is thrown.
+     */
+    @Test
+    void testCreateIfAbsentUncheckedSuccess() {
+        final String key = "testKey";
+        final Integer value = 42;
+        final ConcurrentMap<String, Integer> map = new ConcurrentHashMap<>();
+        assertEquals(value, ConcurrentUtils.createIfAbsentUnchecked(map, key, new ConstantInitializer<>(value)), "Wrong result");
+        assertEquals(value, map.get(key), "Wrong value in map");
+    }
+
+    /**
+     * Tests extractCause() if the cause is a checked exception.
+     */
+    @Test
+    void testExtractCauseChecked() {
+        final Exception ex = new Exception("Test");
+        final ConcurrentException cex = ConcurrentUtils.extractCause(new ExecutionException(ex));
+        assertSame(ex, cex.getCause(), "Wrong cause");
+    }
+
+    /**
+     * Tests extractCause() if the cause is an error.
+     */
+    @Test
+    void testExtractCauseError() {
+        final Error err = new AssertionError("Test");
+        final AssertionError e = assertThrows(AssertionError.class, () -> ConcurrentUtils.extractCause(new ExecutionException(err)));
+        assertEquals(err, e, "Wrong error");
+    }
+
+
+codex
+{"target":"org.apache.commons.lang3.concurrent.ConstantInitializer","detection":false,"justification":"Inspected src/main/java/org/apache/commons/lang3/concurrent/ConstantInitializer.java, src/main/java/org/apache/commons/lang3/concurrent/ConcurrentUtils.java, src/main/java/org/apache/commons/lang3/concurrent/package-info.java, src/test/java/org/apache/commons/lang3/concurrent/ConstantInitializerTest.java, and src/test/java/org/apache/commons/lang3/concurrent/ConcurrentUtilsTest.java. The class itself is a small one-field wrapper: it implements only ConcurrentInitializer<T>, depends on java.util.Objects and the project exception type in a single get() signature, and has no internal collaborators or outgoing calls to other project classes. Fan-in is also low: the only concrete source use found outside its own test is one call in ConcurrentUtilsTest.java via new ConstantInitializer<>(value); ConcurrentUtils.java depends on the ConcurrentInitializer interface, not this class specifically. This is not high incoming/outgoing dependency behavior, so the hub-like modularization smell is not present."}
+tokens used
+23,555

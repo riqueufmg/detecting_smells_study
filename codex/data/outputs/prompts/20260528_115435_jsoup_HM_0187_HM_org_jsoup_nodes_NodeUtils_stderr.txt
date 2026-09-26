@@ -1,0 +1,543 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f14-8786-7fd2-a96c-47e54c99a548
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.jsoup.nodes.NodeUtils` in the repository located at:
+
+`data/repositories/jhy/jsoup`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.jsoup.nodes.NodeUtils",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.jsoup.nodes.NodeUtils`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `org.jsoup.nodes.NodeUtils` and tracing its direct dependencies and callers to judge whether it acts as a dependency hub.
+exec
+/bin/bash -lc "rg -n \"class\\s+NodeUtils|interface\\s+NodeUtils\" -S ." in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+./src/main/java/org/jsoup/nodes/NodeUtils.java:20:final class NodeUtils {
+
+exec
+/bin/bash -lc "rg --files . | rg \"NodeUtils\\.java"'$|org/jsoup/nodes"' in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+./src/test/java/org/jsoup/nodes/ElementIT.java
+./src/test/java/org/jsoup/nodes/PrinterTest.java
+./src/test/java/org/jsoup/nodes/EntitiesTest.java
+./src/test/java/org/jsoup/nodes/CommentTest.java
+./src/test/java/org/jsoup/nodes/DataNodeTest.java
+./src/test/java/org/jsoup/nodes/AttributesTest.java
+./src/test/java/org/jsoup/nodes/TextNodeTest.java
+./src/test/java/org/jsoup/nodes/AttributeTest.java
+./src/test/java/org/jsoup/nodes/LeafNodeTest.java
+./src/test/java/org/jsoup/nodes/DocumentTest.java
+./src/test/java/org/jsoup/nodes/NodeStreamTest.java
+./src/test/java/org/jsoup/nodes/DocumentTypeTest.java
+./src/test/java/org/jsoup/nodes/NodeIteratorTest.java
+./src/test/java/org/jsoup/nodes/BuildEntities.java
+./src/test/java/org/jsoup/nodes/NodeTest.java
+./src/test/java/org/jsoup/nodes/FormElementTest.java
+./src/test/java/org/jsoup/nodes/ElementTest.java
+./src/main/java/org/jsoup/nodes/Node.java
+./src/main/java/org/jsoup/nodes/Comment.java
+./src/main/java/org/jsoup/nodes/TextNode.java
+./src/main/java/org/jsoup/nodes/XmlDeclaration.java
+./src/main/java/org/jsoup/nodes/Entities.java
+./src/main/java/org/jsoup/nodes/Printer.java
+./src/main/java/org/jsoup/nodes/FormElement.java
+./src/main/java/org/jsoup/nodes/NodeUtils.java
+./src/main/java/org/jsoup/nodes/DataNode.java
+./src/main/java/org/jsoup/nodes/Document.java
+./src/main/java/org/jsoup/nodes/PseudoTextElement.java
+./src/main/java/org/jsoup/nodes/Element.java
+./src/main/java/org/jsoup/nodes/Range.java
+./src/main/java/org/jsoup/nodes/DocumentType.java
+./src/main/java/org/jsoup/nodes/CDataNode.java
+./src/main/java/org/jsoup/nodes/LeafNode.java
+./src/main/java/org/jsoup/nodes/EntitiesData.java
+./src/main/java/org/jsoup/nodes/NodeIterator.java
+./src/main/java/org/jsoup/nodes/Attributes.java
+./src/main/java/org/jsoup/nodes/package-info.java
+./src/main/java/org/jsoup/nodes/Attribute.java
+
+codex
+I found the class in `src/main/java/org/jsoup/nodes/NodeUtils.java`. Next I’m checking how many classes call into it and how many external types it pulls in, since HM depends on both sides of the dependency pattern.
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/jsoup/nodes/NodeUtils.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "rg -n \"\\bNodeUtils\\b\" src/main/java src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+package org.jsoup.nodes;
+
+import org.jsoup.helper.Validate;
+import org.jsoup.helper.W3CDom;
+import org.jsoup.parser.HtmlTreeBuilder;
+import org.jsoup.parser.Parser;
+import org.w3c.dom.NodeList;
+
+import java.util.Iterator;
+import java.util.List;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+/**
+ * Internal helpers for Nodes, to keep the actual node APIs relatively clean. A jsoup internal class, so don't use it as
+ * there is no contract API.
+ */
+final class NodeUtils {
+    /**
+     * Get the output setting for this node,  or if this node has no document (or parent), retrieve the default output
+     * settings
+     */
+    static Document.OutputSettings outputSettings(Node node) {
+        Document owner = node.ownerDocument();
+        return owner != null ? owner.outputSettings() : (new Document("")).outputSettings();
+    }
+
+    /**
+     * Get the parser that was used to make this node, or the default HTML parser if it has no parent.
+     */
+    static Parser parser(Node node) {
+        Document doc = node.ownerDocument();
+        return doc != null ? doc.parser() : new Parser(new HtmlTreeBuilder());
+    }
+
+    /**
+     This impl works by compiling the input xpath expression, and then evaluating it against a W3C Document converted
+     from the original jsoup element. The original jsoup elements are then fetched from the w3c doc user data (where we
+     stashed them during conversion). This process could potentially be optimized by transpiling the compiled xpath
+     expression to a jsoup Evaluator when there's 1:1 support, thus saving the W3C document conversion stage.
+     */
+    static <T extends Node> List<T> selectXpath(String xpath, Element el, Class<T> nodeType) {
+        Validate.notEmpty(xpath);
+        Validate.notNull(el);
+        Validate.notNull(nodeType);
+
+        W3CDom w3c = new W3CDom().namespaceAware(false);
+        org.w3c.dom.Document wDoc = w3c.fromJsoup(el);
+        org.w3c.dom.Node contextNode = w3c.contextNode(wDoc);
+        NodeList nodeList = w3c.selectXpath(xpath, contextNode);
+        return w3c.sourceNodes(nodeList, nodeType);
+    }
+
+    /** Creates a Stream, starting with the supplied node. */
+    static <T extends Node> Stream<T> stream(Node start, Class<T> type) {
+        NodeIterator<T> iterator = new NodeIterator<>(start, type);
+        Spliterator<T> spliterator = spliterator(iterator);
+
+        return StreamSupport.stream(spliterator, false);
+    }
+
+    static <T extends Node> Spliterator<T> spliterator(Iterator<T> iterator) {
+        return Spliterators.spliteratorUnknownSize(
+                iterator,
+                Spliterator.DISTINCT | Spliterator.NONNULL | Spliterator.ORDERED);
+    }
+}
+
+ succeeded in 0ms:
+src/main/java/org/jsoup/nodes/Node.java:447:        List<Node> nodes = NodeUtils.parser(this).parseFragmentInput(html, context, baseUri());
+src/main/java/org/jsoup/nodes/Node.java:466:        List<Node> wrapChildren = NodeUtils.parser(this).parseFragmentInput(html, context, baseUri());
+src/main/java/org/jsoup/nodes/Node.java:823:        return NodeUtils.stream(this, Node.class);
+src/main/java/org/jsoup/nodes/Node.java:834:        return NodeUtils.stream(this, type);
+src/main/java/org/jsoup/nodes/Printer.java:236:        OutputSettings settings = NodeUtils.outputSettings(root);
+src/main/java/org/jsoup/nodes/Element.java:219:        Parser parser = NodeUtils.parser(this);
+src/main/java/org/jsoup/nodes/Element.java:454:        return NodeUtils.stream(this, Element.class);
+src/main/java/org/jsoup/nodes/Element.java:787:        return new Elements(NodeUtils.selectXpath(xpath, this, Element.class));
+src/main/java/org/jsoup/nodes/Element.java:804:        return NodeUtils.selectXpath(xpath, this, nodeType);
+src/main/java/org/jsoup/nodes/Element.java:932:        Parser parser = NodeUtils.parser(this);
+src/main/java/org/jsoup/nodes/Element.java:957:        Parser parser = NodeUtils.parser(this);
+src/main/java/org/jsoup/nodes/Element.java:997:        List<Node> nodes = NodeUtils.parser(this).parseFragmentInput(html, this, baseUri());
+src/main/java/org/jsoup/nodes/Element.java:1010:        List<Node> nodes = NodeUtils.parser(this).parseFragmentInput(html, this, baseUri());
+src/main/java/org/jsoup/nodes/Element.java:1966:        return NodeUtils.outputSettings(this).prettyPrint() ? html.trim() : html;
+src/main/java/org/jsoup/nodes/NodeUtils.java:20:final class NodeUtils {
+
+codex
+I’ve confirmed the class is tiny and package-private. I’m checking the concrete call sites in `Node`, `Element`, and `Printer` to see whether the fan-in is broad enough to qualify as a hub or just a shared internal helper.
+exec
+/bin/bash -lc "sed -n '430,480p' src/main/java/org/jsoup/nodes/Node.java; sed -n '810,840p' src/main/java/org/jsoup/nodes/Node.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+     */
+    public Node after(Node node) {
+        Validate.notNull(node);
+        Validate.notNull(parentNode);
+
+        // if the incoming node is a sibling of this, remove it first so siblingIndex is correct on add
+        if (node.parentNode == parentNode) node.remove();
+
+        parentNode.addChildren(siblingIndex() + 1, node);
+        return this;
+    }
+
+    private void addSiblingHtml(int index, String html) {
+        Validate.notNull(html);
+        Validate.notNull(parentNode);
+
+        Element context = parentNode instanceof Element ? (Element) parentNode : null;
+        List<Node> nodes = NodeUtils.parser(this).parseFragmentInput(html, context, baseUri());
+        parentNode.addChildren(index, nodes.toArray(new Node[0]));
+    }
+
+    /**
+     Wrap the supplied HTML around this node.
+
+     @param html HTML to wrap around this node, e.g. {@code <div class="head"></div>}. Can be arbitrarily deep. If
+     the input HTML does not parse to a result starting with an Element, this will be a no-op.
+     @return this node, for chaining.
+     */
+    public Node wrap(String html) {
+        Validate.notEmpty(html);
+
+        // Parse context - parent (because wrapping), this, or null
+        Element context =
+            parentNode != null && parentNode instanceof Element ? (Element) parentNode :
+                this instanceof Element ? (Element) this :
+                    null;
+        List<Node> wrapChildren = NodeUtils.parser(this).parseFragmentInput(html, context, baseUri());
+        Node wrapNode = wrapChildren.get(0);
+        if (!(wrapNode instanceof Element)) // nothing to wrap with; noop
+            return this;
+
+        Element wrap = (Element) wrapNode;
+        Element deepest = getDeepChild(wrap);
+        if (parentNode != null)
+            parentNode.replaceChild(this, wrap);
+        deepest.addChildren(this); // side effect of tricking wrapChildren to lose first
+
+        // remainder (unbalanced wrap, like <div></div><p></p> -- The <p> is remainder
+        if (wrapChildren.size() > 0) {
+            //noinspection ForLoopReplaceableByForEach (beacause it allocates an Iterator which is wasteful here)
+            for (int i = 0; i < wrapChildren.size(); i++) {
+    public Node filter(NodeFilter nodeFilter) {
+        Validate.notNull(nodeFilter);
+        nodeFilter.traverse(this);
+        return this;
+    }
+
+    /**
+     Returns a Stream of this Node and all of its descendant Nodes. The stream has document order.
+     @return a stream of all nodes.
+     @see Element#stream()
+     @since 1.17.1
+     */
+    public Stream<Node> nodeStream() {
+        return NodeUtils.stream(this, Node.class);
+    }
+
+    /**
+     Returns a Stream of this and descendant nodes, containing only nodes of the specified type. The stream has document
+     order.
+     @return a stream of nodes filtered by type.
+     @see Element#stream()
+     @since 1.17.1
+     */
+    public <T extends Node> Stream<T> nodeStream(Class<T> type) {
+        return NodeUtils.stream(this, type);
+    }
+
+    /**
+     Get the outer HTML of this node. For example, on a {@code p} element, may return {@code <p>Para</p>}.
+     @return outer HTML
+     @see Element#html()
+
+exec
+/bin/bash -lc "sed -n '228,244p' src/main/java/org/jsoup/nodes/Printer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+            if (node instanceof TextNode) {
+                return node.previousSibling() != null || node.nextSibling() != null;
+            }
+            return true;
+        }
+    }
+
+    static Printer printerFor(Node root, QuietAppendable accum) {
+        OutputSettings settings = NodeUtils.outputSettings(root);
+        if (settings.outline())     return new Printer.Outline(root, accum, settings);
+        if (settings.prettyPrint()) return new Printer.Pretty(root, accum, settings);
+        return new Printer(root, accum, settings);
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '200,240p' src/main/java/org/jsoup/nodes/Element.java; sed -n '440,470p' src/main/java/org/jsoup/nodes/Element.java; sed -n '780,815p' src/main/java/org/jsoup/nodes/Element.java; sed -n '925,1018p' src/main/java/org/jsoup/nodes/Element.java; sed -n '1958,1972p' src/main/java/org/jsoup/nodes/Element.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+     * @return this element, for chaining
+     * @see Elements#tagName(String)
+     */
+    public Element tagName(String tagName) {
+        return tagName(tagName, tag.namespace());
+    }
+
+    /**
+     * Change (rename) the tag of this element. For example, convert a {@code <span>} to a {@code <div>} with
+     * {@code el.tagName("div");}.
+     *
+     * @param tagName new tag name for this element
+     * @param namespace the new namespace for this element
+     * @return this element, for chaining
+     * @see Elements#tagName(String)
+     */
+    public Element tagName(String tagName, String namespace) {
+        Validate.notEmptyParam(tagName, "tagName");
+        Validate.notEmptyParam(namespace, "namespace");
+        Parser parser = NodeUtils.parser(this);
+        tag = parser.tagSet().valueOf(tagName, namespace, parser.settings()); // maintains the case option of the original parse
+        return this;
+    }
+
+    /**
+     * Get the Tag for this element.
+     *
+     * @return the tag object
+     */
+    public Tag tag() {
+        return tag;
+    }
+
+    /**
+     Change the Tag of this element.
+     @param tag the new tag
+     @return this element, for chaining
+     @since 1.20.1
+     */
+    public Element tag(Tag tag) {
+        Validate.notNull(tag);
+    private void stashChildren(List<Element> els) {
+        Map<String, Object> userData = attributes().userData();
+        WeakReference<List<Element>> ref = new WeakReference<>(els);
+        userData.put(childElsKey, ref);
+        userData.put(childElsMod, childNodes.modCount());
+    }
+
+    /**
+     Returns a Stream of this Element and all of its descendant Elements. The stream has document order.
+     @return a stream of this element and its descendants.
+     @see #nodeStream()
+     @since 1.17.1
+     */
+    public Stream<Element> stream() {
+        return NodeUtils.stream(this, Element.class);
+    }
+
+    private <T> List<T> filterNodes(Class<T> clazz) {
+        return childNodes.stream()
+                .filter(clazz::isInstance)
+                .map(clazz::cast)
+                .collect(Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
+    }
+
+    /**
+     * Get this element's child text nodes. The list is unmodifiable but the text nodes may be manipulated.
+     * <p>
+     * This is effectively a filter on {@link #childNodes()} to get Text nodes.
+     * @return child text nodes. If this element has no text nodes, returns an
+     * empty list.
+     * </p>
+
+     @param xpath XPath expression
+     @return matching elements, or an empty list if none match.
+     @see #selectXpath(String, Class)
+     @since 1.14.3
+     */
+    public Elements selectXpath(String xpath) {
+        return new Elements(NodeUtils.selectXpath(xpath, this, Element.class));
+    }
+
+    /**
+     Find Nodes that match the supplied XPath expression.
+     <p>For example, to select TextNodes under {@code p} elements: </p>
+     <pre>List&lt;TextNode&gt; textNodes = doc.selectXpath("//body//p//text()", TextNode.class);</pre>
+     <p>Note that in the jsoup DOM, Attribute objects are not Nodes. To directly select attribute values, do something
+     like:</p>
+     <pre>List&lt;String&gt; hrefs = doc.selectXpath("//a").eachAttr("href");</pre>
+     @param xpath XPath expression
+     @param nodeType the jsoup node type to return
+     @see #selectXpath(String)
+     @return a list of matching nodes
+     @since 1.14.3
+     */
+    public <T extends Node> List<T> selectXpath(String xpath, Class<T> nodeType) {
+        return NodeUtils.selectXpath(xpath, this, nodeType);
+    }
+
+    /**
+     * Insert a node to the end of this Element's children. The incoming node will be re-parented.
+     *
+     * @param child node to add.
+     * @return this Element, for chaining
+     * @see #prependChild(Node)
+     * @see #insertChildren(int, Collection)
+     */
+    public Element appendChild(Node child) {
+     * Create a new element by tag name and namespace, add it as this Element's last child.
+     *
+     * @param tagName the name of the tag (e.g. {@code div}).
+     * @param namespace the namespace of the tag (e.g. {@link Parser#NamespaceHtml})
+     * @return the new element, in the specified namespace
+     */
+    public Element appendElement(String tagName, String namespace) {
+        Parser parser = NodeUtils.parser(this);
+        Element child = new Element(parser.tagSet().valueOf(tagName, namespace, parser.settings()), baseUri());
+        appendChild(child);
+        return child;
+    }
+
+    /**
+     * Create a new element by tag name, and add it as this Element's first child.
+     *
+     * @param tagName the name of the tag (e.g. {@code div}).
+     * @return the new element, to allow you to add content to it, e.g.:
+     *  {@code parent.prependElement("h1").attr("id", "header").text("Welcome");}
+     */
+    public Element prependElement(String tagName) {
+        return prependElement(tagName, tag.namespace());
+    }
+
+    /**
+     * Create a new element by tag name and namespace, and add it as this Element's first child.
+     *
+     * @param tagName the name of the tag (e.g. {@code div}).
+     * @param namespace the namespace of the tag (e.g. {@link Parser#NamespaceHtml})
+     * @return the new element, in the specified namespace
+     */
+    public Element prependElement(String tagName, String namespace) {
+        Parser parser = NodeUtils.parser(this);
+        Element child = new Element(parser.tagSet().valueOf(tagName, namespace, parser.settings()), baseUri());
+        prependChild(child);
+        return child;
+    }
+
+    /**
+     * Create and append a new TextNode to this element.
+     *
+     * @param text the (un-encoded) text to add
+     * @return this element
+     */
+    public Element appendText(String text) {
+        Validate.notNull(text);
+        TextNode node = new TextNode(text);
+        appendChild(node);
+        return this;
+    }
+
+    /**
+     * Create and prepend a new TextNode to this element.
+     *
+     * @param text the decoded text to add
+     * @return this element
+     */
+    public Element prependText(String text) {
+        Validate.notNull(text);
+        TextNode node = new TextNode(text);
+        prependChild(node);
+        return this;
+    }
+
+    /**
+     * Add inner HTML to this element. The supplied HTML will be parsed, and each node appended to the end of the children.
+     * @param html HTML to add inside this element, after the existing HTML
+     * @return this element
+     * @see #html(String)
+     */
+    public Element append(String html) {
+        Validate.notNull(html);
+        List<Node> nodes = NodeUtils.parser(this).parseFragmentInput(html, this, baseUri());
+        addChildren(nodes.toArray(new Node[0]));
+        return this;
+    }
+
+    /**
+     * Add inner HTML into this element. The supplied HTML will be parsed, and each node prepended to the start of the element's children.
+     * @param html HTML to add inside this element, before the existing HTML
+     * @return this element
+     * @see #html(String)
+     */
+    public Element prepend(String html) {
+        Validate.notNull(html);
+        List<Node> nodes = NodeUtils.parser(this).parseFragmentInput(html, this, baseUri());
+        addChildren(0, nodes.toArray(new Node[0]));
+        return this;
+    }
+
+    /**
+     * Insert the specified HTML into the DOM before this element (as a preceding sibling).
+     *
+     * @param html HTML to add before this element
+     *
+     * @return String of HTML.
+     * @see #outerHtml()
+     */
+    public String html() {
+        StringBuilder sb = StringUtil.borrowBuilder();
+        html(sb);
+        String html = StringUtil.releaseBuilder(sb);
+        return NodeUtils.outputSettings(this).prettyPrint() ? html.trim() : html;
+    }
+
+    @Override
+    public <T extends Appendable> T html(T accum) {
+        Node child = firstChild();
+        if (child != null) {
+
+codex
+{"target":"org.jsoup.nodes.NodeUtils","detection":false,"justification":"Inspected src/main/java/org/jsoup/nodes/NodeUtils.java, src/main/java/org/jsoup/nodes/Node.java, src/main/java/org/jsoup/nodes/Element.java, and src/main/java/org/jsoup/nodes/Printer.java. NodeUtils is a package-private helper with only 5 static methods and modest fan-out (imports Validate, W3CDom, HtmlTreeBuilder, Parser, NodeList plus JDK stream/collection types). Its fan-in is limited to 3 production classes: Node.java (3 call sites), Element.java (8 call sites), and Printer.java (1 call site). That is shared internal utility usage, not a high-in/high-out dependency hub."}
+tokens used
+7,717

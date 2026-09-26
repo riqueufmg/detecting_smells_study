@@ -1,0 +1,672 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f74-75d4-7a30-8d47-3feaf0841294
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.build.maven.ByteBuddyMojo.Coordinate` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.build.maven.ByteBuddyMojo.Coordinate",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.build.maven.ByteBuddyMojo.Coordinate`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its references to judge fan-in/fan-out, then I’ll return a single JSON verdict based on the source evidence.
+exec
+/bin/bash -lc "rg -n \"class Coordinate|record Coordinate|interface Coordinate|enum Coordinate\" -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files -g 'ByteBuddyMojo.java' -g '*.java' | rg 'build/maven/ByteBuddyMojo\\.java|ByteBuddyMojo\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 280ms:
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/CoordinateConfiguration.java:25:public class CoordinateConfiguration {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1243:    protected static class Coordinate {
+
+ succeeded in 287ms:
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java
+
+codex
+I found the nested target in the Maven plugin module. Next I’m checking its definition and where it is constructed or read so I can assess whether it acts like a dependency hub or just a small data holder.
+exec
+/bin/bash -lc "sed -n '1180,1315p' byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/CoordinateConfiguration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"\\bCoordinate\\b\" byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 184ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.build.maven;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.utility.nullability.MaybeNull;
+
+/**
+ * An configuration of a Maven coordinate.
+ */
+@SuppressFBWarnings(value = "UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD", justification = "Written to by Maven")
+public class CoordinateConfiguration {
+
+    /**
+     * The group id of the project containing the plugin type or {@code null} if the current project's group id should be used.
+     */
+    @MaybeNull
+    protected String groupId;
+
+    /**
+     * The artifact id of the project containing the plugin type or {@code null} if the current project's artifact id should be used.
+     */
+    @MaybeNull
+    protected String artifactId;
+
+    /**
+     * The version of the project containing the plugin type or {@code null} if the current project's version should be used.
+     */
+    @MaybeNull
+    protected String version;
+
+    /**
+     * The version of the project containing the plugin type or {@code null} if the current project's packaging should be used.
+     */
+    @MaybeNull
+    protected String packaging;
+
+    /**
+     * Returns the group id to use.
+     *
+     * @param groupId The current project's group id.
+     * @return The group id to use.
+     */
+    protected String getGroupId(String groupId) {
+        return this.groupId == null || this.groupId.length() == 0
+                ? groupId
+                : this.groupId;
+    }
+
+    /**
+     * Returns the artifact id to use.
+     *
+     * @param artifactId The current project's artifact id.
+     * @return The artifact id to use.
+     */
+    protected String getArtifactId(String artifactId) {
+        return this.artifactId == null || this.artifactId.length() == 0
+                ? artifactId
+                : this.artifactId;
+    }
+
+    /**
+     * Returns the version to use.
+     *
+     * @param version The current project's version.
+     * @return The version to use.
+     */
+    protected String getVersion(String version) {
+        return this.version == null || this.version.length() == 0
+                ? version
+                : this.version;
+    }
+
+    /**
+     * Returns the version to use.
+     *
+     * @param packaging The current project's packaging.
+     * @return The packaging to use.
+     */
+    protected String getPackaging(String packaging) {
+        return this.packaging == null || this.packaging.length() == 0
+                ? packaging
+                : this.packaging;
+    }
+
+    /**
+     * Resolves this transformation to a Maven coordinate.
+     *
+     * @param groupId    The current project's build id.
+     * @param artifactId The current project's artifact id.
+     * @param version    The current project's version.
+     * @param packaging  The current project's packaging
+     * @return The resolved Maven coordinate.
+     */
+    protected MavenCoordinate asCoordinate(String groupId, String artifactId, String version, String packaging) {
+        return new MavenCoordinate(getGroupId(groupId), getArtifactId(artifactId), getVersion(version), getPackaging(packaging));
+    }
+}
+
+ succeeded in 269ms:
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:266:        Map<Coordinate, String> coordinates = new HashMap<Coordinate, String>();
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:269:                coordinates.put(new Coordinate(dependency.getGroupId(), dependency.getArtifactId()), dependency.getVersion());
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:329:    protected abstract List<String> resolveClassPathElements(Map<Coordinate, String> coordinates) throws MojoExecutionException, MojoFailureException;
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:341:    protected abstract void apply(List<Transformer> transformers, List<String> elements, Map<Coordinate, String> coordinates) throws MojoExecutionException, MojoFailureException, IOException;
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:359:                                              Map<Coordinate, String> coordinates,
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:403:            String managed = coordinates.get(new Coordinate(project.getGroupId(), project.getArtifactId()));
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:575:        protected void apply(List<Transformer> transformers, List<String> elements, Map<Coordinate, String> coordinates) throws MojoExecutionException, IOException {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:640:                protected List<String> resolveClassPathElements(Map<Coordinate, String> coordinates) throws MojoFailureException {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:657:                protected List<String> resolveClassPathElements(Map<Coordinate, String> coordinates) {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:673:                protected List<String> resolveClassPathElements(Map<Coordinate, String> coordinates) {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:712:            protected List<String> resolveClassPathElements(Map<Coordinate, String> coordinates) throws MojoFailureException {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:750:        protected List<String> resolveClassPathElements(Map<Coordinate, String> coordinates) throws MojoExecutionException, MojoFailureException {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:757:                    String managed = coordinates.get(new Coordinate(dependency.getGroupId(project.getGroupId()), dependency.getArtifactId(project.getArtifactId())));
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:793:        protected void apply(List<Transformer> transformers, List<String> elements, Map<Coordinate, String> coordinates) throws MojoExecutionException, MojoFailureException, IOException {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:914:        protected List<String> resolveClassPathElements(Map<Coordinate, String> coordinates) {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:923:        protected void apply(List<Transformer> transformers, List<String> elements, Map<Coordinate, String> coordinates) throws MojoExecutionException, MojoFailureException, IOException {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1130:        protected abstract ClassLoader toClassLoader(ClassLoaderResolver classLoaderResolver, Map<Coordinate, String> coordinates, String groupId, String artifactId, String version, String packaging) throws MojoFailureException, MojoExecutionException;
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1162:            protected ClassLoader toClassLoader(ClassLoaderResolver classLoaderResolver, Map<Coordinate, String> coordinates, String groupId, String artifactId, String version, String packaging) throws MojoFailureException, MojoExecutionException {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1163:                String managed = coordinates.get(new Coordinate(transformation.getGroupId(groupId), transformation.getArtifactId(artifactId)));
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1198:            protected ClassLoader toClassLoader(ClassLoaderResolver classLoaderResolver, Map<Coordinate, String> coordinates, String groupId, String artifactId, String version, String packaging) {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1225:                protected ClassLoader toClassLoader(ClassLoaderResolver classLoaderResolver, Map<Coordinate, String> coordinates, String groupId, String artifactId, String version, String packaging) {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1243:    protected static class Coordinate {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1261:        protected Coordinate(String groupId, String artifactId) {
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1278:            Coordinate that = (Coordinate) other;
+
+ succeeded in 302ms:
+             *
+             * @param plugin The name of the discovered plugin.
+             */
+            protected ForDiscoveredPlugin(String plugin) {
+                this.plugin = plugin;
+            }
+
+            @Override
+            protected String getPlugin() {
+                return plugin;
+            }
+
+            @Override
+            protected List<? extends Plugin.Factory.UsingReflection.ArgumentResolver> toArgumentResolvers() {
+                return Collections.emptyList();
+            }
+
+            @Override
+            protected ClassLoader toClassLoader(ClassLoaderResolver classLoaderResolver, Map<Coordinate, String> coordinates, String groupId, String artifactId, String version, String packaging) {
+                return ByteBuddyMojo.class.getClassLoader();
+            }
+
+            /**
+             * A transformer for a discovered plugin from the class path.
+             */
+            protected static class FromClassLoader extends ForDiscoveredPlugin {
+
+                /**
+                 * The class path elements for loading this plugin.
+                 */
+                private final List<String> classPath;
+
+                /**
+                 * Creates a new transformer for a discovered plugin from the class path.
+                 *
+                 * @param plugin    The name of the discovered plugin.
+                 * @param classPath The class path elements for loading this plugin.
+                 */
+                protected FromClassLoader(String plugin, List<String> classPath) {
+                    super(plugin);
+                    this.classPath = classPath;
+                }
+
+                @Override
+                @SuppressFBWarnings(value = "DP_CREATE_CLASSLOADER_INSIDE_DO_PRIVILEGED", justification = "The security manager is not normally used within Maven.")
+                protected ClassLoader toClassLoader(ClassLoaderResolver classLoaderResolver, Map<Coordinate, String> coordinates, String groupId, String artifactId, String version, String packaging) {
+                    URL[] url = new URL[classPath.size()];
+                    for (int index = 0; index < classPath.size(); index++) {
+                        try {
+                            url[index] = new File(classPath.get(index)).toURI().toURL();
+                        } catch (MalformedURLException exception) {
+                            throw new IllegalStateException("Failed to resolve class path element to URL: " + classPath.get(index), exception);
+                        }
+                    }
+                    return new URLClassLoader(url, ByteBuddyMojo.class.getClassLoader());
+                }
+            }
+        }
+    }
+
+    /**
+     * A coordinate to locate a managed dependency.
+     */
+    protected static class Coordinate {
+
+        /**
+         * The managed dependency's group id.
+         */
+        private final String groupId;
+
+        /**
+         * The managed dependency's artifact id.
+         */
+        private final String artifactId;
+
+        /**
+         * Creates a new coordinate for a managed dependency.
+         *
+         * @param groupId    The managed depencency's group id.
+         * @param artifactId The managed depencency's artifact id.
+         */
+        protected Coordinate(String groupId, String artifactId) {
+            this.groupId = groupId;
+            this.artifactId = artifactId;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = groupId.hashCode();
+            result = 31 * result + artifactId.hashCode();
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (other == null || getClass() != other.getClass()) return false;
+
+            Coordinate that = (Coordinate) other;
+
+            if (!groupId.equals(that.groupId)) return false;
+            return artifactId.equals(that.artifactId);
+        }
+    }
+
+    /**
+     * A filter for files that were written before a given timestamp, to avoid duplicate application.
+     */
+    protected static class StalenessFilter extends ElementMatcher.Junction.ForNonNullValues<Plugin.Engine.Source.Element> {
+
+        /**
+         * The logger to use.
+         */
+        private final Log log;
+
+        /**
+         * The timestamp for files to be filtered if they were created before it.
+         */
+        private final long latestTimestamp;
+
+        /**
+         * A count of class files that were filtered.
+         */
+        private int filtered;
+
+        /**
+         * Creates a new staleness filter.
+         *
+         * @param log             The logger to use.
+         * @param latestTimestamp The timestamp for files to be filtered if they were created before it.
+         */
+        protected StalenessFilter(Log log, long latestTimestamp) {
+            this.log = log;
+            this.latestTimestamp = latestTimestamp;
+        }
+
+
+codex
+The evidence is pointing away from a hub smell: this nested class looks like a two-field value object, and the references I’ve found are all inside `ByteBuddyMojo.java`. I’m grabbing line-numbered evidence so the verdict is precise.
+exec
+/bin/bash -lc "nl -ba byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java | sed -n '250,410p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java | sed -n '1236,1295p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java | sed -n '1110,1175p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 175ms:
+  1110	        /**
+  1111	         * Returns the argument resolvers to use.
+  1112	         *
+  1113	         * @return The argument resolvers to use.
+  1114	         */
+  1115	        protected abstract List<? extends Plugin.Factory.UsingReflection.ArgumentResolver> toArgumentResolvers();
+  1116	
+  1117	        /**
+  1118	         * Resolves the class loader to use for resolving the plugin.
+  1119	         *
+  1120	         * @param classLoaderResolver The class loader resolver to use.
+  1121	         * @param coordinates         The managed coordinates of this project.
+  1122	         * @param groupId             The group id of this project.
+  1123	         * @param artifactId          The artifact id of this project.
+  1124	         * @param version             The version of this project.
+  1125	         * @param packaging           The packaging of this project.
+  1126	         * @return The class loader to use.
+  1127	         * @throws MojoFailureException   If the class loader resolution yields a failure.
+  1128	         * @throws MojoExecutionException The class loader resolution is incorrect.
+  1129	         */
+  1130	        protected abstract ClassLoader toClassLoader(ClassLoaderResolver classLoaderResolver, Map<Coordinate, String> coordinates, String groupId, String artifactId, String version, String packaging) throws MojoFailureException, MojoExecutionException;
+  1131	
+  1132	        /**
+  1133	         * A transformer for an explicitly configured plugin.
+  1134	         */
+  1135	        protected static class ForConfiguredPlugin extends Transformer {
+  1136	
+  1137	            /**
+  1138	             * The configured transformation.
+  1139	             */
+  1140	            private final Transformation transformation;
+  1141	
+  1142	            /**
+  1143	             * Creates a new transformer for an explicitly configured plugin.
+  1144	             *
+  1145	             * @param transformation The configured transformation.
+  1146	             */
+  1147	            protected ForConfiguredPlugin(Transformation transformation) {
+  1148	                this.transformation = transformation;
+  1149	            }
+  1150	
+  1151	            @Override
+  1152	            protected String getPlugin() throws MojoExecutionException {
+  1153	                return transformation.getPlugin();
+  1154	            }
+  1155	
+  1156	            @Override
+  1157	            protected List<? extends Plugin.Factory.UsingReflection.ArgumentResolver> toArgumentResolvers() {
+  1158	                return transformation.makeArgumentResolvers();
+  1159	            }
+  1160	
+  1161	            @Override
+  1162	            protected ClassLoader toClassLoader(ClassLoaderResolver classLoaderResolver, Map<Coordinate, String> coordinates, String groupId, String artifactId, String version, String packaging) throws MojoFailureException, MojoExecutionException {
+  1163	                String managed = coordinates.get(new Coordinate(transformation.getGroupId(groupId), transformation.getArtifactId(artifactId)));
+  1164	                return classLoaderResolver.resolve(transformation.asCoordinate(groupId, artifactId, managed == null ? version : managed, packaging));
+  1165	            }
+  1166	        }
+  1167	
+  1168	        /**
+  1169	         * A transformer for a discovered plugin.
+  1170	         */
+  1171	        protected static class ForDiscoveredPlugin extends Transformer {
+  1172	
+  1173	            /**
+  1174	             * The name of the discovered plugin.
+  1175	             */
+
+ succeeded in 237ms:
+  1236	            }
+  1237	        }
+  1238	    }
+  1239	
+  1240	    /**
+  1241	     * A coordinate to locate a managed dependency.
+  1242	     */
+  1243	    protected static class Coordinate {
+  1244	
+  1245	        /**
+  1246	         * The managed dependency's group id.
+  1247	         */
+  1248	        private final String groupId;
+  1249	
+  1250	        /**
+  1251	         * The managed dependency's artifact id.
+  1252	         */
+  1253	        private final String artifactId;
+  1254	
+  1255	        /**
+  1256	         * Creates a new coordinate for a managed dependency.
+  1257	         *
+  1258	         * @param groupId    The managed depencency's group id.
+  1259	         * @param artifactId The managed depencency's artifact id.
+  1260	         */
+  1261	        protected Coordinate(String groupId, String artifactId) {
+  1262	            this.groupId = groupId;
+  1263	            this.artifactId = artifactId;
+  1264	        }
+  1265	
+  1266	        @Override
+  1267	        public int hashCode() {
+  1268	            int result = groupId.hashCode();
+  1269	            result = 31 * result + artifactId.hashCode();
+  1270	            return result;
+  1271	        }
+  1272	
+  1273	        @Override
+  1274	        public boolean equals(Object other) {
+  1275	            if (this == other) return true;
+  1276	            if (other == null || getClass() != other.getClass()) return false;
+  1277	
+  1278	            Coordinate that = (Coordinate) other;
+  1279	
+  1280	            if (!groupId.equals(that.groupId)) return false;
+  1281	            return artifactId.equals(that.artifactId);
+  1282	        }
+  1283	    }
+  1284	
+  1285	    /**
+  1286	     * A filter for files that were written before a given timestamp, to avoid duplicate application.
+  1287	     */
+  1288	    protected static class StalenessFilter extends ElementMatcher.Junction.ForNonNullValues<Plugin.Engine.Source.Element> {
+  1289	
+  1290	        /**
+  1291	         * The logger to use.
+  1292	         */
+  1293	        private final Log log;
+  1294	
+  1295	        /**
+
+ succeeded in 260ms:
+   250	        if (project == null || repositorySystem == null || discovery == null) {
+   251	            throw new MojoExecutionException("Plugin is not initialized correctly");
+   252	        } else if (skip) {
+   253	            getLog().info("Not applying instrumentation as a result of plugin configuration.");
+   254	            return;
+   255	        }
+   256	        List<Transformer> transformers = new ArrayList<Transformer>();
+   257	        Set<String> undiscoverable = new HashSet<String>();
+   258	        if (transformations != null) {
+   259	            for (Transformation transformation : transformations) {
+   260	                transformers.add(new Transformer.ForConfiguredPlugin(transformation));
+   261	                if (discovery.isRecordConfiguration()) {
+   262	                    undiscoverable.add(transformation.getPlugin());
+   263	                }
+   264	            }
+   265	        }
+   266	        Map<Coordinate, String> coordinates = new HashMap<Coordinate, String>();
+   267	        if (project.getDependencyManagement() != null) {
+   268	            for (Dependency dependency : project.getDependencyManagement().getDependencies()) {
+   269	                coordinates.put(new Coordinate(dependency.getGroupId(), dependency.getArtifactId()), dependency.getVersion());
+   270	            }
+   271	        }
+   272	        List<String> elements = resolveClassPathElements(coordinates);
+   273	        if (discovery.isDiscover(transformers)) {
+   274	            try {
+   275	                for (String name : Plugin.Engine.Default.scan(ByteBuddyMojo.class.getClassLoader())) {
+   276	                    if (undiscoverable.add(name)) {
+   277	                        transformers.add(new Transformer.ForDiscoveredPlugin(name));
+   278	                        getLog().debug("Registered discovered plugin: " + name);
+   279	                    } else {
+   280	                        getLog().info("Skipping discovered plugin " + name + " which was previously discovered or registered");
+   281	                    }
+   282	                }
+   283	                if (classPathDiscovery) {
+   284	                    List<URL> urls = new ArrayList<URL>(elements.size());
+   285	                    for (String element : elements) {
+   286	                        urls.add(new File(element).toURI().toURL());
+   287	                    }
+   288	                    ClassLoader classLoader = new URLClassLoader(urls.toArray(new URL[0]));
+   289	                    try {
+   290	                        for (String name : Plugin.Engine.Default.scan(classLoader)) {
+   291	                            if (undiscoverable.add(name)) {
+   292	                                transformers.add(new Transformer.ForDiscoveredPlugin.FromClassLoader(name, elements));
+   293	                                getLog().debug("Registered discovered plugin: " + name);
+   294	                            } else {
+   295	                                getLog().info("Skipping discovered plugin " + name + " which was previously discovered or registered");
+   296	                            }
+   297	                        }
+   298	                    } finally {
+   299	                        if (classLoader instanceof Closeable) {
+   300	                            ((Closeable) classLoader).close();
+   301	                        }
+   302	                    }
+   303	                }
+   304	            } catch (IOException exception) {
+   305	                throw new MojoExecutionException("Failed plugin discovery", exception);
+   306	            }
+   307	        }
+   308	        if (transformers.isEmpty()) {
+   309	            getLog().warn("No transformations are specified or discovered. Skipping plugin application.");
+   310	            return;
+   311	        } else {
+   312	            getLog().debug(transformers.size() + " plugins are being applied via configuration and discovery");
+   313	        }
+   314	        try {
+   315	            apply(transformers, elements, coordinates);
+   316	        } catch (IOException exception) {
+   317	            throw new MojoFailureException("Error during writing process", exception);
+   318	        }
+   319	    }
+   320	
+   321	    /**
+   322	     * Resolves the class path elements of the relevant output directory.
+   323	     *
+   324	     * @param coordinates Versions for managed dependencies.
+   325	     * @return The class path elements of the relevant output directory.
+   326	     * @throws MojoExecutionException If the user configuration results in an error.
+   327	     * @throws MojoFailureException   If the plugin application raises an error.
+   328	     */
+   329	    protected abstract List<String> resolveClassPathElements(Map<Coordinate, String> coordinates) throws MojoExecutionException, MojoFailureException;
+   330	
+   331	    /**
+   332	     * Applies this mojo for the given setup.
+   333	     *
+   334	     * @param transformers The transformers to apply.
+   335	     * @param elements     The class path elements to consider.
+   336	     * @param coordinates  Versions for managed dependencies.
+   337	     * @throws MojoExecutionException If the plugin fails due to a user error.
+   338	     * @throws MojoFailureException   If the plugin fails due to an application error.
+   339	     * @throws IOException            If an I/O exception occurs.
+   340	     */
+   341	    protected abstract void apply(List<Transformer> transformers, List<String> elements, Map<Coordinate, String> coordinates) throws MojoExecutionException, MojoFailureException, IOException;
+   342	
+   343	    /**
+   344	     * Applies the instrumentation.
+   345	     *
+   346	     * @param classPath    An iterable over all class path elements.
+   347	     * @param coordinates  Versions for managed dependencies.
+   348	     * @param transformers The transformers to apply.
+   349	     * @param source       The source for the plugin engine's application.
+   350	     * @param target       The target for the plugin engine's application.
+   351	     * @param file         The file representing the source location.
+   352	     * @param filtered     {@code true} if files are already filtered and should not be checked for staleness.
+   353	     * @return A summary of the applied transformation.
+   354	     * @throws MojoExecutionException If the plugin cannot be applied.
+   355	     * @throws IOException            If an I/O exception occurs.
+   356	     */
+   357	    @SuppressWarnings("unchecked")
+   358	    protected Plugin.Engine.Summary transform(List<? extends String> classPath,
+   359	                                              Map<Coordinate, String> coordinates,
+   360	                                              List<Transformer> transformers,
+   361	                                              Plugin.Engine.Source source,
+   362	                                              Plugin.Engine.Target target,
+   363	                                              File file,
+   364	                                              boolean filtered) throws MojoExecutionException, IOException {
+   365	        File staleness = new File(project.getBuild().getDirectory(), "maven-status"
+   366	                + File.separator + execution.getArtifactId()
+   367	                + File.separator + execution.getGoal()
+   368	                + File.separator + execution.getExecutionId()
+   369	                + File.separator + "staleness");
+   370	        StalenessFilter stalenessFilter;
+   371	        if (filtered || staleMilliseconds < 0) {
+   372	            stalenessFilter = null;
+   373	            getLog().debug("Stale file detection is disabled");
+   374	        } else if (staleness.exists()) {
+   375	            stalenessFilter = new StalenessFilter(getLog(), staleness.lastModified() + staleMilliseconds);
+   376	            source = new Plugin.Engine.Source.Filtering(source, stalenessFilter);
+   377	            getLog().debug("Using stale file detection with a margin of " + staleMilliseconds + " milliseconds");
+   378	        } else {
+   379	            stalenessFilter = null;
+   380	            getLog().debug("Did not discover previous staleness file");
+   381	        }
+   382	        List<File> artifacts = new ArrayList<File>(classPath.size());
+   383	        for (String element : classPath) {
+   384	            artifacts.add(new File(element));
+   385	        }
+   386	        ClassLoaderResolver classLoaderResolver = new ClassLoaderResolver(getLog(), repositorySystem, repositorySystemSession == null ? MavenRepositorySystemUtils.newSession() : repositorySystemSession, project.getRemotePluginRepositories());
+   387	        try {
+   388	            List<Plugin.Factory> factories = new ArrayList<Plugin.Factory>(transformers.size());
+   389	            for (Transformer transformer : transformers) {
+   390	                String plugin = transformer.getPlugin();
+   391	                try {
+   392	                    factories.add(new Plugin.Factory.UsingReflection((Class<? extends Plugin>) Class.forName(plugin, false, transformer.toClassLoader(classLoaderResolver, coordinates, project.getGroupId(), project.getArtifactId(), project.getVersion(), project.getPackaging())))
+   393	                            .with(transformer.toArgumentResolvers())
+   394	                            .with(Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(File.class, file),
+   395	                                    Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(Log.class, getLog()),
+   396	                                    Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(BuildLogger.class, new MavenBuildLogger(getLog())),
+   397	                                    Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(File[].class, artifacts.toArray(new File[0]))));
+   398	                    getLog().info("Resolved plugin: " + plugin);
+   399	                } catch (Throwable throwable) {
+   400	                    throw new MojoExecutionException("Cannot resolve plugin: " + plugin, throwable);
+   401	                }
+   402	            }
+   403	            String managed = coordinates.get(new Coordinate(project.getGroupId(), project.getArtifactId()));
+   404	            EntryPoint entryPoint = (initialization == null ? new Initialization() : initialization).getEntryPoint(classLoaderResolver, project.getGroupId(), project.getArtifactId(), managed == null ? project.getVersion() : managed, project.getPackaging());
+   405	            getLog().info("Resolved entry point: " + entryPoint);
+   406	            String javaVersionString = findJavaVersionString(project, "release");
+   407	            if (javaVersionString == null) {
+   408	                javaVersionString = findJavaVersionString(project, "target");
+   409	            }
+   410	            ClassFileVersion classFileVersion;
+
+codex
+{"target":"net.bytebuddy.build.maven.ByteBuddyMojo.Coordinate","detection":false,"justification":"Inspected byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java: the nested Coordinate class is a tiny 2-field value object with only a constructor, hashCode, and equals (lines 1240-1282). Repository search showed all references are inside the same ByteBuddyMojo.java file only: it is used as a Map key and in lookups/parameter types (e.g. lines 266-269, 329, 341, 359, 403, 1162-1164), with no other source files referencing this nested class. That gives it low fan-out and no meaningful external fan-in, so it does not exhibit hub-like modularization."}
+tokens used
+9,769

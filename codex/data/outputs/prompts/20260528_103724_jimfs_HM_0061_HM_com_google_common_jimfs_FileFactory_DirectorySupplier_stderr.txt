@@ -1,0 +1,1064 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ecd-dcbd-7261-9644-6463085c8fff
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.common.jimfs.FileFactory.DirectorySupplier` in the repository located at:
+
+`data/repositories/google/jimfs`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.common.jimfs.FileFactory.DirectorySupplier",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.common.jimfs.FileFactory.DirectorySupplier`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct dependencies and callers to judge fan-in/fan-out evidence for `FileFactory.DirectorySupplier`. First I’ll inspect the source tree and the class definition, then I’ll sample usages across the repo to see whether it behaves like a dependency hub.
+exec
+/bin/bash -lc "rg --files . | rg 'FileFactory\\.java|DirectorySupplier|\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+./jimfs/src/test/java/com/google/common/jimfs/WindowsPathTypeTest.java
+./jimfs/src/test/java/com/google/common/jimfs/AbstractAttributeProviderTest.java
+./jimfs/src/test/java/com/google/common/jimfs/JimfsWindowsLikeFileSystemTest.java
+./jimfs/src/test/java/com/google/common/jimfs/UserDefinedAttributeProviderTest.java
+./jimfs/src/test/java/com/google/common/jimfs/FileTreeTest.java
+./jimfs/src/test/java/com/google/common/jimfs/OwnerAttributeProviderTest.java
+./jimfs/src/test/java/com/google/common/jimfs/PathSubject.java
+./jimfs/src/test/java/com/google/common/jimfs/NameTest.java
+./jimfs/src/test/java/com/google/common/jimfs/FileFactoryTest.java
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java
+./jimfs/src/test/java/com/google/common/jimfs/TestAttributes.java
+./jimfs/src/test/java/com/google/common/jimfs/PathNormalizationTest.java
+./jimfs/src/test/java/com/google/common/jimfs/BasicFileAttribute.java
+./jimfs/src/test/java/com/google/common/jimfs/JimfsUnixLikeFileSystemTest.java
+./jimfs/src/test/java/com/google/common/jimfs/HeapDiskTest.java
+./jimfs/src/test/java/com/google/common/jimfs/JimfsAsynchronousFileChannelTest.java
+./jimfs/src/test/java/com/google/common/jimfs/PathTester.java
+./jimfs/src/test/java/com/google/common/jimfs/AbstractPathMatcherTest.java
+./jimfs/src/test/java/com/google/common/jimfs/ConfigurationTest.java
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java
+./jimfs/src/test/java/com/google/common/jimfs/RegularFileBlocksTest.java
+./jimfs/src/test/java/com/google/common/jimfs/JimfsOutputStreamTest.java
+./jimfs/src/test/java/com/google/common/jimfs/TestAttributeView.java
+./jimfs/src/test/java/com/google/common/jimfs/DosAttributeProviderTest.java
+./jimfs/src/test/java/com/google/common/jimfs/ClassLoaderTest.java
+./jimfs/src/test/java/com/google/common/jimfs/UrlTest.java
+./jimfs/src/test/java/com/google/common/jimfs/AttributeServiceTest.java
+./jimfs/src/test/java/com/google/common/jimfs/UserLookupServiceTest.java
+./jimfs/src/test/java/com/google/common/jimfs/FileTest.java
+./jimfs/src/test/java/com/google/common/jimfs/JimfsFileSystemCloseTest.java
+./jimfs/src/test/java/com/google/common/jimfs/TestAttributeProvider.java
+./jimfs/src/test/java/com/google/common/jimfs/AbstractJimfsIntegrationTest.java
+./jimfs/src/test/java/com/google/common/jimfs/RegexGlobMatcherTest.java
+./jimfs/src/test/java/com/google/common/jimfs/ByteBufferChannel.java
+./jimfs/src/test/java/com/google/common/jimfs/FakeFileTimeSource.java
+./jimfs/src/test/java/com/google/common/jimfs/UnixPathTypeTest.java
+./jimfs/src/test/java/com/google/common/jimfs/AclAttributeProviderTest.java
+./jimfs/src/test/java/com/google/common/jimfs/RegularFileTest.java
+./jimfs/src/test/java/com/google/common/jimfs/AbstractGlobMatcherTest.java
+./jimfs/src/test/java/com/google/common/jimfs/TestUtils.java
+./jimfs/src/test/java/com/google/common/jimfs/DirectoryTest.java
+./jimfs/src/test/java/com/google/common/jimfs/WatchServiceConfigurationTest.java
+./jimfs/src/test/java/com/google/common/jimfs/JimfsPathTest.java
+./jimfs/src/test/java/com/google/common/jimfs/PosixAttributeProviderTest.java
+./jimfs/src/test/java/com/google/common/jimfs/BasicAttributeProviderTest.java
+./jimfs/src/test/java/com/google/common/jimfs/UnixAttributeProviderTest.java
+./jimfs/src/test/java/com/google/common/jimfs/JimfsFileChannelTest.java
+./jimfs/src/test/java/com/google/common/jimfs/JimfsInputStreamTest.java
+./jimfs/src/test/java/com/google/common/jimfs/FileSystemStateTest.java
+./jimfs/src/test/java/com/google/common/jimfs/PathServiceTest.java
+./jimfs/src/test/java/com/google/common/jimfs/PathTypeTest.java
+./jimfs/src/main/java/com/google/common/jimfs/FileSystemView.java
+./jimfs/src/main/java/com/google/common/jimfs/Java8Compatibility.java
+./jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java
+./jimfs/src/main/java/com/google/common/jimfs/JimfsFileSystems.java
+./jimfs/src/main/java/com/google/common/jimfs/Options.java
+./jimfs/src/main/java/com/google/common/jimfs/FileTimeSource.java
+./jimfs/src/main/java/com/google/common/jimfs/PathService.java
+./jimfs/src/main/java/com/google/common/jimfs/Name.java
+./jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java
+./jimfs/src/main/java/com/google/common/jimfs/AclAttributeProvider.java
+./jimfs/src/main/java/com/google/common/jimfs/JimfsFileSystem.java
+./jimfs/src/main/java/com/google/common/jimfs/package-info.java
+./jimfs/src/main/java/com/google/common/jimfs/AttributeProvider.java
+./jimfs/src/main/java/com/google/common/jimfs/SystemJimfsFileSystemProvider.java
+./jimfs/src/main/java/com/google/common/jimfs/DowngradedDirectoryStream.java
+./jimfs/src/main/java/com/google/common/jimfs/Util.java
+./jimfs/src/main/java/com/google/common/jimfs/WatchServiceConfiguration.java
+./jimfs/src/main/java/com/google/common/jimfs/FileSystemState.java
+./jimfs/src/main/java/com/google/common/jimfs/SymbolicLink.java
+./jimfs/src/main/java/com/google/common/jimfs/UserLookupService.java
+./jimfs/src/main/java/com/google/common/jimfs/UnixPathType.java
+./jimfs/src/main/java/com/google/common/jimfs/JimfsPath.java
+./jimfs/src/main/java/com/google/common/jimfs/GlobToRegex.java
+./jimfs/src/main/java/com/google/common/jimfs/BasicAttributeProvider.java
+./jimfs/src/main/java/com/google/common/jimfs/Jimfs.java
+./jimfs/src/main/java/com/google/common/jimfs/File.java
+./jimfs/src/main/java/com/google/common/jimfs/AttributeCopyOption.java
+./jimfs/src/main/java/com/google/common/jimfs/StandardAttributeProviders.java
+./jimfs/src/main/java/com/google/common/jimfs/PathMatchers.java
+./jimfs/src/main/java/com/google/common/jimfs/Directory.java
+./jimfs/src/main/java/com/google/common/jimfs/PathNormalization.java
+./jimfs/src/main/java/com/google/common/jimfs/InternalCharMatcher.java
+./jimfs/src/main/java/com/google/common/jimfs/OwnerAttributeProvider.java
+./jimfs/src/main/java/com/google/common/jimfs/HeapDisk.java
+./jimfs/src/main/java/com/google/common/jimfs/AttributeService.java
+./jimfs/src/main/java/com/google/common/jimfs/JimfsFileChannel.java
+./jimfs/src/main/java/com/google/common/jimfs/JimfsAsynchronousFileChannel.java
+./jimfs/src/main/java/com/google/common/jimfs/PathURLConnection.java
+./jimfs/src/main/java/com/google/common/jimfs/RegularFile.java
+./jimfs/src/main/java/com/google/common/jimfs/JimfsFileSystemProvider.java
+./jimfs/src/main/java/com/google/common/jimfs/JimfsInputStream.java
+./jimfs/src/main/java/com/google/common/jimfs/AbstractAttributeView.java
+./jimfs/src/main/java/com/google/common/jimfs/UnixFileAttributeView.java
+./jimfs/src/main/java/com/google/common/jimfs/PosixAttributeProvider.java
+./jimfs/src/main/java/com/google/common/jimfs/FileTree.java
+./jimfs/src/main/java/com/google/common/jimfs/PathType.java
+./jimfs/src/main/java/com/google/common/jimfs/FileFactory.java
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java
+./jimfs/src/main/java/com/google/common/jimfs/GuardedBy.java
+./jimfs/src/main/java/com/google/common/jimfs/JimfsOutputStream.java
+./jimfs/src/main/java/com/google/common/jimfs/SystemFileTimeSource.java
+./jimfs/src/main/java/com/google/common/jimfs/UnixAttributeProvider.java
+./jimfs/src/main/java/com/google/common/jimfs/FileLookup.java
+./jimfs/src/main/java/com/google/common/jimfs/DosAttributeProvider.java
+./jimfs/src/main/java/com/google/common/jimfs/DirectoryEntry.java
+./jimfs/src/main/java/com/google/common/jimfs/DowngradedSeekableByteChannel.java
+./jimfs/src/main/java/com/google/common/jimfs/JimfsSecureDirectoryStream.java
+./jimfs/src/main/java/com/google/common/jimfs/UserDefinedAttributeProvider.java
+./jimfs/src/main/java/com/google/common/jimfs/Handler.java
+./jimfs/src/main/java/com/google/common/jimfs/Feature.java
+./jimfs/src/main/java/com/google/common/jimfs/WindowsPathType.java
+./jimfs/src/main/java/com/google/common/jimfs/Configuration.java
+
+exec
+/bin/bash -lc 'rg -n "class DirectorySupplier|DirectorySupplier" .' in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+./jimfs/src/main/java/com/google/common/jimfs/FileFactory.java:79:  private final Supplier<Directory> directorySupplier = new DirectorySupplier();
+./jimfs/src/main/java/com/google/common/jimfs/FileFactory.java:98:  private final class DirectorySupplier implements Supplier<Directory> {
+
+codex
+I found the target nested class in `FileFactory.java`. Next I’m reading that file and the tests that exercise it to count the class’s actual collaborators and see whether anything in the codebase treats `DirectorySupplier` as a shared dependency point.
+exec
+/bin/bash -lc "sed -n '1,220p' jimfs/src/main/java/com/google/common/jimfs/FileFactory.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+/*
+ * Copyright 2013 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.common.jimfs;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Supplier;
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * Factory for creating new files and copying files. One piece of the file store implementation.
+ *
+ * @author Colin Decker
+ */
+final class FileFactory {
+
+  private final AtomicInteger idGenerator = new AtomicInteger();
+
+  private final HeapDisk disk;
+  private final FileTimeSource fileTimeSource;
+
+  /**
+   * Creates a new file factory using the given disk for regular files and the given time source.
+   */
+  public FileFactory(HeapDisk disk, FileTimeSource fileTimeSource) {
+    this.disk = checkNotNull(disk);
+    this.fileTimeSource = checkNotNull(fileTimeSource);
+  }
+
+  private int nextFileId() {
+    return idGenerator.getAndIncrement();
+  }
+
+  /** Creates a new directory. */
+  public Directory createDirectory() {
+    return Directory.create(nextFileId(), fileTimeSource.now());
+  }
+
+  /** Creates a new root directory with the given name. */
+  public Directory createRootDirectory(Name name) {
+    return Directory.createRoot(nextFileId(), fileTimeSource.now(), name);
+  }
+
+  /** Creates a new regular file. */
+  @VisibleForTesting
+  RegularFile createRegularFile() {
+    return RegularFile.create(nextFileId(), fileTimeSource.now(), disk);
+  }
+
+  /** Creates a new symbolic link referencing the given target path. */
+  @VisibleForTesting
+  SymbolicLink createSymbolicLink(JimfsPath target) {
+    return SymbolicLink.create(nextFileId(), fileTimeSource.now(), target);
+  }
+
+  /** Creates and returns a copy of the given file. */
+  public File copyWithoutContent(File file) throws IOException {
+    return file.copyWithoutContent(nextFileId(), fileTimeSource.now());
+  }
+
+  // suppliers to act as file creation callbacks
+
+  private final Supplier<Directory> directorySupplier = new DirectorySupplier();
+
+  private final Supplier<RegularFile> regularFileSupplier = new RegularFileSupplier();
+
+  /** Returns a supplier that creates directories. */
+  public Supplier<Directory> directoryCreator() {
+    return directorySupplier;
+  }
+
+  /** Returns a supplier that creates regular files. */
+  public Supplier<RegularFile> regularFileCreator() {
+    return regularFileSupplier;
+  }
+
+  /** Returns a supplier that creates a symbolic links to the given path. */
+  public Supplier<SymbolicLink> symbolicLinkCreator(JimfsPath target) {
+    return new SymbolicLinkSupplier(target);
+  }
+
+  private final class DirectorySupplier implements Supplier<Directory> {
+    @Override
+    public Directory get() {
+      return createDirectory();
+    }
+  }
+
+  private final class RegularFileSupplier implements Supplier<RegularFile> {
+    @Override
+    public RegularFile get() {
+      return createRegularFile();
+    }
+  }
+
+  private final class SymbolicLinkSupplier implements Supplier<SymbolicLink> {
+
+    private final JimfsPath target;
+
+    SymbolicLinkSupplier(JimfsPath target) {
+      this.target = checkNotNull(target);
+    }
+
+    @Override
+    public SymbolicLink get() {
+      return createSymbolicLink(target);
+    }
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '1,260p' jimfs/src/test/java/com/google/common/jimfs/FileFactoryTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+/*
+ * Copyright 2013 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.common.jimfs;
+
+import static com.google.common.truth.Truth.assertThat;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+/**
+ * Tests for {@link FileFactory}.
+ *
+ * @author Colin Decker
+ */
+@RunWith(JUnit4.class)
+public class FileFactoryTest {
+
+  private final FakeFileTimeSource fileTimeSource = new FakeFileTimeSource();
+
+  private FileFactory factory;
+
+  @Before
+  public void setUp() {
+    factory = new FileFactory(new HeapDisk(2, 2, 0), fileTimeSource);
+  }
+
+  @Test
+  public void testCreateFiles_basic() {
+    File file = factory.createDirectory();
+    assertThat(file.id()).isEqualTo(0L);
+    assertThat(file.isDirectory()).isTrue();
+    assertThat(file.getCreationTime()).isEqualTo(fileTimeSource.now());
+
+    fileTimeSource.randomize();
+    file = factory.createRegularFile();
+    assertThat(file.id()).isEqualTo(1L);
+    assertThat(file.isRegularFile()).isTrue();
+    assertThat(file.getCreationTime()).isEqualTo(fileTimeSource.now());
+
+    fileTimeSource.randomize();
+    file = factory.createSymbolicLink(fakePath());
+    assertThat(file.id()).isEqualTo(2L);
+    assertThat(file.isSymbolicLink()).isTrue();
+    assertThat(file.getCreationTime()).isEqualTo(fileTimeSource.now());
+  }
+
+  @Test
+  public void testCreateFiles_withSupplier() {
+    File file = factory.directoryCreator().get();
+    assertThat(file.id()).isEqualTo(0L);
+    assertThat(file.isDirectory()).isTrue();
+    assertThat(file.getCreationTime()).isEqualTo(fileTimeSource.now());
+
+    fileTimeSource.randomize();
+    file = factory.regularFileCreator().get();
+    assertThat(file.id()).isEqualTo(1L);
+    assertThat(file.isRegularFile()).isTrue();
+    assertThat(file.getCreationTime()).isEqualTo(fileTimeSource.now());
+
+    fileTimeSource.randomize();
+    file = factory.symbolicLinkCreator(fakePath()).get();
+    assertThat(file.id()).isEqualTo(2L);
+    assertThat(file.isSymbolicLink()).isTrue();
+    assertThat(file.getCreationTime()).isEqualTo(fileTimeSource.now());
+  }
+
+  static JimfsPath fakePath() {
+    return PathServiceTest.fakeUnixPathService().emptyPath();
+  }
+}
+
+exec
+/bin/bash -lc "rg -n \"new FileFactory|FileFactory\\b|directorySupplier|DirectorySupplier\" jimfs/src/main/java jimfs/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileSystem.java:68: *   <li>{@link com.google.common.jimfs.FileFactory FileFactory} handles creation of new file
+jimfs/src/test/java/com/google/common/jimfs/FileFactoryTest.java:27: * Tests for {@link FileFactory}.
+jimfs/src/test/java/com/google/common/jimfs/FileFactoryTest.java:36:  private FileFactory factory;
+jimfs/src/test/java/com/google/common/jimfs/FileFactoryTest.java:40:    factory = new FileFactory(new HeapDisk(2, 2, 0), fileTimeSource);
+jimfs/src/main/java/com/google/common/jimfs/FileFactory.java:31:final class FileFactory {
+jimfs/src/main/java/com/google/common/jimfs/FileFactory.java:41:  public FileFactory(HeapDisk disk, FileTimeSource fileTimeSource) {
+jimfs/src/main/java/com/google/common/jimfs/FileFactory.java:79:  private final Supplier<Directory> directorySupplier = new DirectorySupplier();
+jimfs/src/main/java/com/google/common/jimfs/FileFactory.java:85:    return directorySupplier;
+jimfs/src/main/java/com/google/common/jimfs/FileFactory.java:98:  private final class DirectorySupplier implements Supplier<Directory> {
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java:44: * {@link FileFactory} for creating and copying files and {@link AttributeService} for attribute
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java:55:  private final FileFactory factory;
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java:64:      FileFactory factory,
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileSystems.java:91:    FileFactory fileFactory = new FileFactory(disk, config.fileTimeSource);
+
+codex
+The first pass shows `DirectorySupplier` is only a private adapter inside `FileFactory`, not a standalone shared type. I’m now checking the main call sites that consume `FileFactory` so I can compare its actual integration surface with a hub-like pattern.
+exec
+/bin/bash -lc "sed -n '1,160p' jimfs/src/main/java/com/google/common/jimfs/JimfsFileSystems.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+exec
+/bin/bash -lc "sed -n '1,180p' jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+/*
+ * Copyright 2013 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.common.jimfs;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import com.google.common.base.Supplier;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
+import java.io.IOException;
+import java.nio.file.FileStore;
+import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.FileAttributeView;
+import java.nio.file.attribute.FileStoreAttributeView;
+import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * {@link FileStore} implementation which provides methods for file creation, lookup and attribute
+ * handling.
+ *
+ * <p>Most of these methods are actually implemented in another class: {@link FileTree} for lookup,
+ * {@link FileFactory} for creating and copying files and {@link AttributeService} for attribute
+ * handling. This class merely provides a single API through which to access the functionality of
+ * those classes.
+ *
+ * @author Colin Decker
+ */
+final class JimfsFileStore extends FileStore {
+
+  private final FileTree tree;
+  private final HeapDisk disk;
+  private final AttributeService attributes;
+  private final FileFactory factory;
+  private final ImmutableSet<Feature> supportedFeatures;
+  private final FileSystemState state;
+
+  private final Lock readLock;
+  private final Lock writeLock;
+
+  public JimfsFileStore(
+      FileTree tree,
+      FileFactory factory,
+      HeapDisk disk,
+      AttributeService attributes,
+      ImmutableSet<Feature> supportedFeatures,
+      FileSystemState state) {
+    this.tree = checkNotNull(tree);
+    this.factory = checkNotNull(factory);
+    this.disk = checkNotNull(disk);
+    this.attributes = checkNotNull(attributes);
+    this.supportedFeatures = checkNotNull(supportedFeatures);
+    this.state = checkNotNull(state);
+
+    ReadWriteLock lock = new ReentrantReadWriteLock();
+    this.readLock = lock.readLock();
+    this.writeLock = lock.writeLock();
+  }
+
+  // internal use methods
+
+  /** Returns the file system state object. */
+  FileSystemState state() {
+    return state;
+  }
+
+  /** Returns the read lock for this store. */
+  Lock readLock() {
+    return readLock;
+  }
+
+  /** Returns the write lock for this store. */
+  Lock writeLock() {
+    return writeLock;
+  }
+
+  /** Returns the names of the root directories in this store. */
+  ImmutableSortedSet<Name> getRootDirectoryNames() {
+    state.checkOpen();
+    return tree.getRootDirectoryNames();
+  }
+
+  /** Returns the root directory with the given name or {@code null} if no such directory exists. */
+  @Nullable Directory getRoot(Name name) {
+    DirectoryEntry entry = tree.getRoot(name);
+    return entry == null ? null : (Directory) entry.file();
+  }
+
+  /** Returns whether or not the given feature is supported by this file store. */
+  boolean supportsFeature(Feature feature) {
+    return supportedFeatures.contains(feature);
+  }
+
+  /**
+   * Looks up the file at the given path using the given link options. If the path is relative, the
+   * lookup is relative to the given working directory.
+   *
+   * @throws NoSuchFileException if an element of the path other than the final element does not
+   *     resolve to a directory or symbolic link (e.g. it doesn't exist or is a regular file)
+   * @throws IOException if a symbolic link cycle is detected or the depth of symbolic link
+   *     recursion otherwise exceeds a threshold
+   */
+  DirectoryEntry lookUp(File workingDirectory, JimfsPath path, Set<? super LinkOption> options)
+      throws IOException {
+    state.checkOpen();
+    return tree.lookUp(workingDirectory, path, options);
+  }
+
+  /** Returns a supplier that creates a new regular file. */
+  Supplier<RegularFile> regularFileCreator() {
+    state.checkOpen();
+    return factory.regularFileCreator();
+  }
+
+  /** Returns a supplier that creates a new directory. */
+  Supplier<Directory> directoryCreator() {
+    state.checkOpen();
+    return factory.directoryCreator();
+  }
+
+  /** Returns a supplier that creates a new symbolic link with the given target. */
+  Supplier<SymbolicLink> symbolicLinkCreator(JimfsPath target) {
+    state.checkOpen();
+    return factory.symbolicLinkCreator(target);
+  }
+
+  /**
+   * Creates a copy of the given file, copying its attributes as well according to the given {@code
+   * attributeCopyOption}.
+   */
+  File copyWithoutContent(File file, AttributeCopyOption attributeCopyOption) throws IOException {
+    File copy = factory.copyWithoutContent(file);
+    setInitialAttributes(copy);
+    attributes.copyAttributes(file, copy, attributeCopyOption);
+    return copy;
+  }
+
+  /**
+   * Sets initial attributes on the given file. Sets default attributes first, then attempts to set
+   * the given user-provided attributes.
+   */
+  void setInitialAttributes(File file, FileAttribute<?>... attrs) {
+    state.checkOpen();
+    attributes.setInitialAttributes(file, attrs);
+  }
+
+  /**
+   * Returns an attribute view of the given type for the given file lookup callback, or {@code null}
+   * if the view type is not supported.
+   */
+  <V extends FileAttributeView> @Nullable V getFileAttributeView(FileLookup lookup, Class<V> type) {
+    state.checkOpen();
+    return attributes.getFileAttributeView(lookup, type);
+  }
+
+  /**
+   * Returns a map containing the attributes described by the given string mapped to their values.
+   */
+  ImmutableMap<String, Object> readAttributes(File file, String attributes) {
+
+ succeeded in 0ms:
+/*
+ * Copyright 2013 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.common.jimfs;
+
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Initializes and configures new file system instances.
+ *
+ * @author Colin Decker
+ */
+final class JimfsFileSystems {
+
+  private JimfsFileSystems() {}
+
+  private static final Runnable DO_NOTHING =
+      new Runnable() {
+        @Override
+        public void run() {}
+      };
+
+  /**
+   * Returns a {@code Runnable} that will remove the file system with the given {@code URI} from the
+   * system provider's cache when called.
+   */
+  private static Runnable removeFileSystemRunnable(URI uri) {
+    if (Jimfs.systemProvider == null) {
+      // TODO(cgdecker): Use Runnables.doNothing() when it's out of @Beta
+      return DO_NOTHING;
+    }
+
+    // We have to invoke the SystemJimfsFileSystemProvider.removeFileSystemRunnable(URI)
+    // method reflectively since the system-loaded instance of it may be a different class
+    // than the one we'd get if we tried to cast it and call it like normal here.
+    try {
+      Method method =
+          Jimfs.systemProvider.getClass().getDeclaredMethod("removeFileSystemRunnable", URI.class);
+      return (Runnable) method.invoke(null, uri);
+    } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+      throw new RuntimeException(
+          "Unable to get Runnable for removing the FileSystem from the cache when it is closed", e);
+    }
+  }
+
+  /**
+   * Initialize and configure a new file system with the given provider and URI, using the given
+   * configuration.
+   */
+  public static JimfsFileSystem newFileSystem(
+      JimfsFileSystemProvider provider, URI uri, Configuration config) throws IOException {
+    PathService pathService = new PathService(config);
+    FileSystemState state =
+        new FileSystemState(config.fileTimeSource, removeFileSystemRunnable(uri));
+
+    JimfsFileStore fileStore = createFileStore(config, pathService, state);
+    FileSystemView defaultView = createDefaultView(config, fileStore, pathService);
+    WatchServiceConfiguration watchServiceConfig = config.watchServiceConfig;
+
+    JimfsFileSystem fileSystem =
+        new JimfsFileSystem(provider, uri, fileStore, pathService, defaultView, watchServiceConfig);
+
+    pathService.setFileSystem(fileSystem);
+    return fileSystem;
+  }
+
+  /** Creates the file store for the file system. */
+  private static JimfsFileStore createFileStore(
+      Configuration config, PathService pathService, FileSystemState state) {
+    AttributeService attributeService = new AttributeService(config);
+
+    HeapDisk disk = new HeapDisk(config);
+    FileFactory fileFactory = new FileFactory(disk, config.fileTimeSource);
+
+    Map<Name, Directory> roots = new HashMap<>();
+
+    // create roots
+    for (String root : config.roots) {
+      JimfsPath path = pathService.parsePath(root);
+      if (!path.isAbsolute() && path.getNameCount() == 0) {
+        throw new IllegalArgumentException("Invalid root path: " + root);
+      }
+
+      Name rootName = path.root();
+
+      Directory rootDir = fileFactory.createRootDirectory(rootName);
+      attributeService.setInitialAttributes(rootDir);
+      roots.put(rootName, rootDir);
+    }
+
+    return new JimfsFileStore(
+        new FileTree(roots), fileFactory, disk, attributeService, config.supportedFeatures, state);
+  }
+
+  /** Creates the default view of the file system using the given working directory. */
+  private static FileSystemView createDefaultView(
+      Configuration config, JimfsFileStore fileStore, PathService pathService) throws IOException {
+    JimfsPath workingDirPath = pathService.parsePath(config.workingDirectory);
+
+    Directory dir = fileStore.getRoot(workingDirPath.root());
+    if (dir == null) {
+      throw new IllegalArgumentException("Invalid working dir path: " + workingDirPath);
+    }
+
+    for (Name name : workingDirPath.names()) {
+      Directory newDir = fileStore.directoryCreator().get();
+      fileStore.setInitialAttributes(newDir);
+      dir.link(name, newDir);
+
+      dir = newDir;
+    }
+
+    return new FileSystemView(fileStore, dir, workingDirPath);
+  }
+}
+
+exec
+/bin/bash -lc "rg -n \"directoryCreator\\(|regularFileCreator\\(|symbolicLinkCreator\\(\" jimfs/src/main/java jimfs/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+jimfs/src/test/java/com/google/common/jimfs/FileFactoryTest.java:65:    File file = factory.directoryCreator().get();
+jimfs/src/test/java/com/google/common/jimfs/FileFactoryTest.java:71:    file = factory.regularFileCreator().get();
+jimfs/src/test/java/com/google/common/jimfs/FileFactoryTest.java:77:    file = factory.symbolicLinkCreator(fakePath()).get();
+jimfs/src/main/java/com/google/common/jimfs/FileFactory.java:84:  public Supplier<Directory> directoryCreator() {
+jimfs/src/main/java/com/google/common/jimfs/FileFactory.java:89:  public Supplier<RegularFile> regularFileCreator() {
+jimfs/src/main/java/com/google/common/jimfs/FileFactory.java:94:  public Supplier<SymbolicLink> symbolicLinkCreator(JimfsPath target) {
+jimfs/src/main/java/com/google/common/jimfs/FileSystemView.java:232:    return (Directory) createFile(path, store.directoryCreator(), true, attrs);
+jimfs/src/main/java/com/google/common/jimfs/FileSystemView.java:245:    return (SymbolicLink) createFile(path, store.symbolicLinkCreator(target), true, attrs);
+jimfs/src/main/java/com/google/common/jimfs/FileSystemView.java:340:      File file = createFile(path, store.regularFileCreator(), options.contains(CREATE_NEW), attrs);
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java:131:  Supplier<RegularFile> regularFileCreator() {
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java:133:    return factory.regularFileCreator();
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java:137:  Supplier<Directory> directoryCreator() {
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java:139:    return factory.directoryCreator();
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java:143:  Supplier<SymbolicLink> symbolicLinkCreator(JimfsPath target) {
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java:145:    return factory.symbolicLinkCreator(target);
+jimfs/src/main/java/com/google/common/jimfs/JimfsFileSystems.java:124:      Directory newDir = fileStore.directoryCreator().get();
+
+codex
+I’ve confirmed the call chain: `JimfsFileSystems` and `FileSystemView` use `FileFactory` through the public `directoryCreator()` API, but no external code can reference `DirectorySupplier` itself because it is a private inner class. I’m grabbing exact line numbers so the verdict can be tied to concrete source evidence.
+exec
+/bin/bash -lc "nl -ba jimfs/src/main/java/com/google/common/jimfs/FileFactory.java | sed -n '70,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+    70	  }
+    71	
+    72	  /** Creates and returns a copy of the given file. */
+    73	  public File copyWithoutContent(File file) throws IOException {
+    74	    return file.copyWithoutContent(nextFileId(), fileTimeSource.now());
+    75	  }
+    76	
+    77	  // suppliers to act as file creation callbacks
+    78	
+    79	  private final Supplier<Directory> directorySupplier = new DirectorySupplier();
+    80	
+    81	  private final Supplier<RegularFile> regularFileSupplier = new RegularFileSupplier();
+    82	
+    83	  /** Returns a supplier that creates directories. */
+    84	  public Supplier<Directory> directoryCreator() {
+    85	    return directorySupplier;
+    86	  }
+    87	
+    88	  /** Returns a supplier that creates regular files. */
+    89	  public Supplier<RegularFile> regularFileCreator() {
+    90	    return regularFileSupplier;
+    91	  }
+    92	
+    93	  /** Returns a supplier that creates a symbolic links to the given path. */
+    94	  public Supplier<SymbolicLink> symbolicLinkCreator(JimfsPath target) {
+    95	    return new SymbolicLinkSupplier(target);
+    96	  }
+    97	
+    98	  private final class DirectorySupplier implements Supplier<Directory> {
+    99	    @Override
+   100	    public Directory get() {
+   101	      return createDirectory();
+   102	    }
+   103	  }
+   104	
+   105	  private final class RegularFileSupplier implements Supplier<RegularFile> {
+   106	    @Override
+   107	    public RegularFile get() {
+   108	      return createRegularFile();
+   109	    }
+   110	  }
+   111	
+   112	  private final class SymbolicLinkSupplier implements Supplier<SymbolicLink> {
+   113	
+   114	    private final JimfsPath target;
+   115	
+   116	    SymbolicLinkSupplier(JimfsPath target) {
+   117	      this.target = checkNotNull(target);
+   118	    }
+   119	
+   120	    @Override
+
+exec
+/bin/bash -lc "nl -ba jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java | sed -n '120,150p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+   120	   *     resolve to a directory or symbolic link (e.g. it doesn't exist or is a regular file)
+   121	   * @throws IOException if a symbolic link cycle is detected or the depth of symbolic link
+   122	   *     recursion otherwise exceeds a threshold
+   123	   */
+   124	  DirectoryEntry lookUp(File workingDirectory, JimfsPath path, Set<? super LinkOption> options)
+   125	      throws IOException {
+   126	    state.checkOpen();
+   127	    return tree.lookUp(workingDirectory, path, options);
+   128	  }
+   129	
+   130	  /** Returns a supplier that creates a new regular file. */
+   131	  Supplier<RegularFile> regularFileCreator() {
+   132	    state.checkOpen();
+   133	    return factory.regularFileCreator();
+   134	  }
+   135	
+   136	  /** Returns a supplier that creates a new directory. */
+   137	  Supplier<Directory> directoryCreator() {
+   138	    state.checkOpen();
+   139	    return factory.directoryCreator();
+   140	  }
+   141	
+   142	  /** Returns a supplier that creates a new symbolic link with the given target. */
+   143	  Supplier<SymbolicLink> symbolicLinkCreator(JimfsPath target) {
+   144	    state.checkOpen();
+   145	    return factory.symbolicLinkCreator(target);
+   146	  }
+   147	
+   148	  /**
+   149	   * Creates a copy of the given file, copying its attributes as well according to the given {@code
+   150	   * attributeCopyOption}.
+
+exec
+/bin/bash -lc "nl -ba jimfs/src/main/java/com/google/common/jimfs/FileSystemView.java | sed -n '220,350p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+   220	      return pathService.createPath(root, reversed);
+   221	    } finally {
+   222	      store.readLock().unlock();
+   223	    }
+   224	  }
+   225	
+   226	  /**
+   227	   * Creates a new directory at the given path. The given attributes will be set on the new file if
+   228	   * possible.
+   229	   */
+   230	  @CanIgnoreReturnValue
+   231	  public Directory createDirectory(JimfsPath path, FileAttribute<?>... attrs) throws IOException {
+   232	    return (Directory) createFile(path, store.directoryCreator(), true, attrs);
+   233	  }
+   234	
+   235	  /**
+   236	   * Creates a new symbolic link at the given path with the given target. The given attributes will
+   237	   * be set on the new file if possible.
+   238	   */
+   239	  @CanIgnoreReturnValue
+   240	  public SymbolicLink createSymbolicLink(
+   241	      JimfsPath path, JimfsPath target, FileAttribute<?>... attrs) throws IOException {
+   242	    if (!store.supportsFeature(Feature.SYMBOLIC_LINKS)) {
+   243	      throw new UnsupportedOperationException();
+   244	    }
+   245	    return (SymbolicLink) createFile(path, store.symbolicLinkCreator(target), true, attrs);
+   246	  }
+   247	
+   248	  /**
+   249	   * Creates a new file at the given path if possible, using the given supplier to create the file.
+   250	   * Returns the new file. If {@code allowExisting} is {@code true} and a file already exists at the
+   251	   * given path, returns that file. Otherwise, throws {@link FileAlreadyExistsException}.
+   252	   */
+   253	  private File createFile(
+   254	      JimfsPath path,
+   255	      Supplier<? extends File> fileCreator,
+   256	      boolean failIfExists,
+   257	      FileAttribute<?>... attrs)
+   258	      throws IOException {
+   259	    checkNotNull(path);
+   260	    checkNotNull(fileCreator);
+   261	
+   262	    store.writeLock().lock();
+   263	    try {
+   264	      DirectoryEntry entry = lookUp(path, Options.NOFOLLOW_LINKS);
+   265	
+   266	      if (entry.exists()) {
+   267	        if (failIfExists) {
+   268	          throw new FileAlreadyExistsException(path.toString());
+   269	        }
+   270	
+   271	        // currently can only happen if getOrCreateFile doesn't find the file with the read lock
+   272	        // and then the file is created between when it releases the read lock and when it
+   273	        // acquires the write lock; so, very unlikely
+   274	        return entry.file();
+   275	      }
+   276	
+   277	      Directory parent = entry.directory();
+   278	
+   279	      File newFile = fileCreator.get();
+   280	      store.setInitialAttributes(newFile, attrs);
+   281	      parent.link(path.name(), newFile);
+   282	      parent.setLastModifiedTime(now());
+   283	      return newFile;
+   284	    } finally {
+   285	      store.writeLock().unlock();
+   286	    }
+   287	  }
+   288	
+   289	  /**
+   290	   * Gets the regular file at the given path, creating it if it doesn't exist and the given options
+   291	   * specify that it should be created.
+   292	   */
+   293	  public RegularFile getOrCreateRegularFile(
+   294	      JimfsPath path, Set<OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+   295	    checkNotNull(path);
+   296	
+   297	    if (!options.contains(CREATE_NEW)) {
+   298	      // assume file exists unless we're explicitly trying to create a new file
+   299	      RegularFile file = lookUpRegularFile(path, options);
+   300	      if (file != null) {
+   301	        return file;
+   302	      }
+   303	    }
+   304	
+   305	    if (options.contains(CREATE) || options.contains(CREATE_NEW)) {
+   306	      return getOrCreateRegularFileWithWriteLock(path, options, attrs);
+   307	    } else {
+   308	      throw new NoSuchFileException(path.toString());
+   309	    }
+   310	  }
+   311	
+   312	  /**
+   313	   * Looks up the regular file at the given path, throwing an exception if the file isn't a regular
+   314	   * file. Returns null if the file did not exist.
+   315	   */
+   316	  private @Nullable RegularFile lookUpRegularFile(JimfsPath path, Set<OpenOption> options)
+   317	      throws IOException {
+   318	    store.readLock().lock();
+   319	    try {
+   320	      DirectoryEntry entry = lookUp(path, options);
+   321	      if (entry.exists()) {
+   322	        File file = entry.file();
+   323	        if (!file.isRegularFile()) {
+   324	          throw new FileSystemException(path.toString(), null, "not a regular file");
+   325	        }
+   326	        return open((RegularFile) file, options);
+   327	      } else {
+   328	        return null;
+   329	      }
+   330	    } finally {
+   331	      store.readLock().unlock();
+   332	    }
+   333	  }
+   334	
+   335	  /** Gets or creates a new regular file with a write lock (assuming the file does not exist). */
+   336	  private RegularFile getOrCreateRegularFileWithWriteLock(
+   337	      JimfsPath path, Set<OpenOption> options, FileAttribute<?>[] attrs) throws IOException {
+   338	    store.writeLock().lock();
+   339	    try {
+   340	      File file = createFile(path, store.regularFileCreator(), options.contains(CREATE_NEW), attrs);
+   341	      // the file already existed but was not a regular file
+   342	      if (!file.isRegularFile()) {
+   343	        throw new FileSystemException(path.toString(), null, "not a regular file");
+   344	      }
+   345	      return open((RegularFile) file, options);
+   346	    } finally {
+   347	      store.writeLock().unlock();
+   348	    }
+   349	  }
+   350	
+
+exec
+/bin/bash -lc "nl -ba jimfs/src/main/java/com/google/common/jimfs/JimfsFileSystems.java | sed -n '80,135p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+    80	
+    81	    pathService.setFileSystem(fileSystem);
+    82	    return fileSystem;
+    83	  }
+    84	
+    85	  /** Creates the file store for the file system. */
+    86	  private static JimfsFileStore createFileStore(
+    87	      Configuration config, PathService pathService, FileSystemState state) {
+    88	    AttributeService attributeService = new AttributeService(config);
+    89	
+    90	    HeapDisk disk = new HeapDisk(config);
+    91	    FileFactory fileFactory = new FileFactory(disk, config.fileTimeSource);
+    92	
+    93	    Map<Name, Directory> roots = new HashMap<>();
+    94	
+    95	    // create roots
+    96	    for (String root : config.roots) {
+    97	      JimfsPath path = pathService.parsePath(root);
+    98	      if (!path.isAbsolute() && path.getNameCount() == 0) {
+    99	        throw new IllegalArgumentException("Invalid root path: " + root);
+   100	      }
+   101	
+   102	      Name rootName = path.root();
+   103	
+   104	      Directory rootDir = fileFactory.createRootDirectory(rootName);
+   105	      attributeService.setInitialAttributes(rootDir);
+   106	      roots.put(rootName, rootDir);
+   107	    }
+   108	
+   109	    return new JimfsFileStore(
+   110	        new FileTree(roots), fileFactory, disk, attributeService, config.supportedFeatures, state);
+   111	  }
+   112	
+   113	  /** Creates the default view of the file system using the given working directory. */
+   114	  private static FileSystemView createDefaultView(
+   115	      Configuration config, JimfsFileStore fileStore, PathService pathService) throws IOException {
+   116	    JimfsPath workingDirPath = pathService.parsePath(config.workingDirectory);
+   117	
+   118	    Directory dir = fileStore.getRoot(workingDirPath.root());
+   119	    if (dir == null) {
+   120	      throw new IllegalArgumentException("Invalid working dir path: " + workingDirPath);
+   121	    }
+   122	
+   123	    for (Name name : workingDirPath.names()) {
+   124	      Directory newDir = fileStore.directoryCreator().get();
+   125	      fileStore.setInitialAttributes(newDir);
+   126	      dir.link(name, newDir);
+   127	
+   128	      dir = newDir;
+   129	    }
+   130	
+   131	    return new FileSystemView(fileStore, dir, workingDirPath);
+   132	  }
+   133	}
+
+codex
+{"target":"com.google.common.jimfs.FileFactory.DirectorySupplier","detection":false,"justification":"Inspected jimfs/src/main/java/com/google/common/jimfs/FileFactory.java, jimfs/src/main/java/com/google/common/jimfs/JimfsFileStore.java, jimfs/src/main/java/com/google/common/jimfs/FileSystemView.java, jimfs/src/main/java/com/google/common/jimfs/JimfsFileSystems.java, and jimfs/src/test/java/com/google/common/jimfs/FileFactoryTest.java. DirectorySupplier is a private inner class with a single method get() that only calls createDirectory(); rg found no external references to DirectorySupplier itself, only the public FileFactory.directoryCreator() API. The class therefore has minimal fan-out and effectively zero fan-in, so it does not show hub-like modularization."}
+tokens used
+14,343

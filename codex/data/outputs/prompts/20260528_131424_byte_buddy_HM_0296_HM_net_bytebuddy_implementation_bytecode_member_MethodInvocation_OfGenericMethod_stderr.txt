@@ -1,0 +1,1500 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f5d-a783-79b3-8786-78ae15ccca23
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.bytecode.member.MethodInvocation.OfGenericMethod` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.bytecode.member.MethodInvocation.OfGenericMethod",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.bytecode.member.MethodInvocation.OfGenericMethod`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’ll locate the target class, inspect its source and nearby usages, then count the concrete dependency evidence needed to judge whether it behaves like a hub.
+exec
+/bin/bash -lc "rg --files . | rg \"MethodInvocation|MethodInvocation\\.java|OfGenericMethod\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc 'rg -n "class OfGenericMethod|OfGenericMethod" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 299ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RebaseImplementationTargetSpecialMethodInvocationTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/AbstractSpecialMethodInvocationTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ImplementationSpecialMethodInvocationIllegalTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ImplementationTargetAbstractBaseDefaultMethodInvocationTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ImplementationSpecialMethodInvocationSimpleTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationDynamicTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationHandleTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationOtherTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java
+
+ succeeded in 282ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:73:        assertThat(stackManipulation, hasPrototype((StackManipulation) new MethodInvocation.OfGenericMethod(genericErasure, MethodInvocation.invoke(declaredMethod))));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:143:                : OfGenericMethod.of(methodDescription, invoke(declaredMethod));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:264:    protected static class OfGenericMethod implements WithImplicitInvocationTargetType {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:282:        protected OfGenericMethod(TypeDescription targetType, WithImplicitInvocationTargetType invocation) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:295:            return new OfGenericMethod(methodDescription.getReturnType().asErasure(), invocation);
+
+codex
+I found the target as an inner class in `MethodInvocation.java`. Next I’m reading the implementation and the test/production references around it to see whether it is a genuine dependency hub or just a small adapter with limited reach.
+exec
+/bin/bash -lc "sed -n '1,360p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,240p' byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 165ms:
+package net.bytebuddy.implementation.bytecode.member;
+
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.ParameterDescription;
+import net.bytebuddy.description.method.ParameterList;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
+import net.bytebuddy.utility.JavaConstant;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+
+import java.util.Collections;
+
+import static net.bytebuddy.test.utility.FieldByFieldComparison.hasPrototype;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+public class MethodInvocationGenericTest {
+
+    private static final String FOO = "foo";
+
+    @Rule
+    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+
+    @Mock
+    private MethodDescription.InDefinedShape declaredMethod;
+
+    @Mock
+    private MethodDescription methodDescription;
+
+    @Mock
+    private TypeDescription.Generic methodReturnType, declaredReturnType;
+
+    @Mock
+    private TypeDescription declaredErasure, declaringType, targetType, otherType;
+
+    @Mock
+    private MethodDescription.SignatureToken token;
+
+    @Before
+    @SuppressWarnings("unchecked")
+    public void setUp() throws Exception {
+        when(methodDescription.asDefined()).thenReturn(declaredMethod);
+        when(methodDescription.getReturnType()).thenReturn(methodReturnType);
+        when(declaredMethod.getReturnType()).thenReturn(declaredReturnType);
+        when(declaredReturnType.asGenericType()).thenReturn(declaredReturnType);
+        when(declaredReturnType.accept((TypeDescription.Generic.Visitor) any())).thenReturn(declaredReturnType);
+        when(declaredReturnType.asErasure()).thenReturn(declaredErasure);
+        when(declaredMethod.getDeclaringType()).thenReturn(declaringType);
+        when(declaringType.asErasure()).thenReturn(declaringType);
+        when(declaredMethod.asSignatureToken()).thenReturn(token);
+        when(declaredMethod.isSpecializableFor(targetType)).thenReturn(true);
+        when(declaredMethod.asDefined()).thenReturn(declaredMethod);
+        when(declaredMethod.getParameters()).thenReturn(new ParameterList.Empty<ParameterDescription.InDefinedShape>());
+        when(declaredMethod.getInternalName()).thenReturn(FOO);
+    }
+
+    @Test
+    public void testGenericMethod() throws Exception {
+        TypeDescription genericErasure = mock(TypeDescription.class);
+        when(methodReturnType.asErasure()).thenReturn(genericErasure);
+        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription);
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype((StackManipulation) new MethodInvocation.OfGenericMethod(genericErasure, MethodInvocation.invoke(declaredMethod))));
+    }
+
+    @Test
+    public void testGenericMethodErasureEqual() throws Exception {
+        when(methodReturnType.asErasure()).thenReturn(declaredErasure);
+        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription);
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype((StackManipulation) MethodInvocation.invoke(declaredMethod)));
+    }
+
+    @Test
+    public void testGenericMethodVirtual() throws Exception {
+        TypeDescription genericErasure = mock(TypeDescription.class);
+        when(methodReturnType.asErasure()).thenReturn(genericErasure);
+        when(genericErasure.asErasure()).thenReturn(genericErasure);
+        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).virtual(targetType);
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype((StackManipulation) new StackManipulation.Compound(MethodInvocation.invoke(declaredMethod).virtual(targetType),
+                TypeCasting.to(genericErasure))));
+    }
+
+    @Test
+    public void testGenericMethodVirtualErasureEqual() throws Exception {
+        when(methodReturnType.asErasure()).thenReturn(declaredErasure);
+        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).virtual(targetType);
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype(MethodInvocation.invoke(declaredMethod).virtual(targetType)));
+    }
+
+    @Test
+    public void testGenericMethodSpecial() throws Exception {
+        TypeDescription genericErasure = mock(TypeDescription.class);
+        when(methodReturnType.asErasure()).thenReturn(genericErasure);
+        when(genericErasure.asErasure()).thenReturn(genericErasure);
+        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).special(targetType);
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype((StackManipulation) new StackManipulation.Compound(MethodInvocation.invoke(declaredMethod).special(targetType),
+                TypeCasting.to(genericErasure))));
+    }
+
+    @Test
+    public void testGenericMethodSpecialErasureEqual() throws Exception {
+        when(methodReturnType.asErasure()).thenReturn(declaredErasure);
+        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).special(targetType);
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype(MethodInvocation.invoke(declaredMethod).special(targetType)));
+    }
+
+    @Test
+    public void testGenericMethodDynamic() throws Exception {
+        TypeDescription genericErasure = mock(TypeDescription.class);
+        when(methodReturnType.asErasure()).thenReturn(genericErasure);
+        when(declaredMethod.isInvokeBootstrap(Collections.<TypeDefinition>emptyList())).thenReturn(true);
+        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).dynamic(FOO,
+                otherType,
+                Collections.<TypeDescription>emptyList(),
+                Collections.<JavaConstant>emptyList());
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype(MethodInvocation.invoke(declaredMethod).dynamic(FOO,
+                otherType,
+                Collections.<TypeDescription>emptyList(),
+                Collections.<JavaConstant>emptyList())));
+    }
+
+    @Test
+    public void testGenericMethodDynamicErasureEqual() throws Exception {
+        when(methodReturnType.asErasure()).thenReturn(declaredErasure);
+        when(declaredMethod.isInvokeBootstrap(Collections.<TypeDefinition>emptyList())).thenReturn(true);
+        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).dynamic(FOO,
+                otherType,
+                Collections.<TypeDescription>emptyList(),
+                Collections.<JavaConstant>emptyList());
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype(MethodInvocation.invoke(declaredMethod).dynamic(FOO,
+                otherType,
+                Collections.<TypeDescription>emptyList(),
+                Collections.<JavaConstant>emptyList())));
+    }
+
+    @Test
+    public void testIllegal() throws Exception {
+        TypeDescription genericErasure = mock(TypeDescription.class);
+        when(methodReturnType.asErasure()).thenReturn(genericErasure);
+        when(declaredMethod.isTypeInitializer()).thenReturn(true);
+        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription);
+        assertThat(stackManipulation.isValid(), is(false));
+    }
+}
+
+ succeeded in 182ms:
+package net.bytebuddy.implementation.bytecode.member;
+
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.StackSize;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import java.util.Arrays;
+import java.util.Collection;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+@RunWith(Parameterized.class)
+public class MethodInvocationTest {
+
+    private static final String FOO = "foo", BAR = "bar", QUX = "qux", BAZ = "baz";
+
+    private static final int ARGUMENT_STACK_SIZE = 1;
+
+    private final StackSize stackSize;
+
+    private final int expectedSize;
+
+    @Rule
+    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+
+    @Mock
+    private MethodDescription.InDefinedShape methodDescription;
+
+    @Mock
+    private TypeDescription.Generic returnType, otherType;
+
+    @Mock
+    private TypeDescription declaringType, rawOtherType;
+
+    @Mock
+    private Implementation.Context implementationContext;
+
+    @Mock
+    private MethodVisitor methodVisitor;
+
+    public MethodInvocationTest(StackSize stackSize) {
+        this.stackSize = stackSize;
+        this.expectedSize = stackSize.getSize() - ARGUMENT_STACK_SIZE;
+    }
+
+    @Parameterized.Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][]{
+                {StackSize.ZERO},
+                {StackSize.SINGLE},
+                {StackSize.DOUBLE}
+        });
+    }
+
+    @Before
+    public void setUp() throws Exception {
+        when(declaringType.asErasure()).thenReturn(declaringType);
+        when(methodDescription.getReturnType()).thenReturn(returnType);
+        when(methodDescription.getDeclaringType()).thenReturn(declaringType);
+        when(methodDescription.getStackSize()).thenReturn(ARGUMENT_STACK_SIZE);
+        when(declaringType.getInternalName()).thenReturn(FOO);
+        when(otherType.asErasure()).thenReturn(rawOtherType);
+        when(rawOtherType.getInternalName()).thenReturn(BAZ);
+        when(methodDescription.getInternalName()).thenReturn(BAR);
+        when(methodDescription.getDescriptor()).thenReturn(QUX);
+        when(returnType.getStackSize()).thenReturn(stackSize);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        verifyNoMoreInteractions(implementationContext);
+    }
+
+    @Test
+    public void testTypeInitializerInvocation() throws Exception {
+        when(methodDescription.isTypeInitializer()).thenReturn(true);
+        assertThat(MethodInvocation.invoke(methodDescription).isValid(), is(false));
+    }
+
+    @Test
+    public void testStaticMethodInvocation() throws Exception {
+        when(methodDescription.isStatic()).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESTATIC, FOO, false);
+    }
+
+    @Test
+    public void testStaticPrivateMethodInvocation() throws Exception {
+        when(methodDescription.isStatic()).thenReturn(true);
+        when(methodDescription.isPrivate()).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESTATIC, FOO, false);
+    }
+
+    @Test
+    public void testPrivateMethodInvocationVirtualLegacy() throws Exception {
+        when(methodDescription.isPrivate()).thenReturn(true);
+        when(implementationContext.getClassFileVersion()).thenReturn(ClassFileVersion.JAVA_V10);
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESPECIAL, FOO, false);
+        verify(implementationContext).getClassFileVersion();
+    }
+
+    @Test
+    public void testPrivateMethodInvocationVirtualJava11() throws Exception {
+        when(methodDescription.isPrivate()).thenReturn(true);
+        when(implementationContext.getClassFileVersion()).thenReturn(ClassFileVersion.JAVA_V11);
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKEVIRTUAL, FOO, false);
+        verify(implementationContext).getClassFileVersion();
+    }
+
+    @Test
+    public void testPrivateMethodInvocationVirtualInterfaceLegacy() throws Exception {
+        when(methodDescription.isPrivate()).thenReturn(true);
+        when(declaringType.isInterface()).thenReturn(true);
+        when(implementationContext.getClassFileVersion()).thenReturn(ClassFileVersion.JAVA_V10);
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESPECIAL, FOO, true);
+        verify(implementationContext).getClassFileVersion();
+    }
+
+    @Test
+    public void testPrivateMethodInvocationVirtualInterfaceJava11() throws Exception {
+        when(methodDescription.isPrivate()).thenReturn(true);
+        when(declaringType.isInterface()).thenReturn(true);
+        when(implementationContext.getClassFileVersion()).thenReturn(ClassFileVersion.JAVA_V11);
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKEINTERFACE, FOO, true);
+        verify(implementationContext).getClassFileVersion();
+    }
+
+    @Test
+    public void testConstructorMethodInvocation() throws Exception {
+        when(methodDescription.isConstructor()).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESPECIAL, FOO, false);
+    }
+
+    @Test
+    public void testPublicMethodInvocation() throws Exception {
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKEVIRTUAL, FOO, false);
+    }
+
+    @Test
+    public void testInterfaceMethodInvocation() throws Exception {
+        when(declaringType.isInterface()).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKEINTERFACE, FOO, true);
+    }
+
+    @Test
+    public void testStaticInterfaceMethodInvocation() throws Exception {
+        when(declaringType.isInterface()).thenReturn(true);
+        when(methodDescription.isStatic()).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESTATIC, FOO, true);
+    }
+
+    @Test
+    public void testDefaultInterfaceMethodInvocation() throws Exception {
+        when(methodDescription.isDefaultMethod()).thenReturn(true);
+        when(declaringType.isInterface()).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKEINTERFACE, FOO, true);
+    }
+
+    @Test
+    public void testExplicitlySpecialDefaultInterfaceMethodInvocation() throws Exception {
+        when(methodDescription.isDefaultMethod()).thenReturn(true);
+        when(methodDescription.isSpecializableFor(declaringType)).thenReturn(true);
+        when(declaringType.isInterface()).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription).special(declaringType), Opcodes.INVOKESPECIAL, FOO, true);
+    }
+
+    @Test
+    public void testExplicitlySpecialDefaultInterfaceMethodInvocationOnOther() throws Exception {
+        when(methodDescription.isDefaultMethod()).thenReturn(true);
+        when(methodDescription.isSpecializableFor(rawOtherType)).thenReturn(false);
+        assertThat(MethodInvocation.invoke(methodDescription).special(rawOtherType).isValid(), is(false));
+    }
+
+    @Test
+    public void testExplicitlySpecialMethodInvocation() throws Exception {
+        when(methodDescription.isSpecializableFor(rawOtherType)).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription).special(rawOtherType), Opcodes.INVOKESPECIAL, BAZ, false);
+    }
+
+    @Test
+    public void testIllegalSpecialMethodInvocation() throws Exception {
+        assertThat(MethodInvocation.invoke(methodDescription).special(rawOtherType).isValid(), is(false));
+    }
+
+    @Test
+    public void testExplicitlyVirtualMethodInvocation() throws Exception {
+        when(declaringType.isAssignableFrom(rawOtherType)).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription).virtual(rawOtherType), Opcodes.INVOKEVIRTUAL, BAZ, false);
+    }
+
+    @Test
+    public void testExplicitlyVirtualMethodInvocationOfInterface() throws Exception {
+        when(declaringType.isAssignableFrom(rawOtherType)).thenReturn(true);
+        when(rawOtherType.isInterface()).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription).virtual(rawOtherType), Opcodes.INVOKEINTERFACE, BAZ, true);
+    }
+
+    @Test
+    public void testExplicitlyVirtualMethodInvocationOfInterfaceOfObjectMethod() throws Exception {
+        when(declaringType.isAssignableFrom(rawOtherType)).thenReturn(true);
+        when(rawOtherType.isInterface()).thenReturn(true);
+        when(declaringType.represents(Object.class)).thenReturn(true);
+        assertInvocation(MethodInvocation.invoke(methodDescription).virtual(rawOtherType), Opcodes.INVOKEVIRTUAL, FOO, false);
+    }
+
+    @Test
+    public void testStaticVirtualInvocation() throws Exception {
+        when(methodDescription.isStatic()).thenReturn(true);
+        assertThat(MethodInvocation.invoke(methodDescription).virtual(rawOtherType).isValid(), is(false));
+    }
+
+    @Test
+    public void testPrivateVirtualInvocation() throws Exception {
+        when(methodDescription.isPrivate()).thenReturn(true);
+        assertThat(MethodInvocation.invoke(methodDescription).virtual(rawOtherType).isValid(), is(false));
+    }
+
+    @Test
+    public void testPrivateVirtualInvocationOnSelf() throws Exception {
+        when(methodDescription.isPrivate()).thenReturn(true);
+        assertThat(MethodInvocation.invoke(methodDescription).virtual(declaringType).isValid(), is(true));
+    }
+
+
+ succeeded in 289ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation.bytecode.member;
+
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.description.type.TypeList;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
+import net.bytebuddy.utility.JavaConstant;
+import net.bytebuddy.utility.JavaType;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import java.util.List;
+
+/**
+ * A builder for a method invocation.
+ */
+public enum MethodInvocation {
+
+    /**
+     * A virtual method invocation.
+     */
+    VIRTUAL(Opcodes.INVOKEVIRTUAL, Opcodes.H_INVOKEVIRTUAL, Opcodes.INVOKEVIRTUAL, Opcodes.H_INVOKEVIRTUAL),
+
+    /**
+     * An interface-typed virtual method invocation.
+     */
+    INTERFACE(Opcodes.INVOKEINTERFACE, Opcodes.H_INVOKEINTERFACE, Opcodes.INVOKEINTERFACE, Opcodes.H_INVOKEINTERFACE),
+
+    /**
+     * A static method invocation.
+     */
+    STATIC(Opcodes.INVOKESTATIC, Opcodes.H_INVOKESTATIC, Opcodes.INVOKESTATIC, Opcodes.H_INVOKESTATIC),
+
+    /**
+     * A specialized pseudo-virtual method invocation for a non-constructor.
+     */
+    SPECIAL(Opcodes.INVOKESPECIAL, Opcodes.H_INVOKESPECIAL, Opcodes.INVOKESPECIAL, Opcodes.H_INVOKESPECIAL),
+
+    /**
+     * A specialized pseudo-virtual method invocation for a constructor.
+     */
+    SPECIAL_CONSTRUCTOR(Opcodes.INVOKESPECIAL, Opcodes.H_NEWINVOKESPECIAL, Opcodes.INVOKESPECIAL, Opcodes.H_NEWINVOKESPECIAL),
+
+    /**
+     * A private method call that is potentially virtual.
+     */
+    VIRTUAL_PRIVATE(Opcodes.INVOKEVIRTUAL, Opcodes.H_INVOKEVIRTUAL, Opcodes.INVOKESPECIAL, Opcodes.H_INVOKESPECIAL),
+
+    /**
+     * A private method call that is potentially virtual on an interface type.
+     */
+    INTERFACE_PRIVATE(Opcodes.INVOKEINTERFACE, Opcodes.H_INVOKEINTERFACE, Opcodes.INVOKESPECIAL, Opcodes.H_INVOKESPECIAL);
+
+    /**
+     * The opcode for invoking a method.
+     */
+    private final int opcode;
+
+    /**
+     * The handle being used for a dynamic method invocation.
+     */
+    private final int handle;
+
+    /**
+     * The opcode for invoking a method before Java 11.
+     */
+    private final int legacyOpcode;
+
+    /**
+     * The handle being used for a dynamic method invocation before Java 11.
+     */
+    private final int legacyHandle;
+
+    /**
+     * Creates a new type of method invocation.
+     *
+     * @param opcode       The opcode for invoking a method.
+     * @param handle       The handle being used for a dynamic method invocation.
+     * @param legacyOpcode The opcode for invoking a method before Java 11.
+     * @param legacyHandle The handle being used for a dynamic method invocation before Java 11.
+     */
+    MethodInvocation(int opcode, int handle, int legacyOpcode, int legacyHandle) {
+        this.opcode = opcode;
+        this.handle = handle;
+        this.legacyOpcode = legacyOpcode;
+        this.legacyHandle = legacyHandle;
+    }
+
+    /**
+     * Creates a method invocation with an implicitly determined invocation type.
+     *
+     * @param methodDescription The method to be invoked.
+     * @return A stack manipulation with implicitly determined invocation type.
+     */
+    public static WithImplicitInvocationTargetType invoke(MethodDescription.InDefinedShape methodDescription) {
+        if (methodDescription.isTypeInitializer()) {
+            return IllegalInvocation.INSTANCE;
+        } else if (methodDescription.isStatic()) { // Check this property first, private static methods must use INVOKESTATIC
+            return STATIC.new Invocation(methodDescription);
+        } else if (methodDescription.isConstructor()) {
+            return SPECIAL_CONSTRUCTOR.new Invocation(methodDescription); // Check this property second, constructors might be private
+        } else if (methodDescription.isPrivate()) {
+            return (methodDescription.getDeclaringType().isInterface()
+                    ? INTERFACE_PRIVATE
+                    : VIRTUAL_PRIVATE).new Invocation(methodDescription);
+        } else if (methodDescription.getDeclaringType().isInterface()) { // Check this property last, default methods must be called by INVOKESPECIAL
+            return INTERFACE.new Invocation(methodDescription);
+        } else {
+            return VIRTUAL.new Invocation(methodDescription);
+        }
+    }
+
+    /**
+     * Creates a method invocation with an implicitly determined invocation type. If the method's return type derives from its declared shape, the value
+     * is additionally casted to the value of the generically resolved method.
+     *
+     * @param methodDescription The method to be invoked.
+     * @return A stack manipulation with implicitly determined invocation type.
+     */
+    public static WithImplicitInvocationTargetType invoke(MethodDescription methodDescription) {
+        MethodDescription.InDefinedShape declaredMethod = methodDescription.asDefined();
+        return declaredMethod.getReturnType().asErasure().equals(methodDescription.getReturnType().asErasure())
+                ? invoke(declaredMethod)
+                : OfGenericMethod.of(methodDescription, invoke(declaredMethod));
+    }
+
+    /**
+     * Returns a method invocation of {@code java.lang.invoke.MethodHandles#lookup()}.
+     *
+     * @return A method invocation for resolving the current lookup.
+     */
+    public static StackManipulation lookup() {
+        return invoke(new MethodDescription.Latent(JavaType.METHOD_HANDLES.getTypeStub(), new MethodDescription.Token("lookup",
+                Opcodes.ACC_STATIC | Opcodes.ACC_PUBLIC,
+                JavaType.METHOD_HANDLES_LOOKUP.getTypeStub().asGenericType())));
+    }
+
+    /**
+     * An illegal implicit method invocation.
+     */
+    protected enum IllegalInvocation implements WithImplicitInvocationTargetType {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation virtual(TypeDescription invocationTarget) {
+            return Illegal.INSTANCE;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation special(TypeDescription invocationTarget) {
+            return Illegal.INSTANCE;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation dynamic(String methodName,
+                                         TypeDescription returnType,
+                                         List<? extends TypeDescription> methodType,
+                                         List<? extends JavaConstant> arguments) {
+            return Illegal.INSTANCE;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation onHandle(HandleType type) {
+            return Illegal.INSTANCE;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return false;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            return Illegal.INSTANCE.apply(methodVisitor, implementationContext);
+        }
+    }
+
+    /**
+     * Represents a method invocation where the invocation type (static, virtual, special, interface) is derived
+     * from the given method's description.
+     */
+    public interface WithImplicitInvocationTargetType extends StackManipulation {
+
+        /**
+         * Transforms this method invocation into a virtual (or interface) method invocation on the given type.
+         *
+         * @param invocationTarget The type on which the method is to be invoked virtually on.
+         * @return A stack manipulation representing this method invocation.
+         */
+        StackManipulation virtual(TypeDescription invocationTarget);
+
+        /**
+         * Transforms this method invocation into a special invocation on the given type.
+         *
+         * @param invocationTarget The type on which the method is to be invoked specially on.
+         * @return A stack manipulation representing this method invocation.
+         */
+        StackManipulation special(TypeDescription invocationTarget);
+
+        /**
+         * Invokes the method as a bootstrap method to bind a call site with the given properties. Note that the
+         * Java virtual machine currently only knows how to resolve bootstrap methods that link static methods
+         * or a constructor.
+         *
+         * @param methodName The name of the method to be bound.
+         * @param returnType The return type of the method to be bound.
+         * @param methodType The parameter types of the method to be bound.
+         * @param arguments  The arguments to be passed to the bootstrap method.
+         * @return A stack manipulation that represents the dynamic method invocation.
+         */
+        StackManipulation dynamic(String methodName,
+                                  TypeDescription returnType,
+                                  List<? extends TypeDescription> methodType,
+                                  List<? extends JavaConstant> arguments);
+
+        /**
+         * Invokes the method via a {@code MethodHandle}.
+         *
+         * @param type The type of invocation.
+         * @return A stack manipulation that represents a method call of the specified method via a method handle.
+         */
+        StackManipulation onHandle(HandleType type);
+    }
+
+    /**
+     * A method invocation of a generically resolved method.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    protected static class OfGenericMethod implements WithImplicitInvocationTargetType {
+
+        /**
+         * The generically resolved return type of the method.
+         */
+        private final TypeDescription targetType;
+
+        /**
+         * The invocation of the method in its defined shape.
+         */
+        private final WithImplicitInvocationTargetType invocation;
+
+        /**
+         * Creates a generic method invocation.
+         *
+         * @param targetType The generically resolved return type of the method.
+         * @param invocation The invocation of the method in its defined shape.
+         */
+        protected OfGenericMethod(TypeDescription targetType, WithImplicitInvocationTargetType invocation) {
+            this.targetType = targetType;
+            this.invocation = invocation;
+        }
+
+        /**
+         * Creates a generic access dispatcher for a given method.
+         *
+         * @param methodDescription The generically resolved return type of the method.
+         * @param invocation        The invocation of the method in its defined shape.
+         * @return A method access dispatcher for the given method.
+         */
+        protected static WithImplicitInvocationTargetType of(MethodDescription methodDescription, WithImplicitInvocationTargetType invocation) {
+            return new OfGenericMethod(methodDescription.getReturnType().asErasure(), invocation);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation virtual(TypeDescription invocationTarget) {
+            return new StackManipulation.Compound(invocation.virtual(invocationTarget), TypeCasting.to(targetType));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation special(TypeDescription invocationTarget) {
+            return new StackManipulation.Compound(invocation.special(invocationTarget), TypeCasting.to(targetType));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation dynamic(String methodName, TypeDescription returnType, List<? extends TypeDescription> methodType, List<? extends JavaConstant> arguments) {
+            return invocation.dynamic(methodName, returnType, methodType, arguments);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation onHandle(HandleType type) {
+            return new Compound(invocation.onHandle(type), TypeCasting.to(targetType));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return invocation.isValid();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            return new Compound(invocation, TypeCasting.to(targetType)).apply(methodVisitor, implementationContext);
+        }
+    }
+
+    /**
+     * An implementation of a method invoking stack manipulation.
+     */
+    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+    protected class Invocation extends StackManipulation.AbstractBase implements WithImplicitInvocationTargetType {
+
+        /**
+         * The method to be invoked.
+         */
+        private final TypeDescription typeDescription;
+
+        /**
+         * The type on which this method is to be invoked.
+         */
+        private final MethodDescription.InDefinedShape methodDescription;
+
+        /**
+         * Creates an invocation of a given method on its declaring type as an invocation target.
+         *
+         * @param methodDescription The method to be invoked.
+
+codex
+The implementation is compact so far: `OfGenericMethod` only wraps another invocation and adds casts. I’m now checking how many call sites actually depend on it, because hub-like modularization needs strong fan-in/fan-out, not just a single inner helper with a few methods.
+exec
+/bin/bash -lc "rg -n \"OfGenericMethod\\b|invoke\\(methodDescription\\)\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '220,420p' byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '240,520p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 143ms:
+         * @param methodName The name of the method to be bound.
+         * @param returnType The return type of the method to be bound.
+         * @param methodType The parameter types of the method to be bound.
+         * @param arguments  The arguments to be passed to the bootstrap method.
+         * @return A stack manipulation that represents the dynamic method invocation.
+         */
+        StackManipulation dynamic(String methodName,
+                                  TypeDescription returnType,
+                                  List<? extends TypeDescription> methodType,
+                                  List<? extends JavaConstant> arguments);
+
+        /**
+         * Invokes the method via a {@code MethodHandle}.
+         *
+         * @param type The type of invocation.
+         * @return A stack manipulation that represents a method call of the specified method via a method handle.
+         */
+        StackManipulation onHandle(HandleType type);
+    }
+
+    /**
+     * A method invocation of a generically resolved method.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    protected static class OfGenericMethod implements WithImplicitInvocationTargetType {
+
+        /**
+         * The generically resolved return type of the method.
+         */
+        private final TypeDescription targetType;
+
+        /**
+         * The invocation of the method in its defined shape.
+         */
+        private final WithImplicitInvocationTargetType invocation;
+
+        /**
+         * Creates a generic method invocation.
+         *
+         * @param targetType The generically resolved return type of the method.
+         * @param invocation The invocation of the method in its defined shape.
+         */
+        protected OfGenericMethod(TypeDescription targetType, WithImplicitInvocationTargetType invocation) {
+            this.targetType = targetType;
+            this.invocation = invocation;
+        }
+
+        /**
+         * Creates a generic access dispatcher for a given method.
+         *
+         * @param methodDescription The generically resolved return type of the method.
+         * @param invocation        The invocation of the method in its defined shape.
+         * @return A method access dispatcher for the given method.
+         */
+        protected static WithImplicitInvocationTargetType of(MethodDescription methodDescription, WithImplicitInvocationTargetType invocation) {
+            return new OfGenericMethod(methodDescription.getReturnType().asErasure(), invocation);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation virtual(TypeDescription invocationTarget) {
+            return new StackManipulation.Compound(invocation.virtual(invocationTarget), TypeCasting.to(targetType));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation special(TypeDescription invocationTarget) {
+            return new StackManipulation.Compound(invocation.special(invocationTarget), TypeCasting.to(targetType));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation dynamic(String methodName, TypeDescription returnType, List<? extends TypeDescription> methodType, List<? extends JavaConstant> arguments) {
+            return invocation.dynamic(methodName, returnType, methodType, arguments);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation onHandle(HandleType type) {
+            return new Compound(invocation.onHandle(type), TypeCasting.to(targetType));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return invocation.isValid();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            return new Compound(invocation, TypeCasting.to(targetType)).apply(methodVisitor, implementationContext);
+        }
+    }
+
+    /**
+     * An implementation of a method invoking stack manipulation.
+     */
+    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+    protected class Invocation extends StackManipulation.AbstractBase implements WithImplicitInvocationTargetType {
+
+        /**
+         * The method to be invoked.
+         */
+        private final TypeDescription typeDescription;
+
+        /**
+         * The type on which this method is to be invoked.
+         */
+        private final MethodDescription.InDefinedShape methodDescription;
+
+        /**
+         * Creates an invocation of a given method on its declaring type as an invocation target.
+         *
+         * @param methodDescription The method to be invoked.
+         */
+        protected Invocation(MethodDescription.InDefinedShape methodDescription) {
+            this(methodDescription, methodDescription.getDeclaringType());
+        }
+
+        /**
+         * Creates an invocation of a given method on a given invocation target type.
+         *
+         * @param methodDescription The method to be invoked.
+         * @param typeDescription   The type on which this method is to be invoked.
+         */
+        protected Invocation(MethodDescription.InDefinedShape methodDescription, TypeDescription typeDescription) {
+            this.typeDescription = typeDescription;
+            this.methodDescription = methodDescription;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            methodVisitor.visitMethodInsn(opcode == legacyOpcode || implementationContext.getClassFileVersion().isAtLeast(ClassFileVersion.JAVA_V11)
+                            ? opcode
+                            : legacyOpcode,
+                    typeDescription.getInternalName(),
+                    methodDescription.getInternalName(),
+                    methodDescription.getDescriptor(),
+                    typeDescription.isInterface());
+            int parameterSize = methodDescription.getStackSize(), returnValueSize = methodDescription.getReturnType().getStackSize().getSize();
+            return new Size(returnValueSize - parameterSize, Math.max(0, returnValueSize - parameterSize));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation virtual(TypeDescription invocationTarget) {
+            if (methodDescription.isConstructor() || methodDescription.isStatic()) {
+                return Illegal.INSTANCE;
+            } else if (methodDescription.isPrivate()) {
+                return methodDescription.getDeclaringType().equals(invocationTarget)
+                        ? this
+                        : Illegal.INSTANCE;
+            } else if (invocationTarget.isInterface()) {
+                return methodDescription.getDeclaringType().represents(Object.class)
+                        ? this
+                        : INTERFACE.new Invocation(methodDescription, invocationTarget);
+            } else {
+                return VIRTUAL.new Invocation(methodDescription, invocationTarget);
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation special(TypeDescription invocationTarget) {
+            return methodDescription.isSpecializableFor(invocationTarget)
+                    ? SPECIAL.new Invocation(methodDescription, invocationTarget)
+                    : Illegal.INSTANCE;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation dynamic(String name,
+                                         TypeDescription returnType,
+                                         List<? extends TypeDescription> methodType,
+                                         List<? extends JavaConstant> arguments) {
+            return methodDescription.isInvokeBootstrap(TypeList.Explicit.of(arguments)) ? new Invokedynamic(name,
+                    JavaConstant.MethodType.of(returnType, methodType),
+                    JavaConstant.MethodHandle.of(methodDescription),
+                    arguments) : Illegal.INSTANCE;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation onHandle(HandleType type) {
+            return new HandleInvocation(methodDescription, type);
+        }
+    }
+
+
+    /**
+     * Performs a method invocation on a method handle with a polymorphic type signature.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    protected static class HandleInvocation extends StackManipulation.AbstractBase {
+
+        /**
+         * The internal name of the method handle type.
+         */
+        private static final String METHOD_HANDLE = "java/lang/invoke/MethodHandle";
+
+        /**
+         * The invoked method.
+         */
+        private final MethodDescription.InDefinedShape methodDescription;
+
+        /**
+         * The type of method handle invocation.
+         */
+        private final HandleType type;
+
+        /**
+         * Creates a new method handle invocation.
+         *
+         * @param methodDescription The invoked method.
+         * @param type              The type of method handle invocation.
+         */
+        protected HandleInvocation(MethodDescription.InDefinedShape methodDescription, HandleType type) {
+            this.methodDescription = methodDescription;
+            this.type = type;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                    METHOD_HANDLE,
+                    type.getMethodName(),
+                    methodDescription.isStatic() || methodDescription.isConstructor()
+                            ? methodDescription.getDescriptor()
+                            : "(" + methodDescription.getDeclaringType().getDescriptor() + methodDescription.getDescriptor().substring(1),
+                    false);
+            int parameterSize = 1 + methodDescription.getStackSize(), returnValueSize = methodDescription.getReturnType().getStackSize().getSize();
+            return new Size(returnValueSize - parameterSize, Math.max(0, returnValueSize - parameterSize));
+        }
+    }
+
+    /**
+     * The type of method handle invocation.
+     */
+    public enum HandleType {
+
+        /**
+         * An exact invocation without type adjustments.
+         */
+        EXACT("invokeExact"),
+
+        /**
+         * A regular invocation with standard type adjustments.
+         */
+        REGULAR("invoke");
+
+        /**
+         * The name of the invoked method.
+         */
+        private final String methodName;
+
+        /**
+         * Creates a new handle type.
+         *
+         * @param methodName The name of the invoked method.
+         */
+        HandleType(String methodName) {
+            this.methodName = methodName;
+        }
+
+        /**
+         * Returns the name of the represented method.
+
+ succeeded in 186ms:
+        assertInvocation(MethodInvocation.invoke(methodDescription).virtual(rawOtherType), Opcodes.INVOKEVIRTUAL, FOO, false);
+    }
+
+    @Test
+    public void testStaticVirtualInvocation() throws Exception {
+        when(methodDescription.isStatic()).thenReturn(true);
+        assertThat(MethodInvocation.invoke(methodDescription).virtual(rawOtherType).isValid(), is(false));
+    }
+
+    @Test
+    public void testPrivateVirtualInvocation() throws Exception {
+        when(methodDescription.isPrivate()).thenReturn(true);
+        assertThat(MethodInvocation.invoke(methodDescription).virtual(rawOtherType).isValid(), is(false));
+    }
+
+    @Test
+    public void testPrivateVirtualInvocationOnSelf() throws Exception {
+        when(methodDescription.isPrivate()).thenReturn(true);
+        assertThat(MethodInvocation.invoke(methodDescription).virtual(declaringType).isValid(), is(true));
+    }
+
+    @Test
+    public void testConstructorVirtualInvocation() throws Exception {
+        when(methodDescription.isConstructor()).thenReturn(true);
+        assertThat(MethodInvocation.invoke(methodDescription).virtual(rawOtherType).isValid(), is(false));
+    }
+
+    private void assertInvocation(StackManipulation stackManipulation,
+                                  int opcode,
+                                  String typeName,
+                                  boolean interfaceInvocation) {
+        assertThat(stackManipulation.isValid(), is(true));
+        StackManipulation.Size size = stackManipulation.apply(methodVisitor, implementationContext);
+        assertThat(size.getSizeImpact(), is(expectedSize));
+        assertThat(size.getMaximalSize(), is(Math.max(0, expectedSize)));
+        verify(methodVisitor).visitMethodInsn(opcode, typeName, BAR, QUX, interfaceInvocation);
+        verifyNoMoreInteractions(methodVisitor);
+    }
+}
+
+ succeeded in 323ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:71:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:73:        assertThat(stackManipulation, hasPrototype((StackManipulation) new MethodInvocation.OfGenericMethod(genericErasure, MethodInvocation.invoke(declaredMethod))));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:79:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:89:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).virtual(targetType);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:98:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).virtual(targetType);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:108:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).special(targetType);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:117:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).special(targetType);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:127:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).dynamic(FOO,
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:142:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).dynamic(FOO,
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:158:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationDynamicTest.java:96:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription)
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationDynamicTest.java:109:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription)
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationDynamicTest.java:120:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription)
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:95:        assertThat(MethodInvocation.invoke(methodDescription).isValid(), is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:101:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESTATIC, FOO, false);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:108:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESTATIC, FOO, false);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:115:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESPECIAL, FOO, false);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:123:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKEVIRTUAL, FOO, false);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:132:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESPECIAL, FOO, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:141:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKEINTERFACE, FOO, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:148:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESPECIAL, FOO, false);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:153:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKEVIRTUAL, FOO, false);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:159:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKEINTERFACE, FOO, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:166:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKESTATIC, FOO, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:173:        assertInvocation(MethodInvocation.invoke(methodDescription), Opcodes.INVOKEINTERFACE, FOO, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:181:        assertInvocation(MethodInvocation.invoke(methodDescription).special(declaringType), Opcodes.INVOKESPECIAL, FOO, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:188:        assertThat(MethodInvocation.invoke(methodDescription).special(rawOtherType).isValid(), is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:194:        assertInvocation(MethodInvocation.invoke(methodDescription).special(rawOtherType), Opcodes.INVOKESPECIAL, BAZ, false);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:199:        assertThat(MethodInvocation.invoke(methodDescription).special(rawOtherType).isValid(), is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:205:        assertInvocation(MethodInvocation.invoke(methodDescription).virtual(rawOtherType), Opcodes.INVOKEVIRTUAL, BAZ, false);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:212:        assertInvocation(MethodInvocation.invoke(methodDescription).virtual(rawOtherType), Opcodes.INVOKEINTERFACE, BAZ, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:220:        assertInvocation(MethodInvocation.invoke(methodDescription).virtual(rawOtherType), Opcodes.INVOKEVIRTUAL, FOO, false);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:226:        assertThat(MethodInvocation.invoke(methodDescription).virtual(rawOtherType).isValid(), is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:232:        assertThat(MethodInvocation.invoke(methodDescription).virtual(rawOtherType).isValid(), is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:238:        assertThat(MethodInvocation.invoke(methodDescription).virtual(declaringType).isValid(), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationTest.java:244:        assertThat(MethodInvocation.invoke(methodDescription).virtual(rawOtherType).isValid(), is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationHandleTest.java:65:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).onHandle(MethodInvocation.HandleType.EXACT);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationHandleTest.java:76:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).onHandle(MethodInvocation.HandleType.EXACT);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationHandleTest.java:86:        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).onHandle(MethodInvocation.HandleType.EXACT);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1616:                return methodDescription.isVirtual() ? MethodInvocation.invoke(methodDescription).virtual(mapped.get(THIS_REFERENCE).asErasure()) : MethodInvocation.invoke(methodDescription);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:2828:                        stackManipulations.add(MethodInvocation.invoke(methodDescription));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/MethodDelegationBinder.java:134:                return MethodInvocation.invoke(methodDescription);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/MethodDelegationBinder.java:162:                return MethodInvocation.invoke(methodDescription).virtual(typeDescription);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java:271:                StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).special(typeDescription);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:865:                            : MethodVariableAccess.loadThis(), MethodInvocation.invoke(methodDescription));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/PrivilegedMemberLookupAction.java:172:                .intercept(MethodCall.invoke(methodDescription)
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:143:                : OfGenericMethod.of(methodDescription, invoke(declaredMethod));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:264:    protected static class OfGenericMethod implements WithImplicitInvocationTargetType {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:282:        protected OfGenericMethod(TypeDescription targetType, WithImplicitInvocationTargetType invocation) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:295:            return new OfGenericMethod(methodDescription.getReturnType().asErasure(), invocation);
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:10050:                                return MethodInvocation.invoke(methodDescription);
+
+codex
+I have enough context to decide the smell question; I’m just pulling exact line references so the justification can be concrete and verifiable.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java | sed -n '60,90p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java | sed -n '130,320p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   130	    }
+   131	
+   132	    /**
+   133	     * Creates a method invocation with an implicitly determined invocation type. If the method's return type derives from its declared shape, the value
+   134	     * is additionally casted to the value of the generically resolved method.
+   135	     *
+   136	     * @param methodDescription The method to be invoked.
+   137	     * @return A stack manipulation with implicitly determined invocation type.
+   138	     */
+   139	    public static WithImplicitInvocationTargetType invoke(MethodDescription methodDescription) {
+   140	        MethodDescription.InDefinedShape declaredMethod = methodDescription.asDefined();
+   141	        return declaredMethod.getReturnType().asErasure().equals(methodDescription.getReturnType().asErasure())
+   142	                ? invoke(declaredMethod)
+   143	                : OfGenericMethod.of(methodDescription, invoke(declaredMethod));
+   144	    }
+   145	
+   146	    /**
+   147	     * Returns a method invocation of {@code java.lang.invoke.MethodHandles#lookup()}.
+   148	     *
+   149	     * @return A method invocation for resolving the current lookup.
+   150	     */
+   151	    public static StackManipulation lookup() {
+   152	        return invoke(new MethodDescription.Latent(JavaType.METHOD_HANDLES.getTypeStub(), new MethodDescription.Token("lookup",
+   153	                Opcodes.ACC_STATIC | Opcodes.ACC_PUBLIC,
+   154	                JavaType.METHOD_HANDLES_LOOKUP.getTypeStub().asGenericType())));
+   155	    }
+   156	
+   157	    /**
+   158	     * An illegal implicit method invocation.
+   159	     */
+   160	    protected enum IllegalInvocation implements WithImplicitInvocationTargetType {
+   161	
+   162	        /**
+   163	         * The singleton instance.
+   164	         */
+   165	        INSTANCE;
+   166	
+   167	        /**
+   168	         * {@inheritDoc}
+   169	         */
+   170	        public StackManipulation virtual(TypeDescription invocationTarget) {
+   171	            return Illegal.INSTANCE;
+   172	        }
+   173	
+   174	        /**
+   175	         * {@inheritDoc}
+   176	         */
+   177	        public StackManipulation special(TypeDescription invocationTarget) {
+   178	            return Illegal.INSTANCE;
+   179	        }
+   180	
+   181	        /**
+   182	         * {@inheritDoc}
+   183	         */
+   184	        public StackManipulation dynamic(String methodName,
+   185	                                         TypeDescription returnType,
+   186	                                         List<? extends TypeDescription> methodType,
+   187	                                         List<? extends JavaConstant> arguments) {
+   188	            return Illegal.INSTANCE;
+   189	        }
+   190	
+   191	        /**
+   192	         * {@inheritDoc}
+   193	         */
+   194	        public StackManipulation onHandle(HandleType type) {
+   195	            return Illegal.INSTANCE;
+   196	        }
+   197	
+   198	        /**
+   199	         * {@inheritDoc}
+   200	         */
+   201	        public boolean isValid() {
+   202	            return false;
+   203	        }
+   204	
+   205	        /**
+   206	         * {@inheritDoc}
+   207	         */
+   208	        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+   209	            return Illegal.INSTANCE.apply(methodVisitor, implementationContext);
+   210	        }
+   211	    }
+   212	
+   213	    /**
+   214	     * Represents a method invocation where the invocation type (static, virtual, special, interface) is derived
+   215	     * from the given method's description.
+   216	     */
+   217	    public interface WithImplicitInvocationTargetType extends StackManipulation {
+   218	
+   219	        /**
+   220	         * Transforms this method invocation into a virtual (or interface) method invocation on the given type.
+   221	         *
+   222	         * @param invocationTarget The type on which the method is to be invoked virtually on.
+   223	         * @return A stack manipulation representing this method invocation.
+   224	         */
+   225	        StackManipulation virtual(TypeDescription invocationTarget);
+   226	
+   227	        /**
+   228	         * Transforms this method invocation into a special invocation on the given type.
+   229	         *
+   230	         * @param invocationTarget The type on which the method is to be invoked specially on.
+   231	         * @return A stack manipulation representing this method invocation.
+   232	         */
+   233	        StackManipulation special(TypeDescription invocationTarget);
+   234	
+   235	        /**
+   236	         * Invokes the method as a bootstrap method to bind a call site with the given properties. Note that the
+   237	         * Java virtual machine currently only knows how to resolve bootstrap methods that link static methods
+   238	         * or a constructor.
+   239	         *
+   240	         * @param methodName The name of the method to be bound.
+   241	         * @param returnType The return type of the method to be bound.
+   242	         * @param methodType The parameter types of the method to be bound.
+   243	         * @param arguments  The arguments to be passed to the bootstrap method.
+   244	         * @return A stack manipulation that represents the dynamic method invocation.
+   245	         */
+   246	        StackManipulation dynamic(String methodName,
+   247	                                  TypeDescription returnType,
+   248	                                  List<? extends TypeDescription> methodType,
+   249	                                  List<? extends JavaConstant> arguments);
+   250	
+   251	        /**
+   252	         * Invokes the method via a {@code MethodHandle}.
+   253	         *
+   254	         * @param type The type of invocation.
+   255	         * @return A stack manipulation that represents a method call of the specified method via a method handle.
+   256	         */
+   257	        StackManipulation onHandle(HandleType type);
+   258	    }
+   259	
+   260	    /**
+   261	     * A method invocation of a generically resolved method.
+   262	     */
+   263	    @HashCodeAndEqualsPlugin.Enhance
+   264	    protected static class OfGenericMethod implements WithImplicitInvocationTargetType {
+   265	
+   266	        /**
+   267	         * The generically resolved return type of the method.
+   268	         */
+   269	        private final TypeDescription targetType;
+   270	
+   271	        /**
+   272	         * The invocation of the method in its defined shape.
+   273	         */
+   274	        private final WithImplicitInvocationTargetType invocation;
+   275	
+   276	        /**
+   277	         * Creates a generic method invocation.
+   278	         *
+   279	         * @param targetType The generically resolved return type of the method.
+   280	         * @param invocation The invocation of the method in its defined shape.
+   281	         */
+   282	        protected OfGenericMethod(TypeDescription targetType, WithImplicitInvocationTargetType invocation) {
+   283	            this.targetType = targetType;
+   284	            this.invocation = invocation;
+   285	        }
+   286	
+   287	        /**
+   288	         * Creates a generic access dispatcher for a given method.
+   289	         *
+   290	         * @param methodDescription The generically resolved return type of the method.
+   291	         * @param invocation        The invocation of the method in its defined shape.
+   292	         * @return A method access dispatcher for the given method.
+   293	         */
+   294	        protected static WithImplicitInvocationTargetType of(MethodDescription methodDescription, WithImplicitInvocationTargetType invocation) {
+   295	            return new OfGenericMethod(methodDescription.getReturnType().asErasure(), invocation);
+   296	        }
+   297	
+   298	        /**
+   299	         * {@inheritDoc}
+   300	         */
+   301	        public StackManipulation virtual(TypeDescription invocationTarget) {
+   302	            return new StackManipulation.Compound(invocation.virtual(invocationTarget), TypeCasting.to(targetType));
+   303	        }
+   304	
+   305	        /**
+   306	         * {@inheritDoc}
+   307	         */
+   308	        public StackManipulation special(TypeDescription invocationTarget) {
+   309	            return new StackManipulation.Compound(invocation.special(invocationTarget), TypeCasting.to(targetType));
+   310	        }
+   311	
+   312	        /**
+   313	         * {@inheritDoc}
+   314	         */
+   315	        public StackManipulation dynamic(String methodName, TypeDescription returnType, List<? extends TypeDescription> methodType, List<? extends JavaConstant> arguments) {
+   316	            return invocation.dynamic(methodName, returnType, methodType, arguments);
+   317	        }
+   318	
+   319	        /**
+   320	         * {@inheritDoc}
+
+exec
+/bin/bash -lc "rg -n \"OfGenericMethod\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 269ms:
+    60	        when(declaredMethod.asSignatureToken()).thenReturn(token);
+    61	        when(declaredMethod.isSpecializableFor(targetType)).thenReturn(true);
+    62	        when(declaredMethod.asDefined()).thenReturn(declaredMethod);
+    63	        when(declaredMethod.getParameters()).thenReturn(new ParameterList.Empty<ParameterDescription.InDefinedShape>());
+    64	        when(declaredMethod.getInternalName()).thenReturn(FOO);
+    65	    }
+    66	
+    67	    @Test
+    68	    public void testGenericMethod() throws Exception {
+    69	        TypeDescription genericErasure = mock(TypeDescription.class);
+    70	        when(methodReturnType.asErasure()).thenReturn(genericErasure);
+    71	        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription);
+    72	        assertThat(stackManipulation.isValid(), is(true));
+    73	        assertThat(stackManipulation, hasPrototype((StackManipulation) new MethodInvocation.OfGenericMethod(genericErasure, MethodInvocation.invoke(declaredMethod))));
+    74	    }
+    75	
+    76	    @Test
+    77	    public void testGenericMethodErasureEqual() throws Exception {
+    78	        when(methodReturnType.asErasure()).thenReturn(declaredErasure);
+    79	        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription);
+    80	        assertThat(stackManipulation.isValid(), is(true));
+    81	        assertThat(stackManipulation, hasPrototype((StackManipulation) MethodInvocation.invoke(declaredMethod)));
+    82	    }
+    83	
+    84	    @Test
+    85	    public void testGenericMethodVirtual() throws Exception {
+    86	        TypeDescription genericErasure = mock(TypeDescription.class);
+    87	        when(methodReturnType.asErasure()).thenReturn(genericErasure);
+    88	        when(genericErasure.asErasure()).thenReturn(genericErasure);
+    89	        StackManipulation stackManipulation = MethodInvocation.invoke(methodDescription).virtual(targetType);
+    90	        assertThat(stackManipulation.isValid(), is(true));
+
+ succeeded in 287ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:143:                : OfGenericMethod.of(methodDescription, invoke(declaredMethod));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:264:    protected static class OfGenericMethod implements WithImplicitInvocationTargetType {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:282:        protected OfGenericMethod(TypeDescription targetType, WithImplicitInvocationTargetType invocation) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java:295:            return new OfGenericMethod(methodDescription.getReturnType().asErasure(), invocation);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java:73:        assertThat(stackManipulation, hasPrototype((StackManipulation) new MethodInvocation.OfGenericMethod(genericErasure, MethodInvocation.invoke(declaredMethod))));
+
+codex
+{"target":"net.bytebuddy.implementation.bytecode.member.MethodInvocation.OfGenericMethod","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodInvocation.java and byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/MethodInvocationGenericTest.java. Repo-wide search found only one production creation path for OfGenericMethod (MethodInvocation.invoke at lines 139-143 and the factory at 294-295) plus one direct test instantiation at MethodInvocationGenericTest.java:73; no other classes reference it. The class is a small wrapper that only stores two fields and delegates most behavior to the wrapped invocation, adding TypeCasting/StackManipulation.Compound in a few methods, so it does not show strong fan-in or fan-out indicative of a hub."}
+tokens used
+24,145

@@ -1,0 +1,1578 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ec9-78ae-7d71-b9bb-a709294332db
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.benchmark.jmh.generated.ClassByExtensionBenchmark.benchmarkByteBuddyWithAccessor.jmhTest` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.benchmark.jmh.generated.ClassByExtensionBenchmark.benchmarkByteBuddyWithAccessor.jmhTest",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.benchmark.jmh.generated.ClassByExtensionBenchmark.benchmarkByteBuddyWithAccessor.jmhTest`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the generated benchmark class and tracing its imports, fields, and call sites to see whether it actually acts as a dependency hub or is just a thin JMH wrapper.
+exec
+/bin/bash -lc 'rg --files | rg "ClassByExtensionBenchmark|jmhTest|benchmarkByteBuddyWithAccessor"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java
+
+exec
+/bin/bash -lc "rg -n \"classByExtensionBenchmark\\.benchmarkByteBuddyWithAccessor\\.jmhTest|benchmarkByteBuddyWithAccessor|ClassByExtensionBenchmark\" -S ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmarkTest.java:28:        superClassInvocationBenchmark.benchmarkByteBuddyWithAccessor(blackHole);
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java:10:public class ClassByExtensionBenchmarkByteBuddyInterceptorTest {
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java:14:        Constructor<?> constructor = ClassByExtensionBenchmark.ByteBuddyProxyInterceptor.class.getDeclaredConstructor();
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java:26:        Constructor<?> constructor = ClassByExtensionBenchmark.ByteBuddyAccessInterceptor.class.getDeclaredConstructor();
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:12:public class ClassByExtensionBenchmarkTest {
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:32:    private ClassByExtensionBenchmark classByExtensionBenchmark;
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:66:        classByExtensionBenchmark = new ClassByExtensionBenchmark();
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:73:        assertThat(instance.getClass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:80:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:81:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:89:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:90:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:98:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:99:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:107:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:108:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:115:        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessor();
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:116:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:117:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:124:        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessorAndReusedDelegator();
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:125:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:126:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:133:        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessorWithTypePool();
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:134:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:135:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:142:        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessorAndReusedDelegatorWithTypePool();
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:143:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:144:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:152:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:153:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:161:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:162:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:170:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:171:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:179:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:180:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:188:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:189:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:197:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:198:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:206:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:207:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByImplementationBenchmark.java:188:     * A description of {@link ClassByExtensionBenchmark#baseClass}.
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java:141:     * {@link net.bytebuddy.benchmark.ClassByExtensionBenchmark}.
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java:147:        ClassByExtensionBenchmark classByExtensionBenchmark = new ClassByExtensionBenchmark();
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java:150:        byteBuddyWithAccessorInstance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessor();
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java:226:    public void benchmarkByteBuddyWithAccessor(Blackhole blackHole) {
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/runner/QuickRunner.java:18:import net.bytebuddy.benchmark.ClassByExtensionBenchmark;
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/runner/QuickRunner.java:57:                .include(WILDCARD + ClassByExtensionBenchmark.class.getSimpleName() + WILDCARD)
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:73:public class ClassByExtensionBenchmark {
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:102:     * An implementation to be used by {@link ClassByExtensionBenchmark#benchmarkByteBuddyWithProxyAndReusedDelegator()}.
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:108:     * An implementation to be used by {@link ClassByExtensionBenchmark#benchmarkByteBuddyWithAccessorAndReusedDelegator()}.
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:114:     * An implementation to be used by {@link ClassByExtensionBenchmark#benchmarkByteBuddyWithPrefixAndReusedDelegator()}.
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:120:     * A description of {@link ClassByExtensionBenchmark#baseClass}.
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:283:    public ExampleClass benchmarkByteBuddyWithAccessor() throws Exception {
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:305:    public ExampleClass benchmarkByteBuddyWithAccessorAndReusedDelegator() throws Exception {
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:327:    public ExampleClass benchmarkByteBuddyWithAccessorWithTypePool() throws Exception {
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:349:    public ExampleClass benchmarkByteBuddyWithAccessorAndReusedDelegatorWithTypePool() throws Exception {
+./byte-buddy-benchmark/result.txt:2:ClassByExtensionBenchmark.baseline                                          avgt  200     0,003 ±  0,001  us/op
+./byte-buddy-benchmark/result.txt:3:ClassByExtensionBenchmark.benchmarkByteBuddySpecialized                     avgt  200   707,334 ±  6,104  us/op
+./byte-buddy-benchmark/result.txt:4:ClassByExtensionBenchmark.benchmarkByteBuddyWithAccessor                    avgt  200  1803,221 ± 17,213  us/op
+./byte-buddy-benchmark/result.txt:5:ClassByExtensionBenchmark.benchmarkByteBuddyWithAccessorAndReusedDelegator  avgt  200  1739,410 ± 16,667  us/op
+./byte-buddy-benchmark/result.txt:6:ClassByExtensionBenchmark.benchmarkByteBuddyWithPrefix                      avgt  200   753,239 ±  5,758  us/op
+./byte-buddy-benchmark/result.txt:7:ClassByExtensionBenchmark.benchmarkByteBuddyWithPrefixAndReusedDelegator    avgt  200   740,982 ±  6,319  us/op
+./byte-buddy-benchmark/result.txt:8:ClassByExtensionBenchmark.benchmarkByteBuddyWithProxy                       avgt  200  3511,561 ± 42,849  us/op
+./byte-buddy-benchmark/result.txt:9:ClassByExtensionBenchmark.benchmarkByteBuddyWithProxyAndReusedDelegator     avgt  200  3530,712 ± 47,175  us/op
+./byte-buddy-benchmark/result.txt:10:ClassByExtensionBenchmark.benchmarkCglib                                    avgt  200  1052,087 ±  8,333  us/op
+./byte-buddy-benchmark/result.txt:11:ClassByExtensionBenchmark.benchmarkJavassist                                avgt  200   550,898 ±  5,262  us/op
+./byte-buddy-benchmark/result.txt:24:SuperClassInvocationBenchmark.benchmarkByteBuddyWithAccessor                avgt  200     0,020 ±  0,001  us/op
+
+codex
+I found the benchmark source and the test coverage around it. Next I’m checking whether the generated JMH wrapper exists in the repository and, if so, whether it is a simple generated harness or a true dependency hub.
+exec
+/bin/bash -lc "sed -n '1,240p' byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.benchmark;
+
+import javassist.util.proxy.MethodFilter;
+import javassist.util.proxy.MethodHandler;
+import javassist.util.proxy.ProxyFactory;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.benchmark.specimen.ExampleClass;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
+import net.bytebuddy.dynamic.scaffold.TypeValidation;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.MethodDelegation;
+import net.bytebuddy.implementation.SuperMethodCall;
+import net.bytebuddy.implementation.bind.annotation.AllArguments;
+import net.bytebuddy.implementation.bind.annotation.RuntimeType;
+import net.bytebuddy.implementation.bind.annotation.SuperCall;
+import net.bytebuddy.implementation.bind.annotation.SuperMethod;
+import net.bytebuddy.implementation.bind.annotation.This;
+import net.bytebuddy.pool.TypePool;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import net.sf.cglib.proxy.CallbackHelper;
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.MethodInterceptor;
+import net.sf.cglib.proxy.MethodProxy;
+import net.sf.cglib.proxy.NoOp;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+
+import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
+import static net.bytebuddy.matcher.ElementMatchers.none;
+
+/**
+ * <p>
+ * This benchmark dynamically creates a subclass of {@link ExampleClass} which overrides all methods to invoke the
+ * direct super class's implementation. The benchmark furthermore creates an instance of this class since some
+ * code generation frameworks rely on this property. Because this benchmark requires the creation of a subclass,
+ * the JDK proxy is not included in this benchmark.
+ * </p>
+ * <p>
+ * Note that this class defines all values that are accessed by benchmark methods as instance fields. This way, the JIT
+ * compiler's capability of constant folding is limited in order to produce more comparable test results.
+ * </p>
+ */
+@State(Scope.Thread)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+public class ClassByExtensionBenchmark {
+
+    /**
+     * The base class to be subclassed in all benchmarks.
+     */
+    public static final Class<? extends ExampleClass> BASE_CLASS = ExampleClass.class;
+
+    /**
+     * The base class to be subclassed in all benchmarks.
+     */
+    private Class<? extends ExampleClass> baseClass = BASE_CLASS;
+
+    /**
+     * The zero-length of the class loader's URL.
+     */
+    private int urlLength = 0;
+
+    /**
+     * Creates a new class loader. By using a fresh class loader for each creation, we avoid name space issues.
+     * A class loader's creation is part of the benchmark but since any test creates a class loader exactly once,
+     * the benchmark remains valid.
+     *
+     * @return A new class loader.
+     */
+    private ClassLoader newClassLoader() {
+        return new URLClassLoader(new URL[urlLength]);
+    }
+
+    /**
+     * An implementation to be used by {@link ClassByExtensionBenchmark#benchmarkByteBuddyWithProxyAndReusedDelegator()}.
+     */
+    @MaybeNull
+    private Implementation proxyInterceptor;
+
+    /**
+     * An implementation to be used by {@link ClassByExtensionBenchmark#benchmarkByteBuddyWithAccessorAndReusedDelegator()}.
+     */
+    @MaybeNull
+    private Implementation accessInterceptor;
+
+    /**
+     * An implementation to be used by {@link ClassByExtensionBenchmark#benchmarkByteBuddyWithPrefixAndReusedDelegator()}.
+     */
+    @MaybeNull
+    private Implementation.Composable prefixInterceptor;
+
+    /**
+     * A description of {@link ClassByExtensionBenchmark#baseClass}.
+     */
+    @MaybeNull
+    private TypeDescription baseClassDescription;
+
+    /**
+     * A description of {@link ByteBuddyProxyInterceptor}.
+     */
+    @MaybeNull
+    private TypeDescription proxyClassDescription;
+
+    /**
+     * A description of {@link ByteBuddyAccessInterceptor}.
+     */
+    @MaybeNull
+    private TypeDescription accessClassDescription;
+
+    /**
+     * A description of {@link ByteBuddyPrefixInterceptor}.
+     */
+    @MaybeNull
+    private TypeDescription prefixClassDescription;
+
+    /**
+     * A method delegation to {@link ByteBuddyProxyInterceptor}.
+     */
+    @MaybeNull
+    private Implementation proxyInterceptorDescription;
+
+    /**
+     * A method delegation to {@link ByteBuddyAccessInterceptor}.
+     */
+    @MaybeNull
+    private Implementation accessInterceptorDescription;
+
+    /**
+     * A method delegation to {@link ByteBuddyPrefixInterceptor}.
+     */
+    @MaybeNull
+    private Implementation.Composable prefixInterceptorDescription;
+
+    /**
+     * A setup method to create precomputed delegator.
+     */
+    @Setup
+    public void setup() {
+        proxyInterceptor = MethodDelegation.to(ByteBuddyProxyInterceptor.class);
+        accessInterceptor = MethodDelegation.to(ByteBuddyAccessInterceptor.class);
+        prefixInterceptor = MethodDelegation.to(ByteBuddyPrefixInterceptor.class);
+        baseClassDescription = TypePool.Default.ofSystemLoader().describe(baseClass.getName()).resolve();
+        proxyClassDescription = TypePool.Default.ofSystemLoader().describe(ByteBuddyProxyInterceptor.class.getName()).resolve();
+        accessClassDescription = TypePool.Default.ofSystemLoader().describe(ByteBuddyAccessInterceptor.class.getName()).resolve();
+        prefixClassDescription = TypePool.Default.ofSystemLoader().describe(ByteBuddyPrefixInterceptor.class.getName()).resolve();
+        proxyInterceptorDescription = MethodDelegation.to(proxyClassDescription);
+        accessInterceptorDescription = MethodDelegation.to(accessClassDescription);
+        prefixInterceptorDescription = MethodDelegation.to(prefixClassDescription);
+    }
+
+    /**
+     * Creates a baseline for the benchmark.
+     *
+     * @return A simple object that is not transformed.
+     */
+    @Benchmark
+    public ExampleClass baseline() {
+        return new ExampleClass();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark creates proxy classes for the invocation
+     * of super methods which requires the creation of auxiliary classes.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws java.lang.Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithProxy() throws Exception {
+        return new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClass)
+                .method(isDeclaredBy(baseClass)).intercept(MethodDelegation.to(ByteBuddyProxyInterceptor.class))
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark also uses the annotation-based approach
+     * but creates delegation methods which do not require the creation of additional classes. This benchmark reuses a
+     * precomputed delegator.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithProxyAndReusedDelegator() throws Exception {
+        return new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClass)
+                .method(isDeclaredBy(baseClass)).intercept(proxyInterceptor)
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark creates proxy classes for the invocation
+     * of super methods which requires the creation of auxiliary classes. This benchmark uses a type pool to compare against
+     * usage of the reflection API.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws java.lang.Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithProxyWithTypePool() throws Exception {
+
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+package net.bytebuddy.benchmark;
+
+import net.bytebuddy.benchmark.specimen.ExampleClass;
+import org.hamcrest.CoreMatchers;
+import org.junit.Before;
+import org.junit.Test;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+public class ClassByExtensionBenchmarkTest {
+
+    private static final boolean BOOLEAN_VALUE = true;
+
+    private static final byte BYTE_VALUE = 42;
+
+    private static final short SHORT_VALUE = 42;
+
+    private static final char CHAR_VALUE = '@';
+
+    private static final int INT_VALUE = 42;
+
+    private static final long LONG_VALUE = 42L;
+
+    private static final float FLOAT_VALUE = 42f;
+
+    private static final double DOUBLE_VALUE = 42d;
+
+    private static final Object REFERENCE_VALUE = "foo";
+
+    private ClassByExtensionBenchmark classByExtensionBenchmark;
+
+    private static void assertReturnValues(ExampleClass exampleClass) {
+        assertThat(exampleClass.method(BOOLEAN_VALUE), is(BOOLEAN_VALUE));
+        assertThat(exampleClass.method(BYTE_VALUE), is(BYTE_VALUE));
+        assertThat(exampleClass.method(SHORT_VALUE), is(SHORT_VALUE));
+        assertThat(exampleClass.method(CHAR_VALUE), is(CHAR_VALUE));
+        assertThat(exampleClass.method(INT_VALUE), is(INT_VALUE));
+        assertThat(exampleClass.method(LONG_VALUE), is(LONG_VALUE));
+        assertThat(exampleClass.method(FLOAT_VALUE), is(FLOAT_VALUE));
+        assertThat(exampleClass.method(DOUBLE_VALUE), is(DOUBLE_VALUE));
+        assertThat(exampleClass.method(REFERENCE_VALUE), is(REFERENCE_VALUE));
+        assertThat(exampleClass.method(BOOLEAN_VALUE, BOOLEAN_VALUE, BOOLEAN_VALUE),
+                is(new boolean[]{BOOLEAN_VALUE, BOOLEAN_VALUE, BOOLEAN_VALUE}));
+        assertThat(exampleClass.method(BYTE_VALUE, BYTE_VALUE, BYTE_VALUE),
+                is(new byte[]{BYTE_VALUE, BYTE_VALUE, BYTE_VALUE}));
+        assertThat(exampleClass.method(SHORT_VALUE, SHORT_VALUE, SHORT_VALUE),
+                is(new short[]{SHORT_VALUE, SHORT_VALUE, SHORT_VALUE}));
+        assertThat(exampleClass.method(CHAR_VALUE, CHAR_VALUE, CHAR_VALUE),
+                is(new char[]{CHAR_VALUE, CHAR_VALUE, CHAR_VALUE}));
+        assertThat(exampleClass.method(INT_VALUE, INT_VALUE, INT_VALUE),
+                is(new int[]{INT_VALUE, INT_VALUE, INT_VALUE}));
+        assertThat(exampleClass.method(LONG_VALUE, LONG_VALUE, LONG_VALUE),
+                is(new long[]{LONG_VALUE, LONG_VALUE, LONG_VALUE}));
+        assertThat(exampleClass.method(FLOAT_VALUE, FLOAT_VALUE, FLOAT_VALUE),
+                is(new float[]{FLOAT_VALUE, FLOAT_VALUE, FLOAT_VALUE}));
+        assertThat(exampleClass.method(DOUBLE_VALUE, DOUBLE_VALUE, DOUBLE_VALUE),
+                is(new double[]{DOUBLE_VALUE, DOUBLE_VALUE, DOUBLE_VALUE}));
+        assertThat(exampleClass.method(REFERENCE_VALUE, REFERENCE_VALUE, REFERENCE_VALUE),
+                is(new Object[]{REFERENCE_VALUE, REFERENCE_VALUE, REFERENCE_VALUE}));
+    }
+
+    @Before
+    public void setUp() throws Exception {
+        classByExtensionBenchmark = new ClassByExtensionBenchmark();
+        classByExtensionBenchmark.setup();
+    }
+
+    @Test
+    public void testBaseline() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.baseline();
+        assertThat(instance.getClass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithProxiesClassCreation() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithProxy();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithProxiesClassCreationCached() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithProxyAndReusedDelegator();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithProxiesClassCreationWithTypePool() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithProxyWithTypePool();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithProxiesClassCreationCachedWithTypePool() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithProxyAndReusedDelegatorWithTypePool();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithAccessorClassCreation() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessor();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithAccessorClassCreationCached() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessorAndReusedDelegator();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithAccessorClassCreationWithTypePool() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessorWithTypePool();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithAccessorClassCreationCachedWithTypePool() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessorAndReusedDelegatorWithTypePool();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithPrefixClassCreation() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithPrefix();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithPrefixClassCreationCached() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithPrefixAndReusedDelegator();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithPrefixClassCreationWithTypePool() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithPrefixWithTypePool();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddyWithPrefixClassCreationCachedWithTypePool() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithPrefixAndReusedDelegatorWithTypePool();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddyWithProxy().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testByteBuddySpecializedClassCreation() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddySpecialized();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkByteBuddySpecialized().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testCglibClassCreation() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkCglib();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkCglib().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+
+    @Test
+    public void testJavassistClassCreation() throws Exception {
+        ExampleClass instance = classByExtensionBenchmark.benchmarkJavassist();
+        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+        assertThat(classByExtensionBenchmark.benchmarkJavassist().getClass(), not(CoreMatchers.<Class<?>>is(instance.getClass())));
+        assertReturnValues(instance);
+    }
+}
+
+exec
+/bin/bash -lc 'rg --files | rg "net/bytebuddy/benchmark/jmh/generated|jmhTest.java|generated/.*/ClassByExtensionBenchmark"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 1 in 0ms:
+codex
+The generated JMH source doesn’t appear to be checked in, so I’m checking whether the repo contains any build output or annotations-generated copy that would let me inspect the exact wrapper structure.
+exec
+/bin/bash -lc "sed -n '240,420p' byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+    public ExampleClass benchmarkByteBuddyWithProxyWithTypePool() throws Exception {
+        return (ExampleClass) new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClassDescription)
+                .method(isDeclaredBy(baseClassDescription)).intercept(MethodDelegation.to(proxyClassDescription))
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark also uses the annotation-based approach
+     * but creates delegation methods which do not require the creation of additional classes. This benchmark reuses a
+     * precomputed delegator. This benchmark uses a type pool to compare against usage of the reflection API.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithProxyAndReusedDelegatorWithTypePool() throws Exception {
+        return (ExampleClass) new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClassDescription)
+                .method(isDeclaredBy(baseClassDescription)).intercept(proxyInterceptorDescription)
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark also uses the annotation-based approach
+     * but creates delegation methods which do not require the creation of additional classes.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithAccessor() throws Exception {
+        return new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClass)
+                .method(isDeclaredBy(baseClass)).intercept(MethodDelegation.to(ByteBuddyAccessInterceptor.class))
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark also uses the annotation-based approach
+     * but creates delegation methods which do not require the creation of additional classes. This benchmark reuses a
+     * precomputed delegator.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithAccessorAndReusedDelegator() throws Exception {
+        return new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClass)
+                .method(isDeclaredBy(baseClass)).intercept(accessInterceptor)
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark also uses the annotation-based approach
+     * but creates delegation methods which do not require the creation of additional classes. This benchmark uses a type
+     * pool to compare against usage of the reflection API.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithAccessorWithTypePool() throws Exception {
+        return (ExampleClass) new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClassDescription)
+                .method(isDeclaredBy(baseClassDescription)).intercept(MethodDelegation.to(accessClassDescription))
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark also uses the annotation-based approach
+     * but creates delegation methods which do not require the creation of additional classes. This benchmark reuses a
+     * precomputed delegator. This benchmark uses a type pool to compare against usage of the reflection API.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithAccessorAndReusedDelegatorWithTypePool() throws Exception {
+        return (ExampleClass) new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClassDescription)
+                .method(isDeclaredBy(baseClassDescription)).intercept(accessInterceptorDescription)
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark uses delegation but completes with a
+     * hard-coded super method call.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithPrefix() throws Exception {
+        return new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClass)
+                .method(isDeclaredBy(baseClass)).intercept(MethodDelegation.to(ByteBuddyPrefixInterceptor.class).andThen(SuperMethodCall.INSTANCE))
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark uses delegation but completes with a
+     * hard-coded super method call. This benchmark reuses a precomputed delegator.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithPrefixAndReusedDelegator() throws Exception {
+        return new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClass)
+                .method(isDeclaredBy(baseClass)).intercept(prefixInterceptor.andThen(SuperMethodCall.INSTANCE))
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark uses delegation but completes with a
+     * hard-coded super method call. This benchmark uses a type pool to compare against usage of the reflection API.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithPrefixWithTypePool() throws Exception {
+        return (ExampleClass) new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClassDescription)
+                .method(isDeclaredBy(baseClassDescription)).intercept(MethodDelegation.to(prefixClassDescription).andThen(SuperMethodCall.INSTANCE))
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+
+exec
+/bin/bash -lc "find . -path '*ClassByExtensionBenchmark*' -o -path '*jmh*' | sed -n '1,200p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java
+./byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java
+
+exec
+/bin/bash -lc "sed -n '420,560p' byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark uses delegation but completes with a
+     * hard-coded super method call. This benchmark reuses a precomputed delegator. This benchmark uses a type pool to
+     * compare against usage of the reflection API.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddyWithPrefixAndReusedDelegatorWithTypePool() throws Exception {
+        return (ExampleClass) new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClassDescription)
+                .method(isDeclaredBy(baseClassDescription)).intercept(prefixInterceptorDescription.andThen(SuperMethodCall.INSTANCE))
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using Byte Buddy. This benchmark uses a specialized interception
+     * strategy which is easier to inline by the compiler.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws java.lang.Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkByteBuddySpecialized() throws Exception {
+        return new ByteBuddy()
+                .with(TypeValidation.DISABLED)
+                .ignore(none())
+                .subclass(baseClass)
+                .method(isDeclaredBy(baseClass)).intercept(SuperMethodCall.INSTANCE)
+                .make()
+                .load(newClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded()
+                .getDeclaredConstructor()
+                .newInstance();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using cglib.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     */
+    @Benchmark
+    public ExampleClass benchmarkCglib() {
+        Enhancer enhancer = new Enhancer();
+        enhancer.setUseCache(false);
+        enhancer.setUseFactory(false);
+        enhancer.setInterceptDuringConstruction(true);
+        enhancer.setClassLoader(newClassLoader());
+        enhancer.setSuperclass(baseClass);
+        CallbackHelper callbackHelper = new CallbackHelper(baseClass, new Class<?>[0]) {
+            protected Object getCallback(Method method) {
+                if (method.getDeclaringClass() == baseClass) {
+                    return new MethodInterceptor() {
+                        public Object intercept(Object object,
+                                                Method method,
+                                                Object[] arguments,
+                                                MethodProxy methodProxy) throws Throwable {
+                            return methodProxy.invokeSuper(object, arguments);
+                        }
+                    };
+                } else {
+                    return NoOp.INSTANCE;
+                }
+            }
+        };
+        enhancer.setCallbackFilter(callbackHelper);
+        enhancer.setCallbacks(callbackHelper.getCallbacks());
+        return (ExampleClass) enhancer.create();
+    }
+
+    /**
+     * Performs a benchmark of a class extension using javassist proxies.
+     *
+     * @return The created instance, in order to avoid JIT removal.
+     * @throws java.lang.Exception If the invocation causes an exception.
+     */
+    @Benchmark
+    public ExampleClass benchmarkJavassist() throws Exception {
+        ProxyFactory proxyFactory = new ProxyFactory() {
+            protected ClassLoader getClassLoader() {
+                return newClassLoader();
+            }
+        };
+        proxyFactory.setUseCache(false);
+        proxyFactory.setUseWriteReplace(false);
+        proxyFactory.setSuperclass(baseClass);
+        proxyFactory.setFilter(new MethodFilter() {
+            public boolean isHandled(Method method) {
+                return method.getDeclaringClass() == baseClass;
+            }
+        });
+        @SuppressWarnings("unchecked")
+        Object instance = proxyFactory.createClass().getDeclaredConstructor().newInstance();
+        ((javassist.util.proxy.Proxy) instance).setHandler(new MethodHandler() {
+            public Object invoke(Object self,
+                                 Method thisMethod,
+                                 Method proceed,
+                                 Object[] argument) throws Throwable {
+                return proceed.invoke(self, argument);
+            }
+        });
+        return (ExampleClass) instance;
+    }
+
+    /**
+     * Instead of using the {@link net.bytebuddy.implementation.SuperMethodCall} implementation, we are using
+     * a delegate in order to emulate the interception approach of other instrumentation libraries. Otherwise,
+     * this benchmark would be biased in favor of Byte Buddy.
+     */
+    public static class ByteBuddyProxyInterceptor {
+
+        /**
+         * The interceptor's constructor is not supposed to be invoked.
+         */
+        private ByteBuddyProxyInterceptor() {
+            throw new UnsupportedOperationException();
+        }
+
+        /**
+         * Call the super method.
+         *
+         * @param zuper A proxy for invoking the super method.
+         * @return The return value of the super method invocation.
+         * @throws Exception As declared by {@link java.util.concurrent.Callable}'s contract.
+         */
+        @RuntimeType
+        public static Object intercept(@SuperCall Callable<?> zuper) throws Exception {
+            return zuper.call();
+        }
+
+exec
+/bin/bash -lc "sed -n '560,760p' byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+        }
+    }
+
+    /**
+     * Instead of using the {@link net.bytebuddy.implementation.SuperMethodCall} implementation, we are creating
+     * delegate methods that allow the invocation of the original code.
+     */
+    public static class ByteBuddyAccessInterceptor {
+
+        /**
+         * The interceptor's constructor is not supposed to be invoked.
+         */
+        private ByteBuddyAccessInterceptor() {
+            throw new UnsupportedOperationException();
+        }
+
+        /**
+         * Calls the super method.
+         *
+         * @param target    The target instance.
+         * @param arguments The arguments to the method.
+         * @param method    A method for invoking the original code.
+         * @return The return value of the method.
+         * @throws Exception If the super method call yields an exception.
+         */
+        @RuntimeType
+        public static Object intercept(@This Object target, @AllArguments Object[] arguments, @SuperMethod(privileged = false) Method method) throws Exception {
+            return method.invoke(target, arguments);
+        }
+    }
+
+    /**
+     * An interceptor that is invoked prior to a super method call.
+     */
+    public static class ByteBuddyPrefixInterceptor {
+
+        /**
+         * The interceptor's constructor is not supposed to be invoked.
+         */
+        private ByteBuddyPrefixInterceptor() {
+            throw new UnsupportedOperationException();
+        }
+
+        /**
+         * Invoked prior to a method call.
+         */
+        public static void intercept() {
+            /* do nothing */
+        }
+    }
+}
+
+codex
+I’ve confirmed the repository only contains the benchmark source and tests, not the generated JMH wrapper. I’m now checking the benchmark’s structure and call graph to judge whether the generated per-method class would have the broad fan-in/fan-out required for hub-like modularization.
+exec
+/bin/bash -lc 'rg -n "ClassByExtensionBenchmark|benchmarkByteBuddyWithAccessor" byte-buddy-benchmark/src/main/java byte-buddy-benchmark/src/test/java -S' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmarkTest.java:28:        superClassInvocationBenchmark.benchmarkByteBuddyWithAccessor(blackHole);
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java:10:public class ClassByExtensionBenchmarkByteBuddyInterceptorTest {
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java:14:        Constructor<?> constructor = ClassByExtensionBenchmark.ByteBuddyProxyInterceptor.class.getDeclaredConstructor();
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkByteBuddyInterceptorTest.java:26:        Constructor<?> constructor = ClassByExtensionBenchmark.ByteBuddyAccessInterceptor.class.getDeclaredConstructor();
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:12:public class ClassByExtensionBenchmarkTest {
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:32:    private ClassByExtensionBenchmark classByExtensionBenchmark;
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:66:        classByExtensionBenchmark = new ClassByExtensionBenchmark();
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:73:        assertThat(instance.getClass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:80:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:81:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:89:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:90:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:98:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:99:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:107:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:108:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:115:        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessor();
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:116:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:117:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:124:        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessorAndReusedDelegator();
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:125:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:126:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:133:        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessorWithTypePool();
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:134:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:135:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:142:        ExampleClass instance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessorAndReusedDelegatorWithTypePool();
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:143:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:144:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:152:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:153:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:161:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:162:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:170:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:171:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:179:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:180:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:188:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:189:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:197:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:198:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:206:        assertThat(instance.getClass(), not(CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS)));
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java:207:        assertThat(instance.getClass().getSuperclass(), CoreMatchers.<Class<?>>is(ClassByExtensionBenchmark.BASE_CLASS));
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByImplementationBenchmark.java:188:     * A description of {@link ClassByExtensionBenchmark#baseClass}.
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java:141:     * {@link net.bytebuddy.benchmark.ClassByExtensionBenchmark}.
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java:147:        ClassByExtensionBenchmark classByExtensionBenchmark = new ClassByExtensionBenchmark();
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java:150:        byteBuddyWithAccessorInstance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessor();
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java:226:    public void benchmarkByteBuddyWithAccessor(Blackhole blackHole) {
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/runner/QuickRunner.java:18:import net.bytebuddy.benchmark.ClassByExtensionBenchmark;
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/runner/QuickRunner.java:57:                .include(WILDCARD + ClassByExtensionBenchmark.class.getSimpleName() + WILDCARD)
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:73:public class ClassByExtensionBenchmark {
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:102:     * An implementation to be used by {@link ClassByExtensionBenchmark#benchmarkByteBuddyWithProxyAndReusedDelegator()}.
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:108:     * An implementation to be used by {@link ClassByExtensionBenchmark#benchmarkByteBuddyWithAccessorAndReusedDelegator()}.
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:114:     * An implementation to be used by {@link ClassByExtensionBenchmark#benchmarkByteBuddyWithPrefixAndReusedDelegator()}.
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:120:     * A description of {@link ClassByExtensionBenchmark#baseClass}.
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:283:    public ExampleClass benchmarkByteBuddyWithAccessor() throws Exception {
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:305:    public ExampleClass benchmarkByteBuddyWithAccessorAndReusedDelegator() throws Exception {
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:327:    public ExampleClass benchmarkByteBuddyWithAccessorWithTypePool() throws Exception {
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java:349:    public ExampleClass benchmarkByteBuddyWithAccessorAndReusedDelegatorWithTypePool() throws Exception {
+
+exec
+/bin/bash -lc "sed -n '1,240p' byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/SuperClassInvocationBenchmark.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.benchmark;
+
+import net.bytebuddy.benchmark.specimen.ExampleClass;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OperationsPerInvocation;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.infra.Blackhole;
+
+import java.util.concurrent.TimeUnit;
+
+/**
+ * <p>
+ * This benchmark measures the invocation speed of stub method invocations. All classes implement
+ * {@link net.bytebuddy.benchmark.specimen.ExampleClass} and call this class's super method invocation. Since it
+ * is not possible to create a subclass with the JDK proxy utilities, the latter is omitted from the benchmark.
+ * </p>
+ * <p>
+ * Note that this class defines all values that are accessed by benchmark methods as instance fields. This way, the JIT
+ * compiler's capability of constant folding is limited in order to produce more comparable test results.
+ * </p>
+ */
+@State(Scope.Thread)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+public class SuperClassInvocationBenchmark {
+
+    /**
+     * A generic {@link String} value.
+     */
+    private String stringValue = "foo";
+
+    /**
+     * A generic {@code boolean} value.
+     */
+    private boolean booleanValue = true;
+
+    /**
+     * A generic {@code byte} value.
+     */
+    private byte byteValue = 42;
+
+    /**
+     * A generic {@code short} value.
+     */
+    private short shortValue = 42;
+
+    /**
+     * A generic {@code char} value.
+     */
+    private char charValue = '@';
+
+    /**
+     * A generic {@code int} value.
+     */
+    private int intValue = 42;
+
+    /**
+     * A generic {@code long} value.
+     */
+    private long longValue = 42L;
+
+    /**
+     * A generic {@code float} value.
+     */
+    private float floatValue = 42f;
+
+    /**
+     * A generic {@code double} value.
+     */
+    private double doubleValue = 42d;
+
+    /**
+     * A casual instance that serves as a baseline.
+     */
+    @MaybeNull
+    private ExampleClass baselineInstance;
+
+    /**
+     * An instance created by Byte Buddy for performing benchmarks on. This instance is created by adding
+     * auxiliary classes that allow for an invocation of a method from a delegation target.
+     */
+    @MaybeNull
+    private ExampleClass byteBuddyWithProxyInstance;
+
+    /**
+     * An instance created by Byte Buddy for performing benchmarks on. This instance is created by adding
+     * super invocation methods which are exposed via the reflection API.
+     */
+    @MaybeNull
+    private ExampleClass byteBuddyWithAccessorInstance;
+
+    /**
+     * An instance created by Byte Buddy for performing benchmarks on. This instance is created by a delegation
+     * followed by a hard-coded super method call.
+     */
+    @MaybeNull
+    private ExampleClass byteBuddyWithPrefixInstance;
+
+    /**
+     * An instance created by Byte Buddy for performing benchmarks on. This instance is created by hard-coding
+     * a super method invocation into the intercepted method.
+     */
+    @MaybeNull
+    private ExampleClass byteBuddySpecializedInstance;
+
+    /**
+     * An instance created by cglib for performing benchmarks on.
+     */
+    @MaybeNull
+    private ExampleClass cglibInstance;
+
+    /**
+     * An instance created by javassist for performing benchmarks on.
+     */
+    @MaybeNull
+    private ExampleClass javassistInstance;
+
+    /**
+     * Creates an instance for each code generation library. The classes are extracted from the
+     * {@link net.bytebuddy.benchmark.ClassByExtensionBenchmark}.
+     *
+     * @throws Exception Covers the exception declarations of the setup methods.
+     */
+    @Setup
+    public void setUp() throws Exception {
+        ClassByExtensionBenchmark classByExtensionBenchmark = new ClassByExtensionBenchmark();
+        baselineInstance = classByExtensionBenchmark.baseline();
+        byteBuddyWithProxyInstance = classByExtensionBenchmark.benchmarkByteBuddyWithProxy();
+        byteBuddyWithAccessorInstance = classByExtensionBenchmark.benchmarkByteBuddyWithAccessor();
+        byteBuddyWithPrefixInstance = classByExtensionBenchmark.benchmarkByteBuddyWithPrefix();
+        byteBuddySpecializedInstance = classByExtensionBenchmark.benchmarkByteBuddySpecialized();
+        cglibInstance = classByExtensionBenchmark.benchmarkCglib();
+        javassistInstance = classByExtensionBenchmark.benchmarkJavassist();
+    }
+
+    /**
+     * Performs a benchmark for a casual class as a baseline.
+     *
+     * @param blackHole A black hole for avoiding JIT erasure.
+     */
+    @Benchmark
+    @OperationsPerInvocation(20)
+    public void baseline(Blackhole blackHole) {
+        blackHole.consume(baselineInstance.method(booleanValue));
+        blackHole.consume(baselineInstance.method(byteValue));
+        blackHole.consume(baselineInstance.method(shortValue));
+        blackHole.consume(baselineInstance.method(intValue));
+        blackHole.consume(baselineInstance.method(charValue));
+        blackHole.consume(baselineInstance.method(intValue));
+        blackHole.consume(baselineInstance.method(longValue));
+        blackHole.consume(baselineInstance.method(floatValue));
+        blackHole.consume(baselineInstance.method(doubleValue));
+        blackHole.consume(baselineInstance.method(stringValue));
+        blackHole.consume(baselineInstance.method(booleanValue, booleanValue, booleanValue));
+        blackHole.consume(baselineInstance.method(byteValue, byteValue, byteValue));
+        blackHole.consume(baselineInstance.method(shortValue, shortValue, shortValue));
+        blackHole.consume(baselineInstance.method(intValue, intValue, intValue));
+        blackHole.consume(baselineInstance.method(charValue, charValue, charValue));
+        blackHole.consume(baselineInstance.method(intValue, intValue, intValue));
+        blackHole.consume(baselineInstance.method(longValue, longValue, longValue));
+        blackHole.consume(baselineInstance.method(floatValue, floatValue, floatValue));
+        blackHole.consume(baselineInstance.method(doubleValue, doubleValue, doubleValue));
+        blackHole.consume(baselineInstance.method(stringValue, stringValue, stringValue));
+    }
+
+    /**
+     * Performs a benchmark of a super method invocation using Byte Buddy. This benchmark uses an annotation-based
+     * approach which is more difficult to optimize by the JIT compiler.
+     *
+     * @param blackHole A black hole for avoiding JIT erasure.
+     */
+    @Benchmark
+    @OperationsPerInvocation(20)
+    public void benchmarkByteBuddyWithProxy(Blackhole blackHole) {
+        blackHole.consume(byteBuddyWithProxyInstance.method(booleanValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(byteValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(shortValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(intValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(charValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(intValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(longValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(floatValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(doubleValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(stringValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(booleanValue, booleanValue, booleanValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(byteValue, byteValue, byteValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(shortValue, shortValue, shortValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(intValue, intValue, intValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(charValue, charValue, charValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(intValue, intValue, intValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(longValue, longValue, longValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(floatValue, floatValue, floatValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(doubleValue, doubleValue, doubleValue));
+        blackHole.consume(byteBuddyWithProxyInstance.method(stringValue, stringValue, stringValue));
+    }
+
+    /**
+     * Performs a benchmark of a super method invocation using Byte Buddy. This benchmark also uses the annotation-based approach
+     * but creates delegation methods which do not require the creation of additional classes.
+     *
+     * @param blackHole A black hole for avoiding JIT erasure.
+     */
+    @Benchmark
+    @OperationsPerInvocation(20)
+    public void benchmarkByteBuddyWithAccessor(Blackhole blackHole) {
+        blackHole.consume(byteBuddyWithAccessorInstance.method(booleanValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(byteValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(shortValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(intValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(charValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(intValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(longValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(floatValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(doubleValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(stringValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(booleanValue, booleanValue, booleanValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(byteValue, byteValue, byteValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(shortValue, shortValue, shortValue));
+        blackHole.consume(byteBuddyWithAccessorInstance.method(intValue, intValue, intValue));
+
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-benchmark/pom.xml" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>net.bytebuddy</groupId>
+        <artifactId>byte-buddy-parent</artifactId>
+        <version>1.18.4-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>byte-buddy-benchmark</artifactId>
+
+    <name>Byte Buddy benchmarks</name>
+    <description>A benchmark of Byte Buddy using the JMH.</description>
+
+    <!--
+        The benchmarks of this module should be changed with care, especially in relation to recommendations for
+        code optimizations by IDEs or 'find bugs'. When changing the benchmarks, it is advisable to analyze the
+        tests' assembly code for validating what iis measured.
+
+        For running the benchmarks, build the project with the 'extras' profile and execute 'target/byte-buddy-benchmarks.jar'
+        from the command line. Running the benchmarks should happen on an idle machine and requires several hours of runtime.
+    -->
+
+    <properties>
+        <benchmark.mainClass>net.bytebuddy.benchmark.runner.BenchmarkRunner</benchmark.mainClass>
+        <japicmp.skip>true</japicmp.skip>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>byte-buddy-dep</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cglib</groupId>
+            <artifactId>cglib-nodep</artifactId>
+            <version>${version.cglib}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>${version.javassist}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-core</artifactId>
+            <version>${version.jmh}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-generator-annprocess</artifactId>
+            <version>${version.jmh}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${version.junit}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>..</directory>
+                <targetPath>META-INF</targetPath>
+                <filtering>true</filtering>
+                <includes>
+                    <include>LICENSE</include>
+                    <include>NOTICE</include>
+                </includes>
+            </resource>
+        </resources>
+        <plugins>
+            <!-- Mutation testing is not adding information on benchmarking quality. -->
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>${version.plugin.pitest}</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+            <!-- For micro-benchmarks, a static code analysis is of no value. -->
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>${version.plugin.spotbugs}</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${version.plugin.javadoc}</version>
+                    <configuration>
+                        <offlineLinks>
+                            <link>
+                                <url>https://javadoc.io/doc/net.bytebuddy/byte-buddy/${project.version}</url>
+                                <location>${project.basedir}/../byte-buddy/target/apidocs</location>
+                            </link>
+                            <!-- Use previously downloaded 'package-list' file as substitute for published 'element-list' file. -->
+                            <link>
+                                <url>https://javadoc.io/doc/org.openjdk.jmh/jmh-core/${version.jmh}</url>
+                                <location>${project.basedir}/target/javadoc-lists/jmh-core-${version.jmh}</location>
+                            </link>
+                        </offlineLinks>
+                        <excludePackageNames>
+                            net.bytebuddy.benchmark.generated,
+                            net.bytebuddy.benchmark.jmh_generated
+                        </excludePackageNames>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>extras</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- Download 'element-list' file which is published by newer javadoc versions, store as 'package-list' file. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>${version.plugin.antrun}</version>
+                        <executions>
+                            <execution>
+                                <id>download-javadoc-lists</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${javadoc.download.skip}</skip>
+                                    <target>
+                                        <mkdir dir="${project.basedir}/target/javadoc-lists/jmh-core-${version.jmh}" />
+                                        <get src="https://javadoc.io/doc/org.openjdk.jmh/jmh-core/${version.jmh}/element-list" dest="${project.basedir}/target/javadoc-lists/jmh-core-${version.jmh}/package-list" skipexisting="true" />
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Shade the benchmark artifact. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>${version.plugin.shade}</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>shade</goal>
+                                </goals>
+                                <configuration>
+                                    <transformers>
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                            <mainClass>org.openjdk.jmh.Main</mainClass>
+                                        </transformer>
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                            <resource>META-INF/LICENSE</resource>
+                                        </transformer>
+                                    </transformers>
+                                    <filters>
+                                        <filter>
+                                            <artifact>*:*</artifact>
+                                            <excludes>
+                                                <exclude>META-INF/MANIFEST.MF</exclude>
+                                                <exclude>**/module-info.class</exclude>
+                                                <exclude>**/NOTICE</exclude>
+                                            </excludes>
+                                        </filter>
+                                    </filters>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Do not run tests on JDK 11 or later as the benchmark currently requires sun.misc.Unsafe::defineClass. -->
+        <profile>
+            <id>java11-tests</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <jdk>[11,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>${version.plugin.surefire}</version>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>
+
+exec
+/bin/bash -lc 'rg -n "jmh|benchmark" pom.xml byte-buddy-benchmark/pom.xml -S' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-benchmark/pom.xml:11:    <artifactId>byte-buddy-benchmark</artifactId>
+byte-buddy-benchmark/pom.xml:13:    <name>Byte Buddy benchmarks</name>
+byte-buddy-benchmark/pom.xml:14:    <description>A benchmark of Byte Buddy using the JMH.</description>
+byte-buddy-benchmark/pom.xml:17:        The benchmarks of this module should be changed with care, especially in relation to recommendations for
+byte-buddy-benchmark/pom.xml:18:        code optimizations by IDEs or 'find bugs'. When changing the benchmarks, it is advisable to analyze the
+byte-buddy-benchmark/pom.xml:21:        For running the benchmarks, build the project with the 'extras' profile and execute 'target/byte-buddy-benchmarks.jar'
+byte-buddy-benchmark/pom.xml:22:        from the command line. Running the benchmarks should happen on an idle machine and requires several hours of runtime.
+byte-buddy-benchmark/pom.xml:26:        <benchmark.mainClass>net.bytebuddy.benchmark.runner.BenchmarkRunner</benchmark.mainClass>
+byte-buddy-benchmark/pom.xml:46:            <groupId>org.openjdk.jmh</groupId>
+byte-buddy-benchmark/pom.xml:47:            <artifactId>jmh-core</artifactId>
+byte-buddy-benchmark/pom.xml:48:            <version>${version.jmh}</version>
+byte-buddy-benchmark/pom.xml:51:            <groupId>org.openjdk.jmh</groupId>
+byte-buddy-benchmark/pom.xml:52:            <artifactId>jmh-generator-annprocess</artifactId>
+byte-buddy-benchmark/pom.xml:53:            <version>${version.jmh}</version>
+byte-buddy-benchmark/pom.xml:80:            <!-- Mutation testing is not adding information on benchmarking quality. -->
+byte-buddy-benchmark/pom.xml:89:            <!-- For micro-benchmarks, a static code analysis is of no value. -->
+byte-buddy-benchmark/pom.xml:113:                                <url>https://javadoc.io/doc/org.openjdk.jmh/jmh-core/${version.jmh}</url>
+byte-buddy-benchmark/pom.xml:114:                                <location>${project.basedir}/target/javadoc-lists/jmh-core-${version.jmh}</location>
+byte-buddy-benchmark/pom.xml:118:                            net.bytebuddy.benchmark.generated,
+byte-buddy-benchmark/pom.xml:119:                            net.bytebuddy.benchmark.jmh_generated
+byte-buddy-benchmark/pom.xml:150:                                        <mkdir dir="${project.basedir}/target/javadoc-lists/jmh-core-${version.jmh}" />
+byte-buddy-benchmark/pom.xml:151:                                        <get src="https://javadoc.io/doc/org.openjdk.jmh/jmh-core/${version.jmh}/element-list" dest="${project.basedir}/target/javadoc-lists/jmh-core-${version.jmh}/package-list" skipexisting="true" />
+byte-buddy-benchmark/pom.xml:157:                    <!-- Shade the benchmark artifact. -->
+byte-buddy-benchmark/pom.xml:171:                                            <mainClass>org.openjdk.jmh.Main</mainClass>
+byte-buddy-benchmark/pom.xml:194:        <!-- Do not run tests on JDK 11 or later as the benchmark currently requires sun.misc.Unsafe::defineClass. -->
+pom.xml:51:        <module>byte-buddy-benchmark</module>
+pom.xml:118:        <version.jmh>1.35</version.jmh>
+pom.xml:221:                        <!-- Do not include JMH generated classes (both modern and legacy JMH).-->
+pom.xml:222:                        <exclude>net/bytebuddy/benchmark/generated/*</exclude>
+pom.xml:223:                        <exclude>net/bytebuddy/benchmark/jmh_generated/*</exclude>
+pom.xml:490:                <version.jmh>1.16</version.jmh>
+pom.xml:500:                <module>byte-buddy-benchmark</module>
+pom.xml:1405:                <artifactId>byte-buddy-benchmark</artifactId>
+
+codex
+{"target":"net.bytebuddy.benchmark.ClassByExtensionBenchmark.benchmarkByteBuddyWithAccessor.jmhTest","detection":false,"justification":"I inspected `byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/ClassByExtensionBenchmark.java`, `byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/ClassByExtensionBenchmarkTest.java`, and `byte-buddy-benchmark/pom.xml`. The benchmark class has a single `benchmarkByteBuddyWithAccessor()` method in a larger benchmark suite, and the tests only call that source method; no repository file references the generated `net.bytebuddy.benchmark.jmh_generated`/`jmhTest` class, which is excluded as generated code in the POM. That gives no evidence of the strong incoming-and-outgoing dependency pattern required for hub-like modularization."}
+tokens used
+26,423

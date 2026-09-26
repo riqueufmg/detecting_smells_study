@@ -1,0 +1,463 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f65-dc5c-7bb3-b256-2ec8371851ea
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its incoming and outgoing dependencies so I can decide whether it acts like a dependency hub.
+exec
+/bin/bash -lc 'rg -n "NodeWithProtectedModifier" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg --files | rg 'NodeWithProtectedModifier\\.java"'$|NodeWith.*Modifier'"\\.java"'$|NodeWithProtectedModifier'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 374ms:
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithStrictfpModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithStaticModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithProtectedModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithPrivateModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithFinalModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithAbstractModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithPublicModifier.java
+
+ succeeded in 382ms:
+./javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithProtectedModifier.java:31:public interface NodeWithProtectedModifier<N extends Node> extends NodeWithModifiers<N> {
+./javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithAccessModifiers.java:29:        extends NodeWithPublicModifier<N>, NodeWithPrivateModifier<N>, NodeWithProtectedModifier<N> {}
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:713:                        "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:796:                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:803:                                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier.N")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:968:                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:975:                                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier.N")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:1451:                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier", ancestor.getQualifiedName());
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:1456:                                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier.N")
+
+codex
+I found the interface and the main usages. Next I’m checking the class body and its neighboring modifier interfaces to see whether this one is broadly depended on or mostly a small leaf in a family.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithPrivateModifier.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithProtectedModifier.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithPublicModifier.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithAccessModifiers.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithModifiers.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 194ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.ast.nodeTypes.modifiers;
+
+import static com.github.javaparser.ast.Modifier.Keyword.PRIVATE;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.nodeTypes.NodeWithModifiers;
+
+/**
+ * A node that can be private.
+ */
+public interface NodeWithPrivateModifier<N extends Node> extends NodeWithModifiers<N> {
+
+    default boolean isPrivate() {
+        return hasModifier(PRIVATE);
+    }
+
+    @SuppressWarnings("unchecked")
+    default N setPrivate(boolean set) {
+        return setModifier(PRIVATE, set);
+    }
+}
+
+ succeeded in 209ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.ast.nodeTypes.modifiers;
+
+import static com.github.javaparser.ast.Modifier.Keyword.PUBLIC;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.nodeTypes.NodeWithModifiers;
+
+/**
+ * A node that can be public.
+ */
+public interface NodeWithPublicModifier<N extends Node> extends NodeWithModifiers<N> {
+
+    default boolean isPublic() {
+        return hasModifier(PUBLIC);
+    }
+
+    @SuppressWarnings("unchecked")
+    default N setPublic(boolean set) {
+        return setModifier(PUBLIC, set);
+    }
+}
+
+ succeeded in 211ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.ast.nodeTypes.modifiers;
+
+import com.github.javaparser.ast.Node;
+
+/**
+ * A node that can be public, protected, and/or private.
+ */
+public interface NodeWithAccessModifiers<N extends Node>
+        extends NodeWithPublicModifier<N>, NodeWithPrivateModifier<N>, NodeWithProtectedModifier<N> {}
+
+ succeeded in 225ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.ast.nodeTypes.modifiers;
+
+import static com.github.javaparser.ast.Modifier.Keyword.PROTECTED;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.nodeTypes.NodeWithModifiers;
+
+/**
+ * A node that can be protected.
+ */
+public interface NodeWithProtectedModifier<N extends Node> extends NodeWithModifiers<N> {
+
+    default boolean isProtected() {
+        return hasModifier(PROTECTED);
+    }
+
+    @SuppressWarnings("unchecked")
+    default N setProtected(boolean set) {
+        return setModifier(PROTECTED, set);
+    }
+}
+
+ exited 2 in 257ms:
+sed: can't read javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithModifiers.java: No such file or directory
+
+codex
+The access-modifier interface is small. I’m now locating the shared `NodeWithModifiers` contract and the concrete AST classes that implement or extend these interfaces, because that’s where fan-in would show up if this were a hub.
+exec
+/bin/bash -lc "rg --files javaparser-core/src/main/java | rg '/NodeWithModifiers\\.java"'$|/NodeWithAccessModifiers'"\\.java"'$|/NodeWithProtectedModifier'"\\.java"'$|/NodeWith.*Modifier'"\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "interface NodeWithModifiers|extends NodeWithProtectedModifier|implements .*NodeWithProtectedModifier|NodeWithProtectedModifier<" javaparser-core/src/main/java' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 239ms:
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithStrictfpModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithStaticModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithProtectedModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithPrivateModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithFinalModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithAccessModifiers.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithAbstractModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithPublicModifier.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/NodeWithModifiers.java
+
+ succeeded in 366ms:
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithProtectedModifier.java:31:public interface NodeWithProtectedModifier<N extends Node> extends NodeWithModifiers<N> {
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithAccessModifiers.java:29:        extends NodeWithPublicModifier<N>, NodeWithPrivateModifier<N>, NodeWithProtectedModifier<N> {}
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/NodeWithModifiers.java:36:public interface NodeWithModifiers<N extends Node> {
+
+exec
+/bin/bash -lc "sed -n '1,260p' javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/NodeWithModifiers.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"NodeWithProtectedModifier|NodeWithAccessModifiers|NodeWithPublicModifier|NodeWithPrivateModifier\" javaparser-core/src/main/java/com/github/javaparser/ast -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 123ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.ast.nodeTypes;
+
+import static com.github.javaparser.ast.NodeList.toNodeList;
+
+import com.github.javaparser.ast.AccessSpecifier;
+import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * A Node with Modifiers.
+ * Note that not all modifiers may be valid for this node.
+ */
+public interface NodeWithModifiers<N extends Node> {
+
+    /**
+     * Return the modifiers of this variable declaration.
+     * Warning: modifying the returned set will not trigger observers,
+     * you have to use setModifiers for that.
+     *
+     * @return modifiers
+     * @see Modifier
+     */
+    NodeList<Modifier> getModifiers();
+
+    N setModifiers(NodeList<Modifier> modifiers);
+
+    @SuppressWarnings("unchecked")
+    default N addModifier(Modifier.Keyword... newModifiers) {
+        NodeList<Modifier> existingModifiers = new NodeList<>(getModifiers());
+        for (Modifier.Keyword newModifier : newModifiers) {
+            boolean alreadyPresent = existingModifiers.stream().anyMatch(m -> m.getKeyword() == newModifier);
+            if (!alreadyPresent) {
+                existingModifiers.add(new Modifier(newModifier));
+            }
+        }
+        setModifiers(existingModifiers);
+        return (N) this;
+    }
+
+    @SuppressWarnings("unchecked")
+    default N removeModifier(Modifier.Keyword... modifiersToRemove) {
+        List<Modifier.Keyword> modifiersToRemoveAsList = Arrays.asList(modifiersToRemove);
+        NodeList<Modifier> remaining = getModifiers().stream()
+                .filter(existingModifier -> !modifiersToRemoveAsList.contains(existingModifier.getKeyword()))
+                .collect(toNodeList());
+        setModifiers(remaining);
+        return (N) this;
+    }
+
+    default N setModifier(Modifier.Keyword m, boolean set) {
+        if (set) {
+            return addModifier(m);
+        }
+        return removeModifier(m);
+    }
+
+    /**
+     * @param modifier the modifer being searched for
+     * @return true if the modifier has been explicitly added to this node, else false
+     */
+    default boolean hasModifier(Modifier.Keyword modifier) {
+        for (Modifier m : getModifiers()) {
+            if (m.getKeyword() == modifier) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Creates a list of modifier nodes corresponding to the keywords passed, and set it.
+     */
+    default N setModifiers(final Modifier.Keyword... modifiers) {
+        return setModifiers(Arrays.stream(modifiers).map(Modifier::new).collect(toNodeList()));
+    }
+
+    /**
+     * @return the access specifier as far as it can be derived from the modifiers.
+     * Does not take anything else into account (like "interface methods are implicitly public")
+     */
+    default AccessSpecifier getAccessSpecifier() {
+        for (Modifier modifier : getModifiers()) {
+            switch (modifier.getKeyword()) {
+                case PUBLIC:
+                    return AccessSpecifier.PUBLIC;
+                case PROTECTED:
+                    return AccessSpecifier.PROTECTED;
+                case PRIVATE:
+                    return AccessSpecifier.PRIVATE;
+            }
+        }
+        return AccessSpecifier.NONE;
+    }
+}
+
+ succeeded in 268ms:
+javaparser-core/src/main/java/com/github/javaparser/ast/body/CompactConstructorDeclaration.java:30:import com.github.javaparser.ast.nodeTypes.modifiers.NodeWithAccessModifiers;
+javaparser-core/src/main/java/com/github/javaparser/ast/body/CompactConstructorDeclaration.java:70:                NodeWithAccessModifiers<CompactConstructorDeclaration>,
+javaparser-core/src/main/java/com/github/javaparser/ast/body/ConstructorDeclaration.java:30:import com.github.javaparser.ast.nodeTypes.modifiers.NodeWithAccessModifiers;
+javaparser-core/src/main/java/com/github/javaparser/ast/body/ConstructorDeclaration.java:55:                NodeWithAccessModifiers<ConstructorDeclaration>,
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithProtectedModifier.java:31:public interface NodeWithProtectedModifier<N extends Node> extends NodeWithModifiers<N> {
+javaparser-core/src/main/java/com/github/javaparser/ast/body/AnnotationMemberDeclaration.java:34:import com.github.javaparser.ast.nodeTypes.modifiers.NodeWithPublicModifier;
+javaparser-core/src/main/java/com/github/javaparser/ast/body/AnnotationMemberDeclaration.java:61:                NodeWithPublicModifier<AnnotationMemberDeclaration>,
+javaparser-core/src/main/java/com/github/javaparser/ast/body/FieldDeclaration.java:36:import com.github.javaparser.ast.nodeTypes.modifiers.NodeWithAccessModifiers;
+javaparser-core/src/main/java/com/github/javaparser/ast/body/FieldDeclaration.java:67:                NodeWithAccessModifiers<FieldDeclaration>,
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithPrivateModifier.java:31:public interface NodeWithPrivateModifier<N extends Node> extends NodeWithModifiers<N> {
+javaparser-core/src/main/java/com/github/javaparser/ast/body/CallableDeclaration.java:50:        implements NodeWithAccessModifiers<T>,
+javaparser-core/src/main/java/com/github/javaparser/ast/body/TypeDeclaration.java:33:import com.github.javaparser.ast.nodeTypes.modifiers.NodeWithAccessModifiers;
+javaparser-core/src/main/java/com/github/javaparser/ast/body/TypeDeclaration.java:54:                NodeWithAccessModifiers<T>,
+javaparser-core/src/main/java/com/github/javaparser/ast/body/MethodDeclaration.java:69:                NodeWithAccessModifiers<MethodDeclaration>,
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithAccessModifiers.java:28:public interface NodeWithAccessModifiers<N extends Node>
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithAccessModifiers.java:29:        extends NodeWithPublicModifier<N>, NodeWithPrivateModifier<N>, NodeWithProtectedModifier<N> {}
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithPublicModifier.java:31:public interface NodeWithPublicModifier<N extends Node> extends NodeWithModifiers<N> {
+
+codex
+The first pass already suggests this is a small leaf interface rather than a hub. I’m verifying the actual fan-in by searching for every direct reference to the type name across the repo, then I’ll base the verdict on that count.
+exec
+/bin/bash -lc 'rg -n "extends .*NodeWithAccessModifiers|implements .*NodeWithAccessModifiers|NodeWithAccessModifiers<" javaparser-core/src/main/java/com/github/javaparser/ast/body' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"\\bNodeWithProtectedModifier\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 208ms:
+javaparser-core/src/main/java/com/github/javaparser/ast/body/CompactConstructorDeclaration.java:70:                NodeWithAccessModifiers<CompactConstructorDeclaration>,
+javaparser-core/src/main/java/com/github/javaparser/ast/body/ConstructorDeclaration.java:55:                NodeWithAccessModifiers<ConstructorDeclaration>,
+javaparser-core/src/main/java/com/github/javaparser/ast/body/FieldDeclaration.java:67:                NodeWithAccessModifiers<FieldDeclaration>,
+javaparser-core/src/main/java/com/github/javaparser/ast/body/TypeDeclaration.java:54:                NodeWithAccessModifiers<T>,
+javaparser-core/src/main/java/com/github/javaparser/ast/body/MethodDeclaration.java:69:                NodeWithAccessModifiers<MethodDeclaration>,
+javaparser-core/src/main/java/com/github/javaparser/ast/body/CallableDeclaration.java:50:        implements NodeWithAccessModifiers<T>,
+
+ succeeded in 208ms:
+./javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithProtectedModifier.java:31:public interface NodeWithProtectedModifier<N extends Node> extends NodeWithModifiers<N> {
+./javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithAccessModifiers.java:29:        extends NodeWithPublicModifier<N>, NodeWithPrivateModifier<N>, NodeWithProtectedModifier<N> {}
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:713:                        "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:796:                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:803:                                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier.N")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:968:                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier",
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:975:                                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier.N")
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:1451:                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier", ancestor.getQualifiedName());
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java:1456:                                "com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier.N")
+
+codex
+{"target":"com.github.javaparser.ast.nodeTypes.modifiers.NodeWithProtectedModifier","detection":false,"justification":"Inspected javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithProtectedModifier.java, javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/modifiers/NodeWithAccessModifiers.java, javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/NodeWithModifiers.java, and javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclarationTest.java. The target interface is a small leaf: it extends only NodeWithModifiers and defines just two default methods (isProtected/setProtected) that delegate to hasModifier/setModifier. In the production code, the only direct reference is NodeWithAccessModifiers; no concrete AST class directly implements NodeWithProtectedModifier, and the other matches are test string literals. That indicates low fan-in and low fan-out, not a dependency hub."}
+tokens used
+9,335

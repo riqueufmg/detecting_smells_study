@@ -1,0 +1,582 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ecb-ba91-7d23-b0a3-229cd473fdc2
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.apache.commons.lang3.time.FastDateParser.StrategyParser` in the repository located at:
+
+`data/repositories/apache/commons-lang`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.apache.commons.lang3.time.FastDateParser.StrategyParser",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.apache.commons.lang3.time.FastDateParser.StrategyParser`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its references so I can judge fan-in and fan-out from the repository evidence, then I’ll return a JSON verdict only.
+exec
+/bin/bash -lc 'rg -n "class StrategyParser|StrategyParser" src -S' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/main/java/org/apache/commons/lang3/time/FastDateParser.java:427:    private final class StrategyParser {
+src/main/java/org/apache/commons/lang3/time/FastDateParser.java:431:        StrategyParser(final Calendar definingCalendar) {
+src/main/java/org/apache/commons/lang3/time/FastDateParser.java:1005:        final StrategyParser strategyParser = new StrategyParser(definingCalendar);
+
+exec
+/bin/bash -lc "rg --files src | rg \"FastDateParser|FastDateParser\\.java|DateParser\"" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/main/java/org/apache/commons/lang3/time/DateParser.java
+src/main/java/org/apache/commons/lang3/time/FastDateParser.java
+src/test/java/org/apache/commons/lang3/time/FastDateParserJava15BugTest.java
+src/test/java/org/apache/commons/lang3/time/FastDateParserTest.java
+src/test/java/org/apache/commons/lang3/time/FastDateParser_TimeZoneStrategyTest.java
+src/test/java/org/apache/commons/lang3/time/FastDateParser_MoreOrLessTest.java
+src/test/java/org/apache/commons/lang3/time/FastDateParserSDFTest.java
+
+codex
+I found the target: it is a private inner class inside `FastDateParser`. Next I’m checking its constructor and call sites to measure how much it actually depends on, and whether anything outside the enclosing class depends on it.
+exec
+/bin/bash -lc "sed -n '380,560p' src/main/java/org/apache/commons/lang3/time/FastDateParser.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+     * A strategy to parse a single field from the parsing pattern
+     */
+    private abstract static class Strategy {
+
+        /**
+         * Is this field a number? The default implementation returns false.
+         *
+         * @return true, if field is a number
+         */
+        boolean isNumber() {
+            return false;
+        }
+
+        abstract boolean parse(FastDateParser parser, Calendar calendar, String source, ParsePosition pos, int maxWidth);
+    }
+
+    /**
+     * Holds strategy and field width
+     */
+    private static final class StrategyAndWidth {
+
+        final Strategy strategy;
+        final int width;
+
+        StrategyAndWidth(final Strategy strategy, final int width) {
+            this.strategy = Objects.requireNonNull(strategy, "strategy");
+            this.width = width;
+        }
+
+        int getMaxWidth(final ListIterator<StrategyAndWidth> lt) {
+            if (!strategy.isNumber() || !lt.hasNext()) {
+                return 0;
+            }
+            final Strategy nextStrategy = lt.next().strategy;
+            lt.previous();
+            return nextStrategy.isNumber() ? width : 0;
+        }
+
+        @Override
+        public String toString() {
+            return "StrategyAndWidth [strategy=" + strategy + ", width=" + width + "]";
+        }
+    }
+
+    /**
+     * Parse format into Strategies
+     */
+    private final class StrategyParser {
+        private final Calendar definingCalendar;
+        private int currentIdx;
+
+        StrategyParser(final Calendar definingCalendar) {
+            this.definingCalendar = Objects.requireNonNull(definingCalendar, "definingCalendar");
+        }
+
+        StrategyAndWidth getNextStrategy() {
+            if (currentIdx >= pattern.length()) {
+                return null;
+            }
+            final char c = pattern.charAt(currentIdx);
+            if (CharUtils.isAsciiAlpha(c)) {
+                return letterPattern(c);
+            }
+            return literal();
+        }
+
+        private StrategyAndWidth letterPattern(final char c) {
+            final int begin = currentIdx;
+            while (++currentIdx < pattern.length()) {
+                if (pattern.charAt(currentIdx) != c) {
+                    break;
+                }
+            }
+            final int width = currentIdx - begin;
+            return new StrategyAndWidth(getStrategy(c, width, definingCalendar), width);
+        }
+
+        private StrategyAndWidth literal() {
+            boolean activeQuote = false;
+
+            final StringBuilder sb = new StringBuilder();
+            while (currentIdx < pattern.length()) {
+                final char c = pattern.charAt(currentIdx);
+                if (!activeQuote && CharUtils.isAsciiAlpha(c)) {
+                    break;
+                }
+                if (c == '\'' && (++currentIdx == pattern.length() || pattern.charAt(currentIdx) != '\'')) {
+                    activeQuote = !activeQuote;
+                    continue;
+                }
+                ++currentIdx;
+                sb.append(c);
+            }
+            if (activeQuote) {
+                throw new IllegalArgumentException("Unterminated quote");
+            }
+            final String formatField = sb.toString();
+            return new StrategyAndWidth(new CopyQuotedStrategy(formatField), formatField.length());
+        }
+    }
+
+    /**
+     * A strategy that handles a time zone field in the parsing pattern
+     */
+    static class TimeZoneStrategy extends PatternStrategy {
+
+        private static final class TzInfo {
+            final TimeZone zone;
+            final int dstOffset;
+
+            TzInfo(final TimeZone tz, final boolean useDst) {
+                zone = tz;
+                dstOffset = useDst ? tz.getDSTSavings() : 0;
+            }
+
+            @Override
+            public String toString() {
+                return "TzInfo [zone=" + zone + ", dstOffset=" + dstOffset + "]";
+            }
+        }
+
+        private static final String RFC_822_TIME_ZONE = "[+-]\\d{4}";
+
+        private static final String GMT_OPTION = TimeZones.GMT_ID + "[+-]\\d{1,2}:\\d{2}";
+
+        /**
+         * Index of zone id from {@link DateFormatSymbols#getZoneStrings()}.
+         */
+        private static final int ID = 0;
+
+        /**
+         * Tests whether to skip the given time zone, true if TimeZone.getTimeZone().
+         * <p>
+         * On Java 25 and up, skips short IDs if {@code ignoreTimeZoneShortIDs} is true.
+         * </p>
+         * <p>
+         * This method is package private only for testing.
+         * </p>
+         *
+         * @param tzId the ID to test.
+         * @return Whether to skip the given time zone ID.
+         */
+        static boolean skipTimeZone(final String tzId) {
+            return tzId.equalsIgnoreCase(TimeZones.GMT_ID);
+        }
+
+        private final Locale locale;
+
+        /**
+         * Using lower case only or upper case only will cause problems with some Locales like Turkey, Armenia, Colognian and also depending on the Java
+         * version. For details, see https://garygregory.wordpress.com/2015/11/03/java-lowercase-conversion-turkey/
+         */
+        private final Map<String, TzInfo> tzNames = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
+        /**
+         * Constructs a Strategy that parses a TimeZone.
+         *
+         * @param locale The Locale.
+         */
+        TimeZoneStrategy(final Locale locale) {
+            this.locale = LocaleUtils.toLocale(locale);
+
+            final StringBuilder sb = new StringBuilder();
+            sb.append("((?iu)" + RFC_822_TIME_ZONE + "|" + GMT_OPTION);
+
+            final Set<String> sorted = new TreeSet<>(LONGER_FIRST_LOWERCASE);
+
+            // Order is undefined.
+            // TODO Use of getZoneStrings() is discouraged per its Javadoc.
+            final String[][] zones = DateFormatSymbols.getInstance(locale).getZoneStrings();
+            for (final String[] zoneNames : zones) {
+                // offset 0 is the time zone ID and is not localized
+                final String tzId = zoneNames[ID];
+                if (skipTimeZone(tzId)) {
+                    continue;
+                }
+                final TimeZone tz = TimeZones.getTimeZone(tzId);
+                // offset 1 is long standard name
+                // offset 2 is short standard name
+                final TzInfo standard = new TzInfo(tz, false);
+                TzInfo tzInfo = standard;
+
+exec
+/bin/bash -lc "sed -n '960,1045p' src/main/java/org/apache/commons/lang3/time/FastDateParser.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+        case 'y':
+        case 'Y':
+            return width > 2 ? LITERAL_YEAR_STRATEGY : ABBREVIATED_YEAR_STRATEGY;
+        case 'X':
+            return ISO8601TimeZoneStrategy.getStrategy(width);
+        case 'Z':
+            if (width == 2) {
+                return ISO8601TimeZoneStrategy.ISO_8601_3_STRATEGY;
+            }
+            // falls-through
+        case 'z':
+            return getLocaleSpecificStrategy(Calendar.ZONE_OFFSET, definingCalendar);
+        default:
+            throw new IllegalArgumentException("Format '" + f + "' not supported");
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.apache.commons.lang3.time.DateParser#getTimeZone()
+     */
+    @Override
+    public TimeZone getTimeZone() {
+        return timeZone;
+    }
+
+    /**
+     * Returns a hash code compatible with equals.
+     *
+     * @return a hash code compatible with equals
+     */
+    @Override
+    public int hashCode() {
+        return pattern.hashCode() + 13 * (timeZone.hashCode() + 13 * locale.hashCode());
+    }
+
+    /**
+     * Initializes derived fields from defining fields. This is called from constructor and from readObject (de-serialization)
+     *
+     * @param definingCalendar the {@link java.util.Calendar} instance used to initialize this FastDateParser
+     */
+    private void init(final Calendar definingCalendar) {
+        patterns = new ArrayList<>();
+
+        final StrategyParser strategyParser = new StrategyParser(definingCalendar);
+        for (;;) {
+            final StrategyAndWidth field = strategyParser.getNextStrategy();
+            if (field == null) {
+                break;
+            }
+            patterns.add(field);
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.apache.commons.lang3.time.DateParser#parse(String)
+     */
+    @Override
+    public Date parse(final String source) throws ParseException {
+        final ParsePosition pp = new ParsePosition(0);
+        final Date date = parse(source, pp);
+        if (date == null) {
+            // Add a note regarding supported date range
+            if (locale.equals(JAPANESE_IMPERIAL)) {
+                throw new ParseException("(The " + locale + " locale does not support dates before 1868 AD)\nUnparseable date: \"" + source,
+                        pp.getErrorIndex());
+            }
+            throw new ParseException("Unparseable date: " + source, pp.getErrorIndex());
+        }
+        return date;
+    }
+    /**
+     * This implementation updates the ParsePosition if the parse succeeds. However, it sets the error index to the position before the failed field unlike the
+     * method {@link java.text.SimpleDateFormat#parse(String, ParsePosition)} which sets the error index to after the failed field.
+     * <p>
+     * To determine if the parse has succeeded, the caller must check if the current parse position given by {@link ParsePosition#getIndex()} has been updated.
+     * If the input buffer has been fully parsed, then the index will point to just after the end of the input buffer.
+     * </p>
+     *
+     * @see org.apache.commons.lang3.time.DateParser#parse(String, java.text.ParsePosition)
+     */
+    @Override
+    public Date parse(final String source, final ParsePosition pos) {
+
+exec
+/bin/bash -lc 'rg -n "StrategyParser" src/main/java src/test/java -S' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 0ms:
+src/main/java/org/apache/commons/lang3/time/FastDateParser.java:427:    private final class StrategyParser {
+src/main/java/org/apache/commons/lang3/time/FastDateParser.java:431:        StrategyParser(final Calendar definingCalendar) {
+src/main/java/org/apache/commons/lang3/time/FastDateParser.java:1005:        final StrategyParser strategyParser = new StrategyParser(definingCalendar);
+
+codex
+The evidence is already pointing away from hub-like modularization: `StrategyParser` is private, and I’ve only found one constructor call inside `FastDateParser.init(...)`. I’m pulling exact line numbers now so the verdict is precise.
+exec
+/bin/bash -lc "nl -ba src/main/java/org/apache/commons/lang3/time/FastDateParser.java | sed -n '420,470p'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "nl -ba src/main/java/org/apache/commons/lang3/time/FastDateParser.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "nl -ba src/main/java/org/apache/commons/lang3/time/FastDateParser.java | sed -n '996,1015p'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 124ms:
+   420	            return "StrategyAndWidth [strategy=" + strategy + ", width=" + width + "]";
+   421	        }
+   422	    }
+   423	
+   424	    /**
+   425	     * Parse format into Strategies
+   426	     */
+   427	    private final class StrategyParser {
+   428	        private final Calendar definingCalendar;
+   429	        private int currentIdx;
+   430	
+   431	        StrategyParser(final Calendar definingCalendar) {
+   432	            this.definingCalendar = Objects.requireNonNull(definingCalendar, "definingCalendar");
+   433	        }
+   434	
+   435	        StrategyAndWidth getNextStrategy() {
+   436	            if (currentIdx >= pattern.length()) {
+   437	                return null;
+   438	            }
+   439	            final char c = pattern.charAt(currentIdx);
+   440	            if (CharUtils.isAsciiAlpha(c)) {
+   441	                return letterPattern(c);
+   442	            }
+   443	            return literal();
+   444	        }
+   445	
+   446	        private StrategyAndWidth letterPattern(final char c) {
+   447	            final int begin = currentIdx;
+   448	            while (++currentIdx < pattern.length()) {
+   449	                if (pattern.charAt(currentIdx) != c) {
+   450	                    break;
+   451	                }
+   452	            }
+   453	            final int width = currentIdx - begin;
+   454	            return new StrategyAndWidth(getStrategy(c, width, definingCalendar), width);
+   455	        }
+   456	
+   457	        private StrategyAndWidth literal() {
+   458	            boolean activeQuote = false;
+   459	
+   460	            final StringBuilder sb = new StringBuilder();
+   461	            while (currentIdx < pattern.length()) {
+   462	                final char c = pattern.charAt(currentIdx);
+   463	                if (!activeQuote && CharUtils.isAsciiAlpha(c)) {
+   464	                    break;
+   465	                }
+   466	                if (c == '\'' && (++currentIdx == pattern.length() || pattern.charAt(currentIdx) != '\'')) {
+   467	                    activeQuote = !activeQuote;
+   468	                    continue;
+   469	                }
+   470	                ++currentIdx;
+
+ succeeded in 129ms:
+     1	/*
+     2	 * Licensed to the Apache Software Foundation (ASF) under one or more
+     3	 * contributor license agreements.  See the NOTICE file distributed with
+     4	 * this work for additional information regarding copyright ownership.
+     5	 * The ASF licenses this file to You under the Apache License, Version 2.0
+     6	 * (the "License"); you may not use this file except in compliance with
+     7	 * the License.  You may obtain a copy of the License at
+     8	 *
+     9	 *      https://www.apache.org/licenses/LICENSE-2.0
+    10	 *
+    11	 * Unless required by applicable law or agreed to in writing, software
+    12	 * distributed under the License is distributed on an "AS IS" BASIS,
+    13	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    14	 * See the License for the specific language governing permissions and
+    15	 * limitations under the License.
+    16	 */
+    17	package org.apache.commons.lang3.time;
+    18	
+    19	import java.io.IOException;
+    20	import java.io.ObjectInputStream;
+    21	import java.io.Serializable;
+    22	import java.text.DateFormatSymbols;
+    23	import java.text.ParseException;
+    24	import java.text.ParsePosition;
+    25	import java.text.SimpleDateFormat;
+    26	import java.util.ArrayList;
+    27	import java.util.Arrays;
+    28	import java.util.Calendar;
+    29	import java.util.Comparator;
+    30	import java.util.Date;
+    31	import java.util.HashMap;
+    32	import java.util.List;
+    33	import java.util.ListIterator;
+    34	import java.util.Locale;
+    35	import java.util.Map;
+    36	import java.util.Objects;
+    37	import java.util.Set;
+    38	import java.util.TimeZone;
+    39	import java.util.TreeMap;
+    40	import java.util.TreeSet;
+    41	import java.util.concurrent.ConcurrentHashMap;
+    42	import java.util.concurrent.ConcurrentMap;
+    43	import java.util.regex.Matcher;
+    44	import java.util.regex.Pattern;
+    45	import java.util.stream.Stream;
+    46	
+    47	import org.apache.commons.lang3.ArraySorter;
+    48	import org.apache.commons.lang3.CharUtils;
+    49	import org.apache.commons.lang3.LocaleUtils;
+    50	
+    51	/**
+    52	 * FastDateParser is a fast and thread-safe version of {@link java.text.SimpleDateFormat}.
+    53	 *
+    54	 * <p>
+    55	 * To obtain a proxy to a FastDateParser, use {@link FastDateFormat#getInstance(String, TimeZone, Locale)} or another variation of the factory methods of
+    56	 * {@link FastDateFormat}.
+    57	 * </p>
+    58	 *
+    59	 * <p>
+    60	 * Since FastDateParser is thread safe, you can use a static member instance:
+    61	 * </p>
+    62	 * {@code
+    63	 *     private static final DateParser DATE_PARSER = FastDateFormat.getInstance("yyyy-MM-dd");
+    64	 * }
+    65	 *
+    66	 * <p>
+    67	 * This class can be used as a direct replacement for {@link SimpleDateFormat} in most parsing situations. This class is especially useful in multi-threaded
+    68	 * server environments. {@link SimpleDateFormat} is not thread-safe in any JDK version, nor will it be as Sun has closed the
+    69	 * <a href="https://bugs.openjdk.org/browse/JDK-4228335">bug</a>/RFE.
+    70	 * </p>
+    71	 *
+    72	 * <p>
+    73	 * Only parsing is supported by this class, but all patterns are compatible with SimpleDateFormat.
+    74	 * </p>
+    75	 *
+    76	 * <p>
+    77	 * The class operates in lenient mode, so for example a time of 90 minutes is treated as 1 hour 30 minutes.
+    78	 * </p>
+    79	 *
+    80	 * <p>
+    81	 * Timing tests indicate this class is as about as fast as SimpleDateFormat in single thread applications and about 25% faster in multi-thread applications.
+    82	 * </p>
+    83	 *
+    84	 * @since 3.2
+    85	 * @see FastDatePrinter
+    86	 */
+    87	public class FastDateParser implements DateParser, Serializable {
+    88	
+    89	    /**
+    90	     * A strategy that handles a text field in the parsing pattern
+    91	     */
+    92	    private static final class CaseInsensitiveTextStrategy extends PatternStrategy {
+    93	
+    94	        private final int field;
+    95	        private final Locale locale;
+    96	        private final Map<String, Integer> lKeyValues;
+    97	
+    98	        /**
+    99	         * Constructs a Strategy that parses a Text field
+   100	         *
+   101	         * @param field            The Calendar field
+   102	         * @param definingCalendar The Calendar to use
+   103	         * @param locale           The Locale to use
+   104	         */
+   105	        CaseInsensitiveTextStrategy(final int field, final Calendar definingCalendar, final Locale locale) {
+   106	            this.field = field;
+   107	            this.locale = LocaleUtils.toLocale(locale);
+   108	
+   109	            final StringBuilder regex = new StringBuilder();
+   110	            regex.append("((?iu)");
+   111	            lKeyValues = appendDisplayNames(definingCalendar, locale, field, regex);
+   112	            regex.setLength(regex.length() - 1);
+   113	            regex.append(")");
+   114	            createPattern(regex);
+   115	        }
+   116	
+   117	        /**
+   118	         * {@inheritDoc}
+   119	         */
+   120	        @Override
+
+ succeeded in 136ms:
+   996	
+   997	    /**
+   998	     * Initializes derived fields from defining fields. This is called from constructor and from readObject (de-serialization)
+   999	     *
+  1000	     * @param definingCalendar the {@link java.util.Calendar} instance used to initialize this FastDateParser
+  1001	     */
+  1002	    private void init(final Calendar definingCalendar) {
+  1003	        patterns = new ArrayList<>();
+  1004	
+  1005	        final StrategyParser strategyParser = new StrategyParser(definingCalendar);
+  1006	        for (;;) {
+  1007	            final StrategyAndWidth field = strategyParser.getNextStrategy();
+  1008	            if (field == null) {
+  1009	                break;
+  1010	            }
+  1011	            patterns.add(field);
+  1012	        }
+  1013	    }
+  1014	
+  1015	    /*
+
+codex
+{"target":"org.apache.commons.lang3.time.FastDateParser.StrategyParser","detection":false,"justification":"`src/main/java/org/apache/commons/lang3/time/FastDateParser.java:427-457` shows `StrategyParser` is a private inner class, and `src/main/java/org/apache/commons/lang3/time/FastDateParser.java:1002-1012` shows it is instantiated only once inside `init(...)`. A repo-wide search (`rg -n \"StrategyParser\" src/main/java src/test/java`) found no other references, so there is no evidence of strong fan-in. Its outgoing dependencies are also local to `FastDateParser` (e.g. `pattern`, `getStrategy(...)`, `CopyQuotedStrategy`, `StrategyAndWidth`, `Calendar`, `CharUtils`), which is not hub-like modularization."}
+tokens used
+11,885

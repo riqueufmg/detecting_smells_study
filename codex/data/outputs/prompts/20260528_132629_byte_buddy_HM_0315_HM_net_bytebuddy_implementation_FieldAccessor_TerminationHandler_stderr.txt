@@ -1,0 +1,802 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f68-b767-7ab2-954f-1171e3f9e86f
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.FieldAccessor.TerminationHandler` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.FieldAccessor.TerminationHandler",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.FieldAccessor.TerminationHandler`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and the surrounding references first, then I’ll check how widely it is used and what it depends on before deciding on hub-like modularization.
+exec
+/bin/bash -lc 'rg --files . | rg "FieldAccessor|TerminationHandler"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc 'rg -n "enum TerminationHandler|class TerminationHandler|interface TerminationHandler|TerminationHandler" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 242ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/SuperMethodCall.java:56:        return new Appender(implementationTarget, Appender.TerminationHandler.RETURNING);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/SuperMethodCall.java:94:            return new Appender(implementationTarget, Appender.TerminationHandler.DROPPING);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/SuperMethodCall.java:112:        private final TerminationHandler terminationHandler;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/SuperMethodCall.java:120:        protected Appender(Target implementationTarget, TerminationHandler terminationHandler) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/SuperMethodCall.java:146:        protected enum TerminationHandler {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:102:    protected final TerminationHandler.Factory terminationHandler;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:129:                         TerminationHandler.Factory terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:293:                TerminationHandler.Simple.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:623:                new TerminationHandler.FieldSetting.Explicit(fieldDescription),
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:640:                new TerminationHandler.FieldSetting.Implicit(matcher),
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:674:                TerminationHandler.Simple.DROPPING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:687:                TerminationHandler.Simple.DROPPING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:1803:                    return new ArgumentProvider(methodCall.new Appender(implementationTarget, TerminationHandler.Simple.IGNORING));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:2684:                    return new ForMethodCall(methodCall.new Appender(implementationTarget, TerminationHandler.Simple.IGNORING));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:2979:    protected interface TerminationHandler {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3010:            TerminationHandler make(TypeDescription instrumentedType);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3016:        enum Simple implements TerminationHandler, Factory {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3065:            public TerminationHandler make(TypeDescription instrumentedType) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3082:        class FieldSetting implements TerminationHandler {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3124:            protected static class Explicit implements TerminationHandler.Factory {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3144:                public TerminationHandler make(TypeDescription instrumentedType) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3158:            protected static class Implicit implements TerminationHandler.Factory {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3177:                public TerminationHandler make(TypeDescription instrumentedType) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3213:                    TerminationHandler.Simple.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3513:        private final TerminationHandler terminationHandler;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3521:        protected Appender(Target implementationTarget, TerminationHandler terminationHandler) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:94:    protected final TerminationHandler terminationHandler;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:119:                            TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:224:                TerminationHandler.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:861:                TerminationHandler.DROPPING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:874:                TerminationHandler.DROPPING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2488:    protected enum TerminationHandler {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2547:                                    TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2790:                                        TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2853:                                     TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2962:                                   TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:3016:                                 TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:3074:                                 TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:3134:                              TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDrivenBinder.java:129:                                  MethodDelegationBinder.TerminationHandler terminationHandler,
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/MethodDelegationBinderTerminationHandlerTest.java:23:public class MethodDelegationBinderTerminationHandlerTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/MethodDelegationBinderTerminationHandlerTest.java:47:        StackManipulation stackManipulation = MethodDelegationBinder.TerminationHandler.Default.DROPPING.resolve(assigner, Assigner.Typing.STATIC, source, target);
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/MethodDelegationBinderTerminationHandlerTest.java:60:        StackManipulation stackManipulation = MethodDelegationBinder.TerminationHandler.Default.RETURNING.resolve(assigner,
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/MethodDelegationBinderTest.java:39:                mock(MethodDelegationBinder.TerminationHandler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/MethodDelegationBinderProcessorTest.java:34:    private MethodDelegationBinder.TerminationHandler terminationHandler;
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/TargetMethodAnnotationDrivenBinderTest.java:51:    private TargetMethodAnnotationDrivenBinder.TerminationHandler terminationHandler;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:219:    private final TargetMethodAnnotationDrivenBinder.TerminationHandler terminationHandler;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:246:                MethodDelegationBinder.TerminationHandler.Default.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:264:                             TargetMethodAnnotationDrivenBinder.TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:652:                MethodDelegationBinder.TerminationHandler.Default.DROPPING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:664:                MethodDelegationBinder.TerminationHandler.Default.DROPPING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:1320:        private final MethodDelegationBinder.TerminationHandler terminationHandler;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:1343:                           MethodDelegationBinder.TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/MethodDelegationBinder.java:78:                           TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/MethodDelegationBinder.java:97:                                      TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/MethodDelegationBinder.java:1000:    interface TerminationHandler {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/MethodDelegationBinder.java:1017:        enum Default implements TerminationHandler {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/MethodDelegationBinder.java:1094:                                  TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:738:                    ForSetter.TerminationHandler.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:746:            return new ForSetter.OfDefaultValue(fieldLocation, assigner, typing, ForSetter.TerminationHandler.RETURNING);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:797:                    ForSetter.TerminationHandler.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:816:                    ForSetter.TerminationHandler.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:835:                    ForSetter.TerminationHandler.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:853:                    ForSetter.TerminationHandler.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:959:        private final TerminationHandler terminationHandler;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:969:        protected ForSetter(FieldLocation fieldLocation, Assigner assigner, Assigner.Typing typing, TerminationHandler terminationHandler) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1009:        protected enum TerminationHandler {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1066:                                       TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1111:                        TerminationHandler.NON_OPERATIONAL,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1122:                        TerminationHandler.NON_OPERATIONAL,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1140:            protected OfDefaultValue(FieldLocation fieldLocation, Assigner assigner, Assigner.Typing typing, TerminationHandler terminationHandler) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1176:                        TerminationHandler.NON_OPERATIONAL), implementation);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1186:                        TerminationHandler.NON_OPERATIONAL), implementation);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1219:                                      TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1259:                        TerminationHandler.NON_OPERATIONAL,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1271:                        TerminationHandler.NON_OPERATIONAL,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1311:                                       TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1359:                        TerminationHandler.NON_OPERATIONAL,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1371:                        TerminationHandler.NON_OPERATIONAL,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1400:                                   TerminationHandler terminationHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1448:                        TerminationHandler.NON_OPERATIONAL,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1459:                        TerminationHandler.NON_OPERATIONAL,
+
+ succeeded in 335ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorFieldNameExtractorForBeanPropertyTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorOtherTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorFieldNameExtractorForArgumentSubstitutionTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/MethodDelegationBinderTerminationHandlerTest.java
+
+codex
+I found the target inside `FieldAccessor.java`. Next I’m checking the enum body and every in-repo reference to it so I can judge fan-in/fan-out from actual usage rather than the surrounding outer class.
+exec
+/bin/bash -lc "sed -n '930,1085p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"ForSetter\\.TerminationHandler|TerminationHandler\\.NON_OPERATIONAL|TerminationHandler\\.RETURNING\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 257ms:
+                    implementation = new StackManipulation.Compound(
+                            initialization,
+                            MethodVariableAccess.load(instrumentedMethod.getParameters().get(0)),
+                            assigner.assign(instrumentedMethod.getParameters().get(0).getType(), fieldDescription.getType(), typing),
+                            FieldAccess.forField(fieldDescription).write(),
+                            MethodReturn.VOID
+                    );
+                } else {
+                    throw new IllegalArgumentException("Method " + instrumentedMethod + " is no bean accessor");
+                }
+                if (!implementation.isValid()) {
+                    throw new IllegalStateException("Cannot set or get value of " + instrumentedMethod + " using " + fieldDescription);
+                }
+                return new Size(implementation.apply(methodVisitor, implementationContext).getMaximalSize(), instrumentedMethod.getStackSize());
+            }
+        }
+    }
+
+    /**
+     * A field accessor for a field setter.
+     *
+     * @param <T> The type of the value that is initialized per instrumented type.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    protected abstract static class ForSetter<T> extends FieldAccessor implements Implementation.Composable {
+
+        /**
+         * The termination handler to apply.
+         */
+        private final TerminationHandler terminationHandler;
+
+        /**
+         * Creates a new field accessor for a setter instrumentation.
+         *
+         * @param fieldLocation      The field's location.
+         * @param assigner           The assigner to use.
+         * @param typing             Indicates if dynamic type castings should be attempted for incompatible assignments.
+         * @param terminationHandler The termination handler to apply.
+         */
+        protected ForSetter(FieldLocation fieldLocation, Assigner assigner, Assigner.Typing typing, TerminationHandler terminationHandler) {
+            super(fieldLocation, assigner, typing);
+            this.terminationHandler = terminationHandler;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ByteCodeAppender appender(Target implementationTarget) {
+            return new Appender(implementationTarget.getInstrumentedType(),
+                    initialize(implementationTarget.getInstrumentedType()),
+                    fieldLocation.prepare(implementationTarget.getInstrumentedType()));
+        }
+
+        /**
+         * Initializes a value to be used during method instrumentation.
+         *
+         * @param instrumentedType The instrumented type.
+         * @return The initialized value.
+         */
+        @MaybeNull
+        protected abstract T initialize(TypeDescription instrumentedType);
+
+        /**
+         * Resolves the stack manipulation to load the value being set.
+         *
+         * @param initialized        The method that was initialized for the instrumented type.
+         * @param fieldDescription   The field to set the value for.
+         * @param instrumentedType   The instrumented type.
+         * @param instrumentedMethod The instrumented method.
+         * @return The stack manipulation to apply.
+         */
+        protected abstract StackManipulation resolve(@MaybeNull T initialized,
+                                                     FieldDescription fieldDescription,
+                                                     TypeDescription instrumentedType,
+                                                     MethodDescription instrumentedMethod);
+
+        /**
+         * A termination handler is responsible for handling a field accessor's return.
+         */
+        protected enum TerminationHandler {
+
+            /**
+             * Returns {@code void} or throws an exception if this is not the return type of the instrumented method.
+             */
+            RETURNING {
+                @Override
+                protected StackManipulation resolve(MethodDescription instrumentedMethod) {
+                    if (!instrumentedMethod.getReturnType().represents(void.class)) {
+                        throw new IllegalStateException("Cannot implement setter with return value for " + instrumentedMethod);
+                    }
+                    return MethodReturn.VOID;
+                }
+            },
+
+            /**
+             * Does not return from the method at all.
+             */
+            NON_OPERATIONAL {
+                @Override
+                protected StackManipulation resolve(MethodDescription instrumentedMethod) {
+                    return StackManipulation.Trivial.INSTANCE;
+                }
+            };
+
+            /**
+             * Resolves the return instruction.
+             *
+             * @param instrumentedMethod The instrumented method.
+             * @return An appropriate stack manipulation.
+             */
+            protected abstract StackManipulation resolve(MethodDescription instrumentedMethod);
+        }
+
+        /**
+         * A setter instrumentation for a parameter value.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class OfParameterValue extends ForSetter<Void> {
+
+            /**
+             * The parameter's index.
+             */
+            private final int index;
+
+            /**
+             * Creates a new setter instrumentation for a parameter value.
+             *
+             * @param fieldLocation      The field's location.
+             * @param assigner           The assigner to use.
+             * @param typing             Indicates if dynamic type castings should be attempted for incompatible assignments.
+             * @param terminationHandler The termination handler to apply.
+             * @param index              The parameter's index.
+             */
+            protected OfParameterValue(FieldLocation fieldLocation,
+                                       Assigner assigner,
+                                       Assigner.Typing typing,
+                                       TerminationHandler terminationHandler,
+                                       int index) {
+                super(fieldLocation, assigner, typing, terminationHandler);
+                this.index = index;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                return instrumentedType;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            @AlwaysNull
+            protected Void initialize(TypeDescription instrumentedType) {
+                return null;
+            }
+
+ succeeded in 301ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:224:                TerminationHandler.RETURNING,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/SuperMethodCall.java:56:        return new Appender(implementationTarget, Appender.TerminationHandler.RETURNING);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:738:                    ForSetter.TerminationHandler.RETURNING,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:746:            return new ForSetter.OfDefaultValue(fieldLocation, assigner, typing, ForSetter.TerminationHandler.RETURNING);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:797:                    ForSetter.TerminationHandler.RETURNING,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:816:                    ForSetter.TerminationHandler.RETURNING,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:835:                    ForSetter.TerminationHandler.RETURNING,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:853:                    ForSetter.TerminationHandler.RETURNING,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1111:                        TerminationHandler.NON_OPERATIONAL,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1122:                        TerminationHandler.NON_OPERATIONAL,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1176:                        TerminationHandler.NON_OPERATIONAL), implementation);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1186:                        TerminationHandler.NON_OPERATIONAL), implementation);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1259:                        TerminationHandler.NON_OPERATIONAL,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1271:                        TerminationHandler.NON_OPERATIONAL,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1359:                        TerminationHandler.NON_OPERATIONAL,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1371:                        TerminationHandler.NON_OPERATIONAL,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1448:                        TerminationHandler.NON_OPERATIONAL,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1459:                        TerminationHandler.NON_OPERATIONAL,
+
+codex
+I’ve confirmed there are no cross-file references to `FieldAccessor.ForSetter.TerminationHandler`; the remaining question is whether the enum itself has enough internal dependency breadth to qualify as a hub. I’m checking the constructor/factory sites and the enum body for that.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java | sed -n '1000,1065p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '700,870p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"ForSetter\\.TerminationHandler|protected enum TerminationHandler|new ForSetter\\.|super\\(fieldLocation, assigner, typing, terminationHandler\\)\" byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 194ms:
+            this(fieldLocation, Assigner.DEFAULT, Assigner.Typing.STATIC);
+        }
+
+        /**
+         * Creates a field accessor for an implicit property.
+         *
+         * @param fieldLocation The field's location.
+         * @param assigner      The assigner to use.
+         * @param typing        The typing to use.
+         */
+        private ForImplicitProperty(FieldLocation fieldLocation, Assigner assigner, Assigner.Typing typing) {
+            super(fieldLocation, assigner, typing);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public InstrumentedType prepare(InstrumentedType instrumentedType) {
+            return instrumentedType;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ByteCodeAppender appender(Target implementationTarget) {
+            return new Appender(fieldLocation.prepare(implementationTarget.getInstrumentedType()));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsArgumentAt(int index) {
+            if (index < 0) {
+                throw new IllegalArgumentException("A parameter index cannot be negative: " + index);
+            }
+            return new ForSetter.OfParameterValue(fieldLocation,
+                    assigner,
+                    typing,
+                    ForSetter.TerminationHandler.RETURNING,
+                    index);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsDefaultValue() {
+            return new ForSetter.OfDefaultValue(fieldLocation, assigner, typing, ForSetter.TerminationHandler.RETURNING);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsValue(@MaybeNull Object value) {
+            if (value == null) {
+                return setsDefaultValue();
+            }
+            ConstantValue constant = ConstantValue.Simple.wrapOrNull(value);
+            return constant == null
+                    ? setsReference(value)
+                    : setsValue(constant.toStackManipulation(), constant.getTypeDescription().asGenericType());
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsValue(TypeDescription typeDescription) {
+            return setsValue(ClassConstant.of(typeDescription), Class.class);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsValue(ConstantValue constant) {
+            return setsValue(constant.toStackManipulation(), constant.getTypeDescription().asGenericType());
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsValue(JavaConstant constant) {
+            return setsValue((ConstantValue) constant);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsValue(StackManipulation stackManipulation, Type type) {
+            return setsValue(stackManipulation, TypeDescription.Generic.Sort.describe(type));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsValue(StackManipulation stackManipulation, TypeDescription.Generic typeDescription) {
+            return new ForSetter.OfConstantValue(fieldLocation,
+                    assigner,
+                    typing,
+                    ForSetter.TerminationHandler.RETURNING,
+                    typeDescription,
+                    stackManipulation);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsReference(Object value) {
+            return setsReference(value, ForSetter.OfReferenceValue.PREFIX + "$" + RandomString.hashOf(value));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsReference(Object value, String name) {
+            return new ForSetter.OfReferenceValue(fieldLocation,
+                    assigner,
+                    typing,
+                    ForSetter.TerminationHandler.RETURNING,
+                    value,
+                    name);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsFieldValueOf(Field field) {
+            return setsFieldValueOf(new FieldDescription.ForLoadedField(field));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsFieldValueOf(FieldDescription fieldDescription) {
+            return new ForSetter.OfFieldValue(fieldLocation,
+                    assigner,
+                    typing,
+                    ForSetter.TerminationHandler.RETURNING,
+                    new FieldLocation.Absolute(fieldDescription));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsFieldValueOf(String fieldName) {
+            return setsFieldValueOf(new FieldNameExtractor.ForFixedValue(fieldName));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Composable setsFieldValueOf(FieldNameExtractor fieldNameExtractor) {
+            return new ForSetter.OfFieldValue(fieldLocation,
+                    assigner,
+                    typing,
+                    ForSetter.TerminationHandler.RETURNING,
+                    new FieldLocation.Relative(Collections.singletonList(fieldNameExtractor)));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public PropertyConfigurable withAssigner(Assigner assigner, Assigner.Typing typing) {
+            return new ForImplicitProperty(fieldLocation, assigner, typing);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public AssignerConfigurable in(Class<?> type) {
+            return in(TypeDescription.ForLoadedType.of(type));
+        }
+
+
+ succeeded in 221ms:
+735:            return new ForSetter.OfParameterValue(fieldLocation,
+738:                    ForSetter.TerminationHandler.RETURNING,
+746:            return new ForSetter.OfDefaultValue(fieldLocation, assigner, typing, ForSetter.TerminationHandler.RETURNING);
+794:            return new ForSetter.OfConstantValue(fieldLocation,
+797:                    ForSetter.TerminationHandler.RETURNING,
+813:            return new ForSetter.OfReferenceValue(fieldLocation,
+816:                    ForSetter.TerminationHandler.RETURNING,
+832:            return new ForSetter.OfFieldValue(fieldLocation,
+835:                    ForSetter.TerminationHandler.RETURNING,
+850:            return new ForSetter.OfFieldValue(fieldLocation,
+853:                    ForSetter.TerminationHandler.RETURNING,
+1009:        protected enum TerminationHandler {
+1068:                super(fieldLocation, assigner, typing, terminationHandler);
+1141:                super(fieldLocation, assigner, typing, terminationHandler);
+1222:                super(fieldLocation, assigner, typing, terminationHandler);
+1314:                super(fieldLocation, assigner, typing, terminationHandler);
+1402:                super(fieldLocation, assigner, typing, terminationHandler);
+
+ succeeded in 263ms:
+  1000	         */
+  1001	        protected abstract StackManipulation resolve(@MaybeNull T initialized,
+  1002	                                                     FieldDescription fieldDescription,
+  1003	                                                     TypeDescription instrumentedType,
+  1004	                                                     MethodDescription instrumentedMethod);
+  1005	
+  1006	        /**
+  1007	         * A termination handler is responsible for handling a field accessor's return.
+  1008	         */
+  1009	        protected enum TerminationHandler {
+  1010	
+  1011	            /**
+  1012	             * Returns {@code void} or throws an exception if this is not the return type of the instrumented method.
+  1013	             */
+  1014	            RETURNING {
+  1015	                @Override
+  1016	                protected StackManipulation resolve(MethodDescription instrumentedMethod) {
+  1017	                    if (!instrumentedMethod.getReturnType().represents(void.class)) {
+  1018	                        throw new IllegalStateException("Cannot implement setter with return value for " + instrumentedMethod);
+  1019	                    }
+  1020	                    return MethodReturn.VOID;
+  1021	                }
+  1022	            },
+  1023	
+  1024	            /**
+  1025	             * Does not return from the method at all.
+  1026	             */
+  1027	            NON_OPERATIONAL {
+  1028	                @Override
+  1029	                protected StackManipulation resolve(MethodDescription instrumentedMethod) {
+  1030	                    return StackManipulation.Trivial.INSTANCE;
+  1031	                }
+  1032	            };
+  1033	
+  1034	            /**
+  1035	             * Resolves the return instruction.
+  1036	             *
+  1037	             * @param instrumentedMethod The instrumented method.
+  1038	             * @return An appropriate stack manipulation.
+  1039	             */
+  1040	            protected abstract StackManipulation resolve(MethodDescription instrumentedMethod);
+  1041	        }
+  1042	
+  1043	        /**
+  1044	         * A setter instrumentation for a parameter value.
+  1045	         */
+  1046	        @HashCodeAndEqualsPlugin.Enhance
+  1047	        protected static class OfParameterValue extends ForSetter<Void> {
+  1048	
+  1049	            /**
+  1050	             * The parameter's index.
+  1051	             */
+  1052	            private final int index;
+  1053	
+  1054	            /**
+  1055	             * Creates a new setter instrumentation for a parameter value.
+  1056	             *
+  1057	             * @param fieldLocation      The field's location.
+  1058	             * @param assigner           The assigner to use.
+  1059	             * @param typing             Indicates if dynamic type castings should be attempted for incompatible assignments.
+  1060	             * @param terminationHandler The termination handler to apply.
+  1061	             * @param index              The parameter's index.
+  1062	             */
+  1063	            protected OfParameterValue(FieldLocation fieldLocation,
+  1064	                                       Assigner assigner,
+  1065	                                       Assigner.Typing typing,
+
+codex
+I’ve narrowed the usage to `FieldAccessor.java` itself. I’m doing one last exact-name search and then I’ll decide based on the class’s actual dependency footprint, not the outer `FieldAccessor` API.
+exec
+/bin/bash -lc "rg -n \"FieldAccessor\\.ForSetter\\.TerminationHandler|FieldAccessor\\.TerminationHandler|ForSetter\\.TerminationHandler\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java | sed -n '730,855p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java | sed -n '1009,1041p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 182ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:738:                    ForSetter.TerminationHandler.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:746:            return new ForSetter.OfDefaultValue(fieldLocation, assigner, typing, ForSetter.TerminationHandler.RETURNING);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:797:                    ForSetter.TerminationHandler.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:816:                    ForSetter.TerminationHandler.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:835:                    ForSetter.TerminationHandler.RETURNING,
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:853:                    ForSetter.TerminationHandler.RETURNING,
+
+ succeeded in 243ms:
+   730	         */
+   731	        public Composable setsArgumentAt(int index) {
+   732	            if (index < 0) {
+   733	                throw new IllegalArgumentException("A parameter index cannot be negative: " + index);
+   734	            }
+   735	            return new ForSetter.OfParameterValue(fieldLocation,
+   736	                    assigner,
+   737	                    typing,
+   738	                    ForSetter.TerminationHandler.RETURNING,
+   739	                    index);
+   740	        }
+   741	
+   742	        /**
+   743	         * {@inheritDoc}
+   744	         */
+   745	        public Composable setsDefaultValue() {
+   746	            return new ForSetter.OfDefaultValue(fieldLocation, assigner, typing, ForSetter.TerminationHandler.RETURNING);
+   747	        }
+   748	
+   749	        /**
+   750	         * {@inheritDoc}
+   751	         */
+   752	        public Composable setsValue(@MaybeNull Object value) {
+   753	            if (value == null) {
+   754	                return setsDefaultValue();
+   755	            }
+   756	            ConstantValue constant = ConstantValue.Simple.wrapOrNull(value);
+   757	            return constant == null
+   758	                    ? setsReference(value)
+   759	                    : setsValue(constant.toStackManipulation(), constant.getTypeDescription().asGenericType());
+   760	        }
+   761	
+   762	        /**
+   763	         * {@inheritDoc}
+   764	         */
+   765	        public Composable setsValue(TypeDescription typeDescription) {
+   766	            return setsValue(ClassConstant.of(typeDescription), Class.class);
+   767	        }
+   768	
+   769	        /**
+   770	         * {@inheritDoc}
+   771	         */
+   772	        public Composable setsValue(ConstantValue constant) {
+   773	            return setsValue(constant.toStackManipulation(), constant.getTypeDescription().asGenericType());
+   774	        }
+   775	
+   776	        /**
+   777	         * {@inheritDoc}
+   778	         */
+   779	        public Composable setsValue(JavaConstant constant) {
+   780	            return setsValue((ConstantValue) constant);
+   781	        }
+   782	
+   783	        /**
+   784	         * {@inheritDoc}
+   785	         */
+   786	        public Composable setsValue(StackManipulation stackManipulation, Type type) {
+   787	            return setsValue(stackManipulation, TypeDescription.Generic.Sort.describe(type));
+   788	        }
+   789	
+   790	        /**
+   791	         * {@inheritDoc}
+   792	         */
+   793	        public Composable setsValue(StackManipulation stackManipulation, TypeDescription.Generic typeDescription) {
+   794	            return new ForSetter.OfConstantValue(fieldLocation,
+   795	                    assigner,
+   796	                    typing,
+   797	                    ForSetter.TerminationHandler.RETURNING,
+   798	                    typeDescription,
+   799	                    stackManipulation);
+   800	        }
+   801	
+   802	        /**
+   803	         * {@inheritDoc}
+   804	         */
+   805	        public Composable setsReference(Object value) {
+   806	            return setsReference(value, ForSetter.OfReferenceValue.PREFIX + "$" + RandomString.hashOf(value));
+   807	        }
+   808	
+   809	        /**
+   810	         * {@inheritDoc}
+   811	         */
+   812	        public Composable setsReference(Object value, String name) {
+   813	            return new ForSetter.OfReferenceValue(fieldLocation,
+   814	                    assigner,
+   815	                    typing,
+   816	                    ForSetter.TerminationHandler.RETURNING,
+   817	                    value,
+   818	                    name);
+   819	        }
+   820	
+   821	        /**
+   822	         * {@inheritDoc}
+   823	         */
+   824	        public Composable setsFieldValueOf(Field field) {
+   825	            return setsFieldValueOf(new FieldDescription.ForLoadedField(field));
+   826	        }
+   827	
+   828	        /**
+   829	         * {@inheritDoc}
+   830	         */
+   831	        public Composable setsFieldValueOf(FieldDescription fieldDescription) {
+   832	            return new ForSetter.OfFieldValue(fieldLocation,
+   833	                    assigner,
+   834	                    typing,
+   835	                    ForSetter.TerminationHandler.RETURNING,
+   836	                    new FieldLocation.Absolute(fieldDescription));
+   837	        }
+   838	
+   839	        /**
+   840	         * {@inheritDoc}
+   841	         */
+   842	        public Composable setsFieldValueOf(String fieldName) {
+   843	            return setsFieldValueOf(new FieldNameExtractor.ForFixedValue(fieldName));
+   844	        }
+   845	
+   846	        /**
+   847	         * {@inheritDoc}
+   848	         */
+   849	        public Composable setsFieldValueOf(FieldNameExtractor fieldNameExtractor) {
+   850	            return new ForSetter.OfFieldValue(fieldLocation,
+   851	                    assigner,
+   852	                    typing,
+   853	                    ForSetter.TerminationHandler.RETURNING,
+   854	                    new FieldLocation.Relative(Collections.singletonList(fieldNameExtractor)));
+   855	        }
+
+ succeeded in 236ms:
+  1009	        protected enum TerminationHandler {
+  1010	
+  1011	            /**
+  1012	             * Returns {@code void} or throws an exception if this is not the return type of the instrumented method.
+  1013	             */
+  1014	            RETURNING {
+  1015	                @Override
+  1016	                protected StackManipulation resolve(MethodDescription instrumentedMethod) {
+  1017	                    if (!instrumentedMethod.getReturnType().represents(void.class)) {
+  1018	                        throw new IllegalStateException("Cannot implement setter with return value for " + instrumentedMethod);
+  1019	                    }
+  1020	                    return MethodReturn.VOID;
+  1021	                }
+  1022	            },
+  1023	
+  1024	            /**
+  1025	             * Does not return from the method at all.
+  1026	             */
+  1027	            NON_OPERATIONAL {
+  1028	                @Override
+  1029	                protected StackManipulation resolve(MethodDescription instrumentedMethod) {
+  1030	                    return StackManipulation.Trivial.INSTANCE;
+  1031	                }
+  1032	            };
+  1033	
+  1034	            /**
+  1035	             * Resolves the return instruction.
+  1036	             *
+  1037	             * @param instrumentedMethod The instrumented method.
+  1038	             * @return An appropriate stack manipulation.
+  1039	             */
+  1040	            protected abstract StackManipulation resolve(MethodDescription instrumentedMethod);
+  1041	        }
+
+codex
+{"target":"net.bytebuddy.implementation.FieldAccessor.TerminationHandler","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java` around the nested enum at lines 1009-1041 and its call sites at lines 730-855. The enum has only two constants (`RETURNING`, `NON_OPERATIONAL`) and depends on just `MethodDescription`, `StackManipulation`, and `MethodReturn`; `rg` found no references to `FieldAccessor.ForSetter.TerminationHandler` outside `FieldAccessor.java`. Its fan-in/fan-out is therefore confined and low, not hub-like."}
+tokens used
+12,464

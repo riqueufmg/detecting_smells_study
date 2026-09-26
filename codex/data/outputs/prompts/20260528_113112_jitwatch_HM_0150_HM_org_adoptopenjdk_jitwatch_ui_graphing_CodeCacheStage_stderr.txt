@@ -1,0 +1,1697 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6eff-222a-7be2-9814-2aff848dd307
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.ui.graphing.CodeCacheStage` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.ui.graphing.CodeCacheStage",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.ui.graphing.CodeCacheStage`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `CodeCacheStage` and tracing who it depends on and who depends on it, then I’ll decide whether the dependency-hub pattern is strong enough to count as HM.
+exec
+/bin/bash -lc "rg -n \"class CodeCacheStage|CodeCacheStage\\b\" /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch/ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/CodeCacheStage.java:23:public class CodeCacheStage extends AbstractGraphStage
+/data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch/ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/CodeCacheStage.java:27:	public CodeCacheStage(JITWatchUI parent)
+/data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch/ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:49:import org.adoptopenjdk.jitwatch.ui.graphing.CodeCacheStage;
+/data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch/ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:192:	private CodeCacheStage codeCacheTimelineStage;
+/data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch/ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:616:				codeCacheTimelineStage = new CodeCacheStage(JITWatchUI.this);
+/data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch/ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:1615:		else if (stage instanceof CodeCacheStage)
+
+exec
+/bin/bash -lc "rg --files | rg 'CodeCacheStage\\.java|CodeCacheStage'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 122ms:
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/CodeCacheStage.java
+
+codex
+I’ve found the class and one clear incoming dependency from `JITWatchUI`. Next I’m reading the implementation and the shared stage base class to see whether this class actually pulls in a broad dependency set or is just a thin UI wrapper.
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/CodeCacheStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.graphing;
+
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.fix;
+
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
+import org.adoptopenjdk.jitwatch.model.CodeCacheEvent;
+import org.adoptopenjdk.jitwatch.model.Tag;
+import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+
+import javafx.scene.Scene;
+import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
+
+public class CodeCacheStage extends AbstractGraphStage
+{
+	private boolean labelLeft = true;
+
+	public CodeCacheStage(JITWatchUI parent)
+	{
+		super(parent, JITWatchUI.WINDOW_WIDTH, JITWatchUI.WINDOW_HEIGHT, true);
+
+		StackPane root = new StackPane();
+		Scene scene = UserInterfaceUtil.getScene(root, width, height);
+
+		canvas.widthProperty().bind(root.widthProperty());
+		canvas.heightProperty().bind(root.heightProperty());
+
+		root.getChildren().add(canvas);
+
+		setTitle("JITWatch Free Code Cache");
+
+		setScene(scene);
+		show();
+
+		redraw();
+	}
+
+	@Override
+	public final void redraw()
+	{
+		super.baseRedraw();
+
+		labelLeft = true;
+
+		List<CodeCacheEvent> codeCacheEvents = mainUI.getJITDataModel().getCodeCacheEvents();
+
+		Collections.sort(codeCacheEvents, new Comparator<CodeCacheEvent>()
+		{
+			@Override
+			public int compare(CodeCacheEvent e1, CodeCacheEvent e2)
+			{
+				return Long.compare(e1.getStamp(), e2.getStamp());
+			}
+		});
+
+		if (codeCacheEvents.size() > 0)
+		{
+			CodeCacheEvent firstEvent = codeCacheEvents.get(0);
+			minX = firstEvent.getStamp();
+
+			double firstNonZeroY = 0;
+
+			Tag endOfLogTag = mainUI.getJITDataModel().getEndOfLogTag();
+
+			if (endOfLogTag != null)
+			{
+				maxX = getStampFromTag(endOfLogTag);
+
+			}
+			else
+			{
+				CodeCacheEvent lastEvent = codeCacheEvents.get(codeCacheEvents.size() - 1);
+				maxX = lastEvent.getStamp();
+			}
+
+			minY = firstEvent.getFreeCodeCache();
+			maxY = firstEvent.getFreeCodeCache();
+
+			if (minY != 0)
+			{
+				firstNonZeroY = minY;
+			}
+
+			// find ranges
+			for (CodeCacheEvent event : codeCacheEvents)
+			{
+				long freeCodeCache = event.getFreeCodeCache();
+
+				if (freeCodeCache > 0)
+				{
+					if (minY == 0)
+					{
+						minY = freeCodeCache;
+
+						firstNonZeroY = minY;
+					}
+
+					if (freeCodeCache > maxY)
+					{
+						maxY = freeCodeCache;
+					}
+					else if (freeCodeCache < minY)
+					{
+						minY = freeCodeCache;
+					}
+				}
+			}
+
+			drawAxes();
+
+			double lastCX = graphGapLeft + normaliseX(minX);
+			double lastCY = graphGapTop + normaliseY(firstNonZeroY);
+
+			Color colourLine = Color.BLUE;
+			double lineWidth = 2.0;
+			
+			for (CodeCacheEvent event : codeCacheEvents)
+			{
+				long stamp = event.getStamp();
+
+				double x = graphGapLeft + normaliseX(stamp);
+				double y = lastCY;
+
+				switch (event.getEventType())
+				{
+				case COMPILATION:
+					y = addToGraph(lastCX, lastCY, colourLine, lineWidth, event, x);
+					lastCX = x;
+					lastCY = y;
+					break;
+
+				case SWEEPER:
+					showLabel("Sweep", Color.WHITE, x, y);
+					break;
+
+				case CACHE_FULL:
+					showLabel("Code Cache Full", Color.RED, x, y);
+					break;
+				}
+			}
+
+			continueLineToEndOfXAxis(lastCX, lastCY, colourLine, lineWidth);
+		}
+		else
+		{
+			gc.fillText("No code cache information in log", fix(10), fix(10));
+		}
+	}
+
+	private double addToGraph(double lastCX, double lastCY, Color colourLine, double lineWidth, CodeCacheEvent event, double x)
+	{
+		long freeCodeCache = event.getFreeCodeCache();
+
+		double y = graphGapTop + normaliseY(freeCodeCache);
+
+		gc.setFill(colourLine);
+		gc.setStroke(colourLine);
+		gc.setLineWidth(lineWidth);
+		
+		gc.strokeLine(fix(lastCX), fix(lastCY), fix(x), fix(y));
+		return y;
+	}
+
+	private void showLabel(String text, Color background, double x, double y)
+	{
+		double labelX;
+		double labelY;
+
+		if (labelLeft)
+		{
+			labelX = x - getApproximateStringWidth(text) - 16;
+			labelY = Math.min(y - getStringHeight(), graphGapTop + chartHeight - 32);
+
+		}
+		else
+		{
+			labelX = x + 8;
+			labelY = Math.min(y, graphGapTop + chartHeight - 32);
+		}
+
+		drawLabel(text, labelX, labelY, background);
+
+		labelLeft = !labelLeft;
+	}
+}
+exec
+/bin/bash -lc "sed -n '1,260p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/AbstractGraphStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.graphing;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_STAMP;
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.fix;
+
+import java.util.Map;
+
+import org.adoptopenjdk.jitwatch.model.Tag;
+import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+import org.adoptopenjdk.jitwatch.ui.resize.IRedrawable;
+import org.adoptopenjdk.jitwatch.ui.resize.RateLimitedResizeListener;
+import org.adoptopenjdk.jitwatch.util.ParseUtil;
+import org.adoptopenjdk.jitwatch.util.StringUtil;
+import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+
+import javafx.geometry.VPos;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+
+public abstract class AbstractGraphStage extends Stage implements IRedrawable
+{
+	protected Canvas canvas;
+	protected GraphicsContext gc;
+	protected JITWatchUI mainUI;
+
+	protected double graphGapLeft = 20.5;
+	protected final double graphGapRight = 20.5;
+	protected final double graphGapTop = 20.5;
+
+	protected static final int[] Y_SCALE = new int[21];
+
+	protected double width;
+	protected double height;
+	protected double chartWidth;
+	protected double chartHeight;
+
+	protected long minX;
+	protected long maxX;
+	protected long minY;
+	protected long maxY;
+
+	protected long minXQ;
+	protected long maxXQ;
+	protected long minYQ;
+	protected long maxYQ;
+	
+	protected double endOfXAxis;
+
+	private boolean xAxisTime = false;
+	
+	protected static final Font STANDARD_FONT = new Font(UserInterfaceUtil.FONT_MONOSPACE_FAMILY,
+			Double.valueOf(UserInterfaceUtil.FONT_MONOSPACE_SIZE));
+	
+	protected static final Font MEMBER_FONT = new Font(UserInterfaceUtil.FONT_MONOSPACE_FAMILY,
+			Double.valueOf(UserInterfaceUtil.FONT_MONOSPACE_SIZE) * 2.0);
+
+	static
+	{
+		int multiplier = 1;
+
+		for (int i = 0; i < Y_SCALE.length; i += 3)
+		{
+			Y_SCALE[i + 0] = 1 * multiplier;
+			Y_SCALE[i + 1] = 2 * multiplier;
+			Y_SCALE[i + 2] = 5 * multiplier;
+
+			multiplier *= 10;
+		}
+	}
+
+	public AbstractGraphStage(final JITWatchUI parent, int width, int height, boolean xAxisTime)
+	{
+		this.mainUI = parent;
+		this.width = width;
+		this.height = height;
+		this.xAxisTime = xAxisTime;
+
+		canvas = new Canvas(width, height);
+		gc = canvas.getGraphicsContext2D();
+
+		initStyle(StageStyle.DECORATED);
+
+		RateLimitedResizeListener resizeListener = new RateLimitedResizeListener(this, 200);
+		
+		canvas.widthProperty().addListener(resizeListener);
+		canvas.heightProperty().addListener(resizeListener);
+	}
+
+	@Override
+	public abstract void redraw();
+
+	protected void baseRedraw()
+	{
+		gc.setFont(STANDARD_FONT);
+		
+		width = canvas.getWidth();
+		height = canvas.getHeight();
+		chartWidth = width - graphGapLeft - graphGapRight;
+		chartHeight = height - graphGapTop * 2;
+
+		setStrokeForAxis();
+
+		gc.setFill(Color.WHITE);
+		gc.fillRect(0, 0, width, height);
+		
+		gc.setFill(Color.rgb(210, 255, 255));
+		gc.fillRect(graphGapLeft, graphGapTop, chartWidth, chartHeight);
+		
+		gc.setStroke(Color.BLACK);
+		gc.strokeRect(graphGapLeft, graphGapTop, chartWidth, chartHeight);
+	}
+
+	protected void drawAxes()
+	{
+		if (xAxisTime)
+		{
+			drawXAxisTime();
+		}
+		else
+		{
+			drawXAxis();
+		}
+
+		drawYAxis();
+	}
+	
+	protected long getStampFromTag(Tag tag)
+	{
+		Map<String, String> attrs = tag.getAttributes();
+				
+		return ParseUtil.parseStamp(attrs.get(ATTR_STAMP));
+	}
+	
+	protected void continueLineToEndOfXAxis(double lastX, double lastY, Color color, double lineWidth)
+	{
+		gc.setStroke(color);
+		gc.setLineWidth(lineWidth);
+		gc.strokeLine(fix(lastX), fix(lastY), endOfXAxis, fix(lastY));
+	}
+	
+	protected void drawLabel(String text, double xPos, double yPos, Color backgroundColour)
+	{
+		double boxPad = 4;
+
+		double boxWidth = getApproximateStringWidth(text) + boxPad * 2;
+		double boxHeight = getStringHeight() + boxPad * 2;
+
+		gc.setFill(backgroundColour);
+
+		setStrokeForAxis();
+		gc.fillRect(fix(xPos), fix(yPos), fix(boxWidth), fix(boxHeight));
+		gc.strokeRect(fix(xPos), fix(yPos), fix(boxWidth), fix(boxHeight));
+
+		setStrokeForText();
+		gc.fillText(text, fix(xPos + boxPad), fix(yPos));
+	}
+
+	protected void drawXAxisTime()
+	{
+		long xInc = getXStepTime();
+
+		minXQ = (minX / xInc) * xInc;
+
+		maxXQ =  (1 + (maxX / xInc)) * xInc;
+
+		long gridX = minXQ;
+
+		while (gridX <= maxX)
+		{
+			double x = graphGapLeft + normaliseX(gridX);
+			
+			setStrokeForAxis();
+			gc.strokeLine(fix(x), fix(graphGapTop), fix(x), fix(graphGapTop + chartHeight));
+			
+			boolean showMillis = maxX  < 5000;
+
+			setStrokeForText();
+			gc.fillText(StringUtil.formatTimestamp(gridX, showMillis), fix(x), fix(graphGapTop + chartHeight + 2));
+
+			gridX += xInc;						
+		}
+		
+		endOfXAxis = fix(graphGapLeft + normaliseX(gridX));
+	}
+
+	private void drawXAxis()
+	{
+		long xInc = findScale(maxX - minX);
+
+		minXQ = (minX / xInc) * xInc;
+
+		maxXQ =  (1 + (maxX / xInc)) * xInc;
+
+		long gridX = minXQ;
+
+		while (gridX <= maxX)
+		{
+			double x = graphGapLeft + normaliseX(gridX);
+			
+			setStrokeForAxis();
+			gc.strokeLine(fix(x), fix(graphGapTop), fix(x), fix(graphGapTop + chartHeight));
+			
+			setStrokeForText();
+			gc.fillText(StringUtil.formatThousands(Long.toString(gridX)), fix(x), fix(graphGapTop + chartHeight + 2));
+
+			gridX += xInc;
+		}
+		
+		endOfXAxis = fix(graphGapLeft + normaliseX(gridX));
+	}
+
+	private void drawYAxis()
+	{
+		long yInc = findScale(maxY - minY);
+
+		minYQ = (minY / yInc) * yInc;
+
+		maxYQ =  (1 + (maxY / yInc)) * yInc;
+
+		long gridY = minYQ;
+
+		int maxYLabelWidth = StringUtil.formatThousands(Long.toString(maxYQ)).length();
+
+		graphGapLeft = Math.max(40.5, maxYLabelWidth*9);
+
+		double yLabelX = graphGapLeft - (1 + maxYLabelWidth) * 8;
+
+		while (gridY <= maxYQ)
+		{
+			if (gridY >= minYQ)
+			{
+				double y = graphGapTop + normaliseY(gridY);
+				
+				setStrokeForAxis();
+				gc.strokeLine(fix(graphGapLeft), fix(y), fix(graphGapLeft + chartWidth), fix(y));
+				
+				setStrokeForText();
+				gc.fillText(StringUtil.formatThousands(Long.toString(gridY)), fix(yLabelX), fix(y - getStringHeight() / 2));
+			}
+
+			gridY += yInc;
+		}
+	}
+	
+	protected double getApproximateStringWidth(String text)
+	{
+		return text.length() * gc.getFont().getSize() * 0.6;
+	}
+
+	protected double getStringHeight()
+	{
+
+exec
+/bin/bash -lc "sed -n '1590,1635p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+		}
+		else if (stage instanceof MainConfigStage)
+		{
+			btnConfigure.setDisable(false);
+			configStage = null;
+
+			if (startDelayedByConfig)
+			{
+				readLogFile();
+			}
+		}
+		else if (stage instanceof TopListStage)
+		{
+			btnTopList.setDisable(false);
+			topListStage = null;
+		}
+		else if (stage instanceof NothingMountedStage)
+		{
+			nothingMountedStage = null;
+
+			if (configStage == null && startDelayedByConfig)
+			{
+				readLogFile();
+			}
+		}
+		else if (stage instanceof CodeCacheStage)
+		{
+			btnCodeCacheTimeline.setDisable(false);
+			codeCacheTimelineStage = null;
+		}
+		else if (stage instanceof CodeCacheLayoutStage)
+		{
+			btnNMethods.setDisable(false);
+			codeCacheBlocksStage = null;
+		}
+		else if (stage instanceof CompilerThreadStage)
+		{
+			btnCompilerThreads.setDisable(false);
+			compilerThreadStage = null;
+		}
+		else if (stage instanceof TriView)
+		{
+			btnTriView.setDisable(false);
+			triViewStage = null;
+		}
+		else if (stage instanceof ReportStage)
+
+exec
+/bin/bash -lc "sed -n '580,650p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+		});
+
+		btnHisto = UserInterfaceUtil.createButton("HISTO");
+		btnHisto.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+				histoStage = new HistoStage(JITWatchUI.this);
+
+				StageManager.addAndShow(JITWatchUI.this.stage, histoStage);
+
+				btnHisto.setDisable(true);
+			}
+		});
+
+		btnTopList = UserInterfaceUtil.createButton("TOPLIST");
+		btnTopList.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+				topListStage = new TopListStage(JITWatchUI.this, getJITDataModel());
+
+				StageManager.addAndShow(JITWatchUI.this.stage, topListStage);
+
+				btnTopList.setDisable(true);
+			}
+		});
+
+		btnCodeCacheTimeline = UserInterfaceUtil.createButton("CACHE");
+		btnCodeCacheTimeline.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+				codeCacheTimelineStage = new CodeCacheStage(JITWatchUI.this);
+
+				StageManager.addAndShow(JITWatchUI.this.stage, codeCacheTimelineStage);
+
+				btnCodeCacheTimeline.setDisable(true);
+			}
+		});
+
+		btnNMethods = UserInterfaceUtil.createButton("NMETHODS");
+		btnNMethods.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+				codeCacheBlocksStage = new CodeCacheLayoutStage(JITWatchUI.this);
+
+				StageManager.addAndShow(JITWatchUI.this.stage, codeCacheBlocksStage);
+
+				btnNMethods.setDisable(true);
+
+				codeCacheBlocksStage.redraw();
+
+			}
+		});
+
+		btnCompilerThreads = UserInterfaceUtil.createButton("THREADS");
+		btnCompilerThreads.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+				compilerThreadStage = new CompilerThreadStage(JITWatchUI.this);
+
+				StageManager.addAndShow(JITWatchUI.this.stage, compilerThreadStage);
+
+
+codex
+The class looks like a thin stage controller: one UI owner creates it, and it mostly delegates to inherited graph logic plus the data model. I’m verifying the full reference set so the verdict is based on actual fan-in/fan-out, not just the obvious constructor path.
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/model/Tag.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ exited 2 in 0ms:
+sed: can't read ui/src/main/java/org/adoptopenjdk/jitwatch/model/Tag.java: No such file or directory
+
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/model/CodeCacheEvent.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ exited 2 in 0ms:
+sed: can't read ui/src/main/java/org/adoptopenjdk/jitwatch/model/CodeCacheEvent.java: No such file or directory
+
+exec
+/bin/bash -lc "rg -n \"\\bCodeCacheStage\\b\" ui src ." in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ exited 2 in 0ms:
+rg: src: No such file or directory (os error 2)
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/CodeCacheStage.java:23:public class CodeCacheStage extends AbstractGraphStage
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/CodeCacheStage.java:27:	public CodeCacheStage(JITWatchUI parent)
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/CodeCacheStage.java:23:public class CodeCacheStage extends AbstractGraphStage
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/CodeCacheStage.java:27:	public CodeCacheStage(JITWatchUI parent)
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:49:import org.adoptopenjdk.jitwatch.ui.graphing.CodeCacheStage;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:192:	private CodeCacheStage codeCacheTimelineStage;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:616:				codeCacheTimelineStage = new CodeCacheStage(JITWatchUI.this);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:1615:		else if (stage instanceof CodeCacheStage)
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:49:import org.adoptopenjdk.jitwatch.ui.graphing.CodeCacheStage;
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:192:	private CodeCacheStage codeCacheTimelineStage;
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:616:				codeCacheTimelineStage = new CodeCacheStage(JITWatchUI.this);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:1615:		else if (stage instanceof CodeCacheStage)
+
+codex
+The first pass confirms the only direct references are in `JITWatchUI` and the class itself. I need the model types it consumes to judge fan-out accurately, so I’m pulling the real source locations for those next.
+exec
+/bin/bash -lc "rg --files | rg 'CodeCacheEvent\\.java|Tag\\.java|JITDataModel\\.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/model/JITDataModel.java
+core/src/main/java/org/adoptopenjdk/jitwatch/model/IReadOnlyJITDataModel.java
+core/src/main/java/org/adoptopenjdk/jitwatch/model/Tag.java
+core/src/main/java/org/adoptopenjdk/jitwatch/model/CodeCacheEvent.java
+
+exec
+/bin/bash -lc "rg -n \"class CodeCacheEvent|class Tag|class JITDataModel\" -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/compilation/codecache/CodeCacheEventWalker.java:17:public class CodeCacheEventWalker extends AbstractCompilationWalker
+core/src/main/java/org/adoptopenjdk/jitwatch/core/TagProcessor.java:27:public class TagProcessor
+core/src/main/java/org/adoptopenjdk/jitwatch/model/JITDataModel.java:38:public class JITDataModel implements IReadOnlyJITDataModel
+core/src/main/java/org/adoptopenjdk/jitwatch/model/Tag.java:23:public class Tag
+core/src/main/java/org/adoptopenjdk/jitwatch/model/CodeCacheEvent.java:8:public class CodeCacheEvent
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/model/Tag.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2016 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.model;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_CLOSE_ANGLE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOUBLE_QUOTE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_EQUALS;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_NEWLINE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_OPEN_ANGLE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_SLASH;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_SPACE;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import org.adoptopenjdk.jitwatch.util.StringUtil;
+
+public class Tag
+{
+	private String name;
+	private String attributeString;
+	private List<Tag> children = new ArrayList<>();
+	private Tag parent = null;
+	private boolean selfClosing = false;
+	private boolean isFragment = false;
+	private String textContent = null;
+	
+	private static final String INDENT = "  ";
+
+	public Tag(String name, String attributeString, boolean selfClosing)
+	{
+		this.name = name;
+		this.attributeString = attributeString;
+		this.selfClosing = selfClosing;
+	}
+
+	public void addTextContent(String text)
+	{
+		if (textContent == null)
+		{
+			textContent = text;
+		}
+		else
+		{
+			textContent += text;
+		}
+	}
+
+	public String getTextContent()
+	{
+		return textContent;
+	}
+
+	public void addChild(Tag child)
+	{
+		child.setParent(this);
+		children.add(child);
+	}
+
+	public List<Tag> getChildren()
+	{
+		return Collections.unmodifiableList(children);
+	}
+
+	public boolean isSelfClosing()
+	{
+		return selfClosing;
+	}
+	
+	public String getClosingTag()
+	{		
+		StringBuilder builder = new StringBuilder();
+		builder.append(C_OPEN_ANGLE).append(C_SLASH).append(name).append(C_CLOSE_ANGLE);
+		
+		return builder.toString();
+	}
+
+	public Tag getFirstNamedChild(String name)
+	{
+		List<Tag> namedChildren = getNamedChildren(name);
+
+		if (namedChildren.size() > 0)
+		{
+			return namedChildren.get(0);
+		}
+		else
+		{
+			return null;
+		}
+	}
+
+	public List<Tag> getNamedChildren(String name)
+	{
+		List<Tag> result = new ArrayList<>();
+
+		for (Tag child : children)
+		{
+			if (child.getName().equals(name))
+			{
+				result.add(child);
+			}
+		}
+
+		return result;
+	}
+
+	public List<Tag> getNamedChildrenWithAttribute(String tagName, String attrName, String attrValue)
+	{	
+		List<Tag> result = new ArrayList<>();
+
+		for (Tag child : children)
+		{
+			if (child.getName().equals(tagName))
+			{
+				Map<String, String> attributes = child.getAttributes();
+				
+				if (attrValue != null && attrValue.equals(attributes.get(attrName)))
+				{
+					result.add(child);
+				}
+			}
+		}
+
+		return result;
+	}
+
+	public Tag getParent()
+	{
+		return parent;
+	}
+
+	public void setParent(Tag parent)
+	{
+		this.parent = parent;
+	}
+
+	public String getName()
+	{
+		return name;
+	}
+
+	public Map<String, String> getAttributes()
+	{
+		return StringUtil.attributeStringToMap(attributeString);
+	}
+
+	private int getDepth(Tag tag)
+	{
+		if (tag.getParent() != null)
+		{
+			return 1 + getDepth(tag.getParent());
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	@Override
+	public String toString()
+	{
+		return toString(true);
+	}
+
+	public String toString(boolean showChildren)
+	{
+		StringBuilder builder = new StringBuilder();
+
+		int myDepth = getDepth(this);
+
+		for (int i = 0; i < myDepth; i++)
+		{
+			builder.append(INDENT);
+		}
+
+		builder.append(C_OPEN_ANGLE).append(name);
+		
+		Map<String,String> attrs = getAttributes();
+
+		if (attrs.size() > 0)
+		{
+			for (Map.Entry<String, String> entry : attrs.entrySet())
+			{
+				builder.append(C_SPACE).append(entry.getKey()).append(C_EQUALS).append(C_DOUBLE_QUOTE);
+				builder.append(entry.getValue()).append(C_DOUBLE_QUOTE);
+			}
+		}
+
+		if (selfClosing)
+		{
+			builder.append(C_SLASH).append(C_CLOSE_ANGLE).append(C_NEWLINE);
+		}
+		else
+		{
+			if (showChildren && children.size() > 0)
+			{
+				builder.append(C_CLOSE_ANGLE).append(C_NEWLINE);
+
+				for (Tag child : children)
+				{
+					builder.append(child.toString());
+				}
+			}
+			else
+			{
+				builder.append(C_CLOSE_ANGLE).append(C_NEWLINE);
+
+				if (textContent != null)
+				{
+					for (int i = 0; i < myDepth; i++)
+					{
+						builder.append(INDENT);
+					}
+
+					builder.append(textContent).append(C_NEWLINE);
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/model/CodeCacheEvent.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.model;
+
+public class CodeCacheEvent
+{
+	public enum CodeCacheEventType
+	{
+		COMPILATION, SWEEPER, CACHE_FULL
+	};
+
+	private CodeCacheEventType eventType;
+
+	private long stamp;
+	private long nativeCodeSize;
+	private long freeCodeCache;
+	private long nativeAddress;
+
+	private Compilation compilation;
+	
+	private int compilationLevel;
+
+	public CodeCacheEvent(CodeCacheEventType eventType, long stamp, long nativeCodeSize, long freeCodeCache)
+	{
+		super();
+		this.eventType = eventType;
+		this.stamp = stamp;
+		this.nativeCodeSize = nativeCodeSize;
+		this.freeCodeCache = freeCodeCache;
+	}
+
+	public void setNativeAddress(long address)
+	{
+		this.nativeAddress = address;
+	}
+
+	public long getNativeAddress()
+	{
+		return nativeAddress;
+	}
+
+	public long getStamp()
+	{
+		return stamp;
+	}
+
+	public long getNativeCodeSize()
+	{
+		return nativeCodeSize;
+	}
+
+	public Compilation getCompilation()
+	{
+		return compilation;
+	}
+
+	public void setCompilation(Compilation compilation)
+	{
+		this.compilation = compilation;
+		
+		compilationLevel = compilation.getLevel();
+	}
+
+	public int getCompilationLevel()
+	{
+		return compilationLevel;
+	}
+
+	public long getFreeCodeCache()
+	{
+		return freeCodeCache;
+	}
+
+	public CodeCacheEventType getEventType()
+	{
+		return eventType;
+	}
+}
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/main/java/org/adoptopenjdk/jitwatch/model/JITDataModel.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2021 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.model;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_COMPILER;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_COMPILE_ID;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_COMPILE_KIND;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C1;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C2;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C2N;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.DEBUG_LOGGING;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.MODIFIERS;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.OSR;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_SPACE;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.adoptopenjdk.jitwatch.model.bytecode.SourceMapper;
+import org.adoptopenjdk.jitwatch.util.ParseUtil;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+public class JITDataModel implements IReadOnlyJITDataModel
+{
+	private static final Logger logger = LoggerFactory.getLogger(JITDataModel.class);
+
+	private PackageManager packageManager;
+	private JITStats stats;
+
+	// Not using CopyOnWriteArrayList as writes will vastly out number reads
+	private List<JITEvent> jitEvents = new ArrayList<>();
+
+	// written during parse, make copy for graphing as needs sort
+	private List<CodeCacheEvent> codeCacheTagList = new ArrayList<>();
+
+	private Map<String, CompilerThread> compilerThreads = new HashMap<>();
+
+	private Tag endOfLog;
+
+	private int jdkMajorVersion;
+
+	private long baseTimestamp = 0;
+
+	public JITDataModel()
+	{
+		packageManager = new PackageManager();
+		stats = new JITStats();
+	}
+
+	public void setJDKMajorVersion(int version)
+	{
+		this.jdkMajorVersion = version;
+	}
+
+	@Override public int getJDKMajorVersion()
+	{
+		return jdkMajorVersion;
+	}
+
+	public void reset()
+	{
+		if (DEBUG_LOGGING)
+		{
+			logger.debug("JITDataModel.reset()");
+		}
+
+		packageManager.clear();
+
+		SourceMapper.clear();
+
+		stats.reset();
+
+		jitEvents.clear();
+
+		for (CompilerThread thread : compilerThreads.values())
+		{
+			thread.clear();
+		}
+
+		compilerThreads.clear();
+
+		codeCacheTagList.clear();
+	}
+
+	@Override public List<CompilerThread> getCompilerThreads()
+	{
+		List<CompilerThread> result = new ArrayList<>();
+
+		for (Map.Entry<String, CompilerThread> entry : compilerThreads.entrySet())
+		{
+			if (!entry.getValue().getCompilations().isEmpty())
+			{
+				result.add(entry.getValue());
+			}
+		}
+
+		Collections.sort(result, new Comparator<CompilerThread>()
+		{
+			@Override public int compare(CompilerThread o1, CompilerThread o2)
+			{
+				return o1.getThreadName().compareTo(o2.getThreadName());
+			}
+		});
+
+		return Collections.unmodifiableList(result);
+	}
+
+	@Override public CompilerThread createCompilerThread(String threadId, String threadName)
+	{
+		CompilerThread compilerThread = new CompilerThread(threadId, threadName);
+
+		compilerThreads.put(threadId, compilerThread);
+
+		getJITStats().incCompilerThreads();
+
+		return compilerThread;
+	}
+
+	@Override public CompilerThread getCompilerThread(String threadId)
+	{
+		return compilerThreads.get(threadId);
+	}
+
+	@Override public PackageManager getPackageManager()
+	{
+		return packageManager;
+	}
+
+	@Override public JITStats getJITStats()
+	{
+		return stats;
+	}
+
+	// ugly but better than using COWAL with so many writes
+	public void addEvent(JITEvent event)
+	{
+		synchronized (jitEvents)
+		{
+			jitEvents.add(event);
+		}
+	}
+
+	@Override public List<JITEvent> getEventListCopy()
+	{
+		synchronized (jitEvents)
+		{
+			return new ArrayList<>(jitEvents);
+		}
+	}
+
+	public void addNativeBytes(long count)
+	{
+		stats.addNativeBytes(count);
+	}
+
+	public void updateStats(IMetaMember member, Map<String, String> attrs)
+	{
+		String fullSignature = member.toString();
+
+		for (String modifier : MODIFIERS)
+		{
+			if (fullSignature.contains(modifier + S_SPACE))
+			{
+				String incMethodName = "incCount" + modifier.substring(0, 1).toUpperCase() + modifier.substring(1);
+
+				try
+				{
+					MethodType mt = MethodType.methodType(void.class);
+
+					MethodHandle mh = MethodHandles.lookup().findVirtual(JITStats.class, incMethodName, mt);
+
+					mh.invokeExact(stats);
+				}
+				catch (Throwable t)
+				{
+					logger.error("Exception: {}", t.getMessage(), t);
+				}
+			}
+		}
+
+		String compiler = attrs.get(ATTR_COMPILER);
+
+		if (compiler != null)
+		{
+			if (C1.equalsIgnoreCase(compiler))
+			{
+				stats.incCountC1();
+			}
+			else if (C2.equalsIgnoreCase(compiler))
+			{
+				stats.incCountC2();
+			}
+		}
+
+		String compileKind = attrs.get(ATTR_COMPILE_KIND);
+
+		boolean isC2N = false;
+
+		if (compileKind != null)
+		{
+			if (OSR.equalsIgnoreCase(compileKind))
+			{
+				stats.incCountOSR();
+			}
+			else if (C2N.equalsIgnoreCase(compileKind))
+			{
+				stats.incCountC2N();
+				isC2N = true;
+			}
+		}
+
+		String compileID = attrs.get(ATTR_COMPILE_ID);
+
+		Compilation compilation = member.getCompilationByCompileID(compileID);
+
+		if (compilation != null)
+		{
+			if (!isC2N)
+			{
+				stats.recordDelay(compilation.getCompilationDuration());
+			}
+		}
+		else
+		{
+			logger.warn("Didn't find compilation with ID {} on member {}", compileID, member.getFullyQualifiedMemberName());
+		}
+	}
+
+	@Override public IMetaMember findMetaMember(MemberSignatureParts msp)
+	{
+		IMetaMember result = null;
+
+		MetaClass metaClass = packageManager.getMetaClass(msp.getFullyQualifiedClassName());
+
+		if (metaClass == null) // possible if no TraceClassLoading logs
+		{
+			if (DEBUG_LOGGING)
+			{
+				logger.debug("No metaClass found, trying late load {}", msp.getFullyQualifiedClassName());
+			}
+
+			metaClass = ParseUtil.lateLoadMetaClass(this, msp.getFullyQualifiedClassName());
+		}
+
+		if (metaClass != null)
+
+codex
+I have enough context to make the architectural call, but I’m grabbing line numbers so the justification can point to concrete evidence instead of broad claims.
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/CodeCacheStage.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2017 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.ui.graphing;
+     7	
+     8	import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.fix;
+     9	
+    10	import java.util.Collections;
+    11	import java.util.Comparator;
+    12	import java.util.List;
+    13	
+    14	import org.adoptopenjdk.jitwatch.model.CodeCacheEvent;
+    15	import org.adoptopenjdk.jitwatch.model.Tag;
+    16	import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+    17	import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+    18	
+    19	import javafx.scene.Scene;
+    20	import javafx.scene.layout.StackPane;
+    21	import javafx.scene.paint.Color;
+    22	
+    23	public class CodeCacheStage extends AbstractGraphStage
+    24	{
+    25		private boolean labelLeft = true;
+    26	
+    27		public CodeCacheStage(JITWatchUI parent)
+    28		{
+    29			super(parent, JITWatchUI.WINDOW_WIDTH, JITWatchUI.WINDOW_HEIGHT, true);
+    30	
+    31			StackPane root = new StackPane();
+    32			Scene scene = UserInterfaceUtil.getScene(root, width, height);
+    33	
+    34			canvas.widthProperty().bind(root.widthProperty());
+    35			canvas.heightProperty().bind(root.heightProperty());
+    36	
+    37			root.getChildren().add(canvas);
+    38	
+    39			setTitle("JITWatch Free Code Cache");
+    40	
+    41			setScene(scene);
+    42			show();
+    43	
+    44			redraw();
+    45		}
+    46	
+    47		@Override
+    48		public final void redraw()
+    49		{
+    50			super.baseRedraw();
+    51	
+    52			labelLeft = true;
+    53	
+    54			List<CodeCacheEvent> codeCacheEvents = mainUI.getJITDataModel().getCodeCacheEvents();
+    55	
+    56			Collections.sort(codeCacheEvents, new Comparator<CodeCacheEvent>()
+    57			{
+    58				@Override
+    59				public int compare(CodeCacheEvent e1, CodeCacheEvent e2)
+    60				{
+    61					return Long.compare(e1.getStamp(), e2.getStamp());
+    62				}
+    63			});
+    64	
+    65			if (codeCacheEvents.size() > 0)
+    66			{
+    67				CodeCacheEvent firstEvent = codeCacheEvents.get(0);
+    68				minX = firstEvent.getStamp();
+    69	
+    70				double firstNonZeroY = 0;
+    71	
+    72				Tag endOfLogTag = mainUI.getJITDataModel().getEndOfLogTag();
+    73	
+    74				if (endOfLogTag != null)
+    75				{
+    76					maxX = getStampFromTag(endOfLogTag);
+    77	
+    78				}
+    79				else
+    80				{
+    81					CodeCacheEvent lastEvent = codeCacheEvents.get(codeCacheEvents.size() - 1);
+    82					maxX = lastEvent.getStamp();
+    83				}
+    84	
+    85				minY = firstEvent.getFreeCodeCache();
+    86				maxY = firstEvent.getFreeCodeCache();
+    87	
+    88				if (minY != 0)
+    89				{
+    90					firstNonZeroY = minY;
+    91				}
+    92	
+    93				// find ranges
+    94				for (CodeCacheEvent event : codeCacheEvents)
+    95				{
+    96					long freeCodeCache = event.getFreeCodeCache();
+    97	
+    98					if (freeCodeCache > 0)
+    99					{
+   100						if (minY == 0)
+   101						{
+   102							minY = freeCodeCache;
+   103	
+   104							firstNonZeroY = minY;
+   105						}
+   106	
+   107						if (freeCodeCache > maxY)
+   108						{
+   109							maxY = freeCodeCache;
+   110						}
+   111						else if (freeCodeCache < minY)
+   112						{
+   113							minY = freeCodeCache;
+   114						}
+   115					}
+   116				}
+   117	
+   118				drawAxes();
+   119	
+   120				double lastCX = graphGapLeft + normaliseX(minX);
+   121				double lastCY = graphGapTop + normaliseY(firstNonZeroY);
+   122	
+   123				Color colourLine = Color.BLUE;
+   124				double lineWidth = 2.0;
+   125				
+   126				for (CodeCacheEvent event : codeCacheEvents)
+   127				{
+   128					long stamp = event.getStamp();
+   129	
+   130					double x = graphGapLeft + normaliseX(stamp);
+   131					double y = lastCY;
+   132	
+   133					switch (event.getEventType())
+   134					{
+   135					case COMPILATION:
+   136						y = addToGraph(lastCX, lastCY, colourLine, lineWidth, event, x);
+   137						lastCX = x;
+   138						lastCY = y;
+   139						break;
+   140	
+   141					case SWEEPER:
+   142						showLabel("Sweep", Color.WHITE, x, y);
+   143						break;
+   144	
+   145					case CACHE_FULL:
+   146						showLabel("Code Cache Full", Color.RED, x, y);
+   147						break;
+   148					}
+   149				}
+   150	
+   151				continueLineToEndOfXAxis(lastCX, lastCY, colourLine, lineWidth);
+   152			}
+   153			else
+   154			{
+   155				gc.fillText("No code cache information in log", fix(10), fix(10));
+   156			}
+   157		}
+   158	
+   159		private double addToGraph(double lastCX, double lastCY, Color colourLine, double lineWidth, CodeCacheEvent event, double x)
+   160		{
+   161			long freeCodeCache = event.getFreeCodeCache();
+   162	
+   163			double y = graphGapTop + normaliseY(freeCodeCache);
+   164	
+   165			gc.setFill(colourLine);
+   166			gc.setStroke(colourLine);
+   167			gc.setLineWidth(lineWidth);
+   168			
+   169			gc.strokeLine(fix(lastCX), fix(lastCY), fix(x), fix(y));
+   170			return y;
+   171		}
+   172	
+   173		private void showLabel(String text, Color background, double x, double y)
+   174		{
+   175			double labelX;
+   176			double labelY;
+   177	
+   178			if (labelLeft)
+   179			{
+   180				labelX = x - getApproximateStringWidth(text) - 16;
+   181				labelY = Math.min(y - getStringHeight(), graphGapTop + chartHeight - 32);
+   182	
+   183			}
+   184			else
+   185			{
+   186				labelX = x + 8;
+   187				labelY = Math.min(y, graphGapTop + chartHeight - 32);
+   188			}
+   189	
+   190			drawLabel(text, labelX, labelY, background);
+   191	
+   192			labelLeft = !labelLeft;
+   193		}
+   194	}
+
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java | sed -n '40,70p;185,200p;610,620p;1608,1620p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+    40	import org.adoptopenjdk.jitwatch.report.Report;
+    41	import org.adoptopenjdk.jitwatch.report.comparator.ScoreComparator;
+    42	import org.adoptopenjdk.jitwatch.report.escapeanalysis.eliminatedallocation.EliminatedAllocationWalker;
+    43	import org.adoptopenjdk.jitwatch.report.inlining.InliningWalker;
+    44	import org.adoptopenjdk.jitwatch.report.locks.OptimisedLocksWalker;
+    45	import org.adoptopenjdk.jitwatch.report.suggestion.SuggestionWalker;
+    46	import org.adoptopenjdk.jitwatch.ui.Dialogs;
+    47	import org.adoptopenjdk.jitwatch.ui.browser.BrowserStage;
+    48	import org.adoptopenjdk.jitwatch.ui.compilechain.CompileChainStage;
+    49	import org.adoptopenjdk.jitwatch.ui.graphing.CodeCacheStage;
+    50	import org.adoptopenjdk.jitwatch.ui.graphing.HistoStage;
+    51	import org.adoptopenjdk.jitwatch.ui.graphing.TimeLineStage;
+    52	import org.adoptopenjdk.jitwatch.ui.nmethod.codecache.CodeCacheLayoutStage;
+    53	import org.adoptopenjdk.jitwatch.ui.nmethod.compilerthread.CompilerThreadStage;
+    54	import org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener;
+    55	import org.adoptopenjdk.jitwatch.ui.parserchooser.ParserChooser;
+    56	import org.adoptopenjdk.jitwatch.ui.report.ReportStage;
+    57	import org.adoptopenjdk.jitwatch.ui.report.ReportStageType;
+    58	import org.adoptopenjdk.jitwatch.ui.sandbox.SandboxStage;
+    59	import org.adoptopenjdk.jitwatch.ui.stage.IStageClosedListener;
+    60	import org.adoptopenjdk.jitwatch.ui.stage.StageManager;
+    61	import org.adoptopenjdk.jitwatch.ui.stats.StatsStage;
+    62	import org.adoptopenjdk.jitwatch.ui.toplist.TopListStage;
+    63	import org.adoptopenjdk.jitwatch.ui.triview.TriView;
+    64	import org.adoptopenjdk.jitwatch.ui.viewer.JournalViewerStage;
+    65	import org.adoptopenjdk.jitwatch.ui.viewer.TextViewerStage;
+    66	import org.adoptopenjdk.jitwatch.util.LocaleCell;
+    67	import org.adoptopenjdk.jitwatch.util.OSUtil;
+    68	import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+    69	import com.chrisnewland.freelogj.Logger;
+    70	import com.chrisnewland.freelogj.LoggerFactory;
+   185		private Label lblHeap;
+   186	
+   187		private MainConfigStage configStage;
+   188		private TimeLineStage timeLineStage;
+   189		private StatsStage statsStage;
+   190		private HistoStage histoStage;
+   191		private TopListStage topListStage;
+   192		private CodeCacheStage codeCacheTimelineStage;
+   193		private CodeCacheLayoutStage codeCacheBlocksStage;
+   194		private CompilerThreadStage compilerThreadStage;
+   195		private TriView triViewStage;
+   196		private BrowserStage browserStage;
+   197	
+   198		private ReportStage reportStageSuggestions;
+   199		private ReportStage reportStageElminatedAllocations;
+   200		private ReportStage reportStageOptimisedLocks;
+   610			btnCodeCacheTimeline = UserInterfaceUtil.createButton("CACHE");
+   611			btnCodeCacheTimeline.setOnAction(new EventHandler<ActionEvent>()
+   612			{
+   613				@Override
+   614				public void handle(ActionEvent e)
+   615				{
+   616					codeCacheTimelineStage = new CodeCacheStage(JITWatchUI.this);
+   617	
+   618					StageManager.addAndShow(JITWatchUI.this.stage, codeCacheTimelineStage);
+   619	
+   620					btnCodeCacheTimeline.setDisable(true);
+  1608				nothingMountedStage = null;
+  1609	
+  1610				if (configStage == null && startDelayedByConfig)
+  1611				{
+  1612					readLogFile();
+  1613				}
+  1614			}
+  1615			else if (stage instanceof CodeCacheStage)
+  1616			{
+  1617				btnCodeCacheTimeline.setDisable(false);
+  1618				codeCacheTimelineStage = null;
+  1619			}
+  1620			else if (stage instanceof CodeCacheLayoutStage)
+
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/AbstractGraphStage.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2017 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.ui.graphing;
+     7	
+     8	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_STAMP;
+     9	import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.fix;
+    10	
+    11	import java.util.Map;
+    12	
+    13	import org.adoptopenjdk.jitwatch.model.Tag;
+    14	import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+    15	import org.adoptopenjdk.jitwatch.ui.resize.IRedrawable;
+    16	import org.adoptopenjdk.jitwatch.ui.resize.RateLimitedResizeListener;
+    17	import org.adoptopenjdk.jitwatch.util.ParseUtil;
+    18	import org.adoptopenjdk.jitwatch.util.StringUtil;
+    19	import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+    20	
+    21	import javafx.geometry.VPos;
+    22	import javafx.scene.canvas.Canvas;
+    23	import javafx.scene.canvas.GraphicsContext;
+    24	import javafx.scene.paint.Color;
+    25	import javafx.scene.text.Font;
+    26	import javafx.stage.Stage;
+    27	import javafx.stage.StageStyle;
+    28	
+    29	public abstract class AbstractGraphStage extends Stage implements IRedrawable
+    30	{
+    31		protected Canvas canvas;
+    32		protected GraphicsContext gc;
+    33		protected JITWatchUI mainUI;
+    34	
+    35		protected double graphGapLeft = 20.5;
+    36		protected final double graphGapRight = 20.5;
+    37		protected final double graphGapTop = 20.5;
+    38	
+    39		protected static final int[] Y_SCALE = new int[21];
+    40	
+    41		protected double width;
+    42		protected double height;
+    43		protected double chartWidth;
+    44		protected double chartHeight;
+    45	
+    46		protected long minX;
+    47		protected long maxX;
+    48		protected long minY;
+    49		protected long maxY;
+    50	
+    51		protected long minXQ;
+    52		protected long maxXQ;
+    53		protected long minYQ;
+    54		protected long maxYQ;
+    55		
+    56		protected double endOfXAxis;
+    57	
+    58		private boolean xAxisTime = false;
+    59		
+    60		protected static final Font STANDARD_FONT = new Font(UserInterfaceUtil.FONT_MONOSPACE_FAMILY,
+    61				Double.valueOf(UserInterfaceUtil.FONT_MONOSPACE_SIZE));
+    62		
+    63		protected static final Font MEMBER_FONT = new Font(UserInterfaceUtil.FONT_MONOSPACE_FAMILY,
+    64				Double.valueOf(UserInterfaceUtil.FONT_MONOSPACE_SIZE) * 2.0);
+    65	
+    66		static
+    67		{
+    68			int multiplier = 1;
+    69	
+    70			for (int i = 0; i < Y_SCALE.length; i += 3)
+    71			{
+    72				Y_SCALE[i + 0] = 1 * multiplier;
+    73				Y_SCALE[i + 1] = 2 * multiplier;
+    74				Y_SCALE[i + 2] = 5 * multiplier;
+    75	
+    76				multiplier *= 10;
+    77			}
+    78		}
+    79	
+    80		public AbstractGraphStage(final JITWatchUI parent, int width, int height, boolean xAxisTime)
+    81		{
+    82			this.mainUI = parent;
+    83			this.width = width;
+    84			this.height = height;
+    85			this.xAxisTime = xAxisTime;
+    86	
+    87			canvas = new Canvas(width, height);
+    88			gc = canvas.getGraphicsContext2D();
+    89	
+    90			initStyle(StageStyle.DECORATED);
+    91	
+    92			RateLimitedResizeListener resizeListener = new RateLimitedResizeListener(this, 200);
+    93			
+    94			canvas.widthProperty().addListener(resizeListener);
+    95			canvas.heightProperty().addListener(resizeListener);
+    96		}
+    97	
+    98		@Override
+    99		public abstract void redraw();
+   100	
+   101		protected void baseRedraw()
+   102		{
+   103			gc.setFont(STANDARD_FONT);
+   104			
+   105			width = canvas.getWidth();
+   106			height = canvas.getHeight();
+   107			chartWidth = width - graphGapLeft - graphGapRight;
+   108			chartHeight = height - graphGapTop * 2;
+   109	
+   110			setStrokeForAxis();
+   111	
+   112			gc.setFill(Color.WHITE);
+   113			gc.fillRect(0, 0, width, height);
+   114			
+   115			gc.setFill(Color.rgb(210, 255, 255));
+   116			gc.fillRect(graphGapLeft, graphGapTop, chartWidth, chartHeight);
+   117			
+   118			gc.setStroke(Color.BLACK);
+   119			gc.strokeRect(graphGapLeft, graphGapTop, chartWidth, chartHeight);
+   120		}
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.ui.graphing.CodeCacheStage","detection":false,"justification":"Inspected `ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/CodeCacheStage.java`, `ui/src/main/java/org/adoptopenjdk/jitwatch/ui/graphing/AbstractGraphStage.java`, and `ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java`. Repo-wide search found only one client class referencing `CodeCacheStage` (`JITWatchUI`: field, instantiation, and `instanceof` handling), so fan-in is very low. The class itself is a thin UI stage: it extends `AbstractGraphStage` and directly depends only on `JITWatchUI`, `CodeCacheEvent`, `Tag`, `UserInterfaceUtil`, and JavaFX types, with no evidence of broad outgoing coupling. This does not meet hub-like modularization."}
+tokens used
+22,543

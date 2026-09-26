@@ -1,0 +1,969 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f7d-6a08-7880-8c38-6c2051d90a6a
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.resolution.declarations.ResolvedRecordDeclaration` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.resolution.declarations.ResolvedRecordDeclaration",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.resolution.declarations.ResolvedRecordDeclaration`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and checking its dependencies and references to decide whether it acts as a dependency hub. Then I’ll return a single JSON verdict with the evidence I found.
+exec
+/bin/bash -lc "rg --files | rg \"ResolvedRecordDeclaration\\.java|ResolvedRecordDeclaration\"" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "class ResolvedRecordDeclaration|interface ResolvedRecordDeclaration|ResolvedRecordDeclaration" src test .' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ exited 2 in 259ms:
+rg: src: No such file or directory (os error 2)
+rg: test: No such file or directory (os error 2)
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionRecordDeclarationTest.java:224:                ResolvedRecordDeclaration.class,
+./javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedTypeDeclaration.java:181:    default ResolvedRecordDeclaration asRecord() {
+./javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedRecordDeclaration.java:36:public interface ResolvedRecordDeclaration
+./javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedRecordDeclaration.java:45:    default ResolvedRecordDeclaration asRecord() {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistRecordDeclaration.java:52:        implements ResolvedRecordDeclaration,
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserRecordDeclaration.java:59:        implements ResolvedRecordDeclaration,
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionRecordDeclaration.java:52:        implements ResolvedRecordDeclaration, MethodResolutionCapability, MethodUsageResolutionCapability {
+
+ succeeded in 341ms:
+javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedRecordDeclaration.java
+
+codex
+I found the target interface in `javaparser-core` and three direct implementers in symbol-solver modules. Next I’m checking the interface body and how broadly it is referenced to see whether the dependency pattern is actually hub-like or just a small, focused API.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedRecordDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '150,230p' javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedTypeDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserRecordDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistRecordDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionRecordDeclaration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 242ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.javassistmodel;
+
+import com.github.javaparser.ast.AccessSpecifier;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.resolution.Context;
+import com.github.javaparser.resolution.MethodUsage;
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.UnsolvedSymbolException;
+import com.github.javaparser.resolution.declarations.*;
+import com.github.javaparser.resolution.logic.MethodResolutionCapability;
+import com.github.javaparser.resolution.model.LambdaArgumentTypePlaceholder;
+import com.github.javaparser.resolution.model.SymbolReference;
+import com.github.javaparser.resolution.model.typesystem.ReferenceTypeImpl;
+import com.github.javaparser.resolution.types.ResolvedReferenceType;
+import com.github.javaparser.resolution.types.ResolvedType;
+import com.github.javaparser.symbolsolver.core.resolution.MethodUsageResolutionCapability;
+import com.github.javaparser.symbolsolver.core.resolution.SymbolResolutionCapability;
+import com.github.javaparser.symbolsolver.logic.AbstractTypeDeclaration;
+import com.github.javaparser.symbolsolver.resolution.SymbolSolver;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import javassist.CtClass;
+import javassist.CtField;
+
+/**
+ * @author Federico Tomassetti
+ */
+public class JavassistRecordDeclaration extends AbstractTypeDeclaration
+        implements ResolvedRecordDeclaration,
+                MethodUsageResolutionCapability,
+                SymbolResolutionCapability,
+                MethodResolutionCapability {
+
+    private CtClass ctClass;
+    private TypeSolver typeSolver;
+    private JavassistTypeDeclarationAdapter javassistTypeDeclarationAdapter;
+
+    public JavassistRecordDeclaration(CtClass ctClass, TypeSolver typeSolver) {
+        if (ctClass == null) {
+            throw new IllegalArgumentException();
+        }
+        if (ctClass.getAttribute("Record") == null) {
+            throw new IllegalArgumentException(
+                    "Trying to instantiate a JavassistRecordDeclaration with something which is not a record: "
+                            + ctClass.toString());
+        }
+        this.ctClass = ctClass;
+        this.typeSolver = typeSolver;
+        this.javassistTypeDeclarationAdapter = new JavassistTypeDeclarationAdapter(ctClass, typeSolver, this);
+    }
+
+    @Override
+    public boolean hasDirectlyAnnotation(String canonicalName) {
+        return ctClass.hasAnnotation(canonicalName);
+    }
+
+    /*
+     * Returns a set of the declared annotation on this type
+     */
+    @Override
+    public Set<ResolvedAnnotationDeclaration> getDeclaredAnnotations() {
+        return javassistTypeDeclarationAdapter.getDeclaredAnnotations();
+    }
+
+    @Override
+    public Set<ResolvedMethodDeclaration> getDeclaredMethods() {
+        return javassistTypeDeclarationAdapter.getDeclaredMethods();
+    }
+
+    @Override
+    public boolean isAssignableBy(ResolvedReferenceTypeDeclaration other) {
+        return javassistTypeDeclarationAdapter.isAssignableBy(other);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        JavassistRecordDeclaration that = (JavassistRecordDeclaration) o;
+
+        return ctClass.equals(that.ctClass);
+    }
+
+    @Override
+    public int hashCode() {
+        return ctClass.hashCode();
+    }
+
+    @Override
+    public String getPackageName() {
+        return ctClass.getPackageName();
+    }
+
+    @Override
+    public String getClassName() {
+        String className = ctClass.getName().replace('$', '.');
+        if (getPackageName() != null) {
+            return className.substring(getPackageName().length() + 1);
+        }
+        return className;
+    }
+
+    @Override
+    public String getQualifiedName() {
+        return ctClass.getName().replace('$', '.');
+    }
+
+    @Override
+    @Deprecated
+    public Optional<MethodUsage> solveMethodAsUsage(
+            String name,
+            List<ResolvedType> argumentsTypes,
+            Context invokationContext,
+            List<ResolvedType> typeParameterValues) {
+        return JavassistUtils.solveMethodAsUsage(
+                name, argumentsTypes, typeSolver, invokationContext, typeParameterValues, this, ctClass);
+    }
+
+    @Override
+    public SymbolReference<? extends ResolvedValueDeclaration> solveSymbol(String name, TypeSolver typeSolver) {
+        for (CtField field : ctClass.getDeclaredFields()) {
+            if (field.getName().equals(name)) {
+                return SymbolReference.solved(new JavassistFieldDeclaration(field, typeSolver));
+            }
+        }
+
+        final String superclassFQN = getSuperclassFQN();
+        SymbolReference<? extends ResolvedValueDeclaration> ref = solveSymbolForFQN(name, superclassFQN);
+        if (ref.isSolved()) {
+            return ref;
+        }
+
+        String[] interfaceFQNs = getInterfaceFQNs();
+        for (String interfaceFQN : interfaceFQNs) {
+            SymbolReference<? extends ResolvedValueDeclaration> interfaceRef = solveSymbolForFQN(name, interfaceFQN);
+            if (interfaceRef.isSolved()) {
+                return interfaceRef;
+            }
+        }
+
+        return SymbolReference.unsolved();
+    }
+
+    private SymbolReference<? extends ResolvedValueDeclaration> solveSymbolForFQN(String symbolName, String fqn) {
+        if (fqn == null) {
+            return SymbolReference.unsolved();
+        }
+
+        ResolvedReferenceTypeDeclaration fqnTypeDeclaration = typeSolver.solveType(fqn);
+        return new SymbolSolver(typeSolver).solveSymbolInType(fqnTypeDeclaration, symbolName);
+    }
+
+    private String[] getInterfaceFQNs() {
+        return ctClass.getClassFile().getInterfaces();
+    }
+
+    private String getSuperclassFQN() {
+        return ctClass.getClassFile().getSuperclass();
+    }
+
+    @Override
+    public List<ResolvedReferenceType> getAncestors(boolean acceptIncompleteList) {
+        return javassistTypeDeclarationAdapter.getAncestors(acceptIncompleteList);
+    }
+
+    public ResolvedType getUsage(Node node) {
+        return new ReferenceTypeImpl(this);
+    }
+
+    @Override
+    public boolean canBeAssignedTo(ResolvedReferenceTypeDeclaration other) {
+        if (other instanceof LambdaArgumentTypePlaceholder) {
+            return isFunctionalInterface();
+        }
+        if (other.getQualifiedName().equals(getQualifiedName())) {
+            return true;
+        }
+        Optional<ResolvedReferenceType> oSuperClass = javassistTypeDeclarationAdapter.getSuperClass();
+        if (oSuperClass.isPresent()) {
+            ResolvedReferenceType superClass = oSuperClass.get();
+            Optional<ResolvedReferenceTypeDeclaration> oDecl = superClass.getTypeDeclaration();
+            if (oDecl.isPresent() && oDecl.get().canBeAssignedTo(other)) {
+                return true;
+            }
+        }
+
+        for (ResolvedReferenceType interfaze : javassistTypeDeclarationAdapter.getInterfaces()) {
+            if (interfaze.getTypeDeclaration().isPresent()
+                    && interfaze.getTypeDeclaration().get().canBeAssignedTo(other)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+ succeeded in 294ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.resolution.declarations;
+
+import com.github.javaparser.resolution.types.ResolvedReferenceType;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Declaration of a Record (not an interface or an enum).
+ *
+ * Note that it can be associated to a Node AST because anonymous class declarations return an incompatible
+ * node type, compared to classic class declarations.
+ *
+ * @author Federico Tomassetti
+ * @author Johannes Coetzee
+ */
+public interface ResolvedRecordDeclaration
+        extends ResolvedReferenceTypeDeclaration, ResolvedTypeParametrizable, HasAccessSpecifier {
+
+    @Override
+    default boolean isRecord() {
+        return true;
+    }
+
+    @Override
+    default ResolvedRecordDeclaration asRecord() {
+        return this;
+    }
+
+    /**
+     * This is a ReferenceTypeUsage because it could contain type typeParametersValues.
+     * For example: {@code class A extends B<Integer, String>}.
+     * <p>
+     * Note that only the Object class should not have a superclass and therefore
+     * return empty.
+     */
+    Optional<ResolvedReferenceType> getSuperClass();
+
+    /**
+     * Return all the interfaces implemented directly by this class.
+     * It does not include the interfaces implemented by superclasses or extended
+     * by the interfaces implemented.
+     */
+    List<ResolvedReferenceType> getInterfaces();
+
+    /**
+     * Get all superclasses, with all the type typeParametersValues expressed as functions of the type
+     * typeParametersValues of this declaration.
+     */
+    List<ResolvedReferenceType> getAllSuperClasses();
+
+    /**
+     * Return all the interfaces implemented by this class, either directly or indirectly, including the interfaces
+     * extended by interfaces it implements.
+     * <p>
+     * Get all interfaces, with all the type typeParametersValues expressed as functions of the type
+     * typeParametersValues of this declaration.
+     */
+    List<ResolvedReferenceType> getAllInterfaces();
+
+    // /
+    // / Constructors
+    // /
+    /**
+     * List of constructors available for the class.
+     * This list should also include the default constructor.
+     */
+    @Override
+    List<ResolvedConstructorDeclaration> getConstructors();
+}
+
+ succeeded in 362ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2020 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.reflectionmodel;
+
+import com.github.javaparser.ast.AccessSpecifier;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.resolution.Context;
+import com.github.javaparser.resolution.MethodUsage;
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.declarations.*;
+import com.github.javaparser.resolution.logic.MethodResolutionCapability;
+import com.github.javaparser.resolution.logic.MethodResolutionLogic;
+import com.github.javaparser.resolution.model.LambdaArgumentTypePlaceholder;
+import com.github.javaparser.resolution.model.SymbolReference;
+import com.github.javaparser.resolution.model.typesystem.ReferenceTypeImpl;
+import com.github.javaparser.resolution.types.ResolvedReferenceType;
+import com.github.javaparser.resolution.types.ResolvedType;
+import com.github.javaparser.symbolsolver.core.resolution.MethodUsageResolutionCapability;
+import com.github.javaparser.symbolsolver.javaparsermodel.contexts.ContextHelper;
+import com.github.javaparser.symbolsolver.logic.AbstractTypeDeclaration;
+import com.github.javaparser.symbolsolver.reflectionmodel.comparators.MethodComparator;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+/**
+ * @author Federico Tomassetti
+ */
+public class ReflectionRecordDeclaration extends AbstractTypeDeclaration
+        implements ResolvedRecordDeclaration, MethodResolutionCapability, MethodUsageResolutionCapability {
+
+    ///
+    /// Fields
+    ///
+
+    private Class<?> clazz;
+    private TypeSolver typeSolver;
+    private ReflectionClassAdapter reflectionClassAdapter;
+
+    ///
+    /// Constructors
+    ///
+
+    public ReflectionRecordDeclaration(Class<?> clazz, TypeSolver typeSolver) {
+        if (clazz == null) {
+            throw new IllegalArgumentException("Class should not be null");
+        }
+        if (clazz.isInterface()) {
+            throw new IllegalArgumentException("Class should not be an interface");
+        }
+        if (clazz.isPrimitive()) {
+            throw new IllegalArgumentException("Class should not represent a primitive class");
+        }
+        if (clazz.isArray()) {
+            throw new IllegalArgumentException("Class should not be an array");
+        }
+        if (clazz.isLocalClass()) {
+            throw new IllegalArgumentException("Class should not be a local class");
+        }
+        if (clazz.isEnum()) {
+            throw new IllegalArgumentException("Class should not be an enum");
+        }
+        if (!isRecordType(clazz)) {
+            throw new IllegalArgumentException("Class should be a record");
+        }
+        this.clazz = clazz;
+        this.typeSolver = typeSolver;
+        this.reflectionClassAdapter = new ReflectionClassAdapter(clazz, typeSolver, this);
+    }
+
+    ///
+    /// Public methods
+    ///
+
+    @Override
+    public Set<ResolvedMethodDeclaration> getDeclaredMethods() {
+        return reflectionClassAdapter.getDeclaredMethods();
+    }
+
+    @Override
+    public List<ResolvedReferenceType> getAncestors(boolean acceptIncompleteList) {
+        // we do not attempt to perform any symbol solving when analyzing ancestors in the reflection model, so we can
+        // simply ignore the boolean parameter here; an UnsolvedSymbolException cannot occur
+        return reflectionClassAdapter.getAncestors();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ReflectionRecordDeclaration that = (ReflectionRecordDeclaration) o;
+
+        if (!clazz.getCanonicalName().equals(that.clazz.getCanonicalName())) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return clazz.hashCode();
+    }
+
+    @Override
+    public String getPackageName() {
+        if (clazz.getPackage() != null) {
+            return clazz.getPackage().getName();
+        }
+        return null;
+    }
+
+    @Override
+    public String getClassName() {
+        String canonicalName = clazz.getCanonicalName();
+        if (canonicalName != null && getPackageName() != null) {
+            return canonicalName.substring(getPackageName().length() + 1, canonicalName.length());
+        }
+        return null;
+    }
+
+    @Override
+    public String getQualifiedName() {
+        return clazz.getCanonicalName();
+    }
+
+    @Override
+    @Deprecated
+    public SymbolReference<ResolvedMethodDeclaration> solveMethod(
+            String name, List<ResolvedType> argumentsTypes, boolean staticOnly) {
+        Predicate<Method> staticFilter = m -> !staticOnly || (staticOnly && Modifier.isStatic(m.getModifiers()));
+
+        List<ResolvedMethodDeclaration> candidateSolvedMethods = new ArrayList<>();
+
+        // First consider the directly-declared methods.
+        List<Method> methods = Arrays.stream(clazz.getDeclaredMethods())
+                .filter(m -> m.getName().equals(name))
+                .filter(staticFilter)
+                .filter(method -> !method.isBridge())
+                .filter(method -> !method.isSynthetic())
+                .sorted(new MethodComparator())
+                .collect(Collectors.toList());
+
+        // Transform into resolved method declarations
+        for (Method method : methods) {
+            ResolvedMethodDeclaration methodDeclaration = new ReflectionMethodDeclaration(method, typeSolver);
+            candidateSolvedMethods.add(methodDeclaration);
+
+            // no need to search for overloaded/inherited candidateSolvedMethods if the method has no parameters
+            if (argumentsTypes.isEmpty() && methodDeclaration.getNumberOfParams() == 0) {
+                return SymbolReference.solved(methodDeclaration);
+            }
+        }
+
+        // Next consider methods declared within extended superclasses.
+        getSuperClass().flatMap(ResolvedReferenceType::getTypeDeclaration).ifPresent(superClassTypeDeclaration -> {
+            SymbolReference<ResolvedMethodDeclaration> ref = MethodResolutionLogic.solveMethodInType(
+                    superClassTypeDeclaration, name, argumentsTypes, staticOnly);
+            if (ref.isSolved()) {
+                candidateSolvedMethods.add(ref.getCorrespondingDeclaration());
+            }
+        });
+
+        // Next consider methods declared within implemented interfaces.
+        for (ResolvedReferenceType interfaceDeclaration : getInterfaces()) {
+            interfaceDeclaration.getTypeDeclaration().ifPresent(interfaceTypeDeclaration -> {
+                SymbolReference<ResolvedMethodDeclaration> ref = MethodResolutionLogic.solveMethodInType(
+                        interfaceTypeDeclaration, name, argumentsTypes, staticOnly);
+                if (ref.isSolved()) {
+                    candidateSolvedMethods.add(ref.getCorrespondingDeclaration());
+                }
+            });
+        }
+
+        // When empty there is no sense in trying to find the most applicable.
+        // This is useful for debugging. Performance is not affected as
+        // MethodResolutionLogic.findMostApplicable method returns very early
+        // when candidateSolvedMethods is empty.
+        if (candidateSolvedMethods.isEmpty()) {
+            return SymbolReference.unsolved(ResolvedMethodDeclaration.class);
+        }
+        return MethodResolutionLogic.findMostApplicable(candidateSolvedMethods, name, argumentsTypes, typeSolver);
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "{" + "clazz=" + getId() + '}';
+    }
+
+    public ResolvedType getUsage(Node node) {
+
+        return new ReferenceTypeImpl(this);
+    }
+
+    public Optional<MethodUsage> solveMethodAsUsage(
+            String name,
+            List<ResolvedType> argumentsTypes,
+            Context invokationContext,
+            List<ResolvedType> typeParameterValues) {
+
+ succeeded in 377ms:
+    }
+
+    @Override
+    default ResolvedTypeDeclaration asType() {
+        return this;
+    }
+
+    /**
+     * Return this as a ClassDeclaration or throw UnsupportedOperationException.
+     */
+    default ResolvedClassDeclaration asClass() {
+        throw new UnsupportedOperationException(String.format("%s is not a class", this));
+    }
+
+    /**
+     * Return this as a InterfaceDeclaration or throw UnsupportedOperationException.
+     */
+    default ResolvedInterfaceDeclaration asInterface() {
+        throw new UnsupportedOperationException(String.format("%s is not an interface", this));
+    }
+
+    /**
+     * Return this as a EnumDeclaration or throw UnsupportedOperationException.
+     */
+    default ResolvedEnumDeclaration asEnum() {
+        throw new UnsupportedOperationException(String.format("%s is not an enum", this));
+    }
+
+    /**
+     * Return this as a RecordDeclaration or throw UnsupportedOperationException.
+     */
+    default ResolvedRecordDeclaration asRecord() {
+        throw new UnsupportedOperationException(String.format("%s is not a record", this));
+    }
+
+    /**
+     * Return this as a AnnotationDeclaration or throw UnsupportedOperationException.
+     */
+    default ResolvedAnnotationDeclaration asAnnotation() {
+        throw new UnsupportedOperationException(String.format("%s is not an annotation", this));
+    }
+
+    /**
+     * Return this as a TypeParameterDeclaration or throw UnsupportedOperationException.
+     */
+    default ResolvedTypeParameterDeclaration asTypeParameter() {
+        throw new UnsupportedOperationException(String.format("%s is not a type parameter", this));
+    }
+
+    default ResolvedReferenceTypeDeclaration asReferenceType() {
+        throw new UnsupportedOperationException(String.format("%s is not a reference type", this));
+    }
+
+    /**
+     * The package name of the type.
+     */
+    String getPackageName();
+
+    /**
+     * The class(es) wrapping this type.
+     */
+    String getClassName();
+
+    /**
+     * The fully qualified name of the type declared.
+     */
+    String getQualifiedName();
+
+    /**
+     * The ID corresponds most of the type to the qualified name. It differs only for local
+     * classes which do not have a qualified name but have an ID.
+     */
+    default String getId() {
+        String qname = getQualifiedName();
+        if (qname == null) {
+            return String.format("<localClass>:%s", getName());
+        }
+        return qname;
+    }
+}
+
+ succeeded in 410ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.javaparsermodel.declarations;
+
+import com.github.javaparser.ast.AccessSpecifier;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.body.BodyDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.Parameter;
+import com.github.javaparser.ast.body.RecordDeclaration;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import com.github.javaparser.resolution.Context;
+import com.github.javaparser.resolution.MethodUsage;
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.UnsolvedSymbolException;
+import com.github.javaparser.resolution.declarations.*;
+import com.github.javaparser.resolution.logic.MethodResolutionCapability;
+import com.github.javaparser.resolution.model.SymbolReference;
+import com.github.javaparser.resolution.model.typesystem.LazyType;
+import com.github.javaparser.resolution.model.typesystem.ReferenceTypeImpl;
+import com.github.javaparser.resolution.types.ResolvedReferenceType;
+import com.github.javaparser.resolution.types.ResolvedType;
+import com.github.javaparser.symbolsolver.core.resolution.MethodUsageResolutionCapability;
+import com.github.javaparser.symbolsolver.core.resolution.SymbolResolutionCapability;
+import com.github.javaparser.symbolsolver.core.resolution.TypeVariableResolutionCapability;
+import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade;
+import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFactory;
+import com.github.javaparser.symbolsolver.logic.AbstractTypeDeclaration;
+import com.github.javaparser.symbolsolver.resolution.SymbolSolver;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * Heavily based on JavaParserClassDeclaration
+ * @author Federico Tomassetti
+ */
+// TODO: Check all of this
+// TODO: This is mostly a copy of JavaParserClassDeclaration. Refactor to reduce code duplication.
+public class JavaParserRecordDeclaration extends AbstractTypeDeclaration
+        implements ResolvedRecordDeclaration,
+                MethodResolutionCapability,
+                MethodUsageResolutionCapability,
+                SymbolResolutionCapability {
+
+    ///
+    /// Fields
+    ///
+
+    private TypeSolver typeSolver;
+    private RecordDeclaration wrappedNode;
+    private JavaParserTypeAdapter<RecordDeclaration> javaParserTypeAdapter;
+
+    ///
+    /// Constructors
+    ///
+
+    public JavaParserRecordDeclaration(RecordDeclaration wrappedNode, TypeSolver typeSolver) {
+        this.wrappedNode = wrappedNode;
+        this.typeSolver = typeSolver;
+        this.javaParserTypeAdapter = new JavaParserTypeAdapter<>(wrappedNode, typeSolver);
+    }
+
+    ///
+    /// Public methods: from Object
+    ///
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        JavaParserRecordDeclaration that = (JavaParserRecordDeclaration) o;
+
+        return wrappedNode.equals(that.wrappedNode);
+    }
+
+    @Override
+    public int hashCode() {
+        return wrappedNode.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "JavaParserClassDeclaration{" + "wrappedNode=" + wrappedNode + '}';
+    }
+
+    ///
+    /// Public methods: fields
+    ///
+
+    /**
+     * This method returns both the ResolvedFieldDeclarations for the explicit static fields declared in the
+     * record and non-static private fields corresponding to the record parameters. This is done to make
+     * the fields of a record consistent across the various models (since the record parameters are considered
+     * fields by the Java compiler and runtime).
+     */
+    @Override
+    public List<ResolvedFieldDeclaration> getAllFields() {
+        List<ResolvedFieldDeclaration> fields = javaParserTypeAdapter.getFieldsForDeclaredVariables();
+
+        getAncestors(true).stream()
+                .filter(ancestor -> ancestor.getTypeDeclaration().isPresent())
+                .forEach(ancestor -> ancestor.getTypeDeclaration()
+                        .get()
+                        .getAllFields()
+                        .forEach(f -> {
+                            fields.add(new ResolvedFieldDeclaration() {
+
+                                @Override
+                                public AccessSpecifier accessSpecifier() {
+                                    return f.accessSpecifier();
+                                }
+
+                                @Override
+                                public String getName() {
+                                    return f.getName();
+                                }
+
+                                @Override
+                                public ResolvedType getType() {
+                                    return ancestor.useThisTypeParametersOnTheGivenType(f.getType());
+                                }
+
+                                @Override
+                                public boolean isStatic() {
+                                    return f.isStatic();
+                                }
+
+                                @Override
+                                public boolean isVolatile() {
+                                    return f.isVolatile();
+                                }
+
+                                @Override
+                                public ResolvedTypeDeclaration declaringType() {
+                                    return f.declaringType();
+                                }
+
+                                @Override
+                                public Optional<Node> toAst() {
+                                    return f.toAst();
+                                }
+                            });
+                        }));
+
+        wrappedNode
+                .getParameters()
+                .forEach(parameter -> fields.add(new ResolvedFieldDeclaration() {
+                    @Override
+                    public boolean isStatic() {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean isVolatile() {
+                        return false;
+                    }
+
+                    @Override
+                    public ResolvedTypeDeclaration declaringType() {
+                        return wrappedNode.resolve();
+                    }
+
+                    @Override
+                    public AccessSpecifier accessSpecifier() {
+                        return AccessSpecifier.PRIVATE;
+                    }
+
+                    @Override
+                    public ResolvedType getType() {
+                        return parameter.getType().resolve();
+                    }
+
+                    @Override
+                    public String getName() {
+                        return parameter.getNameAsString();
+                    }
+                }));
+
+        return fields;
+    }
+
+    ///
+    /// Public methods
+    ///
+
+    public SymbolReference<ResolvedMethodDeclaration> solveMethod(String name, List<ResolvedType> parameterTypes) {
+        Context ctx = getContext();
+        return ctx.solveMethod(name, parameterTypes, false);
+    }
+
+    @Override
+    public Optional<MethodUsage> solveMethodAsUsage(
+            String name,
+            List<ResolvedType> argumentTypes,
+            Context invocationContext,
+            List<ResolvedType> typeParameters) {
+        return getContext().solveMethodAsUsage(name, argumentTypes);
+    }
+
+    /**
+
+codex
+I have the interface body and the main implementers. I’m now counting explicit references so the decision is based on actual fan-in/fan-out evidence rather than the mere fact that it exists in the type hierarchy.
+exec
+/bin/bash -lc 'rg -n "ResolvedRecordDeclaration" . | wc -l' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"implements ResolvedRecordDeclaration|extends .*ResolvedRecordDeclaration|ResolvedRecordDeclaration\\.class|asRecord\\(\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "interface ResolvedRecordDeclaration|public interface ResolvedRecordDeclaration" javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedRecordDeclaration.java javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedTypeDeclaration.java' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 267ms:
+javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedRecordDeclaration.java:36:public interface ResolvedRecordDeclaration
+
+ succeeded in 346ms:
+7
+
+ succeeded in 395ms:
+./javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedTypeDeclaration.java:181:    default ResolvedRecordDeclaration asRecord() {
+./javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedRecordDeclaration.java:45:    default ResolvedRecordDeclaration asRecord() {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistRecordDeclaration.java:52:        implements ResolvedRecordDeclaration,
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserRecordDeclaration.java:59:        implements ResolvedRecordDeclaration,
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionRecordDeclaration.java:52:        implements ResolvedRecordDeclaration, MethodResolutionCapability, MethodUsageResolutionCapability {
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistRecordDeclarationTest.java:140:        assertEquals(compilationUnit, compilationUnit.asRecord());
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionRecordDeclarationTest.java:160:        assertEquals(compilationUnit, compilationUnit.asRecord());
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionRecordDeclarationTest.java:224:                ResolvedRecordDeclaration.class,
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserRecordDeclarationTest.java:159:        assertEquals(resolvedReferenceTypeDeclaration, resolvedReferenceTypeDeclaration.asRecord());
+
+codex
+{"target":"com.github.javaparser.resolution.declarations.ResolvedRecordDeclaration","detection":false,"justification":"`javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedRecordDeclaration.java` is a small interface: it extends 3 interfaces and declares 5 methods. Repository-wide search found only 3 direct implementers in `javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserRecordDeclaration.java`, `.../reflectionmodel/ReflectionRecordDeclaration.java`, and `.../javassistmodel/JavassistRecordDeclaration.java`, plus the default `asRecord()` in `ResolvedTypeDeclaration.java` and a few tests. With only 7 explicit mentions total, the class does not show high fan-in/fan-out consistent with hub-like modularization."}
+tokens used
+9,876

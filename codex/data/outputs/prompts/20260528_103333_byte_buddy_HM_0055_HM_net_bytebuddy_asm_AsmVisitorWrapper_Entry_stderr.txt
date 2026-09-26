@@ -1,0 +1,1465 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6eca-5a59-7512-a9a8-18a56b94a491
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.asm.AsmVisitorWrapper.Entry` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.asm.AsmVisitorWrapper.Entry",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.asm.AsmVisitorWrapper.Entry`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `net.bytebuddy.asm.AsmVisitorWrapper.Entry`, then I’ll inspect its implementation and the main call sites to judge fan-in/fan-out from the repository evidence alone.
+exec
+/bin/bash -lc "rg --files | rg \"AsmVisitorWrapper|Entry\\.java"'$"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperCompoundTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredFieldsTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredMethodsTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperNoOpTest.java
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java
+
+exec
+/bin/bash -lc "rg -n \"class Entry|interface AsmVisitorWrapper|AsmVisitorWrapper.Entry|new AsmVisitorWrapper.Entry|Entry\\(\" -S src ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 0ms:
+rg: src: No such file or directory (os error 2)
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/VirtualMachineAttachmentTest.java:43:            jarOutputStream.putNextEntry(new JarEntry(SampleAgent.class.getName().replace('.', '/') + ".class"));
+./byte-buddy-agent/src/test/java/net/bytebuddy/agent/VirtualMachineAttachmentTest.java:45:            jarOutputStream.closeEntry();
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/ByteBuddyAgent.java:652:                        jarOutputStream.putNextEntry(new JarEntry(Attacher.class.getName().replace('.', '/') + CLASS_FILE_EXTENSION));
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/ByteBuddyAgent.java:658:                        jarOutputStream.closeEntry();
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/ByteBuddyAgent.java:1528:                        jarOutputStream.putNextEntry(new JarEntry(Installer.class.getName().replace('.', '/') + CLASS_FILE_EXTENSION));
+./byte-buddy-agent/src/main/java/net/bytebuddy/agent/ByteBuddyAgent.java:1534:                        jarOutputStream.closeEntry();
+./byte-buddy-gradle-plugin/src/test/java/net/bytebuddy/build/gradle/ByteBuddyPluginTest.java:263:                JarEntry entry = jarInputStream.getNextJarEntry();
+./byte-buddy-gradle-plugin/src/test/java/net/bytebuddy/build/gradle/ByteBuddyPluginTest.java:284:            jarInputStream.closeEntry();
+./byte-buddy-gradle-plugin/src/test/java/net/bytebuddy/build/gradle/ByteBuddyPluginTest.java:285:            assertThat(jarInputStream.getNextJarEntry(), nullValue(JarEntry.class));
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyLocalClassesEnhancerTask.java:475:                    outputStream.putNextEntry(new JarEntry(name));
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyLocalClassesEnhancerTask.java:488:                    outputStream.closeEntry();
+./byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:173:                jarOutputStream.putNextEntry(new JarEntry(DEX_CLASS_FILE));
+./byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:175:                jarOutputStream.closeEntry();
+./byte-buddy-maven-plugin/src/test/java/net/bytebuddy/build/maven/ByteBuddyMojoTest.java:233:    public void testSimpleEntry() throws Exception {
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/module/AbstractModuleDescriptionTest.java:44:            outputStream.putNextEntry(new JarEntry(ModuleDescription.MODULE_CLASS_NAME + ClassFileLocator.CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/module/AbstractModuleDescriptionTest.java:59:            outputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2377:                            return new Element.ForJarEntry(file, enumeration.nextElement());
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2700:                    public ForJarEntry(JarFile file, JarEntry entry) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3501:                            outputStream.putNextEntry(new JarEntry(entry.getKey().getInternalName() + ClassFileLocator.CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3503:                            outputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3512:                            outputStream.putNextEntry(new JarEntry(ClassFileLocator.META_INF_VERSIONS
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3518:                            outputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3528:                        outputStream.putNextEntry(entry == null
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3529:                                ? new JarEntry(name)
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3543:                        outputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:49:public interface AsmVisitorWrapper {
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:206:            return new ForDeclaredFields(CompoundList.of(entries, new Entry(matcher, fieldVisitorWrappers)));
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:247:        protected static class Entry implements ElementMatcher<FieldDescription.InDefinedShape>, FieldVisitorWrapper {
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:265:            protected Entry(ElementMatcher<? super FieldDescription.InDefinedShape> matcher, List<? extends FieldVisitorWrapper> fieldVisitorWrappers) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:448:            return new ForDeclaredMethods(CompoundList.of(entries, new Entry(matcher, methodVisitorWrappers)), writerFlags, readerFlags);
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:539:        protected static class Entry implements ElementMatcher<MethodDescription>, MethodVisitorWrapper {
+./byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:557:            protected Entry(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:3358:            protected abstract static class Entry {
+./byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:3370:                protected Entry(LatentMatcher<? super MethodDescription> matcher) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java:1230:                FieldCacheEntry fieldCacheEntry = new FieldCacheEntry(fieldValue, fieldType);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java:1372:                protected FieldCacheEntry(StackManipulation fieldValue, TypeDescription fieldType) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:126:            entries.add(new Entry(matcher, fieldAttributeAppenderFactory, defaultValue, transformer));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:143:                entries.add(new Compiled.Entry(entry.resolve(instrumentedType), fieldAttributeAppender, entry.getDefaultValue(), entry.getTransformer()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:152:        protected static class Entry implements LatentMatcher<FieldDescription> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:184:            protected Entry(LatentMatcher<? super FieldDescription> matcher,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:273:            protected static class Entry implements ElementMatcher<FieldDescription> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:305:                protected Entry(ElementMatcher<? super FieldDescription> matcher,
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/EntryPointDefaultTest.java:23:public class EntryPointDefaultTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineDefaultOtherTest.java:65:                jarOutputStream.putNextEntry(new JarEntry(type.getName().replace(".", "/") + ClassFileLocator.CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineDefaultOtherTest.java:67:                jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceForJarFileTest.java:42:            jarOutputStream.putNextEntry(new JarEntry("Foo.class"));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceForJarFileTest.java:44:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceForJarFileTest.java:78:            jarOutputStream.putNextEntry(new JarEntry("bar/Foo.class"));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceForJarFileTest.java:80:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceForJarFileTest.java:116:            jarOutputStream.putNextEntry(new JarEntry(JarFile.MANIFEST_NAME));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceForJarFileTest.java:118:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:123:            entries.add(new Entry(matcher, recordComponentAttributeAppenderFactory, transformer));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:140:                entries.add(new Compiled.Entry(entry.resolve(instrumentedType), recordComponentAttributeAppender, entry.getTransformer()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:149:        protected static class Entry implements LatentMatcher<RecordComponentDescription> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:173:            protected Entry(LatentMatcher<? super RecordComponentDescription> matcher,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:250:            protected static class Entry implements ElementMatcher<RecordComponentDescription> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:274:                protected Entry(ElementMatcher<? super RecordComponentDescription> matcher,
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineTargetForJarFileTest.java:55:            JarEntry entry = jarInputStream.getNextJarEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineTargetForJarFileTest.java:58:            assertThat(jarInputStream.getNextJarEntry(), nullValue(JarEntry.class));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineTargetForJarFileTest.java:81:            JarEntry entry = jarInputStream.getNextJarEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineTargetForJarFileTest.java:84:            assertThat(jarInputStream.getNextJarEntry(), nullValue(JarEntry.class));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineTargetForJarFileTest.java:96:        when(element.resolveAs(JarEntry.class)).thenReturn(new JarEntry(FOO + "/" + BAR));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineTargetForJarFileTest.java:109:            JarEntry entry = jarInputStream.getNextJarEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineTargetForJarFileTest.java:112:            assertThat(jarInputStream.getNextJarEntry(), nullValue(JarEntry.class));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineTargetForJarFileTest.java:130:            assertThat(jarInputStream.getNextJarEntry(), nullValue(JarEntry.class));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/EntryPointUnvalidatedTest.java:20:public class EntryPointUnvalidatedTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineDefaultTest.java:371:            jarOutputStream.putNextEntry(new JarEntry("dummy"));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineDefaultTest.java:430:            jarOutputStream.putNextEntry(new JarEntry("dummy"));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineDefaultTest.java:432:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:450:            return new Default(CompoundList.of(new Entry(matcher, handler, attributeAppenderFactory, transformer), entries));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:460:            return new Default(CompoundList.of(entries, new Entry(matcher, handler, attributeAppenderFactory, transformer)));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:480:                                implementations.put(methodDescription, entry.asSupplementaryEntry(methodDescription));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:500:                            implementations.put(methodDescription, entry.asPreparedEntry(instrumentedType,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:525:                        implementations.put(methodDescription, entry.asPreparedEntry(instrumentedType, methodDescription, methodDescription.getVisibility()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:545:        protected static class Entry implements LatentMatcher<MethodDescription> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:575:            protected Entry(LatentMatcher<? super MethodDescription> matcher,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:593:            protected Prepared.Entry asPreparedEntry(TypeDescription instrumentedType, MethodDescription methodDescription, Visibility visibility) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:594:                return asPreparedEntry(instrumentedType, methodDescription, Collections.<MethodDescription.TypeToken>emptySet(), visibility);
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:606:            protected Prepared.Entry asPreparedEntry(TypeDescription instrumentedType,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:610:                return new Prepared.Entry(handler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:624:            protected Prepared.Entry asSupplementaryEntry(MethodDescription methodDescription) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:625:                return new Prepared.Entry(handler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:764:                    entries.put(entry.getKey(), new Compiled.Entry(cachedHandler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:783:            protected static class Entry {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:825:                protected Entry(Handler handler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:847:                    return new Entry(Handler.ForVisibilityBridge.INSTANCE,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:1022:            protected static class Entry {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:1064:                protected Entry(Handler.Compiled handler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7532:                    while ((jarEntry = jarInputStream.getNextJarEntry()) != null) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7535:                            jarOutputStream.putNextEntry(jarEntry);
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7542:                            jarOutputStream.putNextEntry(new JarEntry(jarEntry.getName()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7545:                        jarInputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7546:                        jarOutputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7549:                        jarOutputStream.putNextEntry(new JarEntry(entry.getKey()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7551:                        jarOutputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7585:                    jarOutputStream.putNextEntry(new JarEntry(entry.getKey().getInternalName() + CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7587:                    jarOutputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7589:                jarOutputStream.putNextEntry(new JarEntry(getTypeDescription().getInternalName() + CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7591:                jarOutputStream.closeEntry();
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:1008:            ZipEntry zipEntry = jarFile.getEntry(path);
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:1192:            ZipEntry zipEntry = zipFile.getEntry("classes/" + name.replace('.', '/') + CLASS_FILE_EXTENSION);
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:2562:                            jarOutputStream.putNextEntry(new JarEntry(name.replace('.', '/') + CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceTest.java:166:    public void testEmptyAdviceEntry() throws Exception {
+./byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceTest.java:2393:    public void testBoxedArgumentsWriteDelegateEntry() throws Exception {
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForJarFileTest.java:51:            JarEntry jarEntry = new JarEntry(FOO + "/" + BAR + ClassFileLocator.CLASS_FILE_EXTENSION);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForJarFileTest.java:52:            jarOutputStream.putNextEntry(jarEntry);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForJarFileTest.java:55:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForJarFileTest.java:99:            JarEntry jarEntry = new JarEntry("noop.class");
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForJarFileTest.java:100:            jarOutputStream.putNextEntry(jarEntry);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForJarFileTest.java:102:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForJarFileTest.java:140:            jarOutputStream.putNextEntry(new JarEntry("META-INF/versions/11/" + FOO + "/" + BAR + ClassFileLocator.CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForJarFileTest.java:143:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleFileTest.java:47:            ZipEntry zipEntry = new ZipEntry("classes/" + FOO + "/" + BAR + ClassFileLocator.CLASS_FILE_EXTENSION);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleFileTest.java:48:            zipOutputStream.putNextEntry(zipEntry);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleFileTest.java:51:            zipOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleFileTest.java:95:            ZipEntry zipEntry = new ZipEntry("noop.class");
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleFileTest.java:96:            zipOutputStream.putNextEntry(zipEntry);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForModuleFileTest.java:98:            zipOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForUrlTest.java:48:            JarEntry jarEntry = new JarEntry(FOO + "/" + BAR + ClassFileLocator.CLASS_FILE_EXTENSION);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForUrlTest.java:49:            jarOutputStream.putNextEntry(jarEntry);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForUrlTest.java:52:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForUrlTest.java:82:            JarEntry jarEntry = new JarEntry("noop.class");
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForUrlTest.java:83:            jarOutputStream.putNextEntry(jarEntry);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorForUrlTest.java:85:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:91:            while ((jarEntry = jarInputStream.getNextJarEntry()) != null) {
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:98:                jarInputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:241:            jarOutputStream.putNextEntry(new JarEntry(BARBAZ + CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:243:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:244:            jarOutputStream.putNextEntry(new JarEntry(FOOBAR + CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:246:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:278:            jarOutputStream.putNextEntry(new JarEntry(BARBAZ + CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:280:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:281:            jarOutputStream.putNextEntry(new JarEntry(FOOBAR + CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:283:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:313:            jarOutputStream.putNextEntry(new JarEntry(BARBAZ + CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:315:            jarOutputStream.closeEntry();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:316:            jarOutputStream.putNextEntry(new JarEntry(FOOBAR + CLASS_FILE_EXTENSION));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/DynamicTypeDefaultTest.java:318:            jarOutputStream.closeEntry();
+
+codex
+I found the target inside `byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java`. Next I’m reading the nested `Entry` implementations and the surrounding tests to see whether this class has broad incoming or outgoing dependencies, or if it is just a local helper.
+exec
+/bin/bash -lc "sed -n '1,340p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.asm;
+
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.field.FieldList;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.MethodList;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.pool.TypePool;
+import net.bytebuddy.utility.CompoundList;
+import net.bytebuddy.utility.OpenedClassReader;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.MethodVisitor;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+import static net.bytebuddy.matcher.ElementMatchers.isMethod;
+
+/**
+ * A class visitor wrapper is used in order to register an intermediate ASM {@link org.objectweb.asm.ClassVisitor} which
+ * is applied to the main type created by a {@link net.bytebuddy.dynamic.DynamicType.Builder} but not
+ * to any {@link net.bytebuddy.implementation.auxiliary.AuxiliaryType}s, if any.
+ */
+public interface AsmVisitorWrapper {
+
+    /**
+     * Indicates that no flags should be set.
+     */
+    int NO_FLAGS = 0;
+
+    /**
+     * Defines the flags that are provided to any {@code ClassWriter} when writing a class. Typically, this gives opportunity to instruct ASM
+     * to compute stack map frames or the size of the local variables array and the operand stack. If no specific flags are required for
+     * applying this wrapper, the given value is to be returned.
+     *
+     * @param flags The currently set flags. This value should be combined (e.g. {@code flags | foo}) into the value that is returned by this wrapper.
+     * @return The flags to be provided to the ASM {@code ClassWriter}.
+     */
+    int mergeWriter(int flags);
+
+    /**
+     * Defines the flags that are provided to any {@code ClassReader} when reading a class if applicable. Typically, this gives opportunity to
+     * instruct ASM to expand or skip frames and to skip code and debug information. If no specific flags are required for applying this
+     * wrapper, the given value is to be returned.
+     *
+     * @param flags The currently set flags. This value should be combined (e.g. {@code flags | foo}) into the value that is returned by this wrapper.
+     * @return The flags to be provided to the ASM {@code ClassReader}.
+     */
+    int mergeReader(int flags);
+
+    /**
+     * Applies a {@code ClassVisitorWrapper} to the creation of a {@link net.bytebuddy.dynamic.DynamicType}.
+     *
+     * @param instrumentedType      The instrumented type.
+     * @param classVisitor          A {@code ClassVisitor} to become the new primary class visitor to which the created
+     *                              {@link net.bytebuddy.dynamic.DynamicType} is written to.
+     * @param implementationContext The implementation context of the current instrumentation.
+     * @param typePool              The type pool that was provided for the class creation.
+     * @param fields                The instrumented type's fields.
+     * @param methods               The instrumented type's methods non-ignored declared and virtually inherited methods.
+     * @param writerFlags           The ASM {@link org.objectweb.asm.ClassWriter} flags to consider.
+     * @param readerFlags           The ASM {@link org.objectweb.asm.ClassReader} flags to consider.
+     * @return A new {@code ClassVisitor} that usually delegates to the {@code ClassVisitor} delivered in the argument.
+     */
+    ClassVisitor wrap(TypeDescription instrumentedType,
+                      ClassVisitor classVisitor,
+                      Implementation.Context implementationContext,
+                      TypePool typePool,
+                      FieldList<FieldDescription.InDefinedShape> fields,
+                      MethodList<?> methods,
+                      int writerFlags,
+                      int readerFlags);
+
+    /**
+     * A class visitor wrapper that does not apply any changes.
+     */
+    enum NoOp implements AsmVisitorWrapper {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * {@inheritDoc}
+         */
+        public int mergeWriter(int flags) {
+            return flags;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int mergeReader(int flags) {
+            return flags;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ClassVisitor wrap(TypeDescription instrumentedType,
+                                 ClassVisitor classVisitor,
+                                 Implementation.Context implementationContext,
+                                 TypePool typePool,
+                                 FieldList<FieldDescription.InDefinedShape> fields,
+                                 MethodList<?> methods,
+                                 int writerFlags,
+                                 int readerFlags) {
+            return classVisitor;
+        }
+    }
+
+    /**
+     * An abstract base implementation of an ASM visitor wrapper that does not set any flags.
+     */
+    abstract class AbstractBase implements AsmVisitorWrapper {
+
+        /**
+         * {@inheritDoc}
+         */
+        public int mergeWriter(int flags) {
+            return flags;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int mergeReader(int flags) {
+            return flags;
+        }
+    }
+
+    /**
+     * An ASM visitor wrapper that allows to wrap declared fields of the instrumented type with a {@link FieldVisitorWrapper}.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class ForDeclaredFields extends AbstractBase {
+
+        /**
+         * The list of entries that describe matched fields in their application order.
+         */
+        private final List<Entry> entries;
+
+        /**
+         * Creates a new visitor wrapper for declared fields.
+         */
+        public ForDeclaredFields() {
+            this(Collections.<Entry>emptyList());
+        }
+
+        /**
+         * Creates a new visitor wrapper for declared fields.
+         *
+         * @param entries The list of entries that describe matched fields in their application order.
+         */
+        protected ForDeclaredFields(List<Entry> entries) {
+            this.entries = entries;
+        }
+
+        /**
+         * Defines a new field visitor wrapper to be applied if the given field matcher is matched. Previously defined
+         * entries are applied before the given matcher is applied.
+         *
+         * @param matcher             The matcher to identify fields to be wrapped.
+         * @param fieldVisitorWrapper The field visitor wrapper to be applied if the given matcher is matched.
+         * @return A new ASM visitor wrapper that applied the given field visitor wrapper if the supplied matcher is matched.
+         */
+        public ForDeclaredFields field(ElementMatcher<? super FieldDescription.InDefinedShape> matcher, FieldVisitorWrapper... fieldVisitorWrapper) {
+            return field(matcher, Arrays.asList(fieldVisitorWrapper));
+        }
+
+        /**
+         * Defines a new field visitor wrapper to be applied if the given field matcher is matched. Previously defined
+         * entries are applied before the given matcher is applied.
+         *
+         * @param matcher              The matcher to identify fields to be wrapped.
+         * @param fieldVisitorWrappers The field visitor wrapper to be applied if the given matcher is matched.
+         * @return A new ASM visitor wrapper that applied the given field visitor wrapper if the supplied matcher is matched.
+         */
+        public ForDeclaredFields field(ElementMatcher<? super FieldDescription.InDefinedShape> matcher, List<? extends FieldVisitorWrapper> fieldVisitorWrappers) {
+            return new ForDeclaredFields(CompoundList.of(entries, new Entry(matcher, fieldVisitorWrappers)));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ClassVisitor wrap(TypeDescription instrumentedType,
+                                 ClassVisitor classVisitor,
+                                 Implementation.Context implementationContext,
+                                 TypePool typePool,
+                                 FieldList<FieldDescription.InDefinedShape> fields,
+                                 MethodList<?> methods,
+                                 int writerFlags,
+                                 int readerFlags) {
+            Map<String, FieldDescription.InDefinedShape> mapped = new HashMap<String, FieldDescription.InDefinedShape>();
+            for (FieldDescription.InDefinedShape fieldDescription : fields) {
+                mapped.put(fieldDescription.getInternalName() + fieldDescription.getDescriptor(), fieldDescription);
+            }
+            return new DispatchingVisitor(classVisitor, instrumentedType, mapped);
+        }
+
+        /**
+         * A field visitor wrapper that allows for wrapping a {@link FieldVisitor} defining a declared field.
+         */
+        public interface FieldVisitorWrapper {
+
+            /**
+             * Wraps a field visitor.
+             *
+             * @param instrumentedType The instrumented type.
+             * @param fieldDescription The field that is currently being defined.
+             * @param fieldVisitor     The original field visitor that defines the given field.
+             * @return The wrapped field visitor.
+             */
+            FieldVisitor wrap(TypeDescription instrumentedType, FieldDescription.InDefinedShape fieldDescription, FieldVisitor fieldVisitor);
+        }
+
+        /**
+         * An entry describing a field visitor wrapper paired with a matcher for fields to be wrapped.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class Entry implements ElementMatcher<FieldDescription.InDefinedShape>, FieldVisitorWrapper {
+
+            /**
+             * The matcher to identify fields to be wrapped.
+             */
+            private final ElementMatcher<? super FieldDescription.InDefinedShape> matcher;
+
+            /**
+             * The field visitor wrapper to be applied if the given matcher is matched.
+             */
+            private final List<? extends FieldVisitorWrapper> fieldVisitorWrappers;
+
+            /**
+             * Creates a new entry.
+             *
+             * @param matcher              The matcher to identify fields to be wrapped.
+             * @param fieldVisitorWrappers The field visitor wrapper to be applied if the given matcher is matched.
+             */
+            protected Entry(ElementMatcher<? super FieldDescription.InDefinedShape> matcher, List<? extends FieldVisitorWrapper> fieldVisitorWrappers) {
+                this.matcher = matcher;
+                this.fieldVisitorWrappers = fieldVisitorWrappers;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public boolean matches(@MaybeNull FieldDescription.InDefinedShape target) {
+                return matcher.matches(target);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public FieldVisitor wrap(TypeDescription instrumentedType, FieldDescription.InDefinedShape fieldDescription, FieldVisitor fieldVisitor) {
+                for (FieldVisitorWrapper fieldVisitorWrapper : fieldVisitorWrappers) {
+                    fieldVisitor = fieldVisitorWrapper.wrap(instrumentedType, fieldDescription, fieldVisitor);
+                }
+                return fieldVisitor;
+            }
+        }
+
+        /**
+         * A class visitor that applies the outer ASM visitor for identifying declared fields.
+         */
+        protected class DispatchingVisitor extends ClassVisitor {
+
+            /**
+             * The instrumented type.
+             */
+            private final TypeDescription instrumentedType;
+
+            /**
+             * A mapping of fields by their name and descriptor key-combination.
+             */
+            private final Map<String, FieldDescription.InDefinedShape> fields;
+
+            /**
+             * Creates a new dispatching visitor.
+             *
+             * @param classVisitor     The underlying class visitor.
+             * @param instrumentedType The instrumented type.
+             * @param fields           The instrumented type's declared fields.
+             */
+            protected DispatchingVisitor(ClassVisitor classVisitor, TypeDescription instrumentedType, Map<String, FieldDescription.InDefinedShape> fields) {
+                super(OpenedClassReader.ASM_API, classVisitor);
+                this.instrumentedType = instrumentedType;
+                this.fields = fields;
+            }
+
+            @Override
+            @MaybeNull
+            public FieldVisitor visitField(int modifiers, String internalName, String descriptor, @MaybeNull String signature, @MaybeNull Object value) {
+                FieldVisitor fieldVisitor = super.visitField(modifiers, internalName, descriptor, signature, value);
+                FieldDescription.InDefinedShape fieldDescription = fields.get(internalName + descriptor);
+                if (fieldVisitor != null && fieldDescription != null) {
+                    for (Entry entry : entries) {
+                        if (entry.matches(fieldDescription)) {
+                            fieldVisitor = entry.wrap(instrumentedType, fieldDescription, fieldVisitor);
+                        }
+                    }
+                }
+                return fieldVisitor;
+            }
+        }
+    }
+
+    /**
+     * <p>
+     * An ASM visitor wrapper that allows to wrap <b>declared methods</b> of the instrumented type with a {@link MethodVisitorWrapper}.
+     * </p>
+     * <p>
+     * Note: Inherited methods are <b>not</b> matched by this visitor, even if they are intercepted by a normal interception.
+     * </p>
+     */
+
+exec
+/bin/bash -lc "sed -n '340,760p' byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class ForDeclaredMethods implements AsmVisitorWrapper {
+
+        /**
+         * The list of entries that describe matched methods in their application order.
+         */
+        private final List<Entry> entries;
+
+        /**
+         * The writer flags to set.
+         */
+        private final int writerFlags;
+
+        /**
+         * The reader flags to set.
+         */
+        private final int readerFlags;
+
+        /**
+         * Creates a new visitor wrapper for declared methods.
+         */
+        public ForDeclaredMethods() {
+            this(Collections.<Entry>emptyList(), NO_FLAGS, NO_FLAGS);
+        }
+
+        /**
+         * Creates a new visitor wrapper for declared methods.
+         *
+         * @param entries     The list of entries that describe matched methods in their application order.
+         * @param readerFlags The reader flags to set.
+         * @param writerFlags The writer flags to set.
+         */
+        protected ForDeclaredMethods(List<Entry> entries, int writerFlags, int readerFlags) {
+            this.entries = entries;
+            this.writerFlags = writerFlags;
+            this.readerFlags = readerFlags;
+        }
+
+        /**
+         * Defines a new method visitor wrapper to be applied on any method if the given method matcher is matched.
+         * Previously defined entries are applied before the given matcher is applied.
+         *
+         * @param matcher              The matcher to identify methods to be wrapped.
+         * @param methodVisitorWrapper The method visitor wrapper to be applied if the given matcher is matched.
+         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+         */
+        public ForDeclaredMethods method(ElementMatcher<? super MethodDescription> matcher, MethodVisitorWrapper... methodVisitorWrapper) {
+            return method(matcher, Arrays.asList(methodVisitorWrapper));
+        }
+
+        /**
+         * Defines a new method visitor wrapper to be applied on any method if the given method matcher is matched.
+         * Previously defined entries are applied before the given matcher is applied.
+         *
+         * @param matcher               The matcher to identify methods to be wrapped.
+         * @param methodVisitorWrappers The method visitor wrapper to be applied if the given matcher is matched.
+         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+         */
+        public ForDeclaredMethods method(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+            return invokable(isMethod().and(matcher), methodVisitorWrappers);
+        }
+
+        /**
+         * Defines a new method visitor wrapper to be applied on any constructor if the given method matcher is matched.
+         * Previously defined entries are applied before the given matcher is applied.
+         *
+         * @param matcher              The matcher to identify constructors to be wrapped.
+         * @param methodVisitorWrapper The method visitor wrapper to be applied if the given matcher is matched.
+         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+         */
+        public ForDeclaredMethods constructor(ElementMatcher<? super MethodDescription> matcher, MethodVisitorWrapper... methodVisitorWrapper) {
+            return constructor(matcher, Arrays.asList(methodVisitorWrapper));
+        }
+
+        /**
+         * Defines a new method visitor wrapper to be applied on any constructor if the given method matcher is matched.
+         * Previously defined entries are applied before the given matcher is applied.
+         *
+         * @param matcher               The matcher to identify constructors to be wrapped.
+         * @param methodVisitorWrappers The method visitor wrapper to be applied if the given matcher is matched.
+         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+         */
+        public ForDeclaredMethods constructor(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+            return invokable(isConstructor().and(matcher), methodVisitorWrappers);
+        }
+
+        /**
+         * Defines a new method visitor wrapper to be applied on any method or constructor if the given method matcher is matched.
+         * Previously defined entries are applied before the given matcher is applied.
+         *
+         * @param matcher              The matcher to identify methods or constructors to be wrapped.
+         * @param methodVisitorWrapper The method visitor wrapper to be applied if the given matcher is matched.
+         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+         */
+        public ForDeclaredMethods invokable(ElementMatcher<? super MethodDescription> matcher, MethodVisitorWrapper... methodVisitorWrapper) {
+            return invokable(matcher, Arrays.asList(methodVisitorWrapper));
+        }
+
+        /**
+         * Defines a new method visitor wrapper to be applied on any method or constructor if the given method matcher is matched.
+         * Previously defined entries are applied before the given matcher is applied.
+         *
+         * @param matcher               The matcher to identify methods or constructors to be wrapped.
+         * @param methodVisitorWrappers The method visitor wrapper to be applied if the given matcher is matched.
+         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+         */
+        public ForDeclaredMethods invokable(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+            return new ForDeclaredMethods(CompoundList.of(entries, new Entry(matcher, methodVisitorWrappers)), writerFlags, readerFlags);
+        }
+
+        /**
+         * Sets flags for the {@link org.objectweb.asm.ClassWriter} this wrapper is applied to.
+         *
+         * @param flags The flags to set for the {@link org.objectweb.asm.ClassWriter}.
+         * @return A new ASM visitor wrapper that sets the supplied writer flags.
+         */
+        public ForDeclaredMethods writerFlags(int flags) {
+            return new ForDeclaredMethods(entries, writerFlags | flags, readerFlags);
+        }
+
+        /**
+         * Sets flags for the {@link org.objectweb.asm.ClassReader} this wrapper is applied to.
+         *
+         * @param flags The flags to set for the {@link org.objectweb.asm.ClassReader}.
+         * @return A new ASM visitor wrapper that sets the supplied reader flags.
+         */
+        public ForDeclaredMethods readerFlags(int flags) {
+            return new ForDeclaredMethods(entries, writerFlags, readerFlags | flags);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int mergeWriter(int flags) {
+            return flags | writerFlags;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int mergeReader(int flags) {
+            return flags | readerFlags;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ClassVisitor wrap(TypeDescription instrumentedType,
+                                 ClassVisitor classVisitor,
+                                 Implementation.Context implementationContext,
+                                 TypePool typePool,
+                                 FieldList<FieldDescription.InDefinedShape> fields,
+                                 MethodList<?> methods,
+                                 int writerFlags,
+                                 int readerFlags) {
+            Map<String, MethodDescription> mapped = new HashMap<String, MethodDescription>();
+            for (MethodDescription methodDescription : CompoundList.<MethodDescription>of(methods, new MethodDescription.Latent.TypeInitializer(instrumentedType))) {
+                mapped.put(methodDescription.getInternalName() + methodDescription.getDescriptor(), methodDescription);
+            }
+            return new DispatchingVisitor(classVisitor,
+                    instrumentedType,
+                    implementationContext,
+                    typePool,
+                    mapped,
+                    writerFlags,
+                    readerFlags);
+        }
+
+        /**
+         * A method visitor wrapper that allows for wrapping a {@link MethodVisitor} defining a declared method.
+         */
+        public interface MethodVisitorWrapper {
+
+            /**
+             * Wraps a method visitor.
+             *
+             * @param instrumentedType      The instrumented type.
+             * @param instrumentedMethod    The method that is currently being defined.
+             * @param methodVisitor         The original field visitor that defines the given method.
+             * @param implementationContext The implementation context to use.
+             * @param typePool              The type pool to use.
+             * @param writerFlags           The ASM {@link org.objectweb.asm.ClassWriter} reader flags to consider.
+             * @param readerFlags           The ASM {@link org.objectweb.asm.ClassReader} reader flags to consider.
+             * @return The wrapped method visitor.
+             */
+            MethodVisitor wrap(TypeDescription instrumentedType,
+                               MethodDescription instrumentedMethod,
+                               MethodVisitor methodVisitor,
+                               Implementation.Context implementationContext,
+                               TypePool typePool,
+                               int writerFlags,
+                               int readerFlags);
+        }
+
+        /**
+         * An entry describing a method visitor wrapper paired with a matcher for fields to be wrapped.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class Entry implements ElementMatcher<MethodDescription>, MethodVisitorWrapper {
+
+            /**
+             * The matcher to identify methods to be wrapped.
+             */
+            private final ElementMatcher<? super MethodDescription> matcher;
+
+            /**
+             * The method visitor wrapper to be applied if the given matcher is matched.
+             */
+            private final List<? extends MethodVisitorWrapper> methodVisitorWrappers;
+
+            /**
+             * Creates a new entry.
+             *
+             * @param matcher               The matcher to identify methods to be wrapped.
+             * @param methodVisitorWrappers The method visitor wrapper to be applied if the given matcher is matched.
+             */
+            protected Entry(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+                this.matcher = matcher;
+                this.methodVisitorWrappers = methodVisitorWrappers;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public boolean matches(@MaybeNull MethodDescription target) {
+                return matcher.matches(target);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MethodVisitor wrap(TypeDescription instrumentedType,
+                                      MethodDescription instrumentedMethod,
+                                      MethodVisitor methodVisitor,
+                                      Implementation.Context implementationContext,
+                                      TypePool typePool,
+                                      int writerFlags,
+                                      int readerFlags) {
+                for (MethodVisitorWrapper methodVisitorWrapper : methodVisitorWrappers) {
+                    methodVisitor = methodVisitorWrapper.wrap(instrumentedType,
+                            instrumentedMethod,
+                            methodVisitor,
+                            implementationContext,
+                            typePool,
+                            writerFlags,
+                            readerFlags);
+                }
+                return methodVisitor;
+            }
+        }
+
+        /**
+         * A class visitor that applies the outer ASM visitor for identifying declared methods.
+         */
+        protected class DispatchingVisitor extends ClassVisitor {
+
+            /**
+             * The instrumented type.
+             */
+            private final TypeDescription instrumentedType;
+
+            /**
+             * The implementation context to use.
+             */
+            private final Implementation.Context implementationContext;
+
+            /**
+             * The type pool to use.
+             */
+            private final TypePool typePool;
+
+            /**
+             * The ASM {@link org.objectweb.asm.ClassWriter} reader flags to consider.
+             */
+            private final int writerFlags;
+
+            /**
+             * The ASM {@link org.objectweb.asm.ClassReader} reader flags to consider.
+             */
+            private final int readerFlags;
+
+            /**
+             * A mapping of fields by their name.
+             */
+            private final Map<String, MethodDescription> methods;
+
+            /**
+             * Creates a new dispatching visitor.
+             *
+             * @param classVisitor          The underlying class visitor.
+             * @param instrumentedType      The instrumented type.
+             * @param implementationContext The implementation context to use.
+             * @param typePool              The type pool to use.
+             * @param methods               The methods that are declared by the instrumented type or virtually inherited.
+             * @param writerFlags           The ASM {@link org.objectweb.asm.ClassWriter} flags to consider.
+             * @param readerFlags           The ASM {@link org.objectweb.asm.ClassReader} flags to consider.
+             */
+            protected DispatchingVisitor(ClassVisitor classVisitor,
+                                         TypeDescription instrumentedType,
+                                         Implementation.Context implementationContext,
+                                         TypePool typePool,
+                                         Map<String, MethodDescription> methods,
+                                         int writerFlags,
+                                         int readerFlags) {
+                super(OpenedClassReader.ASM_API, classVisitor);
+                this.instrumentedType = instrumentedType;
+                this.implementationContext = implementationContext;
+                this.typePool = typePool;
+                this.methods = methods;
+                this.writerFlags = writerFlags;
+                this.readerFlags = readerFlags;
+            }
+
+            @Override
+            @MaybeNull
+            public MethodVisitor visitMethod(int modifiers, String internalName, String descriptor, @MaybeNull String signature, @MaybeNull String[] exceptions) {
+                MethodVisitor methodVisitor = super.visitMethod(modifiers, internalName, descriptor, signature, exceptions);
+                MethodDescription methodDescription = methods.get(internalName + descriptor);
+                if (methodVisitor != null && methodDescription != null) {
+                    for (Entry entry : entries) {
+                        if (entry.matches(methodDescription)) {
+                            methodVisitor = entry.wrap(instrumentedType,
+                                    methodDescription,
+                                    methodVisitor,
+                                    implementationContext,
+                                    typePool,
+                                    writerFlags,
+                                    readerFlags);
+                        }
+                    }
+                }
+                return methodVisitor;
+            }
+        }
+    }
+
+    /**
+     * An ordered, immutable chain of {@link AsmVisitorWrapper}s.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class Compound implements AsmVisitorWrapper {
+
+        /**
+         * The class visitor wrappers that are represented by this chain in their order. This list must not be mutated.
+         */
+        private final List<AsmVisitorWrapper> asmVisitorWrappers;
+
+        /**
+         * Creates a new immutable chain based on an existing list of {@link AsmVisitorWrapper}s
+         * where no copy of the received array is made.
+         *
+         * @param asmVisitorWrapper An array of {@link AsmVisitorWrapper}s where elements
+         *                          at the beginning of the list are applied first, i.e. will be at the bottom of the generated
+         *                          {@link org.objectweb.asm.ClassVisitor}.
+         */
+        public Compound(AsmVisitorWrapper... asmVisitorWrapper) {
+            this(Arrays.asList(asmVisitorWrapper));
+        }
+
+        /**
+         * Creates a new immutable chain based on an existing list of {@link AsmVisitorWrapper}s
+         * where no copy of the received list is made.
+         *
+         * @param asmVisitorWrappers A list of {@link AsmVisitorWrapper}s where elements
+         *                           at the beginning of the list are applied first, i.e. will be at the bottom of the generated
+         *                           {@link org.objectweb.asm.ClassVisitor}.
+         */
+        public Compound(List<? extends AsmVisitorWrapper> asmVisitorWrappers) {
+            this.asmVisitorWrappers = new ArrayList<AsmVisitorWrapper>();
+            for (AsmVisitorWrapper asmVisitorWrapper : asmVisitorWrappers) {
+                if (asmVisitorWrapper instanceof Compound) {
+                    this.asmVisitorWrappers.addAll(((Compound) asmVisitorWrapper).asmVisitorWrappers);
+                } else if (!(asmVisitorWrapper instanceof NoOp)) {
+                    this.asmVisitorWrappers.add(asmVisitorWrapper);
+                }
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int mergeWriter(int flags) {
+            for (AsmVisitorWrapper asmVisitorWrapper : asmVisitorWrappers) {
+                flags = asmVisitorWrapper.mergeWriter(flags);
+            }
+            return flags;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int mergeReader(int flags) {
+            for (AsmVisitorWrapper asmVisitorWrapper : asmVisitorWrappers) {
+                flags = asmVisitorWrapper.mergeReader(flags);
+            }
+            return flags;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ClassVisitor wrap(TypeDescription instrumentedType,
+                                 ClassVisitor classVisitor,
+                                 Implementation.Context implementationContext,
+                                 TypePool typePool,
+                                 FieldList<FieldDescription.InDefinedShape> fields,
+                                 MethodList<?> methods,
+                                 int writerFlags,
+                                 int readerFlags) {
+            for (AsmVisitorWrapper asmVisitorWrapper : asmVisitorWrappers) {
+                classVisitor = asmVisitorWrapper.wrap(instrumentedType,
+                        classVisitor,
+                        implementationContext,
+                        typePool,
+                        fields,
+                        methods,
+                        writerFlags,
+                        readerFlags);
+            }
+            return classVisitor;
+
+exec
+/bin/bash -lc "rg -n \"AsmVisitorWrapper\\.Entry|new Entry\\(|ForDeclaredFields|ForDeclaredMethods|Entry implements\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineDefaultOtherTest.java:103:            return builder.visit(new AsmVisitorWrapper.ForDeclaredFields().field(ElementMatchers.<FieldDescription.InDefinedShape>any()));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:123:public class MemberSubstitution implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:319:    public AsmVisitorWrapper.ForDeclaredMethods on(ElementMatcher<? super MethodDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:320:        return new AsmVisitorWrapper.ForDeclaredMethods().invokable(matcher, this);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:201:public class Advice implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper, Implementation {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:571:    public AsmVisitorWrapper.ForDeclaredMethods on(ElementMatcher<? super MethodDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:572:        return new AsmVisitorWrapper.ForDeclaredMethods().invokable(matcher, this);
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredMethodsTest.java:28:public class AsmVisitorWrapperForDeclaredMethodsTest {
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredMethodsTest.java:41:    private AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper methodVisitorWrapper;
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredMethodsTest.java:74:        assertThat(new AsmVisitorWrapper.ForDeclaredMethods()
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredMethodsTest.java:94:        assertThat(new AsmVisitorWrapper.ForDeclaredMethods()
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredMethodsTest.java:113:        assertThat(new AsmVisitorWrapper.ForDeclaredMethods()
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredMethodsTest.java:131:        assertThat(new AsmVisitorWrapper.ForDeclaredMethods()
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredMethodsTest.java:147:        assertThat(new AsmVisitorWrapper.ForDeclaredMethods()
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredMethodsTest.java:163:        assertThat(new AsmVisitorWrapper.ForDeclaredMethods().writerFlags(FLAGS).mergeWriter(0), is(FLAGS));
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredMethodsTest.java:168:        assertThat(new AsmVisitorWrapper.ForDeclaredMethods().readerFlags(FLAGS).mergeReader(0), is(FLAGS));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberAttributeExtension.java:72:    public static class ForField extends MemberAttributeExtension<FieldAttributeAppender.Factory> implements AsmVisitorWrapper.ForDeclaredFields.FieldVisitorWrapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberAttributeExtension.java:167:            return new AsmVisitorWrapper.ForDeclaredFields().field(matcher, this);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberAttributeExtension.java:219:    public static class ForMethod extends MemberAttributeExtension<MethodAttributeAppender.Factory> implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberAttributeExtension.java:368:            return new AsmVisitorWrapper.ForDeclaredMethods().invokable(matcher, this);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:162:    class ForDeclaredFields extends AbstractBase {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:172:        public ForDeclaredFields() {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:181:        protected ForDeclaredFields(List<Entry> entries) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:193:        public ForDeclaredFields field(ElementMatcher<? super FieldDescription.InDefinedShape> matcher, FieldVisitorWrapper... fieldVisitorWrapper) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:205:        public ForDeclaredFields field(ElementMatcher<? super FieldDescription.InDefinedShape> matcher, List<? extends FieldVisitorWrapper> fieldVisitorWrappers) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:206:            return new ForDeclaredFields(CompoundList.of(entries, new Entry(matcher, fieldVisitorWrappers)));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:247:        protected static class Entry implements ElementMatcher<FieldDescription.InDefinedShape>, FieldVisitorWrapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:342:    class ForDeclaredMethods implements AsmVisitorWrapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:362:        public ForDeclaredMethods() {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:373:        protected ForDeclaredMethods(List<Entry> entries, int writerFlags, int readerFlags) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:387:        public ForDeclaredMethods method(ElementMatcher<? super MethodDescription> matcher, MethodVisitorWrapper... methodVisitorWrapper) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:399:        public ForDeclaredMethods method(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:411:        public ForDeclaredMethods constructor(ElementMatcher<? super MethodDescription> matcher, MethodVisitorWrapper... methodVisitorWrapper) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:423:        public ForDeclaredMethods constructor(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:435:        public ForDeclaredMethods invokable(ElementMatcher<? super MethodDescription> matcher, MethodVisitorWrapper... methodVisitorWrapper) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:447:        public ForDeclaredMethods invokable(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:448:            return new ForDeclaredMethods(CompoundList.of(entries, new Entry(matcher, methodVisitorWrappers)), writerFlags, readerFlags);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:457:        public ForDeclaredMethods writerFlags(int flags) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:458:            return new ForDeclaredMethods(entries, writerFlags | flags, readerFlags);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:467:        public ForDeclaredMethods readerFlags(int flags) {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:468:            return new ForDeclaredMethods(entries, writerFlags, readerFlags | flags);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:539:        protected static class Entry implements ElementMatcher<MethodDescription>, MethodVisitorWrapper {
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredFieldsTest.java:28:public class AsmVisitorWrapperForDeclaredFieldsTest {
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredFieldsTest.java:41:    private AsmVisitorWrapper.ForDeclaredFields.FieldVisitorWrapper fieldVisitorWrapper;
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredFieldsTest.java:74:        assertThat(new AsmVisitorWrapper.ForDeclaredFields()
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredFieldsTest.java:93:        assertThat(new AsmVisitorWrapper.ForDeclaredFields()
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AsmVisitorWrapperForDeclaredFieldsTest.java:111:        assertThat(new AsmVisitorWrapper.ForDeclaredFields()
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:3124:                AsmVisitorWrapper.ForDeclaredMethods asmVisitorWrapper = new AsmVisitorWrapper.ForDeclaredMethods();
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:3148:            protected AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper wrap(TypeDescription typeDescription,
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2682:                class ForJarEntry implements Element {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/EntryPoint.java:142:                        .with(MethodGraph.Compiler.ForDeclaredMethods.INSTANCE)
+byte-buddy-dep/src/main/java/net/bytebuddy/build/AccessControllerPlugin.java:218:                .visit(new AsmVisitorWrapper.ForDeclaredMethods().method(isAnnotatedWith(Enhance.class), new AccessControlWrapper(name)))
+byte-buddy-dep/src/main/java/net/bytebuddy/build/AccessControllerPlugin.java:380:    protected static class AccessControlWrapper implements AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java:1354:            protected static class FieldCacheEntry implements StackManipulation {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java:482:        enum ForDeclaredMethods implements Compiler {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:450:            return new Default(CompoundList.of(new Entry(matcher, handler, attributeAppenderFactory, transformer), entries));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:460:            return new Default(CompoundList.of(entries, new Entry(matcher, handler, attributeAppenderFactory, transformer)));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:545:        protected static class Entry implements LatentMatcher<MethodDescription> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:847:                    return new Entry(Handler.ForVisibilityBridge.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:126:            entries.add(new Entry(matcher, fieldAttributeAppenderFactory, defaultValue, transformer));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:152:        protected static class Entry implements LatentMatcher<FieldDescription> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:273:            protected static class Entry implements ElementMatcher<FieldDescription> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:123:            entries.add(new Entry(matcher, recordComponentAttributeAppenderFactory, transformer));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:149:        protected static class Entry implements LatentMatcher<RecordComponentDescription> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:250:            protected static class Entry implements ElementMatcher<RecordComponentDescription> {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:437:                .visit(new AsmVisitorWrapper.ForDeclaredMethods().writerFlags(ClassWriter.COMPUTE_FRAMES))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:447:                .visit(new AsmVisitorWrapper.ForDeclaredMethods().readerFlags(ClassReader.EXPAND_FRAMES))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilderTest.java:117:                .visit(new AsmVisitorWrapper.ForDeclaredMethods().readerFlags(ClassReader.EXPAND_FRAMES))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/DecoratingDynamicTypeBuilderTest.java:40:                .visit(new AsmVisitorWrapper.ForDeclaredMethods().method(named(FOO), new AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper() {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/DecoratingDynamicTypeBuilderTest.java:74:                .visit(new AsmVisitorWrapper.ForDeclaredMethods().method(named(BAR), new AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper() {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/DecoratingDynamicTypeBuilderTest.java:110:                .visit(new AsmVisitorWrapper.ForDeclaredMethods()
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/DecoratingDynamicTypeBuilderTest.java:111:                        .method(named(FOO), new AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper() {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerForDeclaredMethodsTest.java:15:public class MethodGraphCompilerForDeclaredMethodsTest {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerForDeclaredMethodsTest.java:26:        MethodGraph.Linked methodGraph = MethodGraph.Compiler.ForDeclaredMethods.INSTANCE.compile((TypeDefinition) typeDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerForDeclaredMethodsTest.java:39:        MethodGraph.Linked methodGraph = MethodGraph.Compiler.ForDeclaredMethods.INSTANCE.compile((TypeDefinition) typeDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerForDeclaredMethodsTest.java:52:        MethodGraph.Linked methodGraph = MethodGraph.Compiler.ForDeclaredMethods.INSTANCE.compile((TypeDefinition) typeDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerForDeclaredMethodsTest.java:67:        MethodGraph.Linked methodGraph = MethodGraph.Compiler.ForDeclaredMethods.INSTANCE.compile((TypeDefinition) typeDescription);
+
+codex
+I’ve confirmed the important pattern already: the only `Entry` types live inside `AsmVisitorWrapper.java`, and the rest of the repo seems to consume the enclosing fluent APIs instead of those nested classes directly. I’m checking line numbers and any external references so the justification is precise.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java | sed -n '360,585p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java | sed -n '160,290p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"AsmVisitorWrapper\\.ForDeclaredFields\\.Entry|AsmVisitorWrapper\\.ForDeclaredMethods\\.Entry|protected static class Entry implements ElementMatcher|new Entry\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 134ms:
+   160	     */
+   161	    @HashCodeAndEqualsPlugin.Enhance
+   162	    class ForDeclaredFields extends AbstractBase {
+   163	
+   164	        /**
+   165	         * The list of entries that describe matched fields in their application order.
+   166	         */
+   167	        private final List<Entry> entries;
+   168	
+   169	        /**
+   170	         * Creates a new visitor wrapper for declared fields.
+   171	         */
+   172	        public ForDeclaredFields() {
+   173	            this(Collections.<Entry>emptyList());
+   174	        }
+   175	
+   176	        /**
+   177	         * Creates a new visitor wrapper for declared fields.
+   178	         *
+   179	         * @param entries The list of entries that describe matched fields in their application order.
+   180	         */
+   181	        protected ForDeclaredFields(List<Entry> entries) {
+   182	            this.entries = entries;
+   183	        }
+   184	
+   185	        /**
+   186	         * Defines a new field visitor wrapper to be applied if the given field matcher is matched. Previously defined
+   187	         * entries are applied before the given matcher is applied.
+   188	         *
+   189	         * @param matcher             The matcher to identify fields to be wrapped.
+   190	         * @param fieldVisitorWrapper The field visitor wrapper to be applied if the given matcher is matched.
+   191	         * @return A new ASM visitor wrapper that applied the given field visitor wrapper if the supplied matcher is matched.
+   192	         */
+   193	        public ForDeclaredFields field(ElementMatcher<? super FieldDescription.InDefinedShape> matcher, FieldVisitorWrapper... fieldVisitorWrapper) {
+   194	            return field(matcher, Arrays.asList(fieldVisitorWrapper));
+   195	        }
+   196	
+   197	        /**
+   198	         * Defines a new field visitor wrapper to be applied if the given field matcher is matched. Previously defined
+   199	         * entries are applied before the given matcher is applied.
+   200	         *
+   201	         * @param matcher              The matcher to identify fields to be wrapped.
+   202	         * @param fieldVisitorWrappers The field visitor wrapper to be applied if the given matcher is matched.
+   203	         * @return A new ASM visitor wrapper that applied the given field visitor wrapper if the supplied matcher is matched.
+   204	         */
+   205	        public ForDeclaredFields field(ElementMatcher<? super FieldDescription.InDefinedShape> matcher, List<? extends FieldVisitorWrapper> fieldVisitorWrappers) {
+   206	            return new ForDeclaredFields(CompoundList.of(entries, new Entry(matcher, fieldVisitorWrappers)));
+   207	        }
+   208	
+   209	        /**
+   210	         * {@inheritDoc}
+   211	         */
+   212	        public ClassVisitor wrap(TypeDescription instrumentedType,
+   213	                                 ClassVisitor classVisitor,
+   214	                                 Implementation.Context implementationContext,
+   215	                                 TypePool typePool,
+   216	                                 FieldList<FieldDescription.InDefinedShape> fields,
+   217	                                 MethodList<?> methods,
+   218	                                 int writerFlags,
+   219	                                 int readerFlags) {
+   220	            Map<String, FieldDescription.InDefinedShape> mapped = new HashMap<String, FieldDescription.InDefinedShape>();
+   221	            for (FieldDescription.InDefinedShape fieldDescription : fields) {
+   222	                mapped.put(fieldDescription.getInternalName() + fieldDescription.getDescriptor(), fieldDescription);
+   223	            }
+   224	            return new DispatchingVisitor(classVisitor, instrumentedType, mapped);
+   225	        }
+   226	
+   227	        /**
+   228	         * A field visitor wrapper that allows for wrapping a {@link FieldVisitor} defining a declared field.
+   229	         */
+   230	        public interface FieldVisitorWrapper {
+   231	
+   232	            /**
+   233	             * Wraps a field visitor.
+   234	             *
+   235	             * @param instrumentedType The instrumented type.
+   236	             * @param fieldDescription The field that is currently being defined.
+   237	             * @param fieldVisitor     The original field visitor that defines the given field.
+   238	             * @return The wrapped field visitor.
+   239	             */
+   240	            FieldVisitor wrap(TypeDescription instrumentedType, FieldDescription.InDefinedShape fieldDescription, FieldVisitor fieldVisitor);
+   241	        }
+   242	
+   243	        /**
+   244	         * An entry describing a field visitor wrapper paired with a matcher for fields to be wrapped.
+   245	         */
+   246	        @HashCodeAndEqualsPlugin.Enhance
+   247	        protected static class Entry implements ElementMatcher<FieldDescription.InDefinedShape>, FieldVisitorWrapper {
+   248	
+   249	            /**
+   250	             * The matcher to identify fields to be wrapped.
+   251	             */
+   252	            private final ElementMatcher<? super FieldDescription.InDefinedShape> matcher;
+   253	
+   254	            /**
+   255	             * The field visitor wrapper to be applied if the given matcher is matched.
+   256	             */
+   257	            private final List<? extends FieldVisitorWrapper> fieldVisitorWrappers;
+   258	
+   259	            /**
+   260	             * Creates a new entry.
+   261	             *
+   262	             * @param matcher              The matcher to identify fields to be wrapped.
+   263	             * @param fieldVisitorWrappers The field visitor wrapper to be applied if the given matcher is matched.
+   264	             */
+   265	            protected Entry(ElementMatcher<? super FieldDescription.InDefinedShape> matcher, List<? extends FieldVisitorWrapper> fieldVisitorWrappers) {
+   266	                this.matcher = matcher;
+   267	                this.fieldVisitorWrappers = fieldVisitorWrappers;
+   268	            }
+   269	
+   270	            /**
+   271	             * {@inheritDoc}
+   272	             */
+   273	            public boolean matches(@MaybeNull FieldDescription.InDefinedShape target) {
+   274	                return matcher.matches(target);
+   275	            }
+   276	
+   277	            /**
+   278	             * {@inheritDoc}
+   279	             */
+   280	            public FieldVisitor wrap(TypeDescription instrumentedType, FieldDescription.InDefinedShape fieldDescription, FieldVisitor fieldVisitor) {
+   281	                for (FieldVisitorWrapper fieldVisitorWrapper : fieldVisitorWrappers) {
+   282	                    fieldVisitor = fieldVisitorWrapper.wrap(instrumentedType, fieldDescription, fieldVisitor);
+   283	                }
+   284	                return fieldVisitor;
+   285	            }
+   286	        }
+   287	
+   288	        /**
+   289	         * A class visitor that applies the outer ASM visitor for identifying declared fields.
+   290	         */
+
+ succeeded in 173ms:
+   360	         * Creates a new visitor wrapper for declared methods.
+   361	         */
+   362	        public ForDeclaredMethods() {
+   363	            this(Collections.<Entry>emptyList(), NO_FLAGS, NO_FLAGS);
+   364	        }
+   365	
+   366	        /**
+   367	         * Creates a new visitor wrapper for declared methods.
+   368	         *
+   369	         * @param entries     The list of entries that describe matched methods in their application order.
+   370	         * @param readerFlags The reader flags to set.
+   371	         * @param writerFlags The writer flags to set.
+   372	         */
+   373	        protected ForDeclaredMethods(List<Entry> entries, int writerFlags, int readerFlags) {
+   374	            this.entries = entries;
+   375	            this.writerFlags = writerFlags;
+   376	            this.readerFlags = readerFlags;
+   377	        }
+   378	
+   379	        /**
+   380	         * Defines a new method visitor wrapper to be applied on any method if the given method matcher is matched.
+   381	         * Previously defined entries are applied before the given matcher is applied.
+   382	         *
+   383	         * @param matcher              The matcher to identify methods to be wrapped.
+   384	         * @param methodVisitorWrapper The method visitor wrapper to be applied if the given matcher is matched.
+   385	         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+   386	         */
+   387	        public ForDeclaredMethods method(ElementMatcher<? super MethodDescription> matcher, MethodVisitorWrapper... methodVisitorWrapper) {
+   388	            return method(matcher, Arrays.asList(methodVisitorWrapper));
+   389	        }
+   390	
+   391	        /**
+   392	         * Defines a new method visitor wrapper to be applied on any method if the given method matcher is matched.
+   393	         * Previously defined entries are applied before the given matcher is applied.
+   394	         *
+   395	         * @param matcher               The matcher to identify methods to be wrapped.
+   396	         * @param methodVisitorWrappers The method visitor wrapper to be applied if the given matcher is matched.
+   397	         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+   398	         */
+   399	        public ForDeclaredMethods method(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+   400	            return invokable(isMethod().and(matcher), methodVisitorWrappers);
+   401	        }
+   402	
+   403	        /**
+   404	         * Defines a new method visitor wrapper to be applied on any constructor if the given method matcher is matched.
+   405	         * Previously defined entries are applied before the given matcher is applied.
+   406	         *
+   407	         * @param matcher              The matcher to identify constructors to be wrapped.
+   408	         * @param methodVisitorWrapper The method visitor wrapper to be applied if the given matcher is matched.
+   409	         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+   410	         */
+   411	        public ForDeclaredMethods constructor(ElementMatcher<? super MethodDescription> matcher, MethodVisitorWrapper... methodVisitorWrapper) {
+   412	            return constructor(matcher, Arrays.asList(methodVisitorWrapper));
+   413	        }
+   414	
+   415	        /**
+   416	         * Defines a new method visitor wrapper to be applied on any constructor if the given method matcher is matched.
+   417	         * Previously defined entries are applied before the given matcher is applied.
+   418	         *
+   419	         * @param matcher               The matcher to identify constructors to be wrapped.
+   420	         * @param methodVisitorWrappers The method visitor wrapper to be applied if the given matcher is matched.
+   421	         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+   422	         */
+   423	        public ForDeclaredMethods constructor(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+   424	            return invokable(isConstructor().and(matcher), methodVisitorWrappers);
+   425	        }
+   426	
+   427	        /**
+   428	         * Defines a new method visitor wrapper to be applied on any method or constructor if the given method matcher is matched.
+   429	         * Previously defined entries are applied before the given matcher is applied.
+   430	         *
+   431	         * @param matcher              The matcher to identify methods or constructors to be wrapped.
+   432	         * @param methodVisitorWrapper The method visitor wrapper to be applied if the given matcher is matched.
+   433	         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+   434	         */
+   435	        public ForDeclaredMethods invokable(ElementMatcher<? super MethodDescription> matcher, MethodVisitorWrapper... methodVisitorWrapper) {
+   436	            return invokable(matcher, Arrays.asList(methodVisitorWrapper));
+   437	        }
+   438	
+   439	        /**
+   440	         * Defines a new method visitor wrapper to be applied on any method or constructor if the given method matcher is matched.
+   441	         * Previously defined entries are applied before the given matcher is applied.
+   442	         *
+   443	         * @param matcher               The matcher to identify methods or constructors to be wrapped.
+   444	         * @param methodVisitorWrappers The method visitor wrapper to be applied if the given matcher is matched.
+   445	         * @return A new ASM visitor wrapper that applied the given method visitor wrapper if the supplied matcher is matched.
+   446	         */
+   447	        public ForDeclaredMethods invokable(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+   448	            return new ForDeclaredMethods(CompoundList.of(entries, new Entry(matcher, methodVisitorWrappers)), writerFlags, readerFlags);
+   449	        }
+   450	
+   451	        /**
+   452	         * Sets flags for the {@link org.objectweb.asm.ClassWriter} this wrapper is applied to.
+   453	         *
+   454	         * @param flags The flags to set for the {@link org.objectweb.asm.ClassWriter}.
+   455	         * @return A new ASM visitor wrapper that sets the supplied writer flags.
+   456	         */
+   457	        public ForDeclaredMethods writerFlags(int flags) {
+   458	            return new ForDeclaredMethods(entries, writerFlags | flags, readerFlags);
+   459	        }
+   460	
+   461	        /**
+   462	         * Sets flags for the {@link org.objectweb.asm.ClassReader} this wrapper is applied to.
+   463	         *
+   464	         * @param flags The flags to set for the {@link org.objectweb.asm.ClassReader}.
+   465	         * @return A new ASM visitor wrapper that sets the supplied reader flags.
+   466	         */
+   467	        public ForDeclaredMethods readerFlags(int flags) {
+   468	            return new ForDeclaredMethods(entries, writerFlags, readerFlags | flags);
+   469	        }
+   470	
+   471	        /**
+   472	         * {@inheritDoc}
+   473	         */
+   474	        public int mergeWriter(int flags) {
+   475	            return flags | writerFlags;
+   476	        }
+   477	
+   478	        /**
+   479	         * {@inheritDoc}
+   480	         */
+   481	        public int mergeReader(int flags) {
+   482	            return flags | readerFlags;
+   483	        }
+   484	
+   485	        /**
+   486	         * {@inheritDoc}
+   487	         */
+   488	        public ClassVisitor wrap(TypeDescription instrumentedType,
+   489	                                 ClassVisitor classVisitor,
+   490	                                 Implementation.Context implementationContext,
+   491	                                 TypePool typePool,
+   492	                                 FieldList<FieldDescription.InDefinedShape> fields,
+   493	                                 MethodList<?> methods,
+   494	                                 int writerFlags,
+   495	                                 int readerFlags) {
+   496	            Map<String, MethodDescription> mapped = new HashMap<String, MethodDescription>();
+   497	            for (MethodDescription methodDescription : CompoundList.<MethodDescription>of(methods, new MethodDescription.Latent.TypeInitializer(instrumentedType))) {
+   498	                mapped.put(methodDescription.getInternalName() + methodDescription.getDescriptor(), methodDescription);
+   499	            }
+   500	            return new DispatchingVisitor(classVisitor,
+   501	                    instrumentedType,
+   502	                    implementationContext,
+   503	                    typePool,
+   504	                    mapped,
+   505	                    writerFlags,
+   506	                    readerFlags);
+   507	        }
+   508	
+   509	        /**
+   510	         * A method visitor wrapper that allows for wrapping a {@link MethodVisitor} defining a declared method.
+   511	         */
+   512	        public interface MethodVisitorWrapper {
+   513	
+   514	            /**
+   515	             * Wraps a method visitor.
+   516	             *
+   517	             * @param instrumentedType      The instrumented type.
+   518	             * @param instrumentedMethod    The method that is currently being defined.
+   519	             * @param methodVisitor         The original field visitor that defines the given method.
+   520	             * @param implementationContext The implementation context to use.
+   521	             * @param typePool              The type pool to use.
+   522	             * @param writerFlags           The ASM {@link org.objectweb.asm.ClassWriter} reader flags to consider.
+   523	             * @param readerFlags           The ASM {@link org.objectweb.asm.ClassReader} reader flags to consider.
+   524	             * @return The wrapped method visitor.
+   525	             */
+   526	            MethodVisitor wrap(TypeDescription instrumentedType,
+   527	                               MethodDescription instrumentedMethod,
+   528	                               MethodVisitor methodVisitor,
+   529	                               Implementation.Context implementationContext,
+   530	                               TypePool typePool,
+   531	                               int writerFlags,
+   532	                               int readerFlags);
+   533	        }
+   534	
+   535	        /**
+   536	         * An entry describing a method visitor wrapper paired with a matcher for fields to be wrapped.
+   537	         */
+   538	        @HashCodeAndEqualsPlugin.Enhance
+   539	        protected static class Entry implements ElementMatcher<MethodDescription>, MethodVisitorWrapper {
+   540	
+   541	            /**
+   542	             * The matcher to identify methods to be wrapped.
+   543	             */
+   544	            private final ElementMatcher<? super MethodDescription> matcher;
+   545	
+   546	            /**
+   547	             * The method visitor wrapper to be applied if the given matcher is matched.
+   548	             */
+   549	            private final List<? extends MethodVisitorWrapper> methodVisitorWrappers;
+   550	
+   551	            /**
+   552	             * Creates a new entry.
+   553	             *
+   554	             * @param matcher               The matcher to identify methods to be wrapped.
+   555	             * @param methodVisitorWrappers The method visitor wrapper to be applied if the given matcher is matched.
+   556	             */
+   557	            protected Entry(ElementMatcher<? super MethodDescription> matcher, List<? extends MethodVisitorWrapper> methodVisitorWrappers) {
+   558	                this.matcher = matcher;
+   559	                this.methodVisitorWrappers = methodVisitorWrappers;
+   560	            }
+   561	
+   562	            /**
+   563	             * {@inheritDoc}
+   564	             */
+   565	            public boolean matches(@MaybeNull MethodDescription target) {
+   566	                return matcher.matches(target);
+   567	            }
+   568	
+   569	            /**
+   570	             * {@inheritDoc}
+   571	             */
+   572	            public MethodVisitor wrap(TypeDescription instrumentedType,
+   573	                                      MethodDescription instrumentedMethod,
+   574	                                      MethodVisitor methodVisitor,
+   575	                                      Implementation.Context implementationContext,
+   576	                                      TypePool typePool,
+   577	                                      int writerFlags,
+   578	                                      int readerFlags) {
+   579	                for (MethodVisitorWrapper methodVisitorWrapper : methodVisitorWrappers) {
+   580	                    methodVisitor = methodVisitorWrapper.wrap(instrumentedType,
+   581	                            instrumentedMethod,
+   582	                            methodVisitor,
+   583	                            implementationContext,
+   584	                            typePool,
+   585	                            writerFlags,
+
+ succeeded in 196ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:126:            entries.add(new Entry(matcher, fieldAttributeAppenderFactory, defaultValue, transformer));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:273:            protected static class Entry implements ElementMatcher<FieldDescription> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:123:            entries.add(new Entry(matcher, recordComponentAttributeAppenderFactory, transformer));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:250:            protected static class Entry implements ElementMatcher<RecordComponentDescription> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:450:            return new Default(CompoundList.of(new Entry(matcher, handler, attributeAppenderFactory, transformer), entries));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:460:            return new Default(CompoundList.of(entries, new Entry(matcher, handler, attributeAppenderFactory, transformer)));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:847:                    return new Entry(Handler.ForVisibilityBridge.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:206:            return new ForDeclaredFields(CompoundList.of(entries, new Entry(matcher, fieldVisitorWrappers)));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:247:        protected static class Entry implements ElementMatcher<FieldDescription.InDefinedShape>, FieldVisitorWrapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:448:            return new ForDeclaredMethods(CompoundList.of(entries, new Entry(matcher, methodVisitorWrappers)), writerFlags, readerFlags);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java:539:        protected static class Entry implements ElementMatcher<MethodDescription>, MethodVisitorWrapper {
+
+codex
+{
+  "target": "net.bytebuddy.asm.AsmVisitorWrapper.Entry",
+  "detection": false,
+  "justification": "Inspected byte-buddy-dep/src/main/java/net/bytebuddy/asm/AsmVisitorWrapper.java and repo-wide references in MemberSubstitution.java, Advice.java, MemberAttributeExtension.java, AccessControllerPlugin.java, and the AsmVisitorWrapper tests. The only Entry types are the two nested helper classes inside AsmVisitorWrapper (lines 206/247 and 448/539), and they are used only by their enclosing file; external code uses ForDeclaredFields/ForDeclaredMethods or their wrapper interfaces, not Entry directly. Their fan-out is narrow (matcher plus wrapper list plus ASM visitor types), so there is no evidence of hub-like modularization."
+}
+tokens used
+24,278

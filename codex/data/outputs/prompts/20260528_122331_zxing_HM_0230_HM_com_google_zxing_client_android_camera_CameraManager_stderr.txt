@@ -1,0 +1,1441 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f2f-1305-7a30-8d48-289ff61d2264
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.zxing.client.android.camera.CameraManager` in the repository located at:
+
+`data/repositories/zxing/zxing`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.zxing.client.android.camera.CameraManager",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.zxing.client.android.camera.CameraManager`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `CameraManager` and tracing both its dependencies and the classes that depend on it, then I’ll decide whether the fan-in/fan-out is high enough to count as hub-like modularization.
+exec
+/bin/bash -lc "rg --files | rg 'CameraManager\\.java|CameraManager'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "rg -n \"class CameraManager|new CameraManager|CameraManager\\b\" --glob '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 357ms:
+android/src/com/google/zxing/client/android/camera/CameraManager.java:40:public final class CameraManager {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:42:  private static final String TAG = CameraManager.class.getSimpleName();
+android/src/com/google/zxing/client/android/camera/CameraManager.java:66:  public CameraManager(Context context) {
+android/src/com/google/zxing/client/android/ViewfinderView.java:20:import com.google.zxing.client.android.camera.CameraManager;
+android/src/com/google/zxing/client/android/ViewfinderView.java:49:  private CameraManager cameraManager;
+android/src/com/google/zxing/client/android/ViewfinderView.java:76:  public void setCameraManager(CameraManager cameraManager) {
+android/src/com/google/zxing/client/android/DecodeHandler.java:74:    PlanarYUVLuminanceSource source = activity.getCameraManager().buildLuminanceSource(data, width, height);
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:27:import com.google.zxing.client.android.camera.CameraManager;
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:53:  private final CameraManager cameraManager;
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:65:                         CameraManager cameraManager) {
+android/src/com/google/zxing/client/android/AmbientLightManager.java:26:import com.google.zxing.client.android.camera.CameraManager;
+android/src/com/google/zxing/client/android/AmbientLightManager.java:41:  private CameraManager cameraManager;
+android/src/com/google/zxing/client/android/AmbientLightManager.java:48:  void start(CameraManager cameraManager) {
+android/src/com/google/zxing/client/android/CaptureActivity.java:24:import com.google.zxing.client.android.camera.CameraManager;
+android/src/com/google/zxing/client/android/CaptureActivity.java:98:  private CameraManager cameraManager;
+android/src/com/google/zxing/client/android/CaptureActivity.java:126:  CameraManager getCameraManager() {
+android/src/com/google/zxing/client/android/CaptureActivity.java:154:    // CameraManager must be initialized here, not in onCreate(). This is necessary because we don't
+android/src/com/google/zxing/client/android/CaptureActivity.java:158:    cameraManager = new CameraManager(getApplication());
+android/src/com/google/zxing/client/android/CaptureActivity.java:161:    viewfinderView.setCameraManager(cameraManager);
+
+ succeeded in 423ms:
+android/src/com/google/zxing/client/android/camera/CameraManager.java
+
+codex
+I’ve found the target and the main call sites. Next I’m reading the class itself and the directly related Android classes to judge whether `CameraManager` is acting as a central dependency hub or just a normal shared service.
+exec
+/bin/bash -lc "sed -n '1,240p' android/src/com/google/zxing/client/android/CaptureActivity.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,260p' android/src/com/google/zxing/client/android/camera/CameraManager.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/DecodeHandler.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/AmbientLightManager.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,180p' android/src/com/google/zxing/client/android/ViewfinderView.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/CaptureActivityHandler.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 126ms:
+/*
+ * Copyright (C) 2008 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android;
+
+import com.google.zxing.ResultPoint;
+import com.google.zxing.client.android.camera.CameraManager;
+
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.util.AttributeSet;
+import android.view.View;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * This view is overlaid on top of the camera preview. It adds the viewfinder rectangle and partial
+ * transparency outside it, as well as the laser scanner animation and result points.
+ *
+ * @author dswitkin@google.com (Daniel Switkin)
+ */
+public final class ViewfinderView extends View {
+
+  private static final int[] SCANNER_ALPHA = {0, 64, 128, 192, 255, 192, 128, 64};
+  private static final long ANIMATION_DELAY = 80L;
+  private static final int CURRENT_POINT_OPACITY = 0xA0;
+  private static final int MAX_RESULT_POINTS = 20;
+  private static final int POINT_SIZE = 6;
+
+  private CameraManager cameraManager;
+  private final Paint paint;
+  private Bitmap resultBitmap;
+  private final int maskColor;
+  private final int resultColor;
+  private final int laserColor;
+  private final int resultPointColor;
+  private int scannerAlpha;
+  private List<ResultPoint> possibleResultPoints;
+  private List<ResultPoint> lastPossibleResultPoints;
+
+  // This constructor is used when the class is built from an XML resource.
+  public ViewfinderView(Context context, AttributeSet attrs) {
+    super(context, attrs);
+
+    // Initialize these once for performance rather than calling them every time in onDraw().
+    paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    Resources resources = getResources();
+    maskColor = resources.getColor(R.color.viewfinder_mask);
+    resultColor = resources.getColor(R.color.result_view);
+    laserColor = resources.getColor(R.color.viewfinder_laser);
+    resultPointColor = resources.getColor(R.color.possible_result_points);
+    scannerAlpha = 0;
+    possibleResultPoints = new ArrayList<>(5);
+    lastPossibleResultPoints = null;
+  }
+
+  public void setCameraManager(CameraManager cameraManager) {
+    this.cameraManager = cameraManager;
+  }
+
+  @SuppressLint("DrawAllocation")
+  @Override
+  public void onDraw(Canvas canvas) {
+    if (cameraManager == null) {
+      return; // not ready yet, early draw before done configuring
+    }
+    Rect frame = cameraManager.getFramingRect();
+    Rect previewFrame = cameraManager.getFramingRectInPreview();    
+    if (frame == null || previewFrame == null) {
+      return;
+    }
+    int width = canvas.getWidth();
+    int height = canvas.getHeight();
+
+    // Draw the exterior (i.e. outside the framing rect) darkened
+    paint.setColor(resultBitmap != null ? resultColor : maskColor);
+    canvas.drawRect(0, 0, width, frame.top, paint);
+    canvas.drawRect(0, frame.top, frame.left, frame.bottom + 1, paint);
+    canvas.drawRect(frame.right + 1, frame.top, width, frame.bottom + 1, paint);
+    canvas.drawRect(0, frame.bottom + 1, width, height, paint);
+
+    if (resultBitmap != null) {
+      // Draw the opaque result bitmap over the scanning rectangle
+      paint.setAlpha(CURRENT_POINT_OPACITY);
+      canvas.drawBitmap(resultBitmap, null, frame, paint);
+    } else {
+
+      // Draw a red "laser scanner" line through the middle to show decoding is active
+      paint.setColor(laserColor);
+      paint.setAlpha(SCANNER_ALPHA[scannerAlpha]);
+      scannerAlpha = (scannerAlpha + 1) % SCANNER_ALPHA.length;
+      int middle = frame.height() / 2 + frame.top;
+      canvas.drawRect(frame.left + 2, middle - 1, frame.right - 1, middle + 2, paint);
+      
+      float scaleX = frame.width() / (float) previewFrame.width();
+      float scaleY = frame.height() / (float) previewFrame.height();
+
+      List<ResultPoint> currentPossible = possibleResultPoints;
+      List<ResultPoint> currentLast = lastPossibleResultPoints;
+      int frameLeft = frame.left;
+      int frameTop = frame.top;
+      if (currentPossible.isEmpty()) {
+        lastPossibleResultPoints = null;
+      } else {
+        possibleResultPoints = new ArrayList<>(5);
+        lastPossibleResultPoints = currentPossible;
+        paint.setAlpha(CURRENT_POINT_OPACITY);
+        paint.setColor(resultPointColor);
+        synchronized (currentPossible) {
+          for (ResultPoint point : currentPossible) {
+            canvas.drawCircle(frameLeft + (int) (point.getX() * scaleX),
+                              frameTop + (int) (point.getY() * scaleY),
+                              POINT_SIZE, paint);
+          }
+        }
+      }
+      if (currentLast != null) {
+        paint.setAlpha(CURRENT_POINT_OPACITY / 2);
+        paint.setColor(resultPointColor);
+        synchronized (currentLast) {
+          float radius = POINT_SIZE / 2.0f;
+          for (ResultPoint point : currentLast) {
+            canvas.drawCircle(frameLeft + (int) (point.getX() * scaleX),
+                              frameTop + (int) (point.getY() * scaleY),
+                              radius, paint);
+          }
+        }
+      }
+
+      // Request another update at the animation interval, but only repaint the laser line,
+      // not the entire viewfinder mask.
+      postInvalidateDelayed(ANIMATION_DELAY,
+                            frame.left - POINT_SIZE,
+                            frame.top - POINT_SIZE,
+                            frame.right + POINT_SIZE,
+                            frame.bottom + POINT_SIZE);
+    }
+  }
+
+  public void drawViewfinder() {
+    Bitmap resultBitmap = this.resultBitmap;
+    this.resultBitmap = null;
+    if (resultBitmap != null) {
+      resultBitmap.recycle();
+    }
+    invalidate();
+  }
+
+  /**
+   * Draw a bitmap with the result points highlighted instead of the live scanning display.
+   *
+   * @param barcode An image of the decoded barcode.
+   */
+  public void drawResultBitmap(Bitmap barcode) {
+    resultBitmap = barcode;
+    invalidate();
+  }
+
+  public void addPossibleResultPoint(ResultPoint point) {
+    List<ResultPoint> points = possibleResultPoints;
+    synchronized (points) {
+
+ succeeded in 269ms:
+/*
+ * Copyright (C) 2008 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.Result;
+import com.google.zxing.ResultMetadataType;
+import com.google.zxing.ResultPoint;
+import com.google.zxing.client.android.camera.CameraManager;
+import com.google.zxing.client.android.clipboard.ClipboardInterface;
+import com.google.zxing.client.android.history.HistoryActivity;
+import com.google.zxing.client.android.history.HistoryItem;
+import com.google.zxing.client.android.history.HistoryManager;
+import com.google.zxing.client.android.result.ResultButtonListener;
+import com.google.zxing.client.android.result.ResultHandler;
+import com.google.zxing.client.android.result.ResultHandlerFactory;
+import com.google.zxing.client.android.result.supplement.SupplementalInfoRetriever;
+import com.google.zxing.client.android.share.ShareActivity;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.preference.PreferenceManager;
+import android.util.Log;
+import android.util.TypedValue;
+import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.IOException;
+import java.text.DateFormat;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.Map;
+
+/**
+ * This activity opens the camera and does the actual scanning on a background thread. It draws a
+ * viewfinder to help the user place the barcode correctly, shows feedback as the image processing
+ * is happening, and then overlays the results when a scan is successful.
+ *
+ * @author dswitkin@google.com (Daniel Switkin)
+ * @author Sean Owen
+ */
+public final class CaptureActivity extends Activity implements SurfaceHolder.Callback {
+
+  private static final String TAG = CaptureActivity.class.getSimpleName();
+
+  private static final long DEFAULT_INTENT_RESULT_DURATION_MS = 1500L;
+  private static final long BULK_MODE_SCAN_DELAY_MS = 1000L;
+
+  private static final String[] ZXING_URLS = { "http://zxing.appspot.com/scan", "zxing://scan/" };
+
+  private static final int HISTORY_REQUEST_CODE = 0x0000bacc;
+
+  private static final Collection<ResultMetadataType> DISPLAYABLE_METADATA_TYPES =
+      EnumSet.of(ResultMetadataType.ISSUE_NUMBER,
+                 ResultMetadataType.SUGGESTED_PRICE,
+                 ResultMetadataType.ERROR_CORRECTION_LEVEL,
+                 ResultMetadataType.POSSIBLE_COUNTRY);
+
+  private CameraManager cameraManager;
+  private CaptureActivityHandler handler;
+  private Result savedResultToShow;
+  private ViewfinderView viewfinderView;
+  private TextView statusView;
+  private View resultView;
+  private Result lastResult;
+  private boolean hasSurface;
+  private boolean copyToClipboard;
+  private IntentSource source;
+  private String sourceUrl;
+  private ScanFromWebPageManager scanFromWebPageManager;
+  private Collection<BarcodeFormat> decodeFormats;
+  private Map<DecodeHintType,?> decodeHints;
+  private String characterSet;
+  private HistoryManager historyManager;
+  private InactivityTimer inactivityTimer;
+  private BeepManager beepManager;
+  private AmbientLightManager ambientLightManager;
+
+  ViewfinderView getViewfinderView() {
+    return viewfinderView;
+  }
+
+  public Handler getHandler() {
+    return handler;
+  }
+
+  CameraManager getCameraManager() {
+    return cameraManager;
+  }
+
+  @Override
+  public void onCreate(Bundle icicle) {
+    super.onCreate(icicle);
+
+    Window window = getWindow();
+    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    setContentView(R.layout.capture);
+
+    hasSurface = false;
+    inactivityTimer = new InactivityTimer(this);
+    beepManager = new BeepManager(this);
+    ambientLightManager = new AmbientLightManager(this);
+
+    PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+  }
+
+  @Override
+  protected void onResume() {
+    super.onResume();
+    
+    // historyManager must be initialized here to update the history preference
+    historyManager = new HistoryManager(this);
+    historyManager.trimHistory();
+
+    // CameraManager must be initialized here, not in onCreate(). This is necessary because we don't
+    // want to open the camera driver and measure the screen size if we're going to show the help on
+    // first launch. That led to bugs where the scanning rectangle was the wrong size and partially
+    // off screen.
+    cameraManager = new CameraManager(getApplication());
+
+    viewfinderView = (ViewfinderView) findViewById(R.id.viewfinder_view);
+    viewfinderView.setCameraManager(cameraManager);
+
+    resultView = findViewById(R.id.result_view);
+    statusView = (TextView) findViewById(R.id.status_view);
+
+    handler = null;
+    lastResult = null;
+
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+    if (prefs.getBoolean(PreferencesActivity.KEY_DISABLE_AUTO_ORIENTATION, true)) {
+      setRequestedOrientation(getCurrentOrientation());
+    } else {
+      setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+    }
+
+    resetStatusView();
+
+
+    beepManager.updatePrefs();
+    ambientLightManager.start(cameraManager);
+
+    inactivityTimer.onResume();
+
+    Intent intent = getIntent();
+
+    copyToClipboard = prefs.getBoolean(PreferencesActivity.KEY_COPY_TO_CLIPBOARD, true)
+        && (intent == null || intent.getBooleanExtra(Intents.Scan.SAVE_HISTORY, true));
+
+    source = IntentSource.NONE;
+    sourceUrl = null;
+    scanFromWebPageManager = null;
+    decodeFormats = null;
+    characterSet = null;
+
+    if (intent != null) {
+
+      String action = intent.getAction();
+      String dataString = intent.getDataString();
+
+      if (Intents.Scan.ACTION.equals(action)) {
+
+        // Scan the formats the intent requested, and return the result to the calling activity.
+        source = IntentSource.NATIVE_APP_INTENT;
+        decodeFormats = DecodeFormatManager.parseDecodeFormats(intent);
+        decodeHints = DecodeHintManager.parseDecodeHints(intent);
+
+        if (intent.hasExtra(Intents.Scan.WIDTH) && intent.hasExtra(Intents.Scan.HEIGHT)) {
+          int width = intent.getIntExtra(Intents.Scan.WIDTH, 0);
+          int height = intent.getIntExtra(Intents.Scan.HEIGHT, 0);
+          if (width > 0 && height > 0) {
+            cameraManager.setManualFramingRect(width, height);
+          }
+        }
+
+        if (intent.hasExtra(Intents.Scan.CAMERA_ID)) {
+          int cameraId = intent.getIntExtra(Intents.Scan.CAMERA_ID, -1);
+          if (cameraId >= 0) {
+            cameraManager.setManualCameraId(cameraId);
+          }
+        }
+        
+        String customPromptMessage = intent.getStringExtra(Intents.Scan.PROMPT_MESSAGE);
+        if (customPromptMessage != null) {
+          statusView.setText(customPromptMessage);
+        }
+
+      } else if (dataString != null &&
+                 dataString.contains("http://www.google") &&
+                 dataString.contains("/m/products/scan")) {
+
+        // Scan only products and send the result to mobile Product Search.
+        source = IntentSource.PRODUCT_SEARCH_LINK;
+        sourceUrl = dataString;
+        decodeFormats = DecodeFormatManager.PRODUCT_FORMATS;
+
+      } else if (isZXingURL(dataString)) {
+
+        // Scan formats requested in query string (all formats if none specified).
+        // If a return URL is specified, send the results there. Otherwise, handle it ourselves.
+
+ succeeded in 287ms:
+/*
+ * Copyright (C) 2008 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.camera;
+
+import android.content.Context;
+import android.graphics.Point;
+import android.graphics.Rect;
+import android.hardware.Camera;
+import android.os.Handler;
+import android.util.Log;
+import android.view.SurfaceHolder;
+import com.google.zxing.PlanarYUVLuminanceSource;
+import com.google.zxing.client.android.camera.open.OpenCamera;
+import com.google.zxing.client.android.camera.open.OpenCameraInterface;
+
+import java.io.IOException;
+
+/**
+ * This object wraps the Camera service object and expects to be the only one talking to it. The
+ * implementation encapsulates the steps needed to take preview-sized images, which are used for
+ * both preview and decoding.
+ *
+ * @author dswitkin@google.com (Daniel Switkin)
+ */
+@SuppressWarnings("deprecation") // camera APIs
+public final class CameraManager {
+
+  private static final String TAG = CameraManager.class.getSimpleName();
+
+  private static final int MIN_FRAME_WIDTH = 240;
+  private static final int MIN_FRAME_HEIGHT = 240;
+  private static final int MAX_FRAME_WIDTH = 1200; // = 5/8 * 1920
+  private static final int MAX_FRAME_HEIGHT = 675; // = 5/8 * 1080
+
+  private final Context context;
+  private final CameraConfigurationManager configManager;
+  private OpenCamera camera;
+  private AutoFocusManager autoFocusManager;
+  private Rect framingRect;
+  private Rect framingRectInPreview;
+  private boolean initialized;
+  private boolean previewing;
+  private int requestedCameraId = OpenCameraInterface.NO_REQUESTED_CAMERA;
+  private int requestedFramingRectWidth;
+  private int requestedFramingRectHeight;
+  /**
+   * Preview frames are delivered here, which we pass on to the registered handler. Make sure to
+   * clear the handler so it will only receive one message.
+   */
+  private final PreviewCallback previewCallback;
+
+  public CameraManager(Context context) {
+    this.context = context;
+    this.configManager = new CameraConfigurationManager(context);
+    previewCallback = new PreviewCallback(configManager);
+  }
+
+  /**
+   * Opens the camera driver and initializes the hardware parameters.
+   *
+   * @param holder The surface object which the camera will draw preview frames into.
+   * @throws IOException Indicates the camera driver failed to open.
+   */
+  public synchronized void openDriver(SurfaceHolder holder) throws IOException {
+    OpenCamera theCamera = camera;
+    if (theCamera == null) {
+      theCamera = OpenCameraInterface.open(requestedCameraId);
+      if (theCamera == null) {
+        throw new IOException("Camera.open() failed to return object from driver");
+      }
+      camera = theCamera;
+    }
+
+    if (!initialized) {
+      initialized = true;
+      configManager.initFromCameraParameters(theCamera);
+      if (requestedFramingRectWidth > 0 && requestedFramingRectHeight > 0) {
+        setManualFramingRect(requestedFramingRectWidth, requestedFramingRectHeight);
+        requestedFramingRectWidth = 0;
+        requestedFramingRectHeight = 0;
+      }
+    }
+
+    Camera cameraObject = theCamera.getCamera();
+    Camera.Parameters parameters = cameraObject.getParameters();
+    String parametersFlattened = parameters == null ? null : parameters.flatten(); // Save these, temporarily
+    try {
+      configManager.setDesiredCameraParameters(theCamera, false);
+    } catch (RuntimeException re) {
+      // Driver failed
+      Log.w(TAG, "Camera rejected parameters. Setting only minimal safe-mode parameters");
+      Log.i(TAG, "Resetting to saved camera params: " + parametersFlattened);
+      // Reset:
+      if (parametersFlattened != null) {
+        parameters = cameraObject.getParameters();
+        parameters.unflatten(parametersFlattened);
+        try {
+          cameraObject.setParameters(parameters);
+          configManager.setDesiredCameraParameters(theCamera, true);
+        } catch (RuntimeException re2) {
+          // Well, darn. Give up
+          Log.w(TAG, "Camera rejected even safe-mode parameters! No configuration");
+        }
+      }
+    }
+    cameraObject.setPreviewDisplay(holder);
+
+  }
+
+  public synchronized boolean isOpen() {
+    return camera != null;
+  }
+
+  /**
+   * Closes the camera driver if still in use.
+   */
+  public synchronized void closeDriver() {
+    if (camera != null) {
+      camera.getCamera().release();
+      camera = null;
+      // Make sure to clear these each time we close the camera, so that any scanning rect
+      // requested by intent is forgotten.
+      framingRect = null;
+      framingRectInPreview = null;
+    }
+  }
+
+  /**
+   * Asks the camera hardware to begin drawing preview frames to the screen.
+   */
+  public synchronized void startPreview() {
+    OpenCamera theCamera = camera;
+    if (theCamera != null && !previewing) {
+      theCamera.getCamera().startPreview();
+      previewing = true;
+      autoFocusManager = new AutoFocusManager(context, theCamera.getCamera());
+    }
+  }
+
+  /**
+   * Tells the camera to stop drawing preview frames.
+   */
+  public synchronized void stopPreview() {
+    if (autoFocusManager != null) {
+      autoFocusManager.stop();
+      autoFocusManager = null;
+    }
+    if (camera != null && previewing) {
+      camera.getCamera().stopPreview();
+      previewCallback.setHandler(null, 0);
+      previewing = false;
+    }
+  }
+
+  /**
+   * Convenience method for {@link com.google.zxing.client.android.CaptureActivity}
+   *
+   * @param newSetting if {@code true}, light should be turned on if currently off. And vice versa.
+   */
+  public synchronized void setTorch(boolean newSetting) {
+    OpenCamera theCamera = camera;
+    if (theCamera != null && newSetting != configManager.getTorchState(theCamera.getCamera())) {
+      boolean wasAutoFocusManager = autoFocusManager != null;
+      if (wasAutoFocusManager) {
+        autoFocusManager.stop();
+        autoFocusManager = null;
+      }
+      configManager.setTorch(theCamera.getCamera(), newSetting);
+      if (wasAutoFocusManager) {
+        autoFocusManager = new AutoFocusManager(context, theCamera.getCamera());
+        autoFocusManager.start();
+      }
+    }
+  }
+
+  /**
+   * A single preview frame will be returned to the handler supplied. The data will arrive as byte[]
+   * in the message.obj field, with width and height encoded as message.arg1 and message.arg2,
+   * respectively.
+   *
+   * @param handler The handler to send the message to.
+   * @param message The what field of the message to be sent.
+   */
+  public synchronized void requestPreviewFrame(Handler handler, int message) {
+    OpenCamera theCamera = camera;
+    if (theCamera != null && previewing) {
+      previewCallback.setHandler(handler, message);
+      theCamera.getCamera().setOneShotPreviewCallback(previewCallback);
+    }
+  }
+
+  /**
+   * Calculates the framing rect which the UI should draw to show the user where to place the
+   * barcode. This target helps with alignment as well as forces the user to hold the device
+   * far enough away to ensure the image will be in focus.
+   *
+   * @return The rectangle to draw on screen in window coordinates.
+   */
+  public synchronized Rect getFramingRect() {
+    if (framingRect == null) {
+      if (camera == null) {
+        return null;
+      }
+      Point screenResolution = configManager.getScreenResolution();
+      if (screenResolution == null) {
+        // Called early, before init even finished
+        return null;
+      }
+
+      int width = findDesiredDimensionInRange(screenResolution.x, MIN_FRAME_WIDTH, MAX_FRAME_WIDTH);
+      int height = findDesiredDimensionInRange(screenResolution.y, MIN_FRAME_HEIGHT, MAX_FRAME_HEIGHT);
+
+      int leftOffset = (screenResolution.x - width) / 2;
+      int topOffset = (screenResolution.y - height) / 2;
+      framingRect = new Rect(leftOffset, topOffset, leftOffset + width, topOffset + height);
+    }
+    return framingRect;
+  }
+
+  private static int findDesiredDimensionInRange(int resolution, int hardMin, int hardMax) {
+    int dim = 5 * resolution / 8; // Target 5/8 of each dimension
+    if (dim < hardMin) {
+      return hardMin;
+    }
+    return Math.min(dim, hardMax);
+  }
+
+  /**
+   * Like {@link #getFramingRect} but coordinates are in terms of the preview frame,
+   * not UI / screen.
+   *
+   * @return {@link Rect} expressing barcode scan area in terms of the preview size
+   */
+  public synchronized Rect getFramingRectInPreview() {
+    if (framingRectInPreview == null) {
+      Rect framingRect = getFramingRect();
+      if (framingRect == null) {
+        return null;
+      }
+      Rect rect = new Rect(framingRect);
+      Point cameraResolution = configManager.getCameraResolution();
+      Point screenResolution = configManager.getScreenResolution();
+      if (cameraResolution == null || screenResolution == null) {
+        // Called early, before init even finished
+        return null;
+      }
+
+ succeeded in 285ms:
+/*
+ * Copyright (C) 2010 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android;
+
+import android.graphics.Bitmap;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.PlanarYUVLuminanceSource;
+import com.google.zxing.ReaderException;
+import com.google.zxing.Result;
+import com.google.zxing.common.HybridBinarizer;
+
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+
+import java.io.ByteArrayOutputStream;
+import java.util.Map;
+
+final class DecodeHandler extends Handler {
+
+  private final CaptureActivity activity;
+  private final MultiFormatReader multiFormatReader;
+  private boolean running = true;
+
+  DecodeHandler(CaptureActivity activity, Map<DecodeHintType,Object> hints) {
+    multiFormatReader = new MultiFormatReader();
+    multiFormatReader.setHints(hints);
+    this.activity = activity;
+  }
+
+  @Override
+  public void handleMessage(Message message) {
+    if (message == null || !running) {
+      return;
+    }
+    switch (message.what) {
+      case R.id.decode:
+        decode((byte[]) message.obj, message.arg1, message.arg2);
+        break;
+      case R.id.quit:
+        running = false;
+        Looper.myLooper().quit();
+        break;
+    }
+  }
+
+  /**
+   * Decode the data within the viewfinder rectangle, and time how long it took. For efficiency,
+   * reuse the same reader objects from one decode to the next.
+   *
+   * @param data   The YUV preview frame.
+   * @param width  The width of the preview frame.
+   * @param height The height of the preview frame.
+   */
+  private void decode(byte[] data, int width, int height) {
+    Result rawResult = null;
+    PlanarYUVLuminanceSource source = activity.getCameraManager().buildLuminanceSource(data, width, height);
+    if (source != null) {
+      BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+      try {
+        rawResult = multiFormatReader.decodeWithState(bitmap);
+      } catch (ReaderException re) {
+        // continue
+      } finally {
+        multiFormatReader.reset();
+      }
+    }
+
+    Handler handler = activity.getHandler();
+    if (rawResult != null) {
+      // Don't log the barcode contents for security.
+      if (handler != null) {
+        Message message = Message.obtain(handler, R.id.decode_succeeded, rawResult);
+        Bundle bundle = new Bundle();
+        bundleThumbnail(source, bundle);
+        message.setData(bundle);
+        message.sendToTarget();
+      }
+    } else {
+      if (handler != null) {
+        Message message = Message.obtain(handler, R.id.decode_failed);
+        message.sendToTarget();
+      }
+    }
+  }
+
+  private static void bundleThumbnail(PlanarYUVLuminanceSource source, Bundle bundle) {
+    int[] pixels = source.renderThumbnail();
+    int width = source.getThumbnailWidth();
+    int height = source.getThumbnailHeight();
+    Bitmap bitmap = Bitmap.createBitmap(pixels, 0, width, width, height, Bitmap.Config.ARGB_8888);
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 50, out);
+    bundle.putByteArray(DecodeThread.BARCODE_BITMAP, out.toByteArray());
+    bundle.putFloat(DecodeThread.BARCODE_SCALED_FACTOR, (float) width / source.getWidth());
+  }
+
+}
+
+ succeeded in 312ms:
+/*
+ * Copyright (C) 2012 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.preference.PreferenceManager;
+import com.google.zxing.client.android.camera.CameraManager;
+import com.google.zxing.client.android.camera.FrontLightMode;
+
+/**
+ * Detects ambient light and switches on the front light when very dark, and off again when sufficiently light.
+ *
+ * @author Sean Owen
+ * @author Nikolaus Huber
+ */
+final class AmbientLightManager implements SensorEventListener {
+
+  private static final float TOO_DARK_LUX = 45.0f;
+  private static final float BRIGHT_ENOUGH_LUX = 450.0f;
+
+  private final Context context;
+  private CameraManager cameraManager;
+  private Sensor lightSensor;
+
+  AmbientLightManager(Context context) {
+    this.context = context;
+  }
+
+  void start(CameraManager cameraManager) {
+    this.cameraManager = cameraManager;
+    SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+    if (FrontLightMode.readPref(sharedPrefs) == FrontLightMode.AUTO) {
+      SensorManager sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+      lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+      if (lightSensor != null) {
+        sensorManager.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
+      }
+    }
+  }
+
+  void stop() {
+    if (lightSensor != null) {
+      SensorManager sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+      sensorManager.unregisterListener(this);
+      cameraManager = null;
+      lightSensor = null;
+    }
+  }
+
+  @Override
+  public void onSensorChanged(SensorEvent sensorEvent) {
+    float ambientLightLux = sensorEvent.values[0];
+    if (cameraManager != null) {
+      if (ambientLightLux <= TOO_DARK_LUX) {
+        cameraManager.setTorch(true);
+      } else if (ambientLightLux >= BRIGHT_ENOUGH_LUX) {
+        cameraManager.setTorch(false);
+      }
+    }
+  }
+
+  @Override
+  public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    // do nothing
+  }
+
+}
+
+ succeeded in 272ms:
+/*
+ * Copyright (C) 2008 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android;
+
+import android.content.ActivityNotFoundException;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.graphics.BitmapFactory;
+import android.provider.Browser;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.Result;
+import com.google.zxing.client.android.camera.CameraManager;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Log;
+
+import java.util.Collection;
+import java.util.Map;
+
+/**
+ * This class handles all the messaging which comprises the state machine for capture.
+ *
+ * @author dswitkin@google.com (Daniel Switkin)
+ */
+public final class CaptureActivityHandler extends Handler {
+
+  private static final String TAG = CaptureActivityHandler.class.getSimpleName();
+
+  private final CaptureActivity activity;
+  private final DecodeThread decodeThread;
+  private State state;
+  private final CameraManager cameraManager;
+
+  private enum State {
+    PREVIEW,
+    SUCCESS,
+    DONE
+  }
+
+  CaptureActivityHandler(CaptureActivity activity,
+                         Collection<BarcodeFormat> decodeFormats,
+                         Map<DecodeHintType,?> baseHints,
+                         String characterSet,
+                         CameraManager cameraManager) {
+    this.activity = activity;
+    decodeThread = new DecodeThread(activity, decodeFormats, baseHints, characterSet,
+        new ViewfinderResultPointCallback(activity.getViewfinderView()));
+    decodeThread.start();
+    state = State.SUCCESS;
+
+    // Start ourselves capturing previews and decoding.
+    this.cameraManager = cameraManager;
+    cameraManager.startPreview();
+    restartPreviewAndDecode();
+  }
+
+  @Override
+  public void handleMessage(Message message) {
+    switch (message.what) {
+      case R.id.restart_preview:
+        restartPreviewAndDecode();
+        break;
+      case R.id.decode_succeeded:
+        state = State.SUCCESS;
+        Bundle bundle = message.getData();
+        Bitmap barcode = null;
+        float scaleFactor = 1.0f;
+        if (bundle != null) {
+          byte[] compressedBitmap = bundle.getByteArray(DecodeThread.BARCODE_BITMAP);
+          if (compressedBitmap != null) {
+            barcode = BitmapFactory.decodeByteArray(compressedBitmap, 0, compressedBitmap.length, null);
+            // Mutable copy:
+            barcode = barcode.copy(Bitmap.Config.ARGB_8888, true);
+          }
+          scaleFactor = bundle.getFloat(DecodeThread.BARCODE_SCALED_FACTOR);
+        }
+        activity.handleDecode((Result) message.obj, barcode, scaleFactor);
+        break;
+      case R.id.decode_failed:
+        // We're decoding as fast as possible, so when one decode fails, start another.
+        state = State.PREVIEW;
+        cameraManager.requestPreviewFrame(decodeThread.getHandler(), R.id.decode);
+        break;
+      case R.id.return_scan_result:
+        activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
+        activity.finish();
+        break;
+      case R.id.launch_product_query:
+        String url = (String) message.obj;
+
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.addFlags(Intents.FLAG_NEW_DOC);
+        intent.setData(Uri.parse(url));
+
+        ResolveInfo resolveInfo =
+            activity.getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+        String browserPackageName = null;
+        if (resolveInfo != null && resolveInfo.activityInfo != null) {
+          browserPackageName = resolveInfo.activityInfo.packageName;
+        }
+
+        // Needed for default Android browser / Chrome only apparently
+        if (browserPackageName != null) {
+          switch (browserPackageName) {
+            case "com.android.browser":
+            case "com.android.chrome":
+              intent.setPackage(browserPackageName);
+              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+              intent.putExtra(Browser.EXTRA_APPLICATION_ID, browserPackageName);
+              break;
+          }
+        }
+
+        try {
+          activity.startActivity(intent);
+        } catch (ActivityNotFoundException ignored) {
+          Log.w(TAG, "Can't find anything to handle VIEW of URI");
+        }
+        break;
+    }
+  }
+
+  public void quitSynchronously() {
+    state = State.DONE;
+    cameraManager.stopPreview();
+    Message quit = Message.obtain(decodeThread.getHandler(), R.id.quit);
+    quit.sendToTarget();
+    try {
+      // Wait at most half a second; should be enough time, and onPause() will timeout quickly
+      decodeThread.join(500L);
+    } catch (InterruptedException e) {
+      // continue
+    }
+
+    // Be absolutely sure we don't send any queued up messages
+    removeMessages(R.id.decode_succeeded);
+    removeMessages(R.id.decode_failed);
+  }
+
+  private void restartPreviewAndDecode() {
+    if (state == State.SUCCESS) {
+      state = State.PREVIEW;
+      cameraManager.requestPreviewFrame(decodeThread.getHandler(), R.id.decode);
+      activity.drawViewfinder();
+    }
+  }
+
+}
+
+codex
+I have the main callers. I’m checking the rest of `CameraManager` now so I can count its outward dependencies and see whether the class is doing broad coordination or a focused camera wrapper.
+exec
+/bin/bash -lc "sed -n '260,520p' android/src/com/google/zxing/client/android/camera/CameraManager.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "rg -n \"cameraManager\\.|getCameraManager\\(|setCameraManager\\(|new CameraManager\\(\" android/src/com/google/zxing/client/android --glob '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "rg -n \"buildLuminanceSource|setManualFramingRect|setManualCameraId|setTorch|requestPreviewFrame|getFramingRectInPreview|getFramingRect|openDriver|closeDriver|startPreview|stopPreview|isOpen\" android/src/com/google/zxing/client/android --glob '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 197ms:
+      }
+      rect.left = rect.left * cameraResolution.x / screenResolution.x;
+      rect.right = rect.right * cameraResolution.x / screenResolution.x;
+      rect.top = rect.top * cameraResolution.y / screenResolution.y;
+      rect.bottom = rect.bottom * cameraResolution.y / screenResolution.y;
+      framingRectInPreview = rect;
+    }
+    return framingRectInPreview;
+  }
+
+
+  /**
+   * Allows third party apps to specify the camera ID, rather than determine
+   * it automatically based on available cameras and their orientation.
+   *
+   * @param cameraId camera ID of the camera to use. A negative value means "no preference".
+   */
+  public synchronized void setManualCameraId(int cameraId) {
+    requestedCameraId = cameraId;
+  }
+
+  /**
+   * Allows third party apps to specify the scanning rectangle dimensions, rather than determine
+   * them automatically based on screen resolution.
+   *
+   * @param width The width in pixels to scan.
+   * @param height The height in pixels to scan.
+   */
+  public synchronized void setManualFramingRect(int width, int height) {
+    if (initialized) {
+      Point screenResolution = configManager.getScreenResolution();
+      if (width > screenResolution.x) {
+        width = screenResolution.x;
+      }
+      if (height > screenResolution.y) {
+        height = screenResolution.y;
+      }
+      int leftOffset = (screenResolution.x - width) / 2;
+      int topOffset = (screenResolution.y - height) / 2;
+      framingRect = new Rect(leftOffset, topOffset, leftOffset + width, topOffset + height);
+      Log.d(TAG, "Calculated manual framing rect: " + framingRect);
+      framingRectInPreview = null;
+    } else {
+      requestedFramingRectWidth = width;
+      requestedFramingRectHeight = height;
+    }
+  }
+
+  /**
+   * A factory method to build the appropriate LuminanceSource object based on the format
+   * of the preview buffers, as described by Camera.Parameters.
+   *
+   * @param data A preview frame.
+   * @param width The width of the image.
+   * @param height The height of the image.
+   * @return A PlanarYUVLuminanceSource instance.
+   */
+  public PlanarYUVLuminanceSource buildLuminanceSource(byte[] data, int width, int height) {
+    Rect rect = getFramingRectInPreview();
+    if (rect == null) {
+      return null;
+    }
+    // Go ahead and assume it's YUV rather than die.
+    return new PlanarYUVLuminanceSource(data, width, height, rect.left, rect.top,
+                                        rect.width(), rect.height(), false);
+  }
+
+}
+
+ succeeded in 253ms:
+android/src/com/google/zxing/client/android/ViewfinderView.java:76:  public void setCameraManager(CameraManager cameraManager) {
+android/src/com/google/zxing/client/android/ViewfinderView.java:86:    Rect frame = cameraManager.getFramingRect();
+android/src/com/google/zxing/client/android/ViewfinderView.java:87:    Rect previewFrame = cameraManager.getFramingRectInPreview();    
+android/src/com/google/zxing/client/android/DecodeHandler.java:74:    PlanarYUVLuminanceSource source = activity.getCameraManager().buildLuminanceSource(data, width, height);
+android/src/com/google/zxing/client/android/AmbientLightManager.java:74:        cameraManager.setTorch(true);
+android/src/com/google/zxing/client/android/AmbientLightManager.java:76:        cameraManager.setTorch(false);
+android/src/com/google/zxing/client/android/CaptureActivity.java:126:  CameraManager getCameraManager() {
+android/src/com/google/zxing/client/android/CaptureActivity.java:158:    cameraManager = new CameraManager(getApplication());
+android/src/com/google/zxing/client/android/CaptureActivity.java:161:    viewfinderView.setCameraManager(cameraManager);
+android/src/com/google/zxing/client/android/CaptureActivity.java:212:            cameraManager.setManualFramingRect(width, height);
+android/src/com/google/zxing/client/android/CaptureActivity.java:219:            cameraManager.setManualCameraId(cameraId);
+android/src/com/google/zxing/client/android/CaptureActivity.java:309:    cameraManager.closeDriver();
+android/src/com/google/zxing/client/android/CaptureActivity.java:345:        cameraManager.setTorch(false);
+android/src/com/google/zxing/client/android/CaptureActivity.java:348:        cameraManager.setTorch(true);
+android/src/com/google/zxing/client/android/CaptureActivity.java:719:    if (cameraManager.isOpen()) {
+android/src/com/google/zxing/client/android/CaptureActivity.java:724:      cameraManager.openDriver(surfaceHolder);
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:74:    cameraManager.startPreview();
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:103:        cameraManager.requestPreviewFrame(decodeThread.getHandler(), R.id.decode);
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:146:    cameraManager.stopPreview();
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:164:      cameraManager.requestPreviewFrame(decodeThread.getHandler(), R.id.decode);
+
+ succeeded in 329ms:
+android/src/com/google/zxing/client/android/camera/CameraManager.java:78:  public synchronized void openDriver(SurfaceHolder holder) throws IOException {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:92:        setManualFramingRect(requestedFramingRectWidth, requestedFramingRectHeight);
+android/src/com/google/zxing/client/android/camera/CameraManager.java:124:  public synchronized boolean isOpen() {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:131:  public synchronized void closeDriver() {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:145:  public synchronized void startPreview() {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:148:      theCamera.getCamera().startPreview();
+android/src/com/google/zxing/client/android/camera/CameraManager.java:157:  public synchronized void stopPreview() {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:163:      camera.getCamera().stopPreview();
+android/src/com/google/zxing/client/android/camera/CameraManager.java:174:  public synchronized void setTorch(boolean newSetting) {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:182:      configManager.setTorch(theCamera.getCamera(), newSetting);
+android/src/com/google/zxing/client/android/camera/CameraManager.java:198:  public synchronized void requestPreviewFrame(Handler handler, int message) {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:213:  public synchronized Rect getFramingRect() {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:243:   * Like {@link #getFramingRect} but coordinates are in terms of the preview frame,
+android/src/com/google/zxing/client/android/camera/CameraManager.java:248:  public synchronized Rect getFramingRectInPreview() {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:250:      Rect framingRect = getFramingRect();
+android/src/com/google/zxing/client/android/camera/CameraManager.java:277:  public synchronized void setManualCameraId(int cameraId) {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:288:  public synchronized void setManualFramingRect(int width, int height) {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:317:  public PlanarYUVLuminanceSource buildLuminanceSource(byte[] data, int width, int height) {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:318:    Rect rect = getFramingRectInPreview();
+android/src/com/google/zxing/client/android/CaptureActivity.java:212:            cameraManager.setManualFramingRect(width, height);
+android/src/com/google/zxing/client/android/CaptureActivity.java:219:            cameraManager.setManualCameraId(cameraId);
+android/src/com/google/zxing/client/android/CaptureActivity.java:309:    cameraManager.closeDriver();
+android/src/com/google/zxing/client/android/CaptureActivity.java:335:          restartPreviewAfterDelay(0L);
+android/src/com/google/zxing/client/android/CaptureActivity.java:345:        cameraManager.setTorch(false);
+android/src/com/google/zxing/client/android/CaptureActivity.java:348:        cameraManager.setTorch(true);
+android/src/com/google/zxing/client/android/CaptureActivity.java:476:          restartPreviewAfterDelay(BULK_MODE_SCAN_DELAY_MS);
+android/src/com/google/zxing/client/android/CaptureActivity.java:719:    if (cameraManager.isOpen()) {
+android/src/com/google/zxing/client/android/CaptureActivity.java:724:      cameraManager.openDriver(surfaceHolder);
+android/src/com/google/zxing/client/android/CaptureActivity.java:750:  public void restartPreviewAfterDelay(long delayMS) {
+android/src/com/google/zxing/client/android/AmbientLightManager.java:74:        cameraManager.setTorch(true);
+android/src/com/google/zxing/client/android/AmbientLightManager.java:76:        cameraManager.setTorch(false);
+android/src/com/google/zxing/client/android/result/WifiResultHandler.java:78:      parent.restartPreviewAfterDelay(0L);
+android/src/com/google/zxing/client/android/ViewfinderView.java:86:    Rect frame = cameraManager.getFramingRect();
+android/src/com/google/zxing/client/android/ViewfinderView.java:87:    Rect previewFrame = cameraManager.getFramingRectInPreview();    
+android/src/com/google/zxing/client/android/camera/CameraConfigurationManager.java:223:  void setTorch(Camera camera, boolean newSetting) {
+android/src/com/google/zxing/client/android/camera/CameraConfigurationManager.java:235:    CameraConfigurationUtils.setTorch(parameters, newSetting);
+android/src/com/google/zxing/client/android/DecodeHandler.java:74:    PlanarYUVLuminanceSource source = activity.getCameraManager().buildLuminanceSource(data, width, height);
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:74:    cameraManager.startPreview();
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:75:    restartPreviewAndDecode();
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:82:        restartPreviewAndDecode();
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:103:        cameraManager.requestPreviewFrame(decodeThread.getHandler(), R.id.decode);
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:146:    cameraManager.stopPreview();
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:161:  private void restartPreviewAndDecode() {
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:164:      cameraManager.requestPreviewFrame(decodeThread.getHandler(), R.id.decode);
+
+codex
+I have the direct dependency graph now. I’m doing one more sweep across the repo for all references so I can avoid undercounting fan-in from tests or other packages before I finalize the verdict.
+exec
+/bin/bash -lc "rg -n \"com\\.google\\.zxing\\.client\\.android\\.camera\\.CameraManager|\\bCameraManager\\b\" --glob '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '680,780p' android/src/com/google/zxing/client/android/CaptureActivity.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+        // Reformulate the URL which triggered us into a query, so that the request goes to the same
+        // TLD as the scan URL.
+        int end = sourceUrl.lastIndexOf("/scan");
+        String productReplyURL = sourceUrl.substring(0, end) + "?q=" + 
+            resultHandler.getDisplayContents() + "&source=zxing";
+        sendReplyMessage(R.id.launch_product_query, productReplyURL, resultDurationMS);
+        break;
+        
+      case ZXING_LINK:
+        if (scanFromWebPageManager != null && scanFromWebPageManager.isScanFromWebPage()) {
+          String linkReplyURL = scanFromWebPageManager.buildReplyURL(rawResult, resultHandler);
+          scanFromWebPageManager = null;
+          sendReplyMessage(R.id.launch_product_query, linkReplyURL, resultDurationMS);
+        }
+        break;
+    }
+  }
+
+  private void maybeSetClipboard(ResultHandler resultHandler) {
+    if (copyToClipboard && !resultHandler.areContentsSecure()) {
+      ClipboardInterface.setText(resultHandler.getDisplayContents(), this);
+    }
+  }
+  
+  private void sendReplyMessage(int id, Object arg, long delayMS) {
+    if (handler != null) {
+      Message message = Message.obtain(handler, id, arg);
+      if (delayMS > 0L) {
+        handler.sendMessageDelayed(message, delayMS);
+      } else {
+        handler.sendMessage(message);
+      }
+    }
+  }
+
+  private void initCamera(SurfaceHolder surfaceHolder) {
+    if (surfaceHolder == null) {
+      throw new IllegalStateException("No SurfaceHolder provided");
+    }
+    if (cameraManager.isOpen()) {
+      Log.w(TAG, "initCamera() while already open -- late SurfaceView callback?");
+      return;
+    }
+    try {
+      cameraManager.openDriver(surfaceHolder);
+      // Creating the handler starts the preview, which can also throw a RuntimeException.
+      if (handler == null) {
+        handler = new CaptureActivityHandler(this, decodeFormats, decodeHints, characterSet, cameraManager);
+      }
+      decodeOrStoreSavedBitmap(null, null);
+    } catch (IOException ioe) {
+      Log.w(TAG, ioe);
+      displayFrameworkBugMessageAndExit();
+    } catch (RuntimeException e) {
+      // Barcode Scanner has seen crashes in the wild of this variety:
+      // java.?lang.?RuntimeException: Fail to connect to camera service
+      Log.w(TAG, "Unexpected error initializing camera", e);
+      displayFrameworkBugMessageAndExit();
+    }
+  }
+
+  private void displayFrameworkBugMessageAndExit() {
+    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    builder.setTitle(getString(R.string.app_name));
+    builder.setMessage(getString(R.string.msg_camera_framework_bug));
+    builder.setPositiveButton(R.string.button_ok, new FinishListener(this));
+    builder.setOnCancelListener(new FinishListener(this));
+    builder.show();
+  }
+
+  public void restartPreviewAfterDelay(long delayMS) {
+    if (handler != null) {
+      handler.sendEmptyMessageDelayed(R.id.restart_preview, delayMS);
+    }
+    resetStatusView();
+  }
+
+  private void resetStatusView() {
+    resultView.setVisibility(View.GONE);
+    statusView.setText(R.string.msg_default_status);
+    statusView.setVisibility(View.VISIBLE);
+    viewfinderView.setVisibility(View.VISIBLE);
+    lastResult = null;
+  }
+
+  public void drawViewfinder() {
+    viewfinderView.drawViewfinder();
+  }
+}
+
+ succeeded in 271ms:
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:27:import com.google.zxing.client.android.camera.CameraManager;
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:53:  private final CameraManager cameraManager;
+android/src/com/google/zxing/client/android/CaptureActivityHandler.java:65:                         CameraManager cameraManager) {
+android/src/com/google/zxing/client/android/AmbientLightManager.java:26:import com.google.zxing.client.android.camera.CameraManager;
+android/src/com/google/zxing/client/android/AmbientLightManager.java:41:  private CameraManager cameraManager;
+android/src/com/google/zxing/client/android/AmbientLightManager.java:48:  void start(CameraManager cameraManager) {
+android/src/com/google/zxing/client/android/ViewfinderView.java:20:import com.google.zxing.client.android.camera.CameraManager;
+android/src/com/google/zxing/client/android/ViewfinderView.java:49:  private CameraManager cameraManager;
+android/src/com/google/zxing/client/android/ViewfinderView.java:76:  public void setCameraManager(CameraManager cameraManager) {
+android/src/com/google/zxing/client/android/CaptureActivity.java:24:import com.google.zxing.client.android.camera.CameraManager;
+android/src/com/google/zxing/client/android/CaptureActivity.java:98:  private CameraManager cameraManager;
+android/src/com/google/zxing/client/android/CaptureActivity.java:126:  CameraManager getCameraManager() {
+android/src/com/google/zxing/client/android/CaptureActivity.java:154:    // CameraManager must be initialized here, not in onCreate(). This is necessary because we don't
+android/src/com/google/zxing/client/android/CaptureActivity.java:158:    cameraManager = new CameraManager(getApplication());
+android/src/com/google/zxing/client/android/camera/CameraManager.java:40:public final class CameraManager {
+android/src/com/google/zxing/client/android/camera/CameraManager.java:42:  private static final String TAG = CameraManager.class.getSimpleName();
+android/src/com/google/zxing/client/android/camera/CameraManager.java:66:  public CameraManager(Context context) {
+
+codex
+{"target":"com.google.zxing.client.android.camera.CameraManager","detection":true,"justification":"Inspected android/src/com/google/zxing/client/android/camera/CameraManager.java plus android/src/com/google/zxing/client/android/CaptureActivity.java, CaptureActivityHandler.java, AmbientLightManager.java, ViewfinderView.java, and DecodeHandler.java. CameraManager is the shared camera hub: it exposes many operations (openDriver, closeDriver, startPreview, stopPreview, setTorch, requestPreviewFrame, getFramingRect, getFramingRectInPreview, setManualCameraId, setManualFramingRect, buildLuminanceSource) and depends on multiple collaborators (CameraConfigurationManager, OpenCamera, OpenCameraInterface, AutoFocusManager, PreviewCallback, plus Android camera/graphics types). It also has clear fan-in from at least five client classes: CaptureActivity, CaptureActivityHandler, AmbientLightManager, ViewfinderView, and DecodeHandler (through CaptureActivity.getCameraManager), which is strong evidence of hub-like modularization."}
+tokens used
+19,106

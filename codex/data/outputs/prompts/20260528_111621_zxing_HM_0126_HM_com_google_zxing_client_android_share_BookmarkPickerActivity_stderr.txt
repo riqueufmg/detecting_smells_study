@@ -1,0 +1,976 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ef1-8646-7a41-8bbb-5fc0be7e50d7
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.zxing.client.android.share.BookmarkPickerActivity` in the repository located at:
+
+`data/repositories/zxing/zxing`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.zxing.client.android.share.BookmarkPickerActivity",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.zxing.client.android.share.BookmarkPickerActivity`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and tracing its incoming and outgoing dependencies to judge whether it acts as a dependency hub. After that I’ll return a single JSON verdict with the concrete evidence I found.
+exec
+/bin/bash -lc "rg --files . | rg \"BookmarkPickerActivity\\.java"'$|AndroidManifest|bookmark|share"' in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+./android/AndroidManifest.xml
+./android/res/layout-land/share.xml
+./android/res/layout/share.xml
+./android/res/layout/bookmark_picker_list_item.xml
+./android/res/drawable/share_via_barcode.png
+./android/src/com/google/zxing/client/android/share/ShareActivity.java
+./android/src/com/google/zxing/client/android/share/BookmarkPickerActivity.java
+./android/src/com/google/zxing/client/android/share/BookmarkAdapter.java
+./android/src/com/google/zxing/client/android/share/AppInfo.java
+./android/src/com/google/zxing/client/android/share/LoadPackagesAsyncTask.java
+./android/src/com/google/zxing/client/android/share/AppPickerActivity.java
+
+exec
+/bin/bash -lc 'rg -n "class BookmarkPickerActivity|BookmarkPickerActivity" .' in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+./android/AndroidManifest.xml:135:    <activity android:name=".share.BookmarkPickerActivity"
+./android/src/com/google/zxing/client/android/share/BookmarkPickerActivity.java:37:public final class BookmarkPickerActivity extends ListActivity {
+./android/src/com/google/zxing/client/android/share/BookmarkPickerActivity.java:39:  private static final String TAG = BookmarkPickerActivity.class.getSimpleName();
+./android/src/com/google/zxing/client/android/share/ShareActivity.java:66:      intent.setClassName(ShareActivity.this, BookmarkPickerActivity.class.getName());
+
+codex
+I found the target class and the small share package around it. Next I’m reading the class itself plus the nearby share-related classes and manifest entries to see whether dependencies concentrate on this class or stay localized.
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/share/BookmarkPickerActivity.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2008 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.share;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import android.app.ListActivity;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
+import android.util.Log;
+import android.view.View;
+import android.widget.ListView;
+import com.google.zxing.client.android.Intents;
+
+/**
+ * This class is only needed because I can't successfully send an ACTION_PICK intent to
+ * com.android.browser.BrowserBookmarksPage. It can go away if that starts working in the future.
+ *
+ * @author dswitkin@google.com (Daniel Switkin)
+ */
+public final class BookmarkPickerActivity extends ListActivity {
+
+  private static final String TAG = BookmarkPickerActivity.class.getSimpleName();
+
+  private static final String[] BOOKMARK_PROJECTION = {
+      "title", // Browser.BookmarkColumns.TITLE
+      "url", // Browser.BookmarkColumns.URL
+  };
+  // Copied from android.provider.Browser.BOOKMARKS_URI:
+  private static final Uri BOOKMARKS_URI = Uri.parse("content://browser/bookmarks");
+
+  private static final String BOOKMARK_SELECTION = "bookmark = 1 AND url IS NOT NULL";
+
+  private final List<String[]> titleURLs = new ArrayList<>();
+
+  @Override
+  protected void onResume() {
+    super.onResume();
+    titleURLs.clear();
+    try (Cursor cursor = getContentResolver().query(BOOKMARKS_URI, BOOKMARK_PROJECTION,
+             BOOKMARK_SELECTION, null, null)) {
+      if (cursor == null) {
+        Log.w(TAG, "No cursor returned for bookmark query");
+        finish();
+        return;
+      }
+      while (cursor.moveToNext()) {
+        titleURLs.add(new String[] { cursor.getString(0), cursor.getString(1) });
+      }
+    }
+    setListAdapter(new BookmarkAdapter(this, titleURLs));
+  }
+
+
+  @Override
+  protected void onListItemClick(ListView l, View view, int position, long id) {
+    String[] titleURL = titleURLs.get(position);
+    Intent intent = new Intent();
+    intent.addFlags(Intents.FLAG_NEW_DOC);
+    intent.putExtra("title", titleURL[0]); // Browser.BookmarkColumns.TITLE
+    intent.putExtra("url", titleURL[1]); // Browser.BookmarkColumns.URL
+    setResult(RESULT_OK, intent);
+    finish();
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/share/BookmarkAdapter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/share/ShareActivity.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2011 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.share;
+
+import java.util.List;
+
+import com.google.zxing.client.android.R;
+
+import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+/**
+ * A custom adapter designed to fetch bookmarks from a cursor. Before Honeycomb we used
+ * SimpleCursorAdapter, but it assumes the existence of an _id column, and the bookmark schema was
+ * rewritten for HC without one. This caused the app to crash, hence this new class, which is
+ * forwards and backwards compatible.
+ *
+ * @author dswitkin@google.com (Daniel Switkin)
+ */
+final class BookmarkAdapter extends BaseAdapter {
+
+  private final Context context;
+  private final List<String[]> titleURLs;
+
+  BookmarkAdapter(Context context, List<String[]> titleURLs) {
+    this.context = context;
+    this.titleURLs = titleURLs;
+  }
+
+  @Override
+  public int getCount() {
+    return titleURLs.size();
+  }
+
+  @Override
+  public Object getItem(int index) {
+    return titleURLs.get(index);
+  }
+
+  @Override
+  public long getItemId(int index) {
+    return index;
+  }
+
+  @Override
+  public View getView(int index, View view, ViewGroup viewGroup) {
+    View layout;
+    if (view instanceof LinearLayout) {
+      layout = view;
+    } else {
+      LayoutInflater factory = LayoutInflater.from(context);
+      layout = factory.inflate(R.layout.bookmark_picker_list_item, viewGroup, false);
+    }
+    String[] titleURL = titleURLs.get(index);
+    ((TextView) layout.findViewById(R.id.bookmark_title)).setText(titleURL[0]);
+    ((TextView) layout.findViewById(R.id.bookmark_url)).setText(titleURL[1]);
+    return layout;
+  }
+}
+
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2008 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.share;
+
+import android.os.Build;
+import android.provider.ContactsContract;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.client.android.Contents;
+import com.google.zxing.client.android.Intents;
+import com.google.zxing.client.android.R;
+
+import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.BaseColumns;
+import android.view.KeyEvent;
+import android.view.View;
+import android.widget.TextView;
+import com.google.zxing.client.android.clipboard.ClipboardInterface;
+
+/**
+ * Barcode Scanner can share data like contacts and bookmarks by displaying a QR Code on screen,
+ * such that another user can scan the barcode with their phone.
+ *
+ * @author dswitkin@google.com (Daniel Switkin)
+ */
+public final class ShareActivity extends Activity {
+
+  private static final int PICK_BOOKMARK = 0;
+  private static final int PICK_CONTACT = 1;
+  private static final int PICK_APP = 2;
+
+  private View clipboardButton;
+
+  private final View.OnClickListener contactListener = new View.OnClickListener() {
+    @Override
+    public void onClick(View v) {
+      Intent intent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+      intent.addFlags(Intents.FLAG_NEW_DOC);
+      startActivityForResult(intent, PICK_CONTACT);
+    }
+  };
+
+  private final View.OnClickListener bookmarkListener = new View.OnClickListener() {
+    @Override
+    public void onClick(View v) {
+      Intent intent = new Intent(Intent.ACTION_PICK);
+      intent.addFlags(Intents.FLAG_NEW_DOC);
+      intent.setClassName(ShareActivity.this, BookmarkPickerActivity.class.getName());
+      startActivityForResult(intent, PICK_BOOKMARK);
+    }
+  };
+
+  private final View.OnClickListener appListener = new View.OnClickListener() {
+    @Override
+    public void onClick(View v) {
+      Intent intent = new Intent(Intent.ACTION_PICK);
+      intent.addFlags(Intents.FLAG_NEW_DOC);
+      intent.setClassName(ShareActivity.this, AppPickerActivity.class.getName());
+      startActivityForResult(intent, PICK_APP);
+    }
+  };
+
+  private final View.OnClickListener clipboardListener = new View.OnClickListener() {
+    @Override
+    public void onClick(View v) {
+      // Should always be true, because we grey out the clipboard button in onResume() if it's empty
+      CharSequence text = ClipboardInterface.getText(ShareActivity.this);
+      if (text != null) {
+        launchSearch(text.toString());
+      }
+    }
+  };
+
+  private final View.OnKeyListener textListener = new View.OnKeyListener() {
+    @Override
+    public boolean onKey(View view, int keyCode, KeyEvent event) {
+      if (keyCode == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN) {
+        String text = ((TextView) view).getText().toString();
+        if (!text.isEmpty()) {
+          launchSearch(text);
+        }
+        return true;
+      }
+      return false;
+    }
+  };
+
+  private void launchSearch(String text) {
+    Intent intent = buildEncodeIntent(Contents.Type.TEXT);
+    intent.putExtra(Intents.Encode.DATA, text);
+    startActivity(intent);
+  }
+
+  @Override
+  public void onCreate(Bundle icicle) {
+    super.onCreate(icicle);
+    setContentView(R.layout.share);
+
+    findViewById(R.id.share_contact_button).setOnClickListener(contactListener);
+    if (Build.VERSION.SDK_INT >= 23) { // Marshmallow / 6.0
+      // Can't access bookmarks in 6.0+
+      findViewById(R.id.share_bookmark_button).setEnabled(false);
+    } else {
+      findViewById(R.id.share_bookmark_button).setOnClickListener(bookmarkListener);
+    }
+    findViewById(R.id.share_app_button).setOnClickListener(appListener);
+    clipboardButton = findViewById(R.id.share_clipboard_button);
+    clipboardButton.setOnClickListener(clipboardListener);
+    findViewById(R.id.share_text_view).setOnKeyListener(textListener);
+  }
+
+  @Override
+  protected void onResume() {
+    super.onResume();
+    clipboardButton.setEnabled(ClipboardInterface.hasText(this));
+  }
+
+  @Override
+  public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+    if (resultCode == RESULT_OK) {
+      switch (requestCode) {
+        case PICK_BOOKMARK:
+        case PICK_APP:
+          showTextAsBarcode(intent.getStringExtra("url")); // Browser.BookmarkColumns.URL
+          break;
+        case PICK_CONTACT:
+          // Data field is content://contacts/people/984
+          showContactAsBarcode(intent.getData());
+          break;
+      }
+    }
+  }
+
+  private void showTextAsBarcode(String text) {
+    if (text == null) {
+      return; // Show error?
+    }
+    Intent intent = buildEncodeIntent(Contents.Type.TEXT);
+    intent.putExtra(Intents.Encode.DATA, text);
+    startActivity(intent);
+  }
+
+  /**
+   * Takes a contact Uri and does the necessary database lookups to retrieve that person's info,
+   * then sends an Encode intent to render it as a QR Code.
+   *
+   * @param contactUri A Uri of the form content://contacts/people/17
+   */
+  private void showContactAsBarcode(Uri contactUri) {
+    if (contactUri == null) {
+      return; // Show error?
+    }
+    ContentResolver resolver = getContentResolver();
+
+    String id;
+    String name;
+    boolean hasPhone;
+    try (Cursor cursor = resolver.query(contactUri, null, null, null, null)) {
+      if (cursor == null || !cursor.moveToFirst()) {
+        return;
+      }
+      id = cursor.getString(cursor.getColumnIndex(BaseColumns._ID));
+      name = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+      hasPhone = cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER)) > 0;
+    }
+
+    // Don't require a name to be present, this contact might be just a phone number.
+    Bundle bundle = new Bundle();
+    if (name != null && !name.isEmpty()) {
+      bundle.putString(ContactsContract.Intents.Insert.NAME, massageContactData(name));
+    }
+
+    if (hasPhone) {
+      try (Cursor phonesCursor = resolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                                                null,
+                                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID + '=' + id,
+                                                null,
+                                                null)) {
+        if (phonesCursor != null) {
+          int foundPhone = 0;
+          int phonesNumberColumn = phonesCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
+          int phoneTypeColumn = phonesCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE);
+          while (phonesCursor.moveToNext() && foundPhone < Contents.PHONE_KEYS.length) {
+            String number = phonesCursor.getString(phonesNumberColumn);
+            if (number != null && !number.isEmpty()) {
+              bundle.putString(Contents.PHONE_KEYS[foundPhone], massageContactData(number));
+            }
+            int type = phonesCursor.getInt(phoneTypeColumn);
+            bundle.putInt(Contents.PHONE_TYPE_KEYS[foundPhone], type);
+            foundPhone++;
+          }
+        }
+      }
+    }
+
+    try (Cursor methodsCursor = resolver.query(ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_URI,
+                                               null,
+                                               ContactsContract.CommonDataKinds.StructuredPostal.CONTACT_ID + '=' + id,
+                                               null,
+                                               null)) {
+      if (methodsCursor != null && methodsCursor.moveToNext()) {
+        String data = methodsCursor.getString(
+
+exec
+/bin/bash -lc "sed -n '1,220p' android/AndroidManifest.xml" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright (C) 2008 ZXing authors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.google.zxing.client.android"
+          android:versionName="4.7.8"
+          android:versionCode="108"
+          android:installLocation="auto">
+
+  <uses-permission android:name="android.permission.CAMERA"/>
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.VIBRATE"/>
+  <uses-permission android:name="android.permission.FLASHLIGHT"/>
+  <uses-permission android:name="android.permission.READ_CONTACTS"/>
+  <!-- unavailable in API 23 -->
+  <uses-permission android:name="com.android.browser.permission.READ_HISTORY_BOOKMARKS"/>
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+
+  <uses-sdk android:minSdkVersion="19" android:targetSdkVersion="22"/>
+
+  <uses-feature android:name="android.hardware.camera.any"/>
+  <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+  <uses-feature android:name="android.hardware.camera.flash" android:required="false"/>
+  <uses-feature android:name="android.hardware.screen.landscape"/>
+  <uses-feature android:name="android.hardware.wifi" android:required="false"/>
+
+  <application android:icon="@drawable/launcher_icon"
+               android:logo="@drawable/launcher_icon"
+               android:label="@string/app_name"
+               android:allowBackup="true">
+    <activity android:name=".CaptureActivity"
+              android:screenOrientation="sensorLandscape"
+              android:clearTaskOnLaunch="true"
+              android:stateNotNeeded="true"
+              android:theme="@style/CaptureTheme"
+              android:windowSoftInputMode="stateAlwaysHidden"
+              android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="com.google.zxing.client.android.SCAN"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+      <!-- Allow web apps to launch Barcode Scanner by linking to http://zxing.appspot.com/scan. -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="http" android:host="zxing.appspot.com" android:path="/scan"/>
+      </intent-filter>
+      <!-- We also support a Google Product Search URL. -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="http" android:host="www.google.com" android:path="/m/products/scan"/>
+      </intent-filter>
+      <!-- And the UK version. -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="http" android:host="www.google.co.uk" android:path="/m/products/scan"/>
+      </intent-filter>
+      <!-- Support zxing://scan/?... like iPhone app -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="zxing" android:host="scan" android:path="/"/>
+      </intent-filter>
+    </activity>
+    <activity android:name=".PreferencesActivity"
+              android:label="@string/preferences_name"
+              android:stateNotNeeded="true"/>
+    <activity android:name=".encode.EncodeActivity"
+              android:stateNotNeeded="true"
+              android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.zxing.client.android.ENCODE"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+      <!-- This allows us to handle the Share button in Contacts. -->
+      <intent-filter>
+        <action android:name="android.intent.action.SEND"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="text/x-vcard"/>
+      </intent-filter>
+      <!-- This allows us to handle sharing any plain text . -->
+      <intent-filter>
+        <action android:name="android.intent.action.SEND"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="text/plain"/>
+      </intent-filter>
+    </activity>
+    <activity android:name=".book.SearchBookContentsActivity"
+              android:label="@string/sbc_name"
+              android:stateNotNeeded="true"
+              android:screenOrientation="sensorLandscape"
+              android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.zxing.client.android.SEARCH_BOOK_CONTENTS"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+    </activity>
+    <activity android:name=".share.ShareActivity"
+              android:stateNotNeeded="true"
+              android:screenOrientation="user"
+              android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.zxing.client.android.SHARE"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+    </activity>
+    <activity android:name=".history.HistoryActivity"
+              android:label="@string/history_title"
+              android:stateNotNeeded="true"/>
+    <activity android:name=".share.BookmarkPickerActivity"
+              android:label="@string/bookmark_picker_name"
+              android:stateNotNeeded="true"/>
+    <activity android:name=".share.AppPickerActivity"
+              android:label="@string/app_picker_name"
+              android:stateNotNeeded="true"/>
+    <activity android:name=".HelpActivity"
+              android:label="@string/menu_help"
+              android:screenOrientation="user"
+              android:stateNotNeeded="true"/>
+  </application>
+
+</manifest>
+
+codex
+The class is small and task-specific. I’m checking whether anything beyond the share flow depends on it, and whether it fans out to many project classes, because hub-like modularization needs both sides of that dependency pattern.
+exec
+/bin/bash -lc 'rg -n "BookmarkPickerActivity" android/src android/res android/AndroidManifest.xml' in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+android/AndroidManifest.xml:135:    <activity android:name=".share.BookmarkPickerActivity"
+android/src/com/google/zxing/client/android/share/BookmarkPickerActivity.java:37:public final class BookmarkPickerActivity extends ListActivity {
+android/src/com/google/zxing/client/android/share/BookmarkPickerActivity.java:39:  private static final String TAG = BookmarkPickerActivity.class.getSimpleName();
+android/src/com/google/zxing/client/android/share/ShareActivity.java:66:      intent.setClassName(ShareActivity.this, BookmarkPickerActivity.class.getName());
+
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/share/LoadPackagesAsyncTask.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2009 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.share;
+
+import android.app.ListActivity;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageItemInfo;
+import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.ListAdapter;
+import com.google.zxing.client.android.R;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Loads a list of packages installed on the device asynchronously.
+ *
+ * @author Sean Owen
+ */
+final class LoadPackagesAsyncTask extends AsyncTask<Object,Object,List<AppInfo>> {
+
+  private static final String[] PKG_PREFIX_SAFELIST = {
+      "com.google.android.apps.",
+  };
+  private static final String[] PKG_PREFIX_BLOCKLIST = {
+      "com.android.",
+      "android",
+      "com.google.android.",
+      "com.htc",
+  };
+
+  private final ListActivity activity;
+
+  LoadPackagesAsyncTask(ListActivity activity) {
+    this.activity = activity;
+  }
+
+  @Override
+  protected List<AppInfo> doInBackground(Object... objects) {
+    List<AppInfo> labelsPackages = new ArrayList<>();
+    PackageManager packageManager = activity.getPackageManager();
+    Iterable<ApplicationInfo> appInfos = packageManager.getInstalledApplications(0);
+    for (PackageItemInfo appInfo : appInfos) {
+      String packageName = appInfo.packageName;
+      if (!isHidden(packageName)) {
+        CharSequence label = appInfo.loadLabel(packageManager);
+        Drawable icon = appInfo.loadIcon(packageManager);
+        if (label != null) {
+          labelsPackages.add(new AppInfo(packageName, label.toString(), icon));
+        }
+      }
+    }
+    Collections.sort(labelsPackages);
+    return labelsPackages;
+  }
+
+  private static boolean isHidden(String packageName) {
+    if (packageName == null) {
+      return true;
+    }
+    for (String prefix : PKG_PREFIX_SAFELIST) {
+      if (packageName.startsWith(prefix)) {
+        return false;
+      }
+    }
+    for (String prefix : PKG_PREFIX_BLOCKLIST) {
+      if (packageName.startsWith(prefix)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  protected void onPostExecute(final List<AppInfo> results) {
+    ListAdapter listAdapter = new ArrayAdapter<AppInfo>(activity,
+                                                        R.layout.app_picker_list_item,
+                                                        R.id.app_picker_list_item_label,
+                                                        results) {
+      @Override
+      public View getView(int position, View convertView, ViewGroup parent) {
+        View view = super.getView(position, convertView, parent);
+        Drawable icon = results.get(position).getIcon();
+        if (icon != null) {
+          ((ImageView) view.findViewById(R.id.app_picker_list_item_icon)).setImageDrawable(icon);
+        }
+        return view;
+      }
+    };
+    activity.setListAdapter(listAdapter);
+  }
+
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/share/AppPickerActivity.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2009 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.share;
+
+import android.app.ListActivity;
+import android.content.Intent;
+import android.os.AsyncTask;
+import android.view.View;
+import android.widget.Adapter;
+import android.widget.ListView;
+import com.google.zxing.client.android.Intents;
+
+import java.util.List;
+
+/**
+ * Activity for picking an installed application to share via Intent.
+ */
+public final class AppPickerActivity extends ListActivity {
+
+  private AsyncTask<Object,Object,List<AppInfo>> backgroundTask;
+
+  @Override
+  protected void onResume() {
+    super.onResume();
+    backgroundTask = new LoadPackagesAsyncTask(this);
+    backgroundTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+  }
+
+  @Override
+  protected void onPause() {
+    AsyncTask<?,?,?> task = backgroundTask;
+    if (task != null) {
+      task.cancel(true);
+      backgroundTask = null;
+    }
+    super.onPause();
+  }
+
+  @Override
+  protected void onListItemClick(ListView l, View view, int position, long id) {
+    Adapter adapter = getListAdapter();
+    if (position >= 0 && position < adapter.getCount()) {
+      String packageName = ((AppInfo) adapter.getItem(position)).getPackageName();
+      Intent intent = new Intent();
+      intent.addFlags(Intents.FLAG_NEW_DOC);
+      intent.putExtra("url", "market://details?id=" + packageName); // Browser.BookmarkColumns.URL
+      setResult(RESULT_OK, intent);
+    } else {
+      setResult(RESULT_CANCELED);      
+    }
+    finish();
+  }
+
+}
+
+codex
+I’ve confirmed the class is only referenced from `ShareActivity` and the manifest. I’m grabbing line-numbered evidence so the final justification can be precise about the low fan-in/fan-out pattern.
+exec
+/bin/bash -lc "nl -ba android/src/com/google/zxing/client/android/share/BookmarkPickerActivity.java | sed -n '1,200p'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2008 ZXing authors
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *      http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	
+    17	package com.google.zxing.client.android.share;
+    18	
+    19	import java.util.ArrayList;
+    20	import java.util.List;
+    21	
+    22	import android.app.ListActivity;
+    23	import android.content.Intent;
+    24	import android.database.Cursor;
+    25	import android.net.Uri;
+    26	import android.util.Log;
+    27	import android.view.View;
+    28	import android.widget.ListView;
+    29	import com.google.zxing.client.android.Intents;
+    30	
+    31	/**
+    32	 * This class is only needed because I can't successfully send an ACTION_PICK intent to
+    33	 * com.android.browser.BrowserBookmarksPage. It can go away if that starts working in the future.
+    34	 *
+    35	 * @author dswitkin@google.com (Daniel Switkin)
+    36	 */
+    37	public final class BookmarkPickerActivity extends ListActivity {
+    38	
+    39	  private static final String TAG = BookmarkPickerActivity.class.getSimpleName();
+    40	
+    41	  private static final String[] BOOKMARK_PROJECTION = {
+    42	      "title", // Browser.BookmarkColumns.TITLE
+    43	      "url", // Browser.BookmarkColumns.URL
+    44	  };
+    45	  // Copied from android.provider.Browser.BOOKMARKS_URI:
+    46	  private static final Uri BOOKMARKS_URI = Uri.parse("content://browser/bookmarks");
+    47	
+    48	  private static final String BOOKMARK_SELECTION = "bookmark = 1 AND url IS NOT NULL";
+    49	
+    50	  private final List<String[]> titleURLs = new ArrayList<>();
+    51	
+    52	  @Override
+    53	  protected void onResume() {
+    54	    super.onResume();
+    55	    titleURLs.clear();
+    56	    try (Cursor cursor = getContentResolver().query(BOOKMARKS_URI, BOOKMARK_PROJECTION,
+    57	             BOOKMARK_SELECTION, null, null)) {
+    58	      if (cursor == null) {
+    59	        Log.w(TAG, "No cursor returned for bookmark query");
+    60	        finish();
+    61	        return;
+    62	      }
+    63	      while (cursor.moveToNext()) {
+    64	        titleURLs.add(new String[] { cursor.getString(0), cursor.getString(1) });
+    65	      }
+    66	    }
+    67	    setListAdapter(new BookmarkAdapter(this, titleURLs));
+    68	  }
+    69	
+    70	
+    71	  @Override
+    72	  protected void onListItemClick(ListView l, View view, int position, long id) {
+    73	    String[] titleURL = titleURLs.get(position);
+    74	    Intent intent = new Intent();
+    75	    intent.addFlags(Intents.FLAG_NEW_DOC);
+    76	    intent.putExtra("title", titleURL[0]); // Browser.BookmarkColumns.TITLE
+    77	    intent.putExtra("url", titleURL[1]); // Browser.BookmarkColumns.URL
+    78	    setResult(RESULT_OK, intent);
+    79	    finish();
+    80	  }
+    81	}
+
+exec
+/bin/bash -lc "nl -ba android/src/com/google/zxing/client/android/share/ShareActivity.java | sed -n '55,80p'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "nl -ba android/AndroidManifest.xml | sed -n '128,140p'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+    55	      Intent intent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+    56	      intent.addFlags(Intents.FLAG_NEW_DOC);
+    57	      startActivityForResult(intent, PICK_CONTACT);
+    58	    }
+    59	  };
+    60	
+    61	  private final View.OnClickListener bookmarkListener = new View.OnClickListener() {
+    62	    @Override
+    63	    public void onClick(View v) {
+    64	      Intent intent = new Intent(Intent.ACTION_PICK);
+    65	      intent.addFlags(Intents.FLAG_NEW_DOC);
+    66	      intent.setClassName(ShareActivity.this, BookmarkPickerActivity.class.getName());
+    67	      startActivityForResult(intent, PICK_BOOKMARK);
+    68	    }
+    69	  };
+    70	
+    71	  private final View.OnClickListener appListener = new View.OnClickListener() {
+    72	    @Override
+    73	    public void onClick(View v) {
+    74	      Intent intent = new Intent(Intent.ACTION_PICK);
+    75	      intent.addFlags(Intents.FLAG_NEW_DOC);
+    76	      intent.setClassName(ShareActivity.this, AppPickerActivity.class.getName());
+    77	      startActivityForResult(intent, PICK_APP);
+    78	    }
+    79	  };
+    80	
+
+ succeeded in 0ms:
+   128	        <action android:name="com.google.zxing.client.android.SHARE"/>
+   129	        <category android:name="android.intent.category.DEFAULT"/>
+   130	      </intent-filter>
+   131	    </activity>
+   132	    <activity android:name=".history.HistoryActivity"
+   133	              android:label="@string/history_title"
+   134	              android:stateNotNeeded="true"/>
+   135	    <activity android:name=".share.BookmarkPickerActivity"
+   136	              android:label="@string/bookmark_picker_name"
+   137	              android:stateNotNeeded="true"/>
+   138	    <activity android:name=".share.AppPickerActivity"
+   139	              android:label="@string/app_picker_name"
+   140	              android:stateNotNeeded="true"/>
+
+codex
+{"target":"com.google.zxing.client.android.share.BookmarkPickerActivity","detection":false,"justification":"Inspected [android/src/com/google/zxing/client/android/share/BookmarkPickerActivity.java](/data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing/android/src/com/google/zxing/client/android/share/BookmarkPickerActivity.java), [android/src/com/google/zxing/client/android/share/ShareActivity.java](/data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing/android/src/com/google/zxing/client/android/share/ShareActivity.java), and [android/AndroidManifest.xml](/data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing/android/AndroidManifest.xml). The target has low fan-in: repository search found only one code reference from ShareActivity plus its manifest registration. It also has low fan-out: the class only uses a small set of Android framework types plus one local adapter ([BookmarkAdapter](/data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing/android/src/com/google/zxing/client/android/share/BookmarkAdapter.java)) and Intents.FLAG_NEW_DOC, with no broad web of project dependencies. This does not look like a dependency hub."}
+tokens used
+11,930

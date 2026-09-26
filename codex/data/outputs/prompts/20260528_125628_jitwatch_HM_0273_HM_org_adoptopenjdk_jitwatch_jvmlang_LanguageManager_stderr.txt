@@ -1,0 +1,1887 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f4d-3a1a-7731-8792-b4f8a3eeaf8e
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.jvmlang.LanguageManager` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.jvmlang.LanguageManager",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.jvmlang.LanguageManager`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `LanguageManager` and tracing both its outgoing dependencies and the classes that depend on it so the verdict is evidence-based.
+exec
+/bin/bash -lc 'rg -n "LanguageManager" .' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "rg --files | rg 'LanguageManager\\.java"'$|jvmlang'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 213ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/VMLanguageList.java:19:import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/VMLanguageList.java:66:			if (!LanguageManager.isLanguageEnabled(lang))
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxStage.java:33:import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxStage.java:611:						if (LanguageManager.isCompilable(language, sourceFile))
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxStage.java:641:		String language = LanguageManager.getLanguageFromFile(sourceFile);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:28:import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:64:	private LanguageManager languageManager;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:141:		languageManager = new LanguageManager(logParser.getConfig(), logListener);
+./core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java:39:public class LanguageManager
+./core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java:44:	public LanguageManager(JITWatchConfig config, ILogListener logListener)
+./core/src/main/java/org/adoptopenjdk/jitwatch/loader/ResourceLoader.java:27:import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+./core/src/main/java/org/adoptopenjdk/jitwatch/loader/ResourceLoader.java:61:		List<String> fileExtensions = LanguageManager.getKnownFilenameExtensions();
+
+ succeeded in 445ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java
+
+codex
+I found the target class and a small set of direct callers. Next I’m checking the implementation and the call sites to see whether this is a genuine dependency hub or just a shared utility with limited coupling.
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/loader/ResourceLoader.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,240p' ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,760p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,240p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/VMLanguageList.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 113ms:
+/*
+ * Copyright (c) 2013-2021 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.loader;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOLLAR;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_BACKSLASH;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_DOT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_SLASH;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+
+import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+import org.adoptopenjdk.jitwatch.util.FileUtil;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+public final class ResourceLoader
+{
+	private static final Logger logger = LoggerFactory.getLogger(ResourceLoader.class);
+
+	private ResourceLoader()
+	{
+	}
+
+	public static String getSourceForClassName(String moduleName, String fqName, List<String> sourceLocations)
+	{
+		List<String> searchLocations = new ArrayList<>(sourceLocations);
+
+		if (searchLocations.isEmpty())
+		{
+			File jdkSrcZip = FileUtil.getJDKSourceZip();
+
+			if (jdkSrcZip != null)
+			{
+				searchLocations.add(jdkSrcZip.toPath().toString());
+			}
+		}
+
+		int dollarPos = fqName.indexOf(C_DOLLAR);
+
+		if (dollarPos != -1)
+		{
+			fqName = fqName.substring(0, dollarPos);
+		}
+
+		List<String> fileExtensions = LanguageManager.getKnownFilenameExtensions();
+
+		String result = null;
+
+		for (String suffix : fileExtensions)
+		{
+			String filename = fqName.replace(S_DOT, File.separator) + S_DOT + suffix;
+
+			result = getSourceForFilename(moduleName, filename, searchLocations);
+
+			if (result != null)
+			{
+				break;
+			}
+		}
+		
+		return result;
+	}
+
+	public static String getSourceForFilename(String moduleName, String fileName, List<String> locations)
+	{		
+		if (fileName.startsWith(S_SLASH))
+		{
+			return readFile(new File(fileName));
+		}
+		
+		String source = null;
+
+		for (String location : locations)
+		{
+			File locationFile = new File(location);
+						
+			if (locationFile.exists())
+			{
+				if (locationFile.isDirectory())
+				{
+					source = readFileInDirectory(locationFile, fileName);
+
+					if (source != null)
+					{
+						break;
+					}
+				}
+				else
+				{				
+					source = readFileFromZip(moduleName, locationFile, fileName);
+
+					if (source != null)
+					{
+						break;
+					}
+				}
+			}
+		}
+
+		return source;
+	}
+
+	public static String readFileInDirectory(File dir, String fileName)
+	{
+		File sourceFile = new File(dir, fileName);
+
+		return readFile(sourceFile);
+	}
+
+	public static String readFile(File sourceFile)
+	{
+		String result = null;
+		
+		if (sourceFile != null && sourceFile.exists())
+		{
+			try
+			{
+				byte[] fileBytes = Files.readAllBytes(sourceFile.toPath());
+				result = new String(fileBytes, StandardCharsets.UTF_8);
+			}
+			catch (IOException ioe)
+			{
+				logger.error("Failed to read file: {}", sourceFile, ioe);
+			}
+		}
+
+		return result;
+	}
+
+	public static Properties readManifestFromZip(File zipFile)
+	{
+		Properties result = new Properties();
+
+		String manifestSource = readFileFromZip(null, zipFile, "META-INF/MANIFEST.MF");
+
+		if (manifestSource != null)
+		{
+			try
+			{
+				result.load(new StringReader(manifestSource));
+			}
+			catch (IOException e)
+			{
+				logger.error("Couldn't read manifest from {}", zipFile, e);
+			}
+		}
+		return result;
+	}
+
+	public static String readFileFromZip(String moduleName, File zipFileName, String sourceFileName)
+	{
+		String result = null;
+
+		sourceFileName = sourceFileName.replace(S_BACKSLASH, S_SLASH);
+		
+		if (moduleName != null)
+		{
+			sourceFileName = moduleName + S_SLASH + sourceFileName;
+		}
+				
+		try (ZipFile zipFile = new ZipFile(zipFileName))
+		{
+			ZipEntry entry = zipFile.getEntry(sourceFileName);
+
+			if (entry != null)
+			{				
+				try (BufferedReader reader = new BufferedReader(new InputStreamReader(zipFile.getInputStream(entry))))
+				{
+					StringBuilder sb = new StringBuilder();
+
+					String line = reader.readLine();
+
+					while (line != null)
+					{
+						sb.append(line).append(S_NEWLINE);
+						line = reader.readLine();
+					}
+
+					result = sb.toString();
+				}
+			}
+		}
+		catch (IOException ioe)
+		{
+			logger.error("Could not read file {} from zip {}", sourceFileName, zipFileName.getName(), ioe);
+		}
+
+		return result;
+	}
+}
+
+ succeeded in 121ms:
+/*
+ * Copyright (c) 2013-2021 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.sandbox;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_DOLLAR;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_SPACE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVA;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVASCRIPT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_SCALA;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig.BackgroundCompilation;
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig.CompressedOops;
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig.OnStackReplacement;
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig.TieredCompilation;
+import org.adoptopenjdk.jitwatch.core.JITWatchConstants;
+import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+import org.adoptopenjdk.jitwatch.logger.ILogListener;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.model.MetaClass;
+import org.adoptopenjdk.jitwatch.parser.ILogParser;
+import org.adoptopenjdk.jitwatch.process.IExternalProcess;
+import org.adoptopenjdk.jitwatch.process.compiler.ICompiler;
+import org.adoptopenjdk.jitwatch.process.runtime.IRuntime;
+import org.adoptopenjdk.jitwatch.ui.sandbox.ISandboxStage;
+import org.adoptopenjdk.jitwatch.util.DisassemblyUtil;
+import org.adoptopenjdk.jitwatch.util.FileUtil;
+import org.adoptopenjdk.jitwatch.util.StringUtil;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+public class Sandbox
+{
+	private static final Logger logger = LoggerFactory.getLogger(Sandbox.class);
+
+	private ILogListener logListener;
+	private ISandboxStage sandboxStage;
+
+	public static final Path SANDBOX_DIR;
+	public static final Path SANDBOX_SOURCE_DIR;
+	public static final Path SANDBOX_CLASS_DIR;
+
+	public static final Path PATH_STD_ERR;
+	public static final Path PATH_STD_OUT;
+
+	private static final String SANDBOX_LOGFILE = "sandbox.log";
+
+	private File sandboxLogFile = new File(SANDBOX_DIR.toFile(), SANDBOX_LOGFILE);
+
+	private ILogParser logParser;
+
+	private LanguageManager languageManager;
+
+	private IExternalProcess lastProcess;
+
+	static
+	{
+		String userDir = System.getProperty("user.dir");
+
+		SANDBOX_DIR = Paths.get(userDir, "sandbox");
+		SANDBOX_SOURCE_DIR = Paths.get(SANDBOX_DIR.toString(), "sources");
+		SANDBOX_CLASS_DIR = Paths.get(SANDBOX_DIR.toString(), "classes");
+
+		PATH_STD_ERR = new File(Sandbox.SANDBOX_DIR.toFile(), "sandbox.err").toPath();
+		PATH_STD_OUT = new File(Sandbox.SANDBOX_DIR.toFile(), "sandbox.out").toPath();
+
+		initialise();
+	}
+
+	private static void initialise()
+	{
+		File sandboxSources = SANDBOX_SOURCE_DIR.toFile();
+
+		if (!sandboxSources.exists())
+		{
+			logger.info("Creating Sandbox source directory {}", sandboxSources);
+
+			sandboxSources.mkdirs();
+
+			if (sandboxSources.exists())
+			{
+				copyExamples();
+			}
+		}
+
+		File sandboxClasses = SANDBOX_CLASS_DIR.toFile();
+
+		if (!sandboxClasses.exists())
+		{
+			sandboxClasses.mkdirs();
+		}
+	}
+
+	public void reset()
+	{
+		logger.info("Resetting Sandbox to default settings");
+		FileUtil.emptyDir(SANDBOX_DIR.toFile());
+		initialise();
+	}
+
+	private static void copyExamples()
+	{
+		boolean runningFromJar = FileUtil.isRunningFromJar();
+
+		logger.info("isRunningFromJar:{}", runningFromJar);
+
+		File dstDir = SANDBOX_SOURCE_DIR.toFile();
+
+		logger.info("Copying Sandbox examples to {}", dstDir);
+
+		if (runningFromJar)
+		{
+			FileUtil.copyFilesFromJarToDir("examples", dstDir);
+		}
+		else
+		{
+			File srcDir = new File("core/src/main/resources/examples");
+
+			FileUtil.copyFilesToDir(srcDir, dstDir);
+		}
+	}
+
+	public Sandbox(ILogParser parser, ILogListener logger, ISandboxStage sandboxStage)
+	{
+		this.logParser = parser;
+		this.logListener = logger;
+		this.sandboxStage = sandboxStage;
+
+		languageManager = new LanguageManager(logParser.getConfig(), logListener);
+	}
+
+	public void runSandbox(String language, List<File> compileList, File fileToRun) throws Exception
+	{
+		logListener.handleLogEntry("Running Sandbox");
+		logListener.handleLogEntry("Language is " + language);
+
+		String languagePath = logParser.getConfig().getVMLanguagePath(language);
+
+		if (S_EMPTY.equals(languagePath) && (VM_LANGUAGE_JAVA.equals(language) || VM_LANGUAGE_JAVASCRIPT.equals(language)))
+		{
+			languagePath = System.getProperty("java.home");
+
+			logListener.handleLogEntry("Using runtime JVM for " + language);
+		}
+
+		logListener.handleLogEntry(language + " home dir: " + languagePath);
+
+		ICompiler compiler = languageManager.getCompiler(language, languagePath);
+
+		if (compiler == null)
+		{
+			logListener.handleErrorEntry(language + " compiler path not set. Please click Configure Sandbox and set up the path.");
+			return;
+		}
+
+		IRuntime runtime = languageManager.getRuntime(language, languagePath);
+
+		if (runtime == null)
+		{
+			logListener.handleErrorEntry(language + " runtime path not set. Please click Configure Sandbox and set up the path.");
+			return;
+		}
+
+		logListener.handleLogEntry("Compiling: " + StringUtil.listToString(compileList));
+
+		lastProcess = compiler;
+
+		String compilationSwitchesText = logParser.getConfig().getExtraVMCompilationSwitches().trim();
+
+		List<String> compilationSwitches = new ArrayList<>();
+
+		if (!compilationSwitchesText.isEmpty())
+		{
+			compilationSwitches.addAll(Arrays.asList(compilationSwitchesText.split("\\s+")));
+		}
+
+		boolean compiledOK = compiler.compile(compileList, buildUniqueClasspath(logParser.getConfig()), compilationSwitches, SANDBOX_CLASS_DIR.toFile(),
+				Collections.<String, String>emptyMap(), logListener);
+
+		logListener.handleLogEntry("Compilation success: " + compiledOK);
+
+		if (compiledOK)
+		{
+			String fqClassNameToRun = runtime.getClassToExecute(fileToRun);
+
+			lastProcess = runtime;
+
+			long start = System.currentTimeMillis();
+
+			boolean executionSuccess = executeClass(fqClassNameToRun, runtime, logParser.getConfig().isSandboxIntelMode());
+
+			long stop = System.currentTimeMillis();
+
+			logListener.handleLogEntry("Execution success: " + executionSuccess + " in " + (stop - start) + "ms");
+
+			if (executionSuccess)
+			{
+				runJITWatch();
+
+				if (!logParser.hasParseError())
+				{
+					String fqClassNameForTriView = runtime.getClassForTriView(fileToRun);
+
+					showTriView(language, fqClassNameForTriView);
+				}
+			}
+			else
+			{
+				sandboxStage.showError(runtime.getErrorStream());
+			}
+		}
+		else
+		{
+			sandboxStage.showError(compiler.getErrorStream());
+		}
+	}
+
+	public IExternalProcess getLastProcess()
+	{
+		return lastProcess;
+	}
+
+	private List<String> buildUniqueClasspath(JITWatchConfig config)
+	{
+		List<String> classpath = new ArrayList<>();
+
+		classpath.add(SANDBOX_CLASS_DIR.toString());
+
+
+ succeeded in 115ms:
+/*
+ * Copyright (c) 2013-2022 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.sandbox;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_ASTERISK;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_CLOJURE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_GROOVY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVA;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVASCRIPT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JRUBY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_KOTLIN;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_SCALA;
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.FONT_MONOSPACE_FAMILY;
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.FONT_MONOSPACE_SIZE;
+
+import java.io.File;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.core.JITWatchConstants;
+import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+import org.adoptopenjdk.jitwatch.logger.ILogListener;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.parser.ILogParseErrorListener;
+import org.adoptopenjdk.jitwatch.parser.ILogParser;
+import org.adoptopenjdk.jitwatch.process.IExternalProcess;
+import org.adoptopenjdk.jitwatch.sandbox.Sandbox;
+import org.adoptopenjdk.jitwatch.ui.Dialogs;
+import org.adoptopenjdk.jitwatch.ui.Dialogs.Response;
+import org.adoptopenjdk.jitwatch.ui.main.IStageAccessProxy;
+import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+import org.adoptopenjdk.jitwatch.ui.stage.IStageClosedListener;
+import org.adoptopenjdk.jitwatch.ui.stage.StageManager;
+import org.adoptopenjdk.jitwatch.util.DisassemblyUtil;
+import org.adoptopenjdk.jitwatch.util.NetUtil;
+import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.event.Event;
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TextArea;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
+
+public class SandboxStage extends Stage implements ISandboxStage, IStageClosedListener, ILogListener, ILogParseErrorListener
+{
+	private static final Logger logger = LoggerFactory.getLogger(SandboxStage.class);
+
+	private TextArea taLog;
+
+	private IStageAccessProxy accessProxy;
+
+	private Sandbox sandbox;
+
+	private TabPane tabPane;
+
+	private Button btnSandboxConfig;
+
+	private Button btnRun;
+
+	private SandboxConfigStage sandboxConfigStage;
+
+	private ObservableList<String> languageList = FXCollections.observableArrayList();
+
+	private ComboBox<String> comboBoxVMLanguage = new ComboBox<>(languageList);
+
+	private JITWatchConfig config;
+
+	public SandboxStage(final IStageClosedListener closeListener, IStageAccessProxy proxy, final ILogParser parser)
+	{
+		this.accessProxy = proxy;
+
+		config = parser.getConfig();
+
+		config.switchToSandbox();
+
+		setupVMLanguages();
+
+		sandbox = new Sandbox(parser, this, this);
+
+		setTitle("Sandbox - Code, Compile, Execute, and Analyse JIT logs");
+
+		tabPane = new TabPane();
+
+		tabPane.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Tab>()
+		{
+			@Override public void changed(ObservableValue<? extends Tab> ov, Tab t, Tab t1)
+			{
+				Tab selectedTab = tabPane.getSelectionModel().getSelectedItem();
+
+				if (selectedTab != null)
+				{
+					EditorPane pane = (EditorPane) selectedTab.getContent();
+
+					setVMLanguage(pane);
+				}
+			}
+		});
+
+		SplitPane splitVertical = new SplitPane();
+		splitVertical.setOrientation(Orientation.VERTICAL);
+
+		taLog = new TextArea();
+
+		String style = "-fx-font-family:" + FONT_MONOSPACE_FAMILY + "; -fx-font-size:" + FONT_MONOSPACE_SIZE
+				+ "px; -fx-background-color:white;";
+
+		taLog.setStyle(style);
+
+		Button btnNewEditor = UserInterfaceUtil.createButton("SANDBOX_NEW_EDITOR");
+		btnNewEditor.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override public void handle(ActionEvent e)
+			{
+				addEditor(null);
+			}
+		});
+
+		Button btnOpen = UserInterfaceUtil.createButton("SANDBOX_OPEN_FILE");
+		btnOpen.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override public void handle(ActionEvent e)
+			{
+				if (tabPane.getSelectionModel().getSelectedItem() == null)
+				{
+					addEditor(null);
+				}
+
+				Tab selectedTab = tabPane.getSelectionModel().getSelectedItem();
+
+				EditorPane pane = (EditorPane) selectedTab.getContent();
+
+				if (pane.isModified())
+				{
+					pane.promptSave();
+				}
+
+				FileChooser fc = new FileChooser();
+
+				fc.setTitle("Choose source file");
+
+				fc.setInitialDirectory(Sandbox.SANDBOX_SOURCE_DIR.toFile());
+
+				File result = fc.showOpenDialog(getStageForChooser());
+
+				if (result != null)
+				{
+					pane.loadSource(result);
+					selectedTab.setText(pane.getName());
+
+					setVMLanguage(pane);
+
+					saveEditorPaneConfig();
+				}
+			}
+		});
+
+		Button btnSave = UserInterfaceUtil.createButton("SANDBOX_SAVE_FILE");
+		btnSave.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override public void handle(ActionEvent e)
+			{
+				Tab selectedTab = tabPane.getSelectionModel().getSelectedItem();
+
+				if (selectedTab != null)
+				{
+					EditorPane pane = (EditorPane) selectedTab.getContent();
+
+					pane.saveFile();
+
+					selectedTab.setText(pane.getName());
+
+					setVMLanguage(pane);
+				}
+			}
+		});
+
+		btnSandboxConfig = UserInterfaceUtil.createButton("SANDBOX_CONFIGURE");
+		btnSandboxConfig.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override public void handle(ActionEvent e)
+			{
+				sandboxConfigStage = new SandboxConfigStage(SandboxStage.this, parser.getConfig());
+
+				StageManager.addAndShow(SandboxStage.this, sandboxConfigStage, SandboxStage.this);
+
+				btnSandboxConfig.setDisable(true);
+			}
+		});
+
+		Button btnResetSandbox = UserInterfaceUtil.createButton("SANDBOX_RESET");
+		btnResetSandbox.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override public void handle(ActionEvent e)
+			{
+				Response resp = Dialogs.showYesNoDialog(SandboxStage.this, "Reset Sandbox?",
+						"Delete all modified Sandbox sources and classes?");
+
+				if (resp == Response.YES)
+				{
+					initialiseLog();
+					sandbox.reset();
+					loadDefaultEditors();
+				}
+			}
+		});
+
+		comboBoxVMLanguage.valueProperty().addListener(new ChangeListener<String>()
+		{
+			@Override public void changed(ObservableValue<? extends String> ov, String oldVal, String newVal)
+			{
+				if (newVal != null)
+				{
+					log("Changed language to " + newVal);
+				}
+			}
+		});
+
+		btnRun = UserInterfaceUtil.createButton("SANDBOX_RUN");
+		btnRun.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override public void handle(ActionEvent e)
+			{
+				btnRun.setDisable(true);
+
+				Tab selectedTab = tabPane.getSelectionModel().getSelectedItem();
+
+				if (selectedTab != null)
+				{
+					EditorPane pane = (EditorPane) selectedTab.getContent();
+
+					if (pane.isModified())
+					{
+						pane.promptSave();
+					}
+
+					setVMLanguage(pane);
+
+					runFile(pane);
+				}
+			}
+		});
+
+		Button btnOutput = UserInterfaceUtil.createButton("SANDBOX_VIEW_OUTPUT");
+		btnOutput.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override public void handle(ActionEvent e)
+			{
+				IExternalProcess lastProcess = sandbox.getLastProcess();
+
+				String outputString;
+
+				if (lastProcess != null)
+				{
+					outputString = lastProcess.getOutputStream();
+				}
+				else
+				{
+					outputString = "No output";
+				}
+
+				showOutput(outputString);
+			}
+		});
+
+		BorderPane borderPane = new BorderPane();
+
+		Scene scene = UserInterfaceUtil.getScene(borderPane, JITWatchUI.WINDOW_WIDTH, JITWatchUI.WINDOW_HEIGHT);
+
+		HBox hBoxTools = new HBox();
+
+		hBoxTools.setSpacing(10);
+		hBoxTools.setPadding(new Insets(10));
+
+		hBoxTools.getChildren().add(btnNewEditor);
+		hBoxTools.getChildren().add(btnOpen);
+		hBoxTools.getChildren().add(btnSave);
+		hBoxTools.getChildren().add(btnSandboxConfig);
+		hBoxTools.getChildren().add(btnResetSandbox);
+		hBoxTools.getChildren().add(comboBoxVMLanguage);
+		hBoxTools.getChildren().add(btnRun);
+		hBoxTools.getChildren().add(btnOutput);
+
+		Region spacer = new Region();
+		HBox.setHgrow(spacer, Priority.ALWAYS);
+
+		Button buttonSnapShot = UserInterfaceUtil.getSnapshotButton(scene, "Sandbox");
+
+		hBoxTools.getChildren().add(spacer);
+		hBoxTools.getChildren().add(buttonSnapShot);
+
+		splitVertical.getItems().add(tabPane);
+		splitVertical.getItems().add(taLog);
+
+		splitVertical.setDividerPositions(0.75, 0.25);
+
+		VBox vBoxMain = new VBox();
+		vBoxMain.getChildren().add(hBoxTools);
+		vBoxMain.getChildren().add(splitVertical);
+
+		borderPane.setTop(hBoxTools);
+		borderPane.setCenter(splitVertical);
+
+		initialiseLog();
+
+		setScene(scene);
+
+		setOnCloseRequest(new EventHandler<WindowEvent>()
+		{
+			@Override public void handle(WindowEvent arg0)
+			{
+				saveEditorPaneConfig();
+
+				closeListener.handleStageClosed(SandboxStage.this);
+			}
+		});
+
+		loadLastEditorPanes();
+	}
+
+	@Override public void setModified(EditorPane pane, boolean isModified)
+	{
+		for (Tab tab : tabPane.getTabs())
+		{
+			EditorPane currentPane = (EditorPane) tab.getContent();
+
+			if (currentPane == pane)
+			{
+				String tabText = tab.getText();
+
+				if (isModified)
+				{
+					if (!tabText.endsWith(S_ASTERISK))
+					{
+						tab.setText(tabText + S_ASTERISK);
+					}
+				}
+				else
+				{
+					tab.setText(pane.getName());
+				}
+			}
+		}
+	}
+
+	private void setVMLanguage(EditorPane pane)
+	{
+		if (pane != null)
+		{
+			setVMLanguageFromFile(pane.getSourceFile());
+		}
+	}
+
+	@Override public void runFile(final EditorPane pane)
+	{
+		saveUnsavedEditors();
+
+		new Thread(new Runnable()
+		{
+			@Override public void run()
+			{
+				runSandbox(pane.getSourceFile());
+				btnRun.setDisable(false);
+			}
+		}).start();
+	}
+
+	private void initialiseLog()
+	{
+		taLog.setText(S_EMPTY);
+		log("Sandbox ready. OS is '" + System.getProperty("os.name") + "' Architecture is '" + System.getProperty("os.arch") + "'");
+	}
+
+	public void checkHsdis()
+	{
+		String disassemblerFilename = DisassemblyUtil.getDisassemblerFilename();
+
+		log("Looking for disassembler: " + disassemblerFilename);
+
+		Path downloadPath = Paths.get(disassemblerFilename);
+
+		Path disassemblerPath = DisassemblyUtil.getDisassemblerFilePath();
+
+		boolean noPromptHsdis = config.isNoPromptHsdis();
+
+		if (!noPromptHsdis && !DisassemblyUtil.isDisassemblerAvailable())
+		{
+			log("Disassembler not found");
+
+			String hsdisDownloadUrl = "https://chriswhocodes.com/hsdis/";
+
+			String message = "The disassembly plugin " + disassemblerFilename + " could not be found.\n Would you like to download it from "+hsdisDownloadUrl+" ?";
+
+			Response response = Dialogs.showYesNoDialogNever(SandboxStage.this, "Download disassembly plugin", message);
+
+			switch (response)
+			{
+			case YES:
+			{
+				String url = hsdisDownloadUrl + disassemblerFilename;
+
+				log("Downloading hsdis from " + url);
+
+				NetUtil.fetchBinary(url, downloadPath);
+
+				if (downloadPath.toFile().exists())
+				{
+					log("Downloaded OK");
+				}
+				else
+				{
+					log("Download failed");
+				}
+			}
+			break;
+			case NEVER:
+			{
+				config.setNoPromptHsdis(true);
+				config.saveConfig();
+			}
+			break;
+			}
+		}
+
+		if (DisassemblyUtil.downloadedDisassemblerPresent())
+		{
+			log("Disassembler available: " + downloadPath.toAbsolutePath());
+		}
+		else if (disassemblerPath != null)
+		{
+			log("Disassembler available: " + disassemblerPath);
+		}
+
+		//pb.environment.set(LD_LIBRARY_PATH);
+	}
+
+	private void loadLastEditorPanes()
+	{
+		List<String> panes = config.getLastEditorPaneList();
+
+		if (panes.isEmpty())
+		{
+			loadDefaultEditors();
+		}
+		else
+		{
+			tabPane.getTabs().clear();
+
+			for (String panePath : panes)
+			{
+				addEditor(new File(panePath));
+			}
+		}
+	}
+
+	private void loadDefaultEditors()
+	{
+		tabPane.getTabs().clear();
+
+		addEditor(new File(Sandbox.SANDBOX_SOURCE_DIR.toFile(), "SimpleInliningTest.java"));
+
+		saveEditorPaneConfig();
+	}
+
+	private void addEditor(File filename)
+	{
+		final EditorPane pane = new EditorPane(this);
+
+		if (filename != null)
+		{
+			pane.loadSource(filename);
+		}
+
+		final Tab tab = new Tab();
+		tab.setContent(pane);
+		tab.setText(pane.getName());
+
+		EventHandler<Event> closeHandler = new EventHandler<Event>()
+		{
+			@Override public void handle(Event e)
+			{
+				if (pane.isModified())
+				{
+					pane.promptSave();
+				}
+
+				tabPane.getTabs().remove(tab);
+			}
+		};
+
+		// JavaFX 2.2 (from Java 7) has no onCloseRequestProperty
+		if (JITWatchUI.IS_JAVA_FX2)
+		{
+			tab.setOnClosed(closeHandler);
+		}
+		else
+		{
+			// Use reflection to call setOnCloseRequestProperty for Java 8
+			try
+			{
+				MethodType mt = MethodType.methodType(void.class, EventHandler.class);
+
+				MethodHandle mh = MethodHandles.lookup().findVirtual(Tab.class, "setOnCloseRequest", mt);
+
+				// fails with invokeExact due to generic type erasure?
+				mh.invoke(tab, closeHandler);
+
+			}
+			catch (Throwable t)
+			{
+				logger.error("Exception: {}", t.getMessage(), t);
+			}
+		}
+
+		tabPane.getTabs().add(tab);
+
+		pane.requestFocus();
+
+		setVMLanguage(pane);
+		saveEditorPaneConfig();
+	}
+
+	private void saveEditorPaneConfig()
+	{
+		List<String> editorPanePaths = new ArrayList<>();
+
+		for (Tab tab : tabPane.getTabs())
+		{
+			EditorPane pane = (EditorPane) tab.getContent();
+
+			if (pane != null && pane.getSourceFile() != null)
+			{
+				String editorPanePath = pane.getSourceFile().getAbsolutePath();
+				editorPanePaths.add(editorPanePath);
+			}
+		}
+
+		config.setLastEditorPaneList(editorPanePaths);
+		config.saveConfig();
+	}
+
+	private void saveUnsavedEditors()
+	{
+		for (Tab tab : tabPane.getTabs())
+		{
+			EditorPane pane = (EditorPane) tab.getContent();
+
+			pane.promptSave();
+		}
+	}
+
+	private void runSandbox(File fileToRun)
+	{
+		try
+		{
+			Platform.runLater(new Runnable()
+			{
+				@Override public void run()
+				{
+					taLog.setText(S_EMPTY);
+				}
+			});
+
+			String language = comboBoxVMLanguage.getValue();
+
+			if (language != null)
+			{
+				List<File> compileList = new ArrayList<>();
+
+				for (Tab tab : tabPane.getTabs())
+				{
+					EditorPane pane = (EditorPane) tab.getContent();
+
+					File sourceFile = pane.getSourceFile();
+
+					if (sourceFile != null)
+					{
+						if (LanguageManager.isCompilable(language, sourceFile))
+						{
+							compileList.add(sourceFile);
+						}
+					}
+				}
+
+				if (compileList.size() > 0)
+				{
+					sandbox.runSandbox(language, compileList, fileToRun);
+				}
+				else
+				{
+					log("Nothing to compile?");
+				}
+			}
+		}
+		catch (Exception e)
+		{
+			logger.error("Sandbox failure", e);
+		}
+	}
+
+	@Override public void addSourceFolder(File sourceFolder)
+	{
+		config.addSourceFolder(sourceFolder);
+	}
+
+	private void setVMLanguageFromFile(File sourceFile)
+	{
+		String language = LanguageManager.getLanguageFromFile(sourceFile);
+
+		if (language != null)
+		{
+			comboBoxVMLanguage.getSelectionModel().select(language);
+		}
+	}
+
+	@Override public void handleLogEntry(String text)
+	{
+		log(text);
+	}
+
+	@Override public void handleErrorEntry(String text)
+	{
+		log(text);
+	}
+
+	@Override public void log(final String text)
+	{
+		Platform.runLater(new Runnable()
+		{
+			@Override public void run()
+			{
+				taLog.appendText(text + S_NEWLINE);
+			}
+		});
+	}
+
+	@Override public void openTriView(final IMetaMember member)
+	{
+		log("Launching TriView for " + member);
+
+		Platform.runLater(new Runnable()
+		{
+			@Override public void run()
+			{
+				accessProxy.openTriView(member, 0);
+			}
+		});
+	}
+
+	@Override public void showOutput(final String output)
+	{
+		Platform.runLater(new Runnable()
+		{
+			@Override public void run()
+			{
+				// TODO perhaps filter out classloading statements?
+				accessProxy.openTextViewer("Sandbox Output", output, false, false);
+			}
+		});
+	}
+
+	@Override public void showError(final String error)
+	{
+		Platform.runLater(new Runnable()
+		{
+			@Override public void run()
+			{
+				accessProxy.openTextViewer("Error", error, false, false);
+			}
+		});
+	}
+
+	@Override public void handleStageClosed(Stage stage)
+	{
+		StageManager.closeStage(stage);
+
+		if (stage instanceof SandboxConfigStage)
+		{
+			btnSandboxConfig.setDisable(false);
+		}
+	}
+
+	private void setupVMLanguages()
+	{
+		List<String> vmLanguageList = config.getVMLanguageList();
+
+		addVMLanguages(config);
+
+		vmLanguageList = config.getVMLanguageList();
+
+		Collections.sort(vmLanguageList);
+
+		languageList.addAll(vmLanguageList);
+
+		comboBoxVMLanguage.getSelectionModel().select(VM_LANGUAGE_JAVA);
+	}
+
+	private void addVMLanguages(JITWatchConfig config)
+	{
+		List<String> vmLanguageList = config.getVMLanguageList();
+
+		if (!vmLanguageList.contains(JITWatchConstants.VM_LANGUAGE_JAVA))
+		{
+			config.addOrUpdateVMLanguage(VM_LANGUAGE_JAVA, S_EMPTY);
+		}
+		if (!vmLanguageList.contains(JITWatchConstants.VM_LANGUAGE_SCALA))
+		{
+			config.addOrUpdateVMLanguage(VM_LANGUAGE_SCALA, S_EMPTY);
+		}
+		if (!vmLanguageList.contains(JITWatchConstants.VM_LANGUAGE_JRUBY))
+		{
+			config.addOrUpdateVMLanguage(VM_LANGUAGE_JRUBY, S_EMPTY);
+		}
+		if (!vmLanguageList.contains(JITWatchConstants.VM_LANGUAGE_GROOVY))
+		{
+			config.addOrUpdateVMLanguage(VM_LANGUAGE_GROOVY, S_EMPTY);
+		}
+		if (!vmLanguageList.contains(JITWatchConstants.VM_LANGUAGE_KOTLIN))
+		{
+			config.addOrUpdateVMLanguage(VM_LANGUAGE_KOTLIN, S_EMPTY);
+		}
+		if (!vmLanguageList.contains(JITWatchConstants.VM_LANGUAGE_JAVASCRIPT))
+		{
+			config.addOrUpdateVMLanguage(VM_LANGUAGE_JAVASCRIPT, S_EMPTY);
+		}
+		if (!vmLanguageList.contains(JITWatchConstants.VM_LANGUAGE_CLOJURE))
+		{
+
+ succeeded in 178ms:
+/*
+ * Copyright (c) 2013-2015 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.jvmlang;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_CLOJURE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_GROOVY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVA;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVASCRIPT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JRUBY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_KOTLIN;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_SCALA;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.logger.ILogListener;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerGroovy;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerJRuby;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerJava;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerJavaScript;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerKotlin;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerScala;
+import org.adoptopenjdk.jitwatch.process.compiler.ICompiler;
+import org.adoptopenjdk.jitwatch.process.runtime.IRuntime;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeGroovy;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJRuby;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJava;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJavaScript;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeKotlin;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeScala;
+
+public class LanguageManager
+{
+	private JITWatchConfig config;
+	private ILogListener logListener;
+
+	public LanguageManager(JITWatchConfig config, ILogListener logListener)
+	{
+		this.config = config;
+		this.logListener = logListener;
+	}
+
+	public ICompiler getCompiler(String vmLanguage, String languageHomeDir)
+	{
+		ICompiler result = null;
+
+		if (languageHomeDir != null)
+		{
+			try
+			{
+				switch (vmLanguage)
+				{
+				case VM_LANGUAGE_CLOJURE:
+					break;
+				case VM_LANGUAGE_GROOVY:
+					result = new CompilerGroovy(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JAVA:
+					result = new CompilerJava(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JAVASCRIPT:
+					result = new CompilerJavaScript(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JRUBY:
+					result = new CompilerJRuby(languageHomeDir);
+					break;
+				case VM_LANGUAGE_KOTLIN:
+					result = new CompilerKotlin(languageHomeDir);
+					break;
+				case VM_LANGUAGE_SCALA:
+					result = new CompilerScala(languageHomeDir);
+					break;
+				}
+			}
+			catch (FileNotFoundException fnfe)
+			{
+				logListener.handleErrorEntry("Could not find " + vmLanguage + " compiler in '" + languageHomeDir + "'");
+			}
+		}
+
+		return result;
+	}
+
+	public IRuntime getRuntime(String vmLanguage, String languageHomeDir)
+	{
+		IRuntime result = null;
+
+		if (languageHomeDir != null)
+		{
+			try
+			{
+				switch (vmLanguage)
+				{
+				case VM_LANGUAGE_CLOJURE:
+					break;
+				case VM_LANGUAGE_GROOVY:
+					result = new RuntimeGroovy(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JAVA:
+					result = new RuntimeJava(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JAVASCRIPT:
+					result = new RuntimeJavaScript(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JRUBY:
+					result = new RuntimeJRuby(languageHomeDir);
+					break;
+				case VM_LANGUAGE_KOTLIN:
+					result = new RuntimeKotlin(languageHomeDir);
+					break;
+				case VM_LANGUAGE_SCALA:
+					result = new RuntimeScala(languageHomeDir);
+					break;
+				}
+			}
+			catch (FileNotFoundException fnfe)
+			{
+				logListener.handleErrorEntry("Could not find " + vmLanguage + " runtime in '" + languageHomeDir + "'");
+			}
+		}
+
+		return result;
+	}
+
+	public static boolean isCompilable(String language, File sourceFile)
+	{
+		return language.equals(getLanguageFromFile(sourceFile));
+	}
+
+	public static String getFileExtension(File file)
+	{
+		String result = null;
+
+		if (file != null)
+		{
+			String filename = file.getName();
+
+			int lastDotPos = filename.lastIndexOf(C_DOT);
+
+			if (lastDotPos != -1)
+			{
+				result = filename.substring(lastDotPos + 1);
+			}
+		}
+
+		return result;
+	}
+
+	public static String getLanguageFromFile(File sourceFile)
+	{
+		String result = null;
+
+		String fileExtension = getFileExtension(sourceFile);
+
+		if (fileExtension != null)
+		{
+			fileExtension = fileExtension.toLowerCase();
+
+			switch (fileExtension)
+			{
+			case "java":
+				result = VM_LANGUAGE_JAVA;
+				break;
+			case "scala":
+				result = VM_LANGUAGE_SCALA;
+				break;
+			case "rb":
+				result = VM_LANGUAGE_JRUBY;
+				break;
+			case "js":
+				result = VM_LANGUAGE_JAVASCRIPT;
+				break;
+			case "kt":
+				result = VM_LANGUAGE_KOTLIN;
+				break;
+			case "groovy":
+			case "gvy":
+			case "gy":
+				result = VM_LANGUAGE_GROOVY;
+				break;
+			case "clj":
+				result = VM_LANGUAGE_CLOJURE;
+				break;
+			}
+		}
+
+		return result;
+	}
+
+	public static List<String> getKnownFilenameExtensions()
+	{
+		List<String> result = new ArrayList<>();
+
+		result.add("java");
+		result.add("scala");
+		result.add("rb");
+		result.add("js");
+		result.add("kt");
+		result.add("groovy");
+		result.add("gvy");
+		result.add("gy");
+		result.add("clj");
+
+		return result;
+	}
+
+	public static boolean isLanguageEnabled(String vmLanguage)
+	{
+		switch (vmLanguage)
+		{
+		case VM_LANGUAGE_CLOJURE:
+			return false;
+		case VM_LANGUAGE_GROOVY:
+			return true;
+		case VM_LANGUAGE_JAVA:
+			return true;
+		case VM_LANGUAGE_JAVASCRIPT:
+			return true;
+		case VM_LANGUAGE_JRUBY:
+			return false;
+		case VM_LANGUAGE_KOTLIN:
+			return true;
+		case VM_LANGUAGE_SCALA:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+}
+ succeeded in 204ms:
+/*
+ * Copyright (c) 2013-2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.sandbox;
+
+import java.util.Collections;
+import java.util.List;
+
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.scene.control.Button;
+import javafx.scene.layout.FlowPane;
+import javafx.stage.Stage;
+
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+import org.adoptopenjdk.jitwatch.ui.stage.IStageClosedListener;
+import org.adoptopenjdk.jitwatch.ui.stage.StageManager;
+
+public class VMLanguageList extends FlowPane implements IStageClosedListener
+{
+	private JITWatchConfig config;
+
+	private VMLanguageConfigStage openVMLCStage = null;
+	
+	private Stage parent;
+
+	public VMLanguageList(Stage parent, final JITWatchConfig config)
+	{
+		this.config = config;
+		this.parent = parent;
+
+		setVgap(10);
+		setHgap(20);
+
+		setMaxWidth(600);
+
+		setPadding(new Insets(0,0,5,0));
+
+		updateList();
+	}
+
+	@Override
+	public void handleStageClosed(Stage stage)
+	{
+		openVMLCStage = null;
+		updateList();
+	}
+
+	private void updateList()
+	{
+		List<String> vmLanguageList = config.getVMLanguageList();
+
+		Collections.sort(vmLanguageList);
+
+		getChildren().clear();
+
+		for (final String lang : vmLanguageList)
+		{
+			Button button = new Button(lang);
+			button.setPrefWidth(120);
+
+			if (!LanguageManager.isLanguageEnabled(lang))
+			{
+				button.setDisable(true);
+			}
+
+			button.setOnAction(new EventHandler<ActionEvent>()
+			{
+				@Override
+				public void handle(ActionEvent e)
+				{
+					if (openVMLCStage == null)
+					{
+						openVMLCStage = new VMLanguageConfigStage(VMLanguageList.this, config, lang);
+
+						StageManager.addAndShow(parent, openVMLCStage, VMLanguageList.this);
+					}
+				}
+			});
+
+			getChildren().add(button);
+		}
+	}
+}
+codex
+I have the key evidence already: the target has a small number of callers and mostly centralizes language/file-extension helpers rather than sitting at the center of a wide dependency mesh. I’m doing one more pass to make sure there aren’t additional references in tests or other modules that would change the fan-in picture.
+exec
+/bin/bash -lc "rg -n \"LanguageManager\" . --glob '"'!core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java | nl -ba" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 208ms:
+     1	/*
+     2	 * Copyright (c) 2013-2015 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.jvmlang;
+     7	
+     8	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOT;
+     9	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_CLOJURE;
+    10	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_GROOVY;
+    11	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVA;
+    12	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVASCRIPT;
+    13	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JRUBY;
+    14	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_KOTLIN;
+    15	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_SCALA;
+    16	
+    17	import java.io.File;
+    18	import java.io.FileNotFoundException;
+    19	import java.util.ArrayList;
+    20	import java.util.List;
+    21	
+    22	import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+    23	import org.adoptopenjdk.jitwatch.logger.ILogListener;
+    24	import org.adoptopenjdk.jitwatch.process.compiler.CompilerGroovy;
+    25	import org.adoptopenjdk.jitwatch.process.compiler.CompilerJRuby;
+    26	import org.adoptopenjdk.jitwatch.process.compiler.CompilerJava;
+    27	import org.adoptopenjdk.jitwatch.process.compiler.CompilerJavaScript;
+    28	import org.adoptopenjdk.jitwatch.process.compiler.CompilerKotlin;
+    29	import org.adoptopenjdk.jitwatch.process.compiler.CompilerScala;
+    30	import org.adoptopenjdk.jitwatch.process.compiler.ICompiler;
+    31	import org.adoptopenjdk.jitwatch.process.runtime.IRuntime;
+    32	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeGroovy;
+    33	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJRuby;
+    34	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJava;
+    35	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJavaScript;
+    36	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeKotlin;
+    37	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeScala;
+    38	
+    39	public class LanguageManager
+    40	{
+    41		private JITWatchConfig config;
+    42		private ILogListener logListener;
+    43	
+    44		public LanguageManager(JITWatchConfig config, ILogListener logListener)
+    45		{
+    46			this.config = config;
+    47			this.logListener = logListener;
+    48		}
+    49	
+    50		public ICompiler getCompiler(String vmLanguage, String languageHomeDir)
+    51		{
+    52			ICompiler result = null;
+    53	
+    54			if (languageHomeDir != null)
+    55			{
+    56				try
+    57				{
+    58					switch (vmLanguage)
+    59					{
+    60					case VM_LANGUAGE_CLOJURE:
+    61						break;
+    62					case VM_LANGUAGE_GROOVY:
+    63						result = new CompilerGroovy(languageHomeDir);
+    64						break;
+    65					case VM_LANGUAGE_JAVA:
+    66						result = new CompilerJava(languageHomeDir);
+    67						break;
+    68					case VM_LANGUAGE_JAVASCRIPT:
+    69						result = new CompilerJavaScript(languageHomeDir);
+    70						break;
+    71					case VM_LANGUAGE_JRUBY:
+    72						result = new CompilerJRuby(languageHomeDir);
+    73						break;
+    74					case VM_LANGUAGE_KOTLIN:
+    75						result = new CompilerKotlin(languageHomeDir);
+    76						break;
+    77					case VM_LANGUAGE_SCALA:
+    78						result = new CompilerScala(languageHomeDir);
+    79						break;
+    80					}
+    81				}
+    82				catch (FileNotFoundException fnfe)
+    83				{
+    84					logListener.handleErrorEntry("Could not find " + vmLanguage + " compiler in '" + languageHomeDir + "'");
+    85				}
+    86			}
+    87	
+    88			return result;
+    89		}
+    90	
+    91		public IRuntime getRuntime(String vmLanguage, String languageHomeDir)
+    92		{
+    93			IRuntime result = null;
+    94	
+    95			if (languageHomeDir != null)
+    96			{
+    97				try
+    98				{
+    99					switch (vmLanguage)
+   100					{
+   101					case VM_LANGUAGE_CLOJURE:
+   102						break;
+   103					case VM_LANGUAGE_GROOVY:
+   104						result = new RuntimeGroovy(languageHomeDir);
+   105						break;
+   106					case VM_LANGUAGE_JAVA:
+   107						result = new RuntimeJava(languageHomeDir);
+   108						break;
+   109					case VM_LANGUAGE_JAVASCRIPT:
+   110						result = new RuntimeJavaScript(languageHomeDir);
+   111						break;
+   112					case VM_LANGUAGE_JRUBY:
+   113						result = new RuntimeJRuby(languageHomeDir);
+   114						break;
+   115					case VM_LANGUAGE_KOTLIN:
+   116						result = new RuntimeKotlin(languageHomeDir);
+   117						break;
+   118					case VM_LANGUAGE_SCALA:
+   119						result = new RuntimeScala(languageHomeDir);
+   120						break;
+   121					}
+   122				}
+   123				catch (FileNotFoundException fnfe)
+   124				{
+   125					logListener.handleErrorEntry("Could not find " + vmLanguage + " runtime in '" + languageHomeDir + "'");
+   126				}
+   127			}
+   128	
+   129			return result;
+   130		}
+   131	
+   132		public static boolean isCompilable(String language, File sourceFile)
+   133		{
+   134			return language.equals(getLanguageFromFile(sourceFile));
+   135		}
+   136	
+   137		public static String getFileExtension(File file)
+   138		{
+   139			String result = null;
+   140	
+   141			if (file != null)
+   142			{
+   143				String filename = file.getName();
+   144	
+   145				int lastDotPos = filename.lastIndexOf(C_DOT);
+   146	
+   147				if (lastDotPos != -1)
+   148				{
+   149					result = filename.substring(lastDotPos + 1);
+   150				}
+   151			}
+   152	
+   153			return result;
+   154		}
+   155	
+   156		public static String getLanguageFromFile(File sourceFile)
+   157		{
+   158			String result = null;
+   159	
+   160			String fileExtension = getFileExtension(sourceFile);
+   161	
+   162			if (fileExtension != null)
+   163			{
+   164				fileExtension = fileExtension.toLowerCase();
+   165	
+   166				switch (fileExtension)
+   167				{
+   168				case "java":
+   169					result = VM_LANGUAGE_JAVA;
+   170					break;
+   171				case "scala":
+   172					result = VM_LANGUAGE_SCALA;
+   173					break;
+   174				case "rb":
+   175					result = VM_LANGUAGE_JRUBY;
+   176					break;
+   177				case "js":
+   178					result = VM_LANGUAGE_JAVASCRIPT;
+   179					break;
+   180				case "kt":
+   181					result = VM_LANGUAGE_KOTLIN;
+   182					break;
+   183				case "groovy":
+   184				case "gvy":
+   185				case "gy":
+   186					result = VM_LANGUAGE_GROOVY;
+   187					break;
+   188				case "clj":
+   189					result = VM_LANGUAGE_CLOJURE;
+   190					break;
+   191				}
+   192			}
+   193	
+   194			return result;
+   195		}
+   196	
+   197		public static List<String> getKnownFilenameExtensions()
+   198		{
+   199			List<String> result = new ArrayList<>();
+   200	
+   201			result.add("java");
+   202			result.add("scala");
+   203			result.add("rb");
+   204			result.add("js");
+   205			result.add("kt");
+   206			result.add("groovy");
+   207			result.add("gvy");
+   208			result.add("gy");
+   209			result.add("clj");
+   210	
+   211			return result;
+   212		}
+   213	
+   214		public static boolean isLanguageEnabled(String vmLanguage)
+   215		{
+   216			switch (vmLanguage)
+   217			{
+   218			case VM_LANGUAGE_CLOJURE:
+   219				return false;
+   220			case VM_LANGUAGE_GROOVY:
+
+ succeeded in 255ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:28:import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:64:	private LanguageManager languageManager;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java:141:		languageManager = new LanguageManager(logParser.getConfig(), logListener);
+./core/src/main/java/org/adoptopenjdk/jitwatch/loader/ResourceLoader.java:27:import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+./core/src/main/java/org/adoptopenjdk/jitwatch/loader/ResourceLoader.java:61:		List<String> fileExtensions = LanguageManager.getKnownFilenameExtensions();
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/VMLanguageList.java:19:import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/VMLanguageList.java:66:			if (!LanguageManager.isLanguageEnabled(lang))
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxStage.java:33:import org.adoptopenjdk.jitwatch.jvmlang.LanguageManager;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxStage.java:611:						if (LanguageManager.isCompilable(language, sourceFile))
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxStage.java:641:		String language = LanguageManager.getLanguageFromFile(sourceFile);
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.jvmlang.LanguageManager","detection":false,"justification":"Inspected core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java and its callers in core/src/main/java/org/adoptopenjdk/jitwatch/loader/ResourceLoader.java, ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/VMLanguageList.java, ui/src/main/java/org/adoptopenjdk/jitwatch/ui/sandbox/SandboxStage.java, and ui/src/main/java/org/adoptopenjdk/jitwatch/sandbox/Sandbox.java. The class has some fan-out (imports 6 compiler implementations, 6 runtime implementations, plus JITWatchConfig and ILogListener), but fan-in is small: only four classes reference it, and those uses are narrow utility calls (`getKnownFilenameExtensions`, `isLanguageEnabled`, `isCompilable`, `getLanguageFromFile`) or one instantiation in Sandbox. That is not strong enough evidence of a dependency hub."}
+tokens used
+27,107

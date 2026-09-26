@@ -1,0 +1,438 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f36-ac97-77a1-907e-449e4d0f7568
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.android.AndroidClassLoadingStrategy.Wrapping` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.android.AndroidClassLoadingStrategy.Wrapping",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.android.AndroidClassLoadingStrategy.Wrapping`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and reading its direct dependencies first, then I’ll check how widely it is referenced to judge fan-in and fan-out.
+exec
+/bin/bash -lc 'rg -n "class Wrapping|AndroidClassLoadingStrategy" -S byte-buddy-android byte-buddy* .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files | rg 'AndroidClassLoadingStrategy|Wrapping|android'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 242ms:
+byte-buddy-android/README.md:3:**Byte Buddy Android** allows you to generate classes on Android and to load them into the current Android VM process. To load classes on Android, the `AndroidClassLoadingStrategy` must be used when loading a dynamic type:
+byte-buddy-android/README.md:6:ClassLoadingStrategy strategy = new AndroidClassLoadingStrategy.Wrapping(context.getDir(
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:41:public class AndroidClassLoadingStrategyTest {
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:72:        AndroidClassLoadingStrategy.DexProcessor dexProcessor = mock(AndroidClassLoadingStrategy.DexProcessor.class);
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:73:        AndroidClassLoadingStrategy.DexProcessor.Conversion conversion = mock(AndroidClassLoadingStrategy.DexProcessor.Conversion.class);
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:75:        AndroidClassLoadingStrategy classLoadingStrategy = spy(new StubbedClassLoadingStrategy(folder, dexProcessor));
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:97:        new StubbedClassLoadingStrategy(mock(File.class), mock(AndroidClassLoadingStrategy.DexProcessor.class));
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:104:        new StubbedClassLoadingStrategy.Injecting(file, mock(AndroidClassLoadingStrategy.DexProcessor.class))
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:114:        AndroidClassLoadingStrategy classLoadingStrategy = spy(new StubbedClassLoadingStrategy(folder, new StubbedClassLoaderDexCompilation()));
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:122:    private static class StubbedClassLoadingStrategy extends AndroidClassLoadingStrategy {
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:133:    private static class StubbedClassLoaderDexCompilation implements AndroidClassLoadingStrategy.DexProcessor {
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:136:            return new AndroidClassLoadingStrategy.DexProcessor.ForSdkCompiler(new DexOptions(), new CfOptions()).create();
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:72: * implementing the methods of a {@link net.bytebuddy.android.AndroidClassLoadingStrategy.DexProcessor} to
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:80:public abstract class AndroidClassLoadingStrategy implements ClassLoadingStrategy<ClassLoader> {
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:148:    protected AndroidClassLoadingStrategy(File privateDirectory, DexProcessor dexProcessor) {
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:428:             * {@link net.bytebuddy.android.AndroidClassLoadingStrategy.DexProcessor.ForSdkCompiler}.
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:667:    public static class Wrapping extends AndroidClassLoadingStrategy {
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:712:    public static class Injecting extends AndroidClassLoadingStrategy {
+byte-buddy-android/README.md:3:**Byte Buddy Android** allows you to generate classes on Android and to load them into the current Android VM process. To load classes on Android, the `AndroidClassLoadingStrategy` must be used when loading a dynamic type:
+byte-buddy-android/README.md:6:ClassLoadingStrategy strategy = new AndroidClassLoadingStrategy.Wrapping(context.getDir(
+./byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:27:import net.bytebuddy.android.AndroidClassLoadingStrategy;
+./byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:182:        AndroidClassLoadingStrategy make(File file);
+./byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:187:        class Wrapping implements StrategyCreator {
+./byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:190:            public AndroidClassLoadingStrategy make(File file) {
+./byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:191:                return new AndroidClassLoadingStrategy.Wrapping(file);
+./byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:201:            public AndroidClassLoadingStrategy make(File file) {
+./byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:202:                return new AndroidClassLoadingStrategy.Injecting(file);
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:41:public class AndroidClassLoadingStrategyTest {
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:72:        AndroidClassLoadingStrategy.DexProcessor dexProcessor = mock(AndroidClassLoadingStrategy.DexProcessor.class);
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:73:        AndroidClassLoadingStrategy.DexProcessor.Conversion conversion = mock(AndroidClassLoadingStrategy.DexProcessor.Conversion.class);
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:75:        AndroidClassLoadingStrategy classLoadingStrategy = spy(new StubbedClassLoadingStrategy(folder, dexProcessor));
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:97:        new StubbedClassLoadingStrategy(mock(File.class), mock(AndroidClassLoadingStrategy.DexProcessor.class));
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:104:        new StubbedClassLoadingStrategy.Injecting(file, mock(AndroidClassLoadingStrategy.DexProcessor.class))
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:114:        AndroidClassLoadingStrategy classLoadingStrategy = spy(new StubbedClassLoadingStrategy(folder, new StubbedClassLoaderDexCompilation()));
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:122:    private static class StubbedClassLoadingStrategy extends AndroidClassLoadingStrategy {
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:133:    private static class StubbedClassLoaderDexCompilation implements AndroidClassLoadingStrategy.DexProcessor {
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:136:            return new AndroidClassLoadingStrategy.DexProcessor.ForSdkCompiler(new DexOptions(), new CfOptions()).create();
+./release-notes.md:692:- Allow `AndroidClassLoadingStrategy` to work with newer API level.
+./byte-buddy-android/README.md:3:**Byte Buddy Android** allows you to generate classes on Android and to load them into the current Android VM process. To load classes on Android, the `AndroidClassLoadingStrategy` must be used when loading a dynamic type:
+./byte-buddy-android/README.md:6:ClassLoadingStrategy strategy = new AndroidClassLoadingStrategy.Wrapping(context.getDir(
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:72: * implementing the methods of a {@link net.bytebuddy.android.AndroidClassLoadingStrategy.DexProcessor} to
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:80:public abstract class AndroidClassLoadingStrategy implements ClassLoadingStrategy<ClassLoader> {
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:148:    protected AndroidClassLoadingStrategy(File privateDirectory, DexProcessor dexProcessor) {
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:428:             * {@link net.bytebuddy.android.AndroidClassLoadingStrategy.DexProcessor.ForSdkCompiler}.
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:667:    public static class Wrapping extends AndroidClassLoadingStrategy {
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:712:    public static class Injecting extends AndroidClassLoadingStrategy {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1325:                protected class WrappingArgumentProvider implements ArgumentProvider {
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:41:public class AndroidClassLoadingStrategyTest {
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:72:        AndroidClassLoadingStrategy.DexProcessor dexProcessor = mock(AndroidClassLoadingStrategy.DexProcessor.class);
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:73:        AndroidClassLoadingStrategy.DexProcessor.Conversion conversion = mock(AndroidClassLoadingStrategy.DexProcessor.Conversion.class);
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:75:        AndroidClassLoadingStrategy classLoadingStrategy = spy(new StubbedClassLoadingStrategy(folder, dexProcessor));
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:97:        new StubbedClassLoadingStrategy(mock(File.class), mock(AndroidClassLoadingStrategy.DexProcessor.class));
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:104:        new StubbedClassLoadingStrategy.Injecting(file, mock(AndroidClassLoadingStrategy.DexProcessor.class))
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:114:        AndroidClassLoadingStrategy classLoadingStrategy = spy(new StubbedClassLoadingStrategy(folder, new StubbedClassLoaderDexCompilation()));
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:122:    private static class StubbedClassLoadingStrategy extends AndroidClassLoadingStrategy {
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:133:    private static class StubbedClassLoaderDexCompilation implements AndroidClassLoadingStrategy.DexProcessor {
+./byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java:136:            return new AndroidClassLoadingStrategy.DexProcessor.ForSdkCompiler(new DexOptions(), new CfOptions()).create();
+./byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:72: * implementing the methods of a {@link net.bytebuddy.android.AndroidClassLoadingStrategy.DexProcessor} to
+./byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:80:public abstract class AndroidClassLoadingStrategy implements ClassLoadingStrategy<ClassLoader> {
+./byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:148:    protected AndroidClassLoadingStrategy(File privateDirectory, DexProcessor dexProcessor) {
+./byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:428:             * {@link net.bytebuddy.android.AndroidClassLoadingStrategy.DexProcessor.ForSdkCompiler}.
+./byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:667:    public static class Wrapping extends AndroidClassLoadingStrategy {
+./byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java:712:    public static class Injecting extends AndroidClassLoadingStrategy {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java:292:        protected static class WrappingDispatcher implements ClassLoadingStrategy.Configurable<ClassLoader> {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1325:                protected class WrappingArgumentProvider implements ArgumentProvider {
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:27:import net.bytebuddy.android.AndroidClassLoadingStrategy;
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:182:        AndroidClassLoadingStrategy make(File file);
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:187:        class Wrapping implements StrategyCreator {
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:190:            public AndroidClassLoadingStrategy make(File file) {
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:191:                return new AndroidClassLoadingStrategy.Wrapping(file);
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:201:            public AndroidClassLoadingStrategy make(File file) {
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:202:                return new AndroidClassLoadingStrategy.Injecting(file);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java:292:        protected static class WrappingDispatcher implements ClassLoadingStrategy.Configurable<ClassLoader> {
+
+ succeeded in 237ms:
+byte-buddy-android-test/pom.xml
+byte-buddy-android-test/AndroidManifest.xml
+byte-buddy-android-test/res/layout/main.xml
+byte-buddy-android-test/res/drawable/icon.png
+byte-buddy-android-test/res/values/strings.xml
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/package-info.java
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java
+byte-buddy-android-test/src/main/resources/maven.properties
+byte-buddy-gradle-plugin/android-plugin-test/gradlew
+byte-buddy-gradle-plugin/android-plugin-test/gradle.properties
+byte-buddy-gradle-plugin/android-plugin-test/bytebuddy.gradle
+byte-buddy-gradle-plugin/android-plugin-test/service-definition-lib/build.gradle
+byte-buddy-gradle-plugin/android-plugin-test/service-definition-lib/src/main/java/module-info.java
+byte-buddy-gradle-plugin/android-plugin-test/service-definition-lib/src/main/java/com/service/definition/ServiceDefinition.java
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/build.gradle
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/java/module-info.java
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/java/com/service/usage/ServiceImplementation.java
+byte-buddy-gradle-plugin/android-plugin-test/gradlew.bat
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-target/build.gradle
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-target/src/main/AndroidManifest.xml
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-target/src/main/java/net/bytebuddy/android/test/aar/lib/SomeAarClass.java
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-target/src/main/java/net/bytebuddy/android/test/aar/lib/package-info.java
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/resources/NOTICE.txt
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-target/src/main/java/net/bytebuddy/android/test/aar/lib/service/TargetServiceImplementation.java
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/resources/META-INF/services/com.service.definition.ServiceDefinition
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/resources/NOTICE
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/resources/LICENSE
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation-lib/src/main/resources/LICENSE.txt
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-target/src/main/resources/META-INF/services/com.service.definition.ServiceDefinition
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/build.gradle
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/java/module-info.java
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/java/com/service/usage2/ServiceImplementation.java
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/resources/NOTICE.txt
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/resources/META-INF/services/com.service.definition.ServiceDefinition
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/resources/NOTICE
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/resources/LICENSE
+byte-buddy-gradle-plugin/android-plugin-test/service-implementation2-lib/src/main/resources/LICENSE.txt
+byte-buddy-gradle-plugin/android-plugin-test/README.md
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/build.gradle
+byte-buddy-android/README.md
+byte-buddy-android/pom.xml
+byte-buddy-gradle-plugin/android-plugin/build.gradle
+byte-buddy-gradle-plugin/android-plugin/README.md
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyLocalClassesEnhancerTask.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/PluginArgument.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/Transformation.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAsmClassVisitorFactory.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/LegacyByteBuddyLocalClassesEnhancerTask.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/Discovery.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidTaskExtension.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidService.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/package-info.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyInstrumentationParameters.java
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/PluginForLibClass.java
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/PluginForLocalClass.java
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/package-info.java
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/AdviceForLocalClass.java
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/jar/AdviceForLibClass.java
+byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java
+byte-buddy-android/src/main/java/net/bytebuddy/android/package-info.java
+byte-buddy-gradle-plugin/android-plugin-test/jar-bytebuddy-plugin/src/main/resources/META-INF/net.bytebuddy/build.plugins
+byte-buddy-gradle-plugin/android-plugin-test/build.gradle
+byte-buddy-gradle-plugin/android-plugin-test/settings.gradle
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/build.gradle
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/AndroidManifest.xml
+byte-buddy-android/src/test/java/net/bytebuddy/android/AndroidClassLoadingStrategyTest.java
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/aar/AarAdvice.java
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/aar/AarPlugin.java
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/java/net/bytebuddy/plugin/gradle/test/aar/package-info.java
+byte-buddy-gradle-plugin/android-plugin-test/aar-bytebuddy-plugin/src/main/resources/META-INF/net.bytebuddy/build.plugins
+byte-buddy-gradle-plugin/android-plugin-test/app/build.gradle
+byte-buddy-gradle-plugin/android-plugin-test/app/src/main/AndroidManifest.xml
+byte-buddy-gradle-plugin/android-plugin-test/app/src/main/java/net/bytebuddy/android/test/AnotherClass.java
+byte-buddy-gradle-plugin/android-plugin-test/app/src/main/java/net/bytebuddy/android/test/SomeClass.java
+byte-buddy-gradle-plugin/android-plugin-test/app/src/main/java/net/bytebuddy/android/test/package-info.java
+byte-buddy-gradle-plugin/android-plugin-test/app/src/androidTest/java/net/bytebuddy/android/test/ByteBuddyInstrumentedTest.java
+
+codex
+I found the source file and the obvious call sites. Next I’m checking the class body and the exact number of internal references so the verdict is based on concrete fan-in and fan-out, not guesswork.
+exec
+/bin/bash -lc "sed -n '640,720p' byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"new AndroidClassLoadingStrategy\\.Wrapping\\(|AndroidClassLoadingStrategy\\.Wrapping\\b\" -S ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc 'rg -n "class Wrapping extends AndroidClassLoadingStrategy|class Injecting extends AndroidClassLoadingStrategy|privateDirectory|dexProcessor" byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 219ms:
+                                    dexCompilerOptions,
+                                    dexFileOptions,
+                                    dexFile);
+                        } catch (IllegalAccessException exception) {
+                            throw new IllegalStateException("Cannot access an Android dex file translation method", exception);
+                        } catch (InstantiationException exception) {
+                            throw new IllegalStateException("Cannot instantiate dex context", exception);
+                        } catch (InvocationTargetException exception) {
+                            throw new IllegalStateException("Cannot invoke Android dex file translation method", exception.getTargetException());
+                        }
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void setTargetApi(DexOptions dexOptions, int targetApiLevel) {
+                        /* do nothing */
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * An Android class loading strategy that creates a wrapper class loader that loads any type.
+     */
+    @TargetApi(Build.VERSION_CODES.CUPCAKE)
+    public static class Wrapping extends AndroidClassLoadingStrategy {
+
+        /**
+         * Creates a new wrapping class loading strategy for Android that uses the default SDK-compiler based dex processor.
+         *
+         * @param privateDirectory A directory that is <b>not shared with other applications</b> to be used for storing
+         *                         generated classes and their processed forms.
+         */
+        public Wrapping(File privateDirectory) {
+            this(privateDirectory, DexProcessor.ForSdkCompiler.makeDefault());
+        }
+
+        /**
+         * Creates a new wrapping class loading strategy for Android.
+         *
+         * @param privateDirectory A directory that is <b>not shared with other applications</b> to be used for storing
+         *                         generated classes and their processed forms.
+         * @param dexProcessor     The dex processor to be used for creating a dex file out of Java files.
+         */
+        public Wrapping(File privateDirectory, DexProcessor dexProcessor) {
+            super(privateDirectory, dexProcessor);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @SuppressFBWarnings(value = "DP_CREATE_CLASSLOADER_INSIDE_DO_PRIVILEGED", justification = "Android discourages the use of access controllers")
+        protected Map<TypeDescription, Class<?>> doLoad(@MaybeNull ClassLoader classLoader, Set<TypeDescription> typeDescriptions, File jar) {
+            ClassLoader dexClassLoader = new DexClassLoader(jar.getAbsolutePath(), privateDirectory.getAbsolutePath(), EMPTY_LIBRARY_PATH, classLoader);
+            Map<TypeDescription, Class<?>> loadedTypes = new HashMap<TypeDescription, Class<?>>();
+            for (TypeDescription typeDescription : typeDescriptions) {
+                try {
+                    loadedTypes.put(typeDescription, Class.forName(typeDescription.getName(), false, dexClassLoader));
+                } catch (ClassNotFoundException exception) {
+                    throw new IllegalStateException("Cannot load " + typeDescription, exception);
+                }
+            }
+            return loadedTypes;
+        }
+    }
+
+    /**
+     * An Android class loading strategy that injects types into the target class loader.
+     */
+    @TargetApi(Build.VERSION_CODES.CUPCAKE)
+    public static class Injecting extends AndroidClassLoadingStrategy {
+
+        /**
+         * The dispatcher to use for loading a dex file.
+         */
+        private static final Dispatcher DISPATCHER;
+
+        /*
+         * Creates a dispatcher to use for loading a dex file.
+
+ succeeded in 241ms:
+127:    private final DexProcessor dexProcessor;
+133:    protected final File privateDirectory;
+144:     * @param privateDirectory A directory that is <b>not shared with other applications</b> to be used for storing
+146:     * @param dexProcessor     The dex processor to be used for creating a dex file out of Java files.
+148:    protected AndroidClassLoadingStrategy(File privateDirectory, DexProcessor dexProcessor) {
+149:        if (!privateDirectory.isDirectory()) {
+150:            throw new IllegalArgumentException("Not a directory " + privateDirectory);
+152:        this.privateDirectory = privateDirectory;
+153:        this.dexProcessor = dexProcessor;
+161:        DexProcessor.Conversion conversion = dexProcessor.create();
+165:        File jar = new File(privateDirectory, randomString.nextString() + JAR_FILE_EXTENSION);
+667:    public static class Wrapping extends AndroidClassLoadingStrategy {
+672:         * @param privateDirectory A directory that is <b>not shared with other applications</b> to be used for storing
+675:        public Wrapping(File privateDirectory) {
+676:            this(privateDirectory, DexProcessor.ForSdkCompiler.makeDefault());
+682:         * @param privateDirectory A directory that is <b>not shared with other applications</b> to be used for storing
+684:         * @param dexProcessor     The dex processor to be used for creating a dex file out of Java files.
+686:        public Wrapping(File privateDirectory, DexProcessor dexProcessor) {
+687:            super(privateDirectory, dexProcessor);
+695:            ClassLoader dexClassLoader = new DexClassLoader(jar.getAbsolutePath(), privateDirectory.getAbsolutePath(), EMPTY_LIBRARY_PATH, classLoader);
+712:    public static class Injecting extends AndroidClassLoadingStrategy {
+735:         * @param privateDirectory A directory that is <b>not shared with other applications</b> to be used for storing
+738:        public Injecting(File privateDirectory) {
+739:            this(privateDirectory, DexProcessor.ForSdkCompiler.makeDefault());
+745:         * @param privateDirectory A directory that is <b>not shared with other applications</b> to be used for storing
+747:         * @param dexProcessor     The dex processor to be used for creating a dex file out of Java files.
+749:        public Injecting(File privateDirectory, DexProcessor dexProcessor) {
+750:            super(privateDirectory, dexProcessor);
+767:            dalvik.system.DexFile dexFile = DISPATCHER.loadDex(privateDirectory, jar, classLoader, randomString);
+795:             * @param privateDirectory The private directory to use if required.
+803:            dalvik.system.DexFile loadDex(File privateDirectory, File jar, @MaybeNull ClassLoader classLoader, RandomString randomString) throws IOException;
+840:                public dalvik.system.DexFile loadDex(File privateDirectory,
+845:                            new File(privateDirectory.getAbsolutePath(), randomString.nextString() + EXTENSION).getAbsolutePath(),
+887:                public dalvik.system.DexFile loadDex(File privateDirectory,
+
+ succeeded in 267ms:
+./byte-buddy-android/README.md:6:ClassLoadingStrategy strategy = new AndroidClassLoadingStrategy.Wrapping(context.getDir(
+./byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:191:                return new AndroidClassLoadingStrategy.Wrapping(file);
+
+codex
+The evidence is leaning strongly away from a hub smell: the nested class is small, and the repository only instantiates it in one test app plus one README example. I’m doing one last pass for any hidden references before I finalize the verdict.
+exec
+/bin/bash -lc "rg -n \"AndroidClassLoadingStrategy\\.Wrapping\" -S byte-buddy-android byte-buddy-android-test byte-buddy-gradle-plugin byte-buddy-dep" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,120p' byte-buddy-android/README.md" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '170,210p' byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 163ms:
+# Byte Buddy Android
+
+**Byte Buddy Android** allows you to generate classes on Android and to load them into the current Android VM process. To load classes on Android, the `AndroidClassLoadingStrategy` must be used when loading a dynamic type:
+
+```java
+ClassLoadingStrategy strategy = new AndroidClassLoadingStrategy.Wrapping(context.getDir(
+  "generated", 
+  Context.MODE_PRIVATE));
+
+Class<?> dynamicType = new ByteBuddy()
+  .subclass(Object.class)
+  .method(ElementMatchers.named("toString"))
+  .intercept(FixedValue.value("Hello World!"))
+  .make()
+  .load(getClass().getClassLoader(), strategy)
+  .getLoaded();
+assertThat(dynamicType.newInstance().toString(), is("Hello World!"))
+```
+
+Using the strategy requires Android with support for API version 21 or later. A wrapping and an injecting class loading strategy is offered, similar to Byte Buddy's standard strategies. On Android, it is not possible to transform loaded classes or to register a Java agent.
+
+ succeeded in 222ms:
+
+    /**
+     * A strategy creator for Android.
+     */
+    private interface StrategyCreator {
+
+        /**
+         * Creates an Android class loading strategy.
+         *
+         * @param file The private folder to use.
+         * @return The class loading strategy to use.
+         */
+        AndroidClassLoadingStrategy make(File file);
+
+        /**
+         * A creator for creating a wrapping strategy.
+         */
+        class Wrapping implements StrategyCreator {
+
+            @Override
+            public AndroidClassLoadingStrategy make(File file) {
+                return new AndroidClassLoadingStrategy.Wrapping(file);
+            }
+        }
+
+        /**
+         * A creator for creating an injecting strategy.
+         */
+        class Injecting implements StrategyCreator {
+
+            @Override
+            public AndroidClassLoadingStrategy make(File file) {
+                return new AndroidClassLoadingStrategy.Injecting(file);
+            }
+        }
+    }
+}
+
+
+ succeeded in 410ms:
+byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java:191:                return new AndroidClassLoadingStrategy.Wrapping(file);
+byte-buddy-android/README.md:6:ClassLoadingStrategy strategy = new AndroidClassLoadingStrategy.Wrapping(context.getDir(
+
+codex
+{"target":"net.bytebuddy.android.AndroidClassLoadingStrategy.Wrapping","detection":false,"justification":"In `byte-buddy-android/src/main/java/net/bytebuddy/android/AndroidClassLoadingStrategy.java`, `Wrapping` is a small nested class with only two constructors and one `doLoad` override; its outgoing dependencies are limited to the superclass, `DexProcessor.ForSdkCompiler.makeDefault()`, `DexClassLoader`, `HashMap`, and `Class.forName`. Repo-wide search found only two instantiations of `AndroidClassLoadingStrategy.Wrapping`, in `byte-buddy-android/README.md` and `byte-buddy-android-test/src/main/java/net/bytebuddy/android/test/TestActivity.java`, so its fan-in is low and it does not behave like a dependency hub."}
+tokens used
+15,719

@@ -1,0 +1,370 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ee8-1967-7471-a1a5-eb6f1ac53b6f
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.jsoup.examples.ListLinks` in the repository located at:
+
+`data/repositories/jhy/jsoup`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.jsoup.examples.ListLinks",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.jsoup.examples.ListLinks`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `org.jsoup.examples.ListLinks` and checking its inbound and outbound dependencies in the source tree, then I’ll decide whether the class really acts as a dependency hub.
+exec
+/bin/bash -lc "rg --files . | rg \"ListLinks\\.java|org/jsoup/examples|examples\"" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+./src/main/java/org/jsoup/examples/Wikipedia.java
+./src/main/java/org/jsoup/examples/HtmlToPlainText.java
+./src/main/java/org/jsoup/examples/ListLinks.java
+./src/main/java/org/jsoup/examples/package-info.java
+
+exec
+/bin/bash -lc "rg -n \"class ListLinks|package org\\.jsoup\\.examples\" -S ." in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+./src/main/java/org/jsoup/examples/Wikipedia.java:1:package org.jsoup.examples;
+./src/main/java/org/jsoup/examples/package-info.java:6:package org.jsoup.examples;
+./src/main/java/org/jsoup/examples/HtmlToPlainText.java:1:package org.jsoup.examples;
+./src/main/java/org/jsoup/examples/ListLinks.java:1:package org.jsoup.examples;
+./src/main/java/org/jsoup/examples/ListLinks.java:18:public class ListLinks {
+
+codex
+I found the target class. Next I’m checking its imports, internal calls, and how widely other code references it so I can judge fan-out and fan-in from the repository itself.
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/jsoup/examples/ListLinks.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+package org.jsoup.examples;
+
+import org.jsoup.Jsoup;
+import org.jsoup.helper.Validate;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import java.io.IOException;
+
+/**
+ Example program to list links from a URL.
+ <p>To invoke from the command line, assuming you've downloaded the jsoup-examples
+ jar to your current directory:</p>
+ <p><code>java -cp jsoup-examples.jar org.jsoup.examples.ListLinks url</code></p>
+ where <i>url</i> is the URL to fetch.
+ */
+public class ListLinks {
+    public static void main(String[] args) throws IOException {
+        Validate.isTrue(args.length == 1, "usage: supply url to fetch");
+        String url = args[0];
+        print("Fetching %s...", url);
+
+        Document doc = Jsoup.connect(url).get();
+        Elements links = doc.select("a[href]");
+        Elements media = doc.select("[src]");
+        Elements imports = doc.select("link[href]");
+
+        print("\nMedia: (%d)", media.size());
+        for (Element src : media) {
+            if (src.nameIs("img"))
+                print(" * %s: <%s> %sx%s (%s)",
+                        src.tagName(), src.attr("abs:src"), src.attr("width"), src.attr("height"),
+                        trim(src.attr("alt"), 20));
+            else
+                print(" * %s: <%s>", src.tagName(), src.attr("abs:src"));
+        }
+
+        print("\nImports: (%d)", imports.size());
+        for (Element link : imports) {
+            print(" * %s <%s> (%s)", link.tagName(),link.attr("abs:href"), link.attr("rel"));
+        }
+
+        print("\nLinks: (%d)", links.size());
+        for (Element link : links) {
+            print(" * a: <%s>  (%s)", link.attr("abs:href"), trim(link.text(), 35));
+        }
+    }
+
+    private static void print(String msg, Object... args) {
+        System.out.println(String.format(msg, args));
+    }
+
+    private static String trim(String s, int width) {
+        if (s.length() > width)
+            return s.substring(0, width-1) + ".";
+        else
+            return s;
+    }
+}
+
+exec
+/bin/bash -lc "rg -n \"\\bListLinks\\b\" src test ." in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ exited 2 in 0ms:
+rg: test: No such file or directory (os error 2)
+./src/main/java/org/jsoup/examples/ListLinks.java:15: <p><code>java -cp jsoup-examples.jar org.jsoup.examples.ListLinks url</code></p>
+./src/main/java/org/jsoup/examples/ListLinks.java:18:public class ListLinks {
+src/main/java/org/jsoup/examples/ListLinks.java:15: <p><code>java -cp jsoup-examples.jar org.jsoup.examples.ListLinks url</code></p>
+src/main/java/org/jsoup/examples/ListLinks.java:18:public class ListLinks {
+
+codex
+The reference search is already pointing toward a standalone example: I only see `ListLinks` mentioned in its own source. I’m checking the neighboring example package files once to confirm this isn’t part of a broader internal dependency chain.
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/jsoup/examples/HtmlToPlainText.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+package org.jsoup.examples;
+
+import org.jsoup.Connection;
+import org.jsoup.Jsoup;
+import org.jsoup.internal.StringUtil;
+import org.jsoup.helper.Validate;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.select.Elements;
+import org.jsoup.select.NodeVisitor;
+
+import java.io.IOException;
+import java.util.HashSet;
+
+/**
+ HTML to plain-text. This example program demonstrates the use of jsoup to convert HTML input to lightly-formatted
+ plain-text. That is divergent from the general goal of jsoup's .text() methods, which is to get clean data from a
+ scrape.
+ <p>
+ Note that this is a fairly simplistic formatter -- for real world use you'll want to embrace and extend.
+ </p>
+ <p>
+ To invoke from the command line, assuming you've downloaded the jsoup-examples jar to your current directory:</p>
+ <p><code>java -jar jsoup-examples.jar url [selector]</code></p>
+ where <i>url</i> is the URL to fetch, and <i>selector</i> is an optional CSS selector.
+*/
+public class HtmlToPlainText {
+    private static final String userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 (jsoup-example)";
+    private static final int timeout = 5 * 1000;
+
+    public static void main(String... args) throws IOException {
+        Validate.isTrue(args.length == 1 || args.length == 2, "usage: java -jar jsoup-examples.jar url [selector]");
+        final String url = args[0];
+        final String selector = args.length == 2 ? args[1] : null;
+
+        // fetch the specified URL and parse to a HTML DOM:
+        Connection session = Jsoup.newSession() // .newSession creates a session to maintain settings and cookies across multiple requests
+            .userAgent(userAgent)
+            .timeout(timeout);
+        Document doc = session.newRequest(url).get(); // .get executes a GET request, and parses the result
+
+        if (selector != null) {
+            Elements elements = doc.select(selector); // get each element that matches the CSS selector
+            elements = trimParents(elements); // trim out elements that descend from a previously seen element
+            for (Element element : elements) {
+                String plainText = getPlainText(element); // format that element to plain text
+                System.out.println(plainText);
+            }
+        } else { // format the whole doc
+            String plainText = getPlainText(doc);
+            System.out.println(plainText);
+        }
+    }
+
+    /**
+     * Format an Element to plain-text
+     * @param element the root element to format
+     * @return formatted text
+     */
+    static String getPlainText(Element element) {
+        FormattingVisitor formatter = new FormattingVisitor();
+        formatter.traverse(element); // walk the DOM, and call .head() and .tail() for each node
+
+        return formatter.toString();
+    }
+
+    // the formatting rules, implemented in a breadth-first DOM traverse
+    private static class FormattingVisitor implements NodeVisitor {
+        private static final int maxWidth = 80;
+        private int width = 0;
+        private StringBuilder accum = new StringBuilder(); // holds the accumulated text
+
+        // hit when the node is first seen
+        @Override
+        public void head(Node node, int depth) {
+            String name = node.nodeName();
+            if (node instanceof TextNode)
+                append(((TextNode) node).text()); // TextNodes carry all user-readable text in the DOM.
+            else if (name.equals("li"))
+                append("\n * ");
+            else if (name.equals("dt"))
+                append("  ");
+            else if (StringUtil.in(name, "p", "h1", "h2", "h3", "h4", "h5", "tr"))
+                append("\n");
+        }
+
+        // hit when all of the node's children (if any) have been visited
+        @Override
+        public void tail(Node node, int depth) {
+            String name = node.nodeName();
+            if (StringUtil.in(name, "br", "dd", "dt", "p", "h1", "h2", "h3", "h4", "h5"))
+                append("\n");
+            else if (name.equals("a"))
+                append(String.format(" <%s>", node.absUrl("href")));
+        }
+
+        // appends text to the string builder with a simple word wrap method
+        private void append(String text) {
+            if (text.startsWith("\n"))
+                width = 0; // reset counter if starts with a newline. only from formats above, not in natural text
+            if (text.equals(" ") &&
+                    (accum.length() == 0 || StringUtil.in(accum.substring(accum.length() - 1), " ", "\n")))
+                return; // don't accumulate long runs of empty spaces
+
+            if (text.length() + width > maxWidth) { // won't fit, needs to wrap
+                String[] words = text.split("\\s+");
+                for (int i = 0; i < words.length; i++) {
+                    String word = words[i];
+                    boolean last = i == words.length - 1;
+                    if (!last) // insert a space if not the last word
+                        word = word + " ";
+                    if (word.length() + width > maxWidth) { // wrap and reset counter
+                        accum.append("\n").append(word);
+                        width = word.length();
+                    } else {
+                        accum.append(word);
+                        width += word.length();
+                    }
+                }
+            } else { // fits as is, without need to wrap text
+                accum.append(text);
+                width += text.length();
+            }
+        }
+
+        @Override
+        public String toString() {
+            return accum.toString();
+        }
+    }
+
+    static Elements trimParents(final Elements elements) {
+        // removes elements from the list if their parent / ancestor is already in the list; prevents redundant output for selectors that match nested elements
+        HashSet<Element> seen = new HashSet<>(elements.size());
+        Elements trimmed = new Elements();
+
+        EACH: for (Element el: elements) {
+            Element current = el;
+            while (current.parent() != null) {
+                if (seen.contains(current.parent())) {
+                    continue EACH;
+                }
+                current = current.parent();
+            }
+            seen.add(el);
+            trimmed.add(el);
+        }
+
+        return trimmed;
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,160p' src/main/java/org/jsoup/examples/package-info.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+/**
+ Contains example programs and use of jsoup. See the <a href="https://jsoup.org/cookbook/">jsoup cookbook</a>.
+ <p>The code in this package is not available in the main `jsoup.jar` file; only in the `jsoup-examples.jar`, and has no
+ API contract. To use these examples your own project, you should copy the source code and modify as desired.</p>
+ */
+package org.jsoup.examples;
+
+exec
+/bin/bash -lc "sed -n '1,200p' src/main/java/org/jsoup/examples/Wikipedia.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+package org.jsoup.examples;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import java.io.IOException;
+
+/**
+ * A simple example, used on the jsoup website.
+ <p>To invoke from the command line, assuming you've downloaded the jsoup-examples
+ jar to your current directory:</p>
+ <p><code>java -cp jsoup-examples.jar org.jsoup.examples.Wikipedia url</code></p>
+ */
+public class Wikipedia {
+    public static void main(String[] args) throws IOException {
+        Document doc = Jsoup.connect("https://en.wikipedia.org/").get();
+        log(doc.title());
+
+        Elements newsHeadlines = doc.select("#mp-itn b a");
+        for (Element headline : newsHeadlines) {
+            log("%s\n\t%s", headline.attr("title"), headline.absUrl("href"));
+        }
+    }
+
+    private static void log(String msg, String... vals) {
+        System.out.println(String.format(msg, (Object[]) vals));
+    }
+}
+
+codex
+{"target":"org.jsoup.examples.ListLinks","detection":false,"justification":"Inspected `src/main/java/org/jsoup/examples/ListLinks.java`, `src/main/java/org/jsoup/examples/package-info.java`, and searched the tree with `rg -n \"\\bListLinks\\b\" src .`. `ListLinks` has limited fan-out: one `main` method, two private helpers, and only five library imports (`Jsoup`, `Validate`, `Document`, `Element`, `Elements`) plus `IOException`. Fan-in is essentially absent: the only matches for `ListLinks` are the class declaration and its own Javadoc usage example; no other source file references it. This does not show the high incoming/outgoing dependency pattern required for hub-like modularization."}
+tokens used
+9,208

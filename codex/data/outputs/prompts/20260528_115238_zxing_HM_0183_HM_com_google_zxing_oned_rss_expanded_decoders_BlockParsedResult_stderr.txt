@@ -1,0 +1,638 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f12-bc9c-7a01-9d2e-94a2c7c09f71
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.zxing.oned.rss.expanded.decoders.BlockParsedResult` in the repository located at:
+
+`data/repositories/zxing/zxing`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.zxing.oned.rss.expanded.decoders.BlockParsedResult",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.zxing.oned.rss.expanded.decoders.BlockParsedResult`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing who uses it and what it depends on, then I’ll decide whether its dependency profile fits hub-like modularization.
+exec
+/bin/bash -lc "rg --files . | rg \"BlockParsedResult\\.java"'$|ExpandedPair'"\\.java"'$|DecodedInformation'"\\.java"'$|DecoderResult'"\\.java"'$"' in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+./core/src/main/java/com/google/zxing/oned/rss/expanded/ExpandedPair.java
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/DecodedInformation.java
+./core/src/main/java/com/google/zxing/common/DecoderResult.java
+
+exec
+/bin/bash -lc "rg -n \"class BlockParsedResult|new BlockParsedResult|BlockParsedResult\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java:33:final class BlockParsedResult {
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java:38:  BlockParsedResult() {
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java:42:  BlockParsedResult(DecodedInformation information, boolean finished) {
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:137:    BlockParsedResult result;
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:161:  private BlockParsedResult parseNumericBlock() throws FormatException {
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:173:        return new BlockParsedResult(information, true);
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:179:        return new BlockParsedResult(information, true);
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:188:    return new BlockParsedResult();
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:191:  private BlockParsedResult parseIsoIec646Block() throws FormatException {
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:198:        return new BlockParsedResult(information, true);
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:215:    return new BlockParsedResult();
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:218:  private BlockParsedResult parseAlphaBlock() {
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:225:        return new BlockParsedResult(information, true); //end of the char block
+./core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:243:    return new BlockParsedResult();
+
+codex
+I found the class and the only obvious call site. Next I’m checking the class body and nearby decoder code to measure its actual fan-in and fan-out rather than guessing from the name.
+exec
+/bin/bash -lc "sed -n '1,320p' core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2010 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * These authors would like to acknowledge the Spanish Ministry of Industry,
+ * Tourism and Trade, for the support in the project TSI020301-2008-2
+ * "PIRAmIDE: Personalizable Interactions with Resources on AmI-enabled
+ * Mobile Dynamic Environments", led by Treelogic
+ * ( http://www.treelogic.com/ ):
+ *
+ *   http://www.piramidepse.com/
+ */
+
+package com.google.zxing.oned.rss.expanded.decoders;
+
+import com.google.zxing.FormatException;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.common.BitArray;
+
+/**
+ * @author Pablo Orduña, University of Deusto (pablo.orduna@deusto.es)
+ * @author Eduardo Castillejo, University of Deusto (eduardo.castillejo@deusto.es)
+ */
+final class GeneralAppIdDecoder {
+
+  private final BitArray information;
+  private final CurrentParsingState current = new CurrentParsingState();
+  private final StringBuilder buffer = new StringBuilder();
+
+  GeneralAppIdDecoder(BitArray information) {
+    this.information = information;
+  }
+
+  String decodeAllCodes(StringBuilder buff, int initialPosition) throws NotFoundException, FormatException {
+    int currentPosition = initialPosition;
+    String remaining = null;
+    do {
+      DecodedInformation info = this.decodeGeneralPurposeField(currentPosition, remaining);
+      String parsedFields = FieldParser.parseFieldsInGeneralPurpose(info.getNewString());
+      if (parsedFields != null) {
+        buff.append(parsedFields);
+      }
+      if (info.isRemaining()) {
+        remaining = String.valueOf(info.getRemainingValue());
+      } else {
+        remaining = null;
+      }
+
+      if (currentPosition == info.getNewPosition()) { // No step forward!
+        break;
+      }
+      currentPosition = info.getNewPosition();
+    } while (true);
+
+    return buff.toString();
+  }
+
+  private boolean isStillNumeric(int pos) {
+    // It's numeric if it still has 7 positions
+    // and one of the first 4 bits is "1".
+    if (pos + 7 > this.information.getSize()) {
+      return pos + 4 <= this.information.getSize();
+    }
+
+    for (int i = pos; i < pos + 3; ++i) {
+      if (this.information.get(i)) {
+        return true;
+      }
+    }
+
+    return this.information.get(pos + 3);
+  }
+
+  private DecodedNumeric decodeNumeric(int pos) throws FormatException {
+    if (pos + 7 > this.information.getSize()) {
+      int numeric = extractNumericValueFromBitArray(pos, 4);
+      if (numeric == 0) {
+        return new DecodedNumeric(this.information.getSize(), DecodedNumeric.FNC1, DecodedNumeric.FNC1);
+      }
+      return new DecodedNumeric(this.information.getSize(), numeric - 1, DecodedNumeric.FNC1);
+    }
+    int numeric = extractNumericValueFromBitArray(pos, 7);
+
+    int digit1  = (numeric - 8) / 11;
+    int digit2  = (numeric - 8) % 11;
+
+    return new DecodedNumeric(pos + 7, digit1, digit2);
+  }
+
+  int extractNumericValueFromBitArray(int pos, int bits) {
+    return extractNumericValueFromBitArray(this.information, pos, bits);
+  }
+
+  static int extractNumericValueFromBitArray(BitArray information, int pos, int bits) {
+    int value = 0;
+    for (int i = 0; i < bits; ++i) {
+      if (information.get(pos + i)) {
+        value |= 1 << (bits - i - 1);
+      }
+    }
+
+    return value;
+  }
+
+  DecodedInformation decodeGeneralPurposeField(int pos, String remaining) throws FormatException {
+    this.buffer.setLength(0);
+
+    if (remaining != null) {
+      this.buffer.append(remaining);
+    }
+
+    this.current.setPosition(pos);
+
+    DecodedInformation lastDecoded = parseBlocks();
+    if (lastDecoded != null && lastDecoded.isRemaining()) {
+      return new DecodedInformation(this.current.getPosition(),
+        this.buffer.toString(), lastDecoded.getRemainingValue());
+    }
+    return new DecodedInformation(this.current.getPosition(), this.buffer.toString());
+  }
+
+  private DecodedInformation parseBlocks() throws FormatException {
+    boolean isFinished;
+    BlockParsedResult result;
+    do {
+      int initialPosition = current.getPosition();
+
+      if (current.isAlpha()) {
+        result = parseAlphaBlock();
+        isFinished = result.isFinished();
+      } else if (current.isIsoIec646()) {
+        result = parseIsoIec646Block();
+        isFinished = result.isFinished();
+      } else { // it must be numeric
+        result = parseNumericBlock();
+        isFinished = result.isFinished();
+      }
+
+      boolean positionChanged = initialPosition != current.getPosition();
+      if (!positionChanged && !isFinished) {
+        break;
+      }
+    } while (!isFinished);
+
+    return result.getDecodedInformation();
+  }
+
+  private BlockParsedResult parseNumericBlock() throws FormatException {
+    while (isStillNumeric(current.getPosition())) {
+      DecodedNumeric numeric = decodeNumeric(current.getPosition());
+      current.setPosition(numeric.getNewPosition());
+
+      if (numeric.isFirstDigitFNC1()) {
+        DecodedInformation information;
+        if (numeric.isSecondDigitFNC1()) {
+          information = new DecodedInformation(current.getPosition(), buffer.toString());
+        } else {
+          information = new DecodedInformation(current.getPosition(), buffer.toString(), numeric.getSecondDigit());
+        }
+        return new BlockParsedResult(information, true);
+      }
+      buffer.append(numeric.getFirstDigit());
+
+      if (numeric.isSecondDigitFNC1()) {
+        DecodedInformation information = new DecodedInformation(current.getPosition(), buffer.toString());
+        return new BlockParsedResult(information, true);
+      }
+      buffer.append(numeric.getSecondDigit());
+    }
+
+    if (isNumericToAlphaNumericLatch(current.getPosition())) {
+      current.setAlpha();
+      current.incrementPosition(4);
+    }
+    return new BlockParsedResult();
+  }
+
+  private BlockParsedResult parseIsoIec646Block() throws FormatException {
+    while (isStillIsoIec646(current.getPosition())) {
+      DecodedChar iso = decodeIsoIec646(current.getPosition());
+      current.setPosition(iso.getNewPosition());
+
+      if (iso.isFNC1()) {
+        DecodedInformation information = new DecodedInformation(current.getPosition(), buffer.toString());
+        return new BlockParsedResult(information, true);
+      }
+      buffer.append(iso.getValue());
+    }
+
+    if (isAlphaOr646ToNumericLatch(current.getPosition())) {
+      current.incrementPosition(3);
+      current.setNumeric();
+    } else if (isAlphaTo646ToAlphaLatch(current.getPosition())) {
+      if (current.getPosition() + 5 < this.information.getSize()) {
+        current.incrementPosition(5);
+      } else {
+        current.setPosition(this.information.getSize());
+      }
+
+      current.setAlpha();
+    }
+    return new BlockParsedResult();
+  }
+
+  private BlockParsedResult parseAlphaBlock() {
+    while (isStillAlpha(current.getPosition())) {
+      DecodedChar alpha = decodeAlphanumeric(current.getPosition());
+      current.setPosition(alpha.getNewPosition());
+
+      if (alpha.isFNC1()) {
+        DecodedInformation information = new DecodedInformation(current.getPosition(), buffer.toString());
+        return new BlockParsedResult(information, true); //end of the char block
+      }
+
+      buffer.append(alpha.getValue());
+    }
+
+    if (isAlphaOr646ToNumericLatch(current.getPosition())) {
+      current.incrementPosition(3);
+      current.setNumeric();
+    } else if (isAlphaTo646ToAlphaLatch(current.getPosition())) {
+      if (current.getPosition() + 5 < this.information.getSize()) {
+        current.incrementPosition(5);
+      } else {
+        current.setPosition(this.information.getSize());
+      }
+
+      current.setIsoIec646();
+    }
+    return new BlockParsedResult();
+  }
+
+  private boolean isStillIsoIec646(int pos) {
+    if (pos + 5 > this.information.getSize()) {
+      return false;
+    }
+
+    int fiveBitValue = extractNumericValueFromBitArray(pos, 5);
+    if (fiveBitValue >= 5 && fiveBitValue < 16) {
+      return true;
+    }
+
+    if (pos + 7 > this.information.getSize()) {
+      return false;
+    }
+
+    int sevenBitValue = extractNumericValueFromBitArray(pos, 7);
+    if (sevenBitValue >= 64 && sevenBitValue < 116) {
+      return true;
+    }
+
+    if (pos + 8 > this.information.getSize()) {
+      return false;
+    }
+
+    int eightBitValue = extractNumericValueFromBitArray(pos, 8);
+    return eightBitValue >= 232 && eightBitValue < 253;
+
+  }
+
+  private DecodedChar decodeIsoIec646(int pos) throws FormatException {
+    int fiveBitValue = extractNumericValueFromBitArray(pos, 5);
+    if (fiveBitValue == 15) {
+      return new DecodedChar(pos + 5, DecodedChar.FNC1);
+    }
+
+    if (fiveBitValue >= 5 && fiveBitValue < 15) {
+      return new DecodedChar(pos + 5, (char) ('0' + fiveBitValue - 5));
+    }
+
+    int sevenBitValue = extractNumericValueFromBitArray(pos, 7);
+
+    if (sevenBitValue >= 64 && sevenBitValue < 90) {
+      return new DecodedChar(pos + 7, (char) (sevenBitValue + 1));
+    }
+
+    if (sevenBitValue >= 90 && sevenBitValue < 116) {
+      return new DecodedChar(pos + 7, (char) (sevenBitValue + 7));
+    }
+
+    int eightBitValue = extractNumericValueFromBitArray(pos, 8);
+    char c;
+    switch (eightBitValue) {
+      case 232:
+        c = '!';
+        break;
+      case 233:
+        c = '"';
+        break;
+      case 234:
+        c = '%';
+        break;
+      case 235:
+        c = '&';
+        break;
+      case 236:
+        c = '\'';
+        break;
+      case 237:
+        c = '(';
+        break;
+      case 238:
+        c = ')';
+        break;
+      case 239:
+        c = '*';
+        break;
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2010 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * These authors would like to acknowledge the Spanish Ministry of Industry,
+ * Tourism and Trade, for the support in the project TSI020301-2008-2
+ * "PIRAmIDE: Personalizable Interactions with Resources on AmI-enabled
+ * Mobile Dynamic Environments", led by Treelogic
+ * ( http://www.treelogic.com/ ):
+ *
+ *   http://www.piramidepse.com/
+ */
+
+package com.google.zxing.oned.rss.expanded.decoders;
+
+/**
+ * @author Pablo Orduña, University of Deusto (pablo.orduna@deusto.es)
+ * @author Eduardo Castillejo, University of Deusto (eduardo.castillejo@deusto.es)
+ */
+final class BlockParsedResult {
+
+  private final DecodedInformation decodedInformation;
+  private final boolean finished;
+
+  BlockParsedResult() {
+    this(null, false);
+  }
+
+  BlockParsedResult(DecodedInformation information, boolean finished) {
+    this.finished = finished;
+    this.decodedInformation = information;
+  }
+
+  DecodedInformation getDecodedInformation() {
+    return this.decodedInformation;
+  }
+
+  boolean isFinished() {
+    return this.finished;
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/DecodedInformation.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2010 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * These authors would like to acknowledge the Spanish Ministry of Industry,
+ * Tourism and Trade, for the support in the project TSI020301-2008-2
+ * "PIRAmIDE: Personalizable Interactions with Resources on AmI-enabled
+ * Mobile Dynamic Environments", led by Treelogic
+ * ( http://www.treelogic.com/ ):
+ *
+ *   http://www.piramidepse.com/
+ */
+
+package com.google.zxing.oned.rss.expanded.decoders;
+
+/**
+ * @author Pablo Orduña, University of Deusto (pablo.orduna@deusto.es)
+ * @author Eduardo Castillejo, University of Deusto (eduardo.castillejo@deusto.es)
+ */
+final class DecodedInformation extends DecodedObject {
+
+  private final String newString;
+  private final int remainingValue;
+  private final boolean remaining;
+
+  DecodedInformation(int newPosition, String newString) {
+    super(newPosition);
+    this.newString = newString;
+    this.remaining = false;
+    this.remainingValue = 0;
+  }
+
+  DecodedInformation(int newPosition, String newString, int remainingValue) {
+    super(newPosition);
+    this.remaining = true;
+    this.remainingValue = remainingValue;
+    this.newString = newString;
+  }
+
+  String getNewString() {
+    return this.newString;
+  }
+
+  boolean isRemaining() {
+    return this.remaining;
+  }
+
+  int getRemainingValue() {
+    return this.remainingValue;
+  }
+}
+
+codex
+The class is tiny, so the key question is fan-in. I’m confirming whether it is referenced anywhere beyond `GeneralAppIdDecoder` and whether it depends on more than one collaborator.
+exec
+/bin/bash -lc "rg -n \"new DecodedInformation\\(|getDecodedInformation\\(|isFinished\\(\" core/src/main/java/com/google/zxing/oned/rss/expanded/decoders" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/DecodedObject.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2010 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * These authors would like to acknowledge the Spanish Ministry of Industry,
+ * Tourism and Trade, for the support in the project TSI020301-2008-2
+ * "PIRAmIDE: Personalizable Interactions with Resources on AmI-enabled
+ * Mobile Dynamic Environments", led by Treelogic
+ * ( http://www.treelogic.com/ ):
+ *
+ *   http://www.piramidepse.com/
+ */
+
+package com.google.zxing.oned.rss.expanded.decoders;
+
+/**
+ * @author Pablo Orduña, University of Deusto (pablo.orduna@deusto.es)
+ */
+abstract class DecodedObject {
+
+  private final int newPosition;
+
+  DecodedObject(int newPosition) {
+    this.newPosition = newPosition;
+  }
+
+  final int getNewPosition() {
+    return this.newPosition;
+  }
+
+}
+
+ succeeded in 0ms:
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java:47:  DecodedInformation getDecodedInformation() {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java:51:  boolean isFinished() {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:129:      return new DecodedInformation(this.current.getPosition(),
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:132:    return new DecodedInformation(this.current.getPosition(), this.buffer.toString());
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:143:        isFinished = result.isFinished();
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:146:        isFinished = result.isFinished();
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:149:        isFinished = result.isFinished();
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:158:    return result.getDecodedInformation();
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:169:          information = new DecodedInformation(current.getPosition(), buffer.toString());
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:171:          information = new DecodedInformation(current.getPosition(), buffer.toString(), numeric.getSecondDigit());
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:178:        DecodedInformation information = new DecodedInformation(current.getPosition(), buffer.toString());
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:197:        DecodedInformation information = new DecodedInformation(current.getPosition(), buffer.toString());
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:224:        DecodedInformation information = new DecodedInformation(current.getPosition(), buffer.toString());
+
+exec
+/bin/bash -lc "rg -n \"\\bBlockParsedResult\\b\" core/src/main/java core/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java:33:final class BlockParsedResult {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java:38:  BlockParsedResult() {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java:42:  BlockParsedResult(DecodedInformation information, boolean finished) {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:137:    BlockParsedResult result;
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:161:  private BlockParsedResult parseNumericBlock() throws FormatException {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:173:        return new BlockParsedResult(information, true);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:179:        return new BlockParsedResult(information, true);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:188:    return new BlockParsedResult();
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:191:  private BlockParsedResult parseIsoIec646Block() throws FormatException {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:198:        return new BlockParsedResult(information, true);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:215:    return new BlockParsedResult();
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:218:  private BlockParsedResult parseAlphaBlock() {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:225:        return new BlockParsedResult(information, true); //end of the char block
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:243:    return new BlockParsedResult();
+
+codex
+{"target":"com.google.zxing.oned.rss.expanded.decoders.BlockParsedResult","detection":false,"justification":"Inspected core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/BlockParsedResult.java, GeneralAppIdDecoder.java, DecodedInformation.java, and DecodedObject.java, plus a repo-wide rg search for BlockParsedResult. The target class is a tiny package-private holder with only one real dependency (DecodedInformation) and two accessors. The search shows only GeneralAppIdDecoder references it, with all constructions/usages confined to that one class and no test or other production fan-in. This is low fan-in/low fan-out, not hub-like modularization."}
+tokens used
+7,928

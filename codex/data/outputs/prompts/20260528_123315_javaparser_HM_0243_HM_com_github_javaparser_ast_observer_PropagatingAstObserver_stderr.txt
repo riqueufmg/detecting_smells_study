@@ -1,0 +1,847 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f37-f6d2-71f2-9840-117db6dbf421
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.ast.observer.PropagatingAstObserver` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.ast.observer.PropagatingAstObserver",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.ast.observer.PropagatingAstObserver`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct callers and dependencies so I can judge fan-in and fan-out from source evidence only.
+exec
+/bin/bash -lc 'rg -n "class PropagatingAstObserver|PropagatingAstObserver" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg --files | rg "PropagatingAstObserver|AstObserver|observer"' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 271ms:
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/observer/PropagatingAstObserverTest.java:36:class PropagatingAstObserverTest {
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/observer/PropagatingAstObserverTest.java:42:        AstObserver observer = new PropagatingAstObserver() {
+./javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:41:import com.github.javaparser.ast.observer.PropagatingAstObserver;
+./javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:139:    private static class Observer extends PropagatingAstObserver {
+./javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:43:import com.github.javaparser.ast.observer.PropagatingAstObserver;
+./javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:709:                registerForSubtree(PropagatingAstObserver.transformInPropagatingObserver(observer));
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:29:public abstract class PropagatingAstObserver implements AstObserver {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:32:     * Wrap a given observer to make it self-propagating. If the given observer is an instance of PropagatingAstObserver
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:35:    public static PropagatingAstObserver transformInPropagatingObserver(final AstObserver observer) {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:36:        if (observer instanceof PropagatingAstObserver) {
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:37:            return (PropagatingAstObserver) observer;
+./javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:39:        return new PropagatingAstObserver() {
+
+ succeeded in 417ms:
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserverAdapter.java
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/Observable.java
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserver.java
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/ObservableProperty.java
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/observer/PropagatingAstObserverTest.java
+
+codex
+I found the class and the main production references. Next I’m reading the implementation plus the caller set to see whether this is a central dependency hub or just a small adapter used in a couple of places.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.ast.observer;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
+
+/**
+ * This AstObserver attach itself to all new nodes added to the nodes already observed.
+ */
+public abstract class PropagatingAstObserver implements AstObserver {
+
+    /**
+     * Wrap a given observer to make it self-propagating. If the given observer is an instance of PropagatingAstObserver
+     * the observer is returned without changes.
+     */
+    public static PropagatingAstObserver transformInPropagatingObserver(final AstObserver observer) {
+        if (observer instanceof PropagatingAstObserver) {
+            return (PropagatingAstObserver) observer;
+        }
+        return new PropagatingAstObserver() {
+
+            @Override
+            public void concretePropertyChange(
+                    Node observedNode, ObservableProperty property, Object oldValue, Object newValue) {
+                observer.propertyChange(observedNode, property, oldValue, newValue);
+            }
+
+            @Override
+            public void concreteListChange(
+                    NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+                observer.listChange(observedNode, type, index, nodeAddedOrRemoved);
+            }
+
+            @Override
+            public void parentChange(Node observedNode, Node previousParent, Node newParent) {
+                observer.parentChange(observedNode, previousParent, newParent);
+            }
+        };
+    }
+
+    @Override
+    public final void propertyChange(Node observedNode, ObservableProperty property, Object oldValue, Object newValue) {
+        considerRemoving(oldValue);
+        considerAdding(newValue);
+        concretePropertyChange(observedNode, property, oldValue, newValue);
+    }
+
+    @Override
+    public final void listChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+        if (type == ListChangeType.REMOVAL) {
+            considerRemoving(nodeAddedOrRemoved);
+        } else if (type == ListChangeType.ADDITION) {
+            considerAdding(nodeAddedOrRemoved);
+        }
+        concreteListChange(observedNode, type, index, nodeAddedOrRemoved);
+    }
+
+    @Override
+    public void listReplacement(NodeList<?> observedNode, int index, Node oldNode, Node newNode) {
+        if (oldNode == newNode) {
+            return;
+        }
+        considerRemoving(oldNode);
+        considerAdding(newNode);
+        concreteListReplacement(observedNode, index, oldNode, newNode);
+    }
+
+    public void concretePropertyChange(
+            Node observedNode, ObservableProperty property, Object oldValue, Object newValue) {
+        // do nothing
+    }
+
+    public void concreteListChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+        // do nothing
+    }
+
+    public void concreteListReplacement(NodeList<?> observedNode, int index, Node oldValue, Node newValue) {
+        // do nothing
+    }
+
+    @Override
+    public void parentChange(Node observedNode, Node previousParent, Node newParent) {
+        // do nothing
+    }
+
+    private void considerRemoving(Object element) {
+        if (element instanceof Observable) {
+            if (((Observable) element).isRegistered(this)) {
+                ((Observable) element).unregister(this);
+            }
+        }
+    }
+
+    private void considerAdding(Object element) {
+        if (element instanceof Node) {
+            ((Node) element).registerForSubtree(this);
+        } else if (element instanceof Observable) {
+            ((Observable) element).register(this);
+        }
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '680,760p' javaparser-core/src/main/java/com/github/javaparser/ast/Node.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core-testing/src/test/java/com/github/javaparser/ast/observer/PropagatingAstObserverTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,240p' javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 151ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.ast.observer;
+
+import static com.github.javaparser.StaticJavaParser.parse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.body.FieldDeclaration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+class PropagatingAstObserverTest {
+    @Test
+    void verifyPropagation() {
+        String code = "class A {  }";
+        CompilationUnit cu = parse(code);
+        List<String> changes = new ArrayList<>();
+        AstObserver observer = new PropagatingAstObserver() {
+            @Override
+            public void concretePropertyChange(
+                    Node observedNode, ObservableProperty property, Object oldValue, Object newValue) {
+                changes.add(String.format(
+                        "%s.%s changed from %s to %s",
+                        observedNode.getClass().getSimpleName(), property.name().toLowerCase(), oldValue, newValue));
+            }
+        };
+        cu.registerForSubtree(observer);
+
+        assertEquals(Arrays.asList(), changes);
+
+        FieldDeclaration fieldDeclaration = cu.getClassByName("A").get().addField("String", "foo");
+        assertEquals(Arrays.asList(), changes);
+        assertTrue(fieldDeclaration.isRegistered(observer));
+
+        cu.getClassByName("A")
+                .get()
+                .getFieldByName("foo")
+                .get()
+                .getVariables()
+                .get(0)
+                .setName("Bar");
+        assertEquals(Arrays.asList("VariableDeclarator.name changed from foo to Bar"), changes);
+    }
+}
+
+ succeeded in 134ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.printer.lexicalpreservation;
+
+import static com.github.javaparser.GeneratedJavaParserConstants.*;
+import static com.github.javaparser.TokenTypes.eolTokenKind;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+import static com.github.javaparser.utils.Utils.decapitalize;
+import static java.util.Comparator.comparing;
+import static java.util.stream.Collectors.toList;
+
+import com.github.javaparser.JavaToken;
+import com.github.javaparser.Range;
+import com.github.javaparser.ast.DataKey;
+import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
+import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.ast.comments.*;
+import com.github.javaparser.ast.nodeTypes.NodeWithVariables;
+import com.github.javaparser.ast.observer.AstObserver;
+import com.github.javaparser.ast.observer.ObservableProperty;
+import com.github.javaparser.ast.observer.PropagatingAstObserver;
+import com.github.javaparser.ast.type.PrimitiveType;
+import com.github.javaparser.ast.visitor.TreeVisitor;
+import com.github.javaparser.printer.ConcreteSyntaxModel;
+import com.github.javaparser.printer.Printer;
+import com.github.javaparser.printer.concretesyntaxmodel.*;
+import com.github.javaparser.printer.lexicalpreservation.LexicalDifferenceCalculator.CsmChild;
+import com.github.javaparser.utils.LineSeparator;
+import com.github.javaparser.utils.Pair;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.util.*;
+
+/**
+ * The LexicalPreservingPrinter is responsible for maintaining the original formatting
+ * and layout of Java source code when the Abstract Syntax Tree (AST) is modified.
+ *
+ * This printer works by:
+ * 1. Storing the original textual representation alongside the AST nodes
+ * 2. Tracking changes made to the AST through a sophisticated change tracking system
+ * 3. Applying only the necessary modifications while preserving unchanged portions
+ * 4. Maintaining original spacing, comments, and formatting wherever possible
+ *
+ * The lexical preservation is essential for code refactoring tools that need to
+ * modify code while maintaining its original style and readability.
+ *
+ * Usage Pattern:
+ * 1. Setup lexical preservation on a CompilationUnit before making changes
+ * 2. Modify the AST as needed
+ * 3. Use this printer to generate the modified source code with preserved formatting
+ */
+public class LexicalPreservingPrinter {
+
+    private static String JAVA_UTIL_OPTIONAL = Optional.class.getCanonicalName();
+
+    private static String JAVAPARSER_AST_NODELIST = NodeList.class.getCanonicalName();
+
+    /**
+     * Observer tracks changes made to AST nodes.
+     * The observer is responsible for detecting modifications to specific types
+     * of nodes and updating the lexical preservation data accordingly.
+     */
+    private static AstObserver observer;
+
+    /**
+     * The nodetext for a node is stored in the node's data field. This is the key to set and retrieve it.
+     */
+    public static final DataKey<NodeText> NODE_TEXT_DATA = new DataKey<NodeText>() {};
+
+    private static final LexicalDifferenceCalculator LEXICAL_DIFFERENCE_CALCULATOR = new LexicalDifferenceCalculator();
+
+    //
+    // Factory methods
+    //
+    /**
+     * Initializes lexical preservation for the given CompilationUnit.
+     * This method must be called before making any modifications to the AST
+     * if you want to preserve the original formatting.
+     *
+     * The setup process involves:
+     * 1. Parsing the original source code into tokens
+     * 2. Creating NodeText representations for each AST node
+     * 3. Establishing relationships between tokens and nodes
+     * 4. Setting up change observers to track future modifications
+     *
+     * @param cu The CompilationUnit to setup for lexical preservation
+     * @return The same CompilationUnit with lexical preservation enabled
+     */
+    public static <N extends Node> N setup(N node) {
+        assertNotNull(node);
+        if (observer == null) {
+            observer = createObserver();
+        }
+        node.getTokenRange().ifPresent(r -> {
+            storeInitialText(node);
+            // Setup observer
+            if (!node.isRegistered(observer)) {
+                node.registerForSubtree(observer);
+            }
+        });
+        return node;
+    }
+
+    /*
+     * Returns true if the lexical preserving printer is initialized on the node
+     */
+    public static boolean isAvailableOn(Node node) {
+        return node.containsData(NODE_TEXT_DATA);
+    }
+
+    //
+    // Constructor and setup
+    //
+    private static AstObserver createObserver() {
+        return new LexicalPreservingPrinter.Observer();
+    }
+
+    private static class Observer extends PropagatingAstObserver {
+
+        @Override
+        public void concretePropertyChange(
+                Node observedNode, ObservableProperty property, Object oldValue, Object newValue) {
+            if (oldValue == newValue) {
+                // Not really a change, ignore
+                return;
+            }
+            if (property == ObservableProperty.RANGE || property == ObservableProperty.COMMENTED_NODE) {
+                return;
+            }
+            if (property == ObservableProperty.COMMENT) {
+                Optional<Node> parentNode = observedNode.getParentNode();
+                NodeText nodeText = parentNode
+                        .map(parent -> getOrCreateNodeText(parentNode.get()))
+                        .orElseGet(() -> getOrCreateNodeText(observedNode));
+                if (oldValue == null) {
+                    // this case corresponds to the addition of a comment
+                    // Find the position of the comment node and put in front of it the [...]
+                    int index = parentNode.isPresent() ? nodeText.findChild(observedNode) : 0;
+                    /* Add the same indentation to the comment as the previous node
+                     * for example if we want to add a comment on the body of the method declaration :
+                     * Actual code
+                     * {@code
+                     * public class Foo {
+                     *   void visit(final UnknownType n, final Void arg)
+                     *   {
+                     *   }
+                     * }
+                     * }
+                     * Expected result
+                     * {@code
+                     * public class Foo {
+                     *   void visit(final UnknownType n, final Void arg)
+                     *   //added comment <-- we should insert indentation before the comment
+                     *   {
+                     *   }
+                     * }
+                     * }
+                     */
+                    fixIndentOfAddedNode(nodeText, index - 1);
+                    LineSeparator lineSeparator = observedNode.getLineEndingStyleOrDefault(LineSeparator.SYSTEM);
+                    for (TokenTextElement element : makeCommentTokens((Comment) newValue)) {
+                        nodeText.addElement(index++, element);
+                    }
+                    nodeText.addToken(index, eolTokenKind(lineSeparator), lineSeparator.asRawString());
+                    // code indentation after inserting an eol token may be wrong
+                } else if (newValue == null) {
+                    // this case corresponds to a deletion of a comment
+                    if (oldValue instanceof Comment) {
+                        if (((Comment) oldValue).isOrphan()) {
+                            nodeText = getOrCreateNodeText(observedNode);
+                        }
+                        Pair<Integer, Integer> indexAndCount =
+                                getIndexAndCountOfCommentTokens((Comment) oldValue, nodeText);
+                        int index = indexAndCount.a;
+                        for (int i = 0; i < indexAndCount.b; i++) {
+                            nodeText.removeElement(index);
+                        }
+                        if (isCompleteLine(nodeText.getElements(), index)) {
+                            removeAllExtraCharacters(nodeText.getElements(), index);
+                        } else {
+                            removeAllExtraCharactersStartingFrom(
+                                    nodeText.getElements().listIterator(index));
+                        }
+                    } else {
+                        throw new UnsupportedOperationException("Trying to remove something that is not a comment!");
+                    }
+                } else {
+                    // this is a replacement of a comment
+                    List<TokenTextElement> matchingTokens =
+                            findTokenTextElementForComment((Comment) oldValue, nodeText);
+                    if ((oldValue instanceof MarkdownComment && matchingTokens.isEmpty())
+                            || (!(oldValue instanceof MarkdownComment) && matchingTokens.size() != 1)) {
+                        throw new IllegalStateException("The matching comment to be replaced could not be found");
+                    }
+                    Comment newComment = (Comment) newValue;
+                    TokenTextElement firstMatchingElement = matchingTokens.get(0);
+                    int index = nodeText.findElement(firstMatchingElement.and(firstMatchingElement.matchByRange()));
+                    // When replacing a MarkdownComment, all matching tokens must be removed before adding new ones
+                    for (int i = 0; i < matchingTokens.size(); i++) {
+                        nodeText.removeElement(index);
+                    }
+                    for (TokenTextElement newElement : makeCommentTokens(newComment)) {
+                        nodeText.addElement(index++, newElement);
+                    }
+                }
+            }
+            NodeText nodeText = getOrCreateNodeText(observedNode);
+            if (nodeText == null) {
+                throw new NullPointerException(observedNode.getClass().getSimpleName());
+            }
+            LEXICAL_DIFFERENCE_CALCULATOR.calculatePropertyChange(nodeText, observedNode, property, oldValue, newValue);
+        }
+
+        private boolean isCompleteLine(List<TextElement> elements, int index) {
+            if (index <= 0 || index >= elements.size()) return false;
+            boolean isCompleteLine = true;
+            ListIterator<TextElement> iterator = elements.listIterator(index);
+            // verify if elements after the index are only spaces or tabs
+            while (iterator.hasNext()) {
+
+ succeeded in 299ms:
+        this.observers.remove(observer);
+        this.observers.trimToSize();
+    }
+
+    @Override
+    public void register(AstObserver observer) {
+        // Check if the observer is not registered yet.
+        // In this case we use a List instead of Set to save on memory space.
+        if (!this.observers.contains(observer)) {
+            this.observers.add(observer);
+        }
+    }
+
+    /**
+     * Register a new observer for the given node. Depending on the mode specified also descendants, existing
+     * and new, could be observed. For more details see <i>ObserverRegistrationMode</i>.
+     */
+    public void register(AstObserver observer, ObserverRegistrationMode mode) {
+        if (mode == null) {
+            throw new IllegalArgumentException("Mode should be not null");
+        }
+        switch (mode) {
+            case JUST_THIS_NODE:
+                register(observer);
+                break;
+            case THIS_NODE_AND_EXISTING_DESCENDANTS:
+                registerForSubtree(observer);
+                break;
+            case SELF_PROPAGATING:
+                registerForSubtree(PropagatingAstObserver.transformInPropagatingObserver(observer));
+                break;
+            default:
+                throw new UnsupportedOperationException("This mode is not supported: " + mode);
+        }
+    }
+
+    /**
+     * Register the observer for the current node and all the contained node and nodelists, recursively.
+     */
+    public void registerForSubtree(AstObserver observer) {
+        register(observer);
+        this.getChildNodes().forEach(c -> c.registerForSubtree(observer));
+        for (PropertyMetaModel property : getMetaModel().getAllPropertyMetaModels()) {
+            if (property.isNodeList()) {
+                NodeList<?> nodeList = (NodeList<?>) property.getValue(this);
+                if (nodeList != null) nodeList.register(observer);
+            }
+        }
+    }
+
+    @Override
+    public boolean isRegistered(AstObserver observer) {
+        return this.observers.contains(observer);
+    }
+
+    @Generated("com.github.javaparser.generator.core.node.RemoveMethodGenerator")
+    public boolean remove(Node node) {
+        if (node == null) {
+            return false;
+        }
+        if (comment != null) {
+            if (node == comment) {
+                removeComment();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Generated("com.github.javaparser.generator.core.node.RemoveMethodGenerator")
+    public Node removeComment() {
+        return setComment((Comment) null);
+    }
+
+    @Override
+    @Generated("com.github.javaparser.generator.core.node.CloneGenerator")
+    public Node clone() {
+        return (Node) accept(new CloneVisitor(), null);
+    }
+
+    /**
+
+codex
+I have the implementation now. I’m checking the full repository usage count and related observer classes to verify whether the class is actually central or just a specialized wrapper with a few touchpoints.
+exec
+/bin/bash -lc 'rg -n "PropagatingAstObserver" javaparser-core javaparser-core-testing -S' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserver.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserverAdapter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/ast/observer/Observable.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.ast.observer;
+
+/**
+ * Observable element.
+ */
+public interface Observable {
+
+    /**
+     * Register an observer.
+     */
+    void register(AstObserver observer);
+
+    /**
+     * Unregister an observer. If the given observer was not registered there are no effects.
+     */
+    void unregister(AstObserver observer);
+
+    /**
+     * Was this observer registered?
+     * Note that equals is used to determine if the given observer was registered.
+     */
+    boolean isRegistered(AstObserver observer);
+}
+
+ succeeded in 129ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.ast.observer;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
+
+/**
+ * An Observer for an AST element (either a Node or a NodeList).
+ */
+public interface AstObserver {
+
+    /**
+     * Type of change occurring on a List
+     */
+    enum ListChangeType {
+        ADDITION,
+        REMOVAL
+    }
+
+    /**
+     * The value of a property is changed
+     *
+     * @param observedNode owner of the property
+     * @param property property changed
+     * @param oldValue value of the property before the change
+     * @param newValue value of the property after the change
+     */
+    void propertyChange(Node observedNode, ObservableProperty property, Object oldValue, Object newValue);
+
+    /**
+     * The parent of a node is changed
+     *
+     * @param observedNode node of which the parent is changed
+     * @param previousParent previous parent
+     * @param newParent new parent
+     */
+    void parentChange(Node observedNode, Node previousParent, Node newParent);
+
+    /**
+     * A list is changed
+     *
+     * @param observedNode list changed
+     * @param type type of change
+     * @param index position at which the changed occurred
+     * @param nodeAddedOrRemoved element added or removed
+     */
+    void listChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved);
+
+    void listReplacement(NodeList<?> observedNode, int index, Node oldNode, Node newNode);
+}
+
+ succeeded in 114ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.ast.observer;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
+
+public abstract class AstObserverAdapter implements AstObserver {
+
+    @Override
+    public void propertyChange(Node observedNode, ObservableProperty property, Object oldValue, Object newValue) {
+        // do nothing
+    }
+
+    @Override
+    public void parentChange(Node observedNode, Node previousParent, Node newParent) {
+        // do nothing
+    }
+
+    @Override
+    public void listChange(NodeList<?> observedNode, ListChangeType type, int index, Node nodeAddedOrRemoved) {
+        // do nothing
+    }
+
+    @Override
+    public void listReplacement(NodeList<?> observedNode, int index, Node oldNode, Node newNode) {
+        // do nothing
+    }
+}
+
+ succeeded in 203ms:
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/observer/PropagatingAstObserverTest.java:36:class PropagatingAstObserverTest {
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/observer/PropagatingAstObserverTest.java:42:        AstObserver observer = new PropagatingAstObserver() {
+javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:41:import com.github.javaparser.ast.observer.PropagatingAstObserver;
+javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:139:    private static class Observer extends PropagatingAstObserver {
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:43:import com.github.javaparser.ast.observer.PropagatingAstObserver;
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:709:                registerForSubtree(PropagatingAstObserver.transformInPropagatingObserver(observer));
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:29:public abstract class PropagatingAstObserver implements AstObserver {
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:32:     * Wrap a given observer to make it self-propagating. If the given observer is an instance of PropagatingAstObserver
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:35:    public static PropagatingAstObserver transformInPropagatingObserver(final AstObserver observer) {
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:36:        if (observer instanceof PropagatingAstObserver) {
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:37:            return (PropagatingAstObserver) observer;
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:39:        return new PropagatingAstObserver() {
+
+codex
+The usage picture is still small. I’m verifying whether there are additional subclasses or registrations elsewhere, because hub-like modularization would need much broader fan-in than what I’ve seen so far.
+exec
+/bin/bash -lc "rg -n \"extends PropagatingAstObserver|new PropagatingAstObserver\\(|transformInPropagatingObserver\\(\" javaparser-core javaparser-core-testing -S" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"registerForSubtree\\(|register\\(observer, ObserverRegistrationMode\\.SELF_PROPAGATING\\)|SELF_PROPAGATING\" javaparser-core -S" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "class .*Observer|interface .*Observer" javaparser-core/src/main/java/com/github/javaparser/ast/observer -S' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 294ms:
+javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:139:    private static class Observer extends PropagatingAstObserver {
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:709:                registerForSubtree(PropagatingAstObserver.transformInPropagatingObserver(observer));
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/observer/PropagatingAstObserverTest.java:42:        AstObserver observer = new PropagatingAstObserver() {
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:35:    public static PropagatingAstObserver transformInPropagatingObserver(final AstObserver observer) {
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:39:        return new PropagatingAstObserver() {
+
+ succeeded in 323ms:
+javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java:119:                node.registerForSubtree(observer);
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:115:            ((Node) element).registerForSubtree(this);
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:145:        SELF_PROPAGATING
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:706:                registerForSubtree(observer);
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:708:            case SELF_PROPAGATING:
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:709:                registerForSubtree(PropagatingAstObserver.transformInPropagatingObserver(observer));
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:719:    public void registerForSubtree(AstObserver observer) {
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:721:        this.getChildNodes().forEach(c -> c.registerForSubtree(observer));
+
+ succeeded in 314ms:
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserverAdapter.java:26:public abstract class AstObserverAdapter implements AstObserver {
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/AstObserver.java:29:public interface AstObserver {
+javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java:29:public abstract class PropagatingAstObserver implements AstObserver {
+
+codex
+{"target":"com.github.javaparser.ast.observer.PropagatingAstObserver","detection":false,"justification":"Inspected `javaparser-core/src/main/java/com/github/javaparser/ast/observer/PropagatingAstObserver.java`, `javaparser-core/src/main/java/com/github/javaparser/ast/Node.java`, `javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinter.java`, and `javaparser-core-testing/src/test/java/com/github/javaparser/ast/observer/PropagatingAstObserverTest.java`. The class has limited fan-out: it directly depends only on `AstObserver`, `Node`, `NodeList`, and `ObservableProperty`, and its behavior is mostly a small wrapper plus subtree propagation helpers. Fan-in is also small: in production it is referenced only by `Node.register(ObserverRegistrationMode.SELF_PROPAGATING)` via `transformInPropagatingObserver(...)` and by the nested `LexicalPreservingPrinter.Observer` subclass; the remaining reference is a single test anonymous subclass. This is not enough evidence of a dependency hub."}
+tokens used
+11,391

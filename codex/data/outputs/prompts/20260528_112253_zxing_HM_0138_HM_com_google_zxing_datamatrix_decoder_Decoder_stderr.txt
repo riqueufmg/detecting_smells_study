@@ -1,0 +1,823 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ef7-7f8e-7631-8786-ccfdac6badca
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.zxing.datamatrix.decoder.Decoder` in the repository located at:
+
+`data/repositories/zxing/zxing`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.zxing.datamatrix.decoder.Decoder",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.zxing.datamatrix.decoder.Decoder`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct dependencies and dependents so I can base the verdict on concrete fan-in/fan-out evidence from the repository.
+exec
+/bin/bash -lc 'rg -n "class Decoder|interface Decoder" -S core/src/main/java' in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+core/src/main/java/com/google/zxing/aztec/decoder/Decoder.java:40:public final class Decoder {
+core/src/main/java/com/google/zxing/common/DecoderResult.java:28:public final class DecoderResult {
+core/src/main/java/com/google/zxing/maxicode/decoder/Decoder.java:36:public final class Decoder {
+core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java:33:public final class Decoder {
+core/src/main/java/com/google/zxing/qrcode/decoder/Decoder.java:36:public final class Decoder {
+
+exec
+/bin/bash -lc "rg -n \"com\\.google\\.zxing\\.datamatrix\\.decoder\\.Decoder|new Decoder\\(|Decoder\\b\" core/src/main/java -g'*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+core/src/main/java/com/google/zxing/aztec/decoder/Decoder.java:25:import com.google.zxing.common.reedsolomon.ReedSolomonDecoder;
+core/src/main/java/com/google/zxing/aztec/decoder/Decoder.java:40:public final class Decoder {
+core/src/main/java/com/google/zxing/aztec/decoder/Decoder.java:316:      ReedSolomonDecoder rsDecoder = new ReedSolomonDecoder(gf);
+core/src/main/java/com/google/zxing/aztec/decoder/Decoder.java:317:      errorsCorrected = rsDecoder.decodeWithECCount(dataWords, numCodewords - numDataCodewords);
+core/src/main/java/com/google/zxing/aztec/detector/Detector.java:27:import com.google.zxing.common.reedsolomon.ReedSolomonDecoder;
+core/src/main/java/com/google/zxing/aztec/detector/Detector.java:221:      ReedSolomonDecoder rsDecoder = new ReedSolomonDecoder(GenericGF.AZTEC_PARAM);
+core/src/main/java/com/google/zxing/aztec/detector/Detector.java:222:      errorsCorrected = rsDecoder.decodeWithECCount(parameterWords, numECCodewords);
+core/src/main/java/com/google/zxing/aztec/AztecReader.java:29:import com.google.zxing.aztec.decoder.Decoder;
+core/src/main/java/com/google/zxing/aztec/AztecReader.java:69:      decoderResult = new Decoder().decode(detectorResult);
+core/src/main/java/com/google/zxing/aztec/AztecReader.java:80:        decoderResult = new Decoder().decode(detectorResult);
+core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java:24:import com.google.zxing.common.reedsolomon.ReedSolomonDecoder;
+core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java:33:public final class Decoder {
+core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java:35:  private final ReedSolomonDecoder rsDecoder;
+core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java:37:  public Decoder() {
+core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java:38:    rsDecoder = new ReedSolomonDecoder(GenericGF.DATA_MATRIX_FIELD_256);
+core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java:119:      errorsCorrected = rsDecoder.decodeWithECCount(codewordsInts, codewordBytes.length - numDataCodewords);
+core/src/main/java/com/google/zxing/multi/qrcode/QRCodeMultiReader.java:64:        DecoderResult decoderResult = getDecoder().decode(detectorResult.getBits(), hints);
+core/src/main/java/com/google/zxing/oned/rss/expanded/RSSExpandedReader.java:42:import com.google.zxing.oned.rss.expanded.decoders.AbstractExpandedDecoder;
+core/src/main/java/com/google/zxing/oned/rss/expanded/RSSExpandedReader.java:393:    AbstractExpandedDecoder decoder = AbstractExpandedDecoder.createDecoder(binary);
+core/src/main/java/com/google/zxing/common/reedsolomon/ReedSolomonDecoder.java:41:public final class ReedSolomonDecoder {
+core/src/main/java/com/google/zxing/common/reedsolomon/ReedSolomonDecoder.java:45:  public ReedSolomonDecoder(GenericGF field) {
+core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java:32:import com.google.zxing.datamatrix.decoder.Decoder;
+core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java:47:  private final Decoder decoder = new Decoder();
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI013x0x1xDecoder.java:36:final class AI013x0x1xDecoder extends AI01weightDecoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI013x0x1xDecoder.java:45:  AI013x0x1xDecoder(BitArray information, String firstAIdigits, String dateCode) {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI013x0x1xDecoder.java:67:    int numericDate = this.getGeneralDecoder().extractNumericValueFromBitArray(currentPos, DATE_SIZE);
+core/src/main/java/com/google/zxing/pdf417/PDF417Reader.java:31:import com.google.zxing.pdf417.decoder.PDF417ScanningDecoder;
+core/src/main/java/com/google/zxing/pdf417/PDF417Reader.java:89:      DecoderResult decoderResult = PDF417ScanningDecoder.decode(detectorResult.getBits(), points[4], points[5],
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01320xDecoder.java:34:final class AI01320xDecoder extends AI013x0xDecoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01320xDecoder.java:36:  AI01320xDecoder(BitArray information) {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01weightDecoder.java:34:abstract class AI01weightDecoder extends AI01decoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01weightDecoder.java:36:  AI01weightDecoder(BitArray information) {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01weightDecoder.java:41:    int originalWeightNumeric = this.getGeneralDecoder().extractNumericValueFromBitArray(currentPos, weightSize);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:37:public abstract class AbstractExpandedDecoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:40:  private final GeneralAppIdDecoder generalDecoder;
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:42:  AbstractExpandedDecoder(BitArray information) {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:44:    this.generalDecoder = new GeneralAppIdDecoder(information);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:51:  protected final GeneralAppIdDecoder getGeneralDecoder() {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:52:    return generalDecoder;
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:57:  public static AbstractExpandedDecoder createDecoder(BitArray information) {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:62:      return new AnyAIDecoder(information);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:65:    int fourBitEncodationMethod = GeneralAppIdDecoder.extractNumericValueFromBitArray(information, 1, 4);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:69:      case 5: return new AI01320xDecoder(information);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:72:    int fiveBitEncodationMethod = GeneralAppIdDecoder.extractNumericValueFromBitArray(information, 1, 5);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:74:      case 12: return new AI01392xDecoder(information);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:75:      case 13: return new AI01393xDecoder(information);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:78:    int sevenBitEncodationMethod = GeneralAppIdDecoder.extractNumericValueFromBitArray(information, 1, 7);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:80:      case 56: return new AI013x0x1xDecoder(information, "310", "11");
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:81:      case 57: return new AI013x0x1xDecoder(information, "320", "11");
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:82:      case 58: return new AI013x0x1xDecoder(information, "310", "13");
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:83:      case 59: return new AI013x0x1xDecoder(information, "320", "13");
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:84:      case 60: return new AI013x0x1xDecoder(information, "310", "15");
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:85:      case 61: return new AI013x0x1xDecoder(information, "320", "15");
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:86:      case 62: return new AI013x0x1xDecoder(information, "310", "17");
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AbstractExpandedDecoder.java:87:      case 63: return new AI013x0x1xDecoder(information, "320", "17");
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01392xDecoder.java:36:final class AI01392xDecoder extends AI01decoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01392xDecoder.java:41:  AI01392xDecoder(BitArray information) {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01392xDecoder.java:56:        this.getGeneralDecoder().extractNumericValueFromBitArray(HEADER_SIZE + GTIN_SIZE, LAST_DIGIT_SIZE);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01392xDecoder.java:62:        this.getGeneralDecoder().decodeGeneralPurposeField(HEADER_SIZE + GTIN_SIZE + LAST_DIGIT_SIZE, null);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI013103decoder.java:34:final class AI013103decoder extends AI013x0xDecoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:37:final class GeneralAppIdDecoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/GeneralAppIdDecoder.java:43:  GeneralAppIdDecoder(BitArray information) {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI013x0xDecoder.java:35:abstract class AI013x0xDecoder extends AI01weightDecoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI013x0xDecoder.java:40:  AI013x0xDecoder(BitArray information) {
+core/src/main/java/com/google/zxing/pdf417/decoder/PDF417CodewordDecoder.java:26:final class PDF417CodewordDecoder {
+core/src/main/java/com/google/zxing/pdf417/decoder/PDF417CodewordDecoder.java:48:  private PDF417CodewordDecoder() {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01AndOtherAIs.java:51:    int firstGtinDigit = this.getGeneralDecoder().extractNumericValueFromBitArray(HEADER_SIZE, 4);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01AndOtherAIs.java:56:    return this.getGeneralDecoder().decodeAllCodes(buff, HEADER_SIZE + 44);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01393xDecoder.java:35:final class AI01393xDecoder extends AI01decoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01393xDecoder.java:41:  AI01393xDecoder(BitArray information) {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01393xDecoder.java:56:        this.getGeneralDecoder().extractNumericValueFromBitArray(HEADER_SIZE + GTIN_SIZE, LAST_DIGIT_SIZE);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01393xDecoder.java:62:    int firstThreeDigits = this.getGeneralDecoder().extractNumericValueFromBitArray(
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01393xDecoder.java:72:    DecodedInformation generalInformation = this.getGeneralDecoder().decodeGeneralPurposeField(
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01decoder.java:35:abstract class AI01decoder extends AbstractExpandedDecoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AI01decoder.java:53:      int currentBlock = this.getGeneralDecoder().extractNumericValueFromBitArray(currentPos + 10 * i, 10);
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AnyAIDecoder.java:37:final class AnyAIDecoder extends AbstractExpandedDecoder {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AnyAIDecoder.java:41:  AnyAIDecoder(BitArray information) {
+core/src/main/java/com/google/zxing/oned/rss/expanded/decoders/AnyAIDecoder.java:48:    return this.getGeneralDecoder().decodeAllCodes(buf, HEADER_SIZE);
+core/src/main/java/com/google/zxing/client/result/ResultParser.java:22:import java.net.URLDecoder;
+core/src/main/java/com/google/zxing/client/result/ResultParser.java:194:      return URLDecoder.decode(encoded, "UTF-8");
+core/src/main/java/com/google/zxing/pdf417/decoder/PDF417ScanningDecoder.java:37:public final class PDF417ScanningDecoder {
+core/src/main/java/com/google/zxing/pdf417/decoder/PDF417ScanningDecoder.java:45:  private PDF417ScanningDecoder() {
+core/src/main/java/com/google/zxing/pdf417/decoder/PDF417ScanningDecoder.java:457:    int decodedValue = PDF417CodewordDecoder.getDecodedValue(moduleBitCount);
+core/src/main/java/com/google/zxing/qrcode/decoder/Decoder.java:25:import com.google.zxing.common.reedsolomon.ReedSolomonDecoder;
+core/src/main/java/com/google/zxing/qrcode/decoder/Decoder.java:36:public final class Decoder {
+core/src/main/java/com/google/zxing/qrcode/decoder/Decoder.java:38:  private final ReedSolomonDecoder rsDecoder;
+core/src/main/java/com/google/zxing/qrcode/decoder/Decoder.java:40:  public Decoder() {
+core/src/main/java/com/google/zxing/qrcode/decoder/Decoder.java:41:    rsDecoder = new ReedSolomonDecoder(GenericGF.QR_CODE_FIELD_256);
+core/src/main/java/com/google/zxing/qrcode/decoder/Decoder.java:183:      errorsCorrected = rsDecoder.decodeWithECCount(codewordsInts, codewordBytes.length - numDataCodewords);
+core/src/main/java/com/google/zxing/qrcode/QRCodeReader.java:32:import com.google.zxing.qrcode.decoder.Decoder;
+core/src/main/java/com/google/zxing/qrcode/QRCodeReader.java:48:  private final Decoder decoder = new Decoder();
+core/src/main/java/com/google/zxing/qrcode/QRCodeReader.java:50:  protected final Decoder getDecoder() {
+core/src/main/java/com/google/zxing/pdf417/decoder/ec/ErrorCorrection.java:28: * @see com.google.zxing.common.reedsolomon.ReedSolomonDecoder
+core/src/main/java/com/google/zxing/maxicode/MaxiCodeReader.java:31:import com.google.zxing.maxicode.decoder.Decoder;
+core/src/main/java/com/google/zxing/maxicode/MaxiCodeReader.java:44:  private final Decoder decoder = new Decoder();
+core/src/main/java/com/google/zxing/maxicode/decoder/Decoder.java:25:import com.google.zxing.common.reedsolomon.ReedSolomonDecoder;
+core/src/main/java/com/google/zxing/maxicode/decoder/Decoder.java:36:public final class Decoder {
+core/src/main/java/com/google/zxing/maxicode/decoder/Decoder.java:42:  private final ReedSolomonDecoder rsDecoder;
+core/src/main/java/com/google/zxing/maxicode/decoder/Decoder.java:44:  public Decoder() {
+core/src/main/java/com/google/zxing/maxicode/decoder/Decoder.java:45:    rsDecoder = new ReedSolomonDecoder(GenericGF.MAXICODE_FIELD_64);
+core/src/main/java/com/google/zxing/maxicode/decoder/Decoder.java:104:      errorsCorrected = rsDecoder.decodeWithECCount(codewordsInts, ecCodewords / divisor);
+
+codex
+I found the target class and the main call site in `DataMatrixReader`. Next I’m checking the class body and the package to see how many distinct classes it depends on versus how broadly it is used.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright 2007 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.datamatrix;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.ChecksumException;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.FormatException;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.Reader;
+import com.google.zxing.Result;
+import com.google.zxing.ResultMetadataType;
+import com.google.zxing.ResultPoint;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.common.DecoderResult;
+import com.google.zxing.common.DetectorResult;
+import com.google.zxing.datamatrix.decoder.Decoder;
+import com.google.zxing.datamatrix.detector.Detector;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * This implementation can detect and decode Data Matrix codes in an image.
+ *
+ * @author bbrown@google.com (Brian Brown)
+ */
+public final class DataMatrixReader implements Reader {
+
+  private static final ResultPoint[] NO_POINTS = new ResultPoint[0];
+
+  private final Decoder decoder = new Decoder();
+
+  /**
+   * Locates and decodes a Data Matrix code in an image.
+   *
+   * @return a String representing the content encoded by the Data Matrix code
+   * @throws NotFoundException if a Data Matrix code cannot be found
+   * @throws FormatException if a Data Matrix code cannot be decoded
+   * @throws ChecksumException if error correction fails
+   */
+  @Override
+  public Result decode(BinaryBitmap image) throws NotFoundException, ChecksumException, FormatException {
+    return decode(image, null);
+  }
+
+  @Override
+  public Result decode(BinaryBitmap image, Map<DecodeHintType,?> hints)
+      throws NotFoundException, ChecksumException, FormatException {
+    DecoderResult decoderResult;
+    ResultPoint[] points;
+    if (hints != null && hints.containsKey(DecodeHintType.PURE_BARCODE)) {
+      BitMatrix bits = extractPureBits(image.getBlackMatrix());
+      decoderResult = decoder.decode(bits);
+      points = NO_POINTS;
+    } else {
+      DetectorResult detectorResult = new Detector(image.getBlackMatrix()).detect();
+      decoderResult = decoder.decode(detectorResult.getBits());
+      points = detectorResult.getPoints();
+    }
+    Result result = new Result(decoderResult.getText(), decoderResult.getRawBytes(), points,
+        BarcodeFormat.DATA_MATRIX);
+    List<byte[]> byteSegments = decoderResult.getByteSegments();
+    if (byteSegments != null) {
+      result.putMetadata(ResultMetadataType.BYTE_SEGMENTS, byteSegments);
+    }
+    String ecLevel = decoderResult.getECLevel();
+    if (ecLevel != null) {
+      result.putMetadata(ResultMetadataType.ERROR_CORRECTION_LEVEL, ecLevel);
+    }
+    result.putMetadata(ResultMetadataType.ERRORS_CORRECTED, decoderResult.getErrorsCorrected());
+    result.putMetadata(ResultMetadataType.SYMBOLOGY_IDENTIFIER, "]d" + decoderResult.getSymbologyModifier());
+    return result;
+  }
+
+  @Override
+  public void reset() {
+    // do nothing
+  }
+
+  /**
+   * This method detects a code in a "pure" image -- that is, pure monochrome image
+   * which contains only an unrotated, unskewed, image of a code, with some white border
+   * around it. This is a specialized method that works exceptionally fast in this special
+   * case.
+   */
+  private static BitMatrix extractPureBits(BitMatrix image) throws NotFoundException {
+
+    int[] leftTopBlack = image.getTopLeftOnBit();
+    int[] rightBottomBlack = image.getBottomRightOnBit();
+    if (leftTopBlack == null || rightBottomBlack == null) {
+      throw NotFoundException.getNotFoundInstance();
+    }
+
+    int moduleSize = moduleSize(leftTopBlack, image);
+
+    int top = leftTopBlack[1];
+    int bottom = rightBottomBlack[1];
+    int left = leftTopBlack[0];
+    int right = rightBottomBlack[0];
+
+    int matrixWidth = (right - left + 1) / moduleSize;
+    int matrixHeight = (bottom - top + 1) / moduleSize;
+    if (matrixWidth <= 0 || matrixHeight <= 0) {
+      throw NotFoundException.getNotFoundInstance();
+    }
+
+    // Push in the "border" by half the module width so that we start
+    // sampling in the middle of the module. Just in case the image is a
+    // little off, this will help recover.
+    int nudge = moduleSize / 2;
+    top += nudge;
+    left += nudge;
+
+    // Now just read off the bits
+    BitMatrix bits = new BitMatrix(matrixWidth, matrixHeight);
+    for (int y = 0; y < matrixHeight; y++) {
+      int iOffset = top + y * moduleSize;
+      for (int x = 0; x < matrixWidth; x++) {
+        if (image.get(left + x * moduleSize, iOffset)) {
+          bits.set(x, y);
+        }
+      }
+    }
+    return bits;
+  }
+
+  private static int moduleSize(int[] leftTopBlack, BitMatrix image) throws NotFoundException {
+    int width = image.getWidth();
+    int x = leftTopBlack[0];
+    int y = leftTopBlack[1];
+    while (x < width && image.get(x, y)) {
+      x++;
+    }
+    if (x == width) {
+      throw NotFoundException.getNotFoundInstance();
+    }
+
+    int moduleSize = x - leftTopBlack[0];
+    if (moduleSize == 0) {
+      throw NotFoundException.getNotFoundInstance();
+    }
+    return moduleSize;
+  }
+
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright 2007 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.datamatrix.decoder;
+
+import com.google.zxing.ChecksumException;
+import com.google.zxing.FormatException;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.common.DecoderResult;
+import com.google.zxing.common.reedsolomon.GenericGF;
+import com.google.zxing.common.reedsolomon.ReedSolomonDecoder;
+import com.google.zxing.common.reedsolomon.ReedSolomonException;
+
+/**
+ * <p>The main class which implements Data Matrix Code decoding -- as opposed to locating and extracting
+ * the Data Matrix Code from an image.</p>
+ *
+ * @author bbrown@google.com (Brian Brown)
+ */
+public final class Decoder {
+
+  private final ReedSolomonDecoder rsDecoder;
+
+  public Decoder() {
+    rsDecoder = new ReedSolomonDecoder(GenericGF.DATA_MATRIX_FIELD_256);
+  }
+
+  /**
+   * <p>Convenience method that can decode a Data Matrix Code represented as a 2D array of booleans.
+   * "true" is taken to mean a black module.</p>
+   *
+   * @param image booleans representing white/black Data Matrix Code modules
+   * @return text and bytes encoded within the Data Matrix Code
+   * @throws FormatException if the Data Matrix Code cannot be decoded
+   * @throws ChecksumException if error correction fails
+   */
+  public DecoderResult decode(boolean[][] image) throws FormatException, ChecksumException {
+    return decode(BitMatrix.parse(image));
+  }
+
+  /**
+   * <p>Decodes a Data Matrix Code represented as a {@link BitMatrix}. A 1 or "true" is taken
+   * to mean a black module.</p>
+   *
+   * @param bits booleans representing white/black Data Matrix Code modules
+   * @return text and bytes encoded within the Data Matrix Code
+   * @throws FormatException if the Data Matrix Code cannot be decoded
+   * @throws ChecksumException if error correction fails
+   */
+  public DecoderResult decode(BitMatrix bits) throws FormatException, ChecksumException {
+
+    // Construct a parser and read version, error-correction level
+    BitMatrixParser parser = new BitMatrixParser(bits);
+    Version version = parser.getVersion();
+
+    // Read codewords
+    byte[] codewords = parser.readCodewords();
+    // Separate into data blocks
+    DataBlock[] dataBlocks = DataBlock.getDataBlocks(codewords, version);
+
+    // Count total number of data bytes
+    int totalBytes = 0;
+    for (DataBlock db : dataBlocks) {
+      totalBytes += db.getNumDataCodewords();
+    }
+    byte[] resultBytes = new byte[totalBytes];
+
+    int errorsCorrected = 0;
+    int dataBlocksCount = dataBlocks.length;
+    // Error-correct and copy data blocks together into a stream of bytes
+    for (int j = 0; j < dataBlocksCount; j++) {
+      DataBlock dataBlock = dataBlocks[j];
+      byte[] codewordBytes = dataBlock.getCodewords();
+      int numDataCodewords = dataBlock.getNumDataCodewords();
+      errorsCorrected += correctErrors(codewordBytes, numDataCodewords);
+      for (int i = 0; i < numDataCodewords; i++) {
+        // De-interlace data blocks.
+        resultBytes[i * dataBlocksCount + j] = codewordBytes[i];
+      }
+    }
+
+    // Decode the contents of that stream of bytes
+    DecoderResult result = DecodedBitStreamParser.decode(resultBytes);
+    result.setErrorsCorrected(errorsCorrected);
+    return result;
+  }
+
+  /**
+   * <p>Given data and error-correction codewords received, possibly corrupted by errors, attempts to
+   * correct the errors in-place using Reed-Solomon error correction.</p>
+   *
+   * @param codewordBytes data and error correction codewords
+   * @param numDataCodewords number of codewords that are data bytes
+   * @return the number of errors corrected
+   * @throws ChecksumException if error correction fails
+   */
+  private int correctErrors(byte[] codewordBytes, int numDataCodewords) throws ChecksumException {
+    int numCodewords = codewordBytes.length;
+    // First read into an array of ints
+    int[] codewordsInts = new int[numCodewords];
+    for (int i = 0; i < numCodewords; i++) {
+      codewordsInts[i] = codewordBytes[i] & 0xFF;
+    }
+    int errorsCorrected = 0;
+    try {
+      errorsCorrected = rsDecoder.decodeWithECCount(codewordsInts, codewordBytes.length - numDataCodewords);
+    } catch (ReedSolomonException ignored) {
+      throw ChecksumException.getChecksumInstance();
+    }
+    // Copy back into array of bytes -- only need to worry about the bytes that were data
+    // We don't care about errors in the error-correction codewords
+    for (int i = 0; i < numDataCodewords; i++) {
+      codewordBytes[i] = (byte) codewordsInts[i];
+    }
+    return errorsCorrected;
+  }
+
+}
+
+exec
+/bin/bash -lc "rg -n \"datamatrix/decoder/Decoder|new Decoder\\(|getDecoder\\(|Decoder decoder\" core/src/main/java -g'*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+core/src/main/java/com/google/zxing/aztec/AztecReader.java:69:      decoderResult = new Decoder().decode(detectorResult);
+core/src/main/java/com/google/zxing/aztec/AztecReader.java:80:        decoderResult = new Decoder().decode(detectorResult);
+core/src/main/java/com/google/zxing/maxicode/MaxiCodeReader.java:44:  private final Decoder decoder = new Decoder();
+core/src/main/java/com/google/zxing/qrcode/QRCodeReader.java:48:  private final Decoder decoder = new Decoder();
+core/src/main/java/com/google/zxing/qrcode/QRCodeReader.java:50:  protected final Decoder getDecoder() {
+core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java:47:  private final Decoder decoder = new Decoder();
+core/src/main/java/com/google/zxing/multi/qrcode/QRCodeMultiReader.java:64:        DecoderResult decoderResult = getDecoder().decode(detectorResult.getBits(), hints);
+core/src/main/java/com/google/zxing/oned/rss/expanded/RSSExpandedReader.java:393:    AbstractExpandedDecoder decoder = AbstractExpandedDecoder.createDecoder(binary);
+
+codex
+I’ve confirmed the class has one obvious in-repo client. I’m checking the surrounding package structure to make sure there aren’t other hidden dependents or a broader dependency pattern that would change the verdict.
+exec
+/bin/bash -lc 'rg --files core/src/main/java/com/google/zxing/datamatrix' in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+core/src/main/java/com/google/zxing/datamatrix/DataMatrixWriter.java
+core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/SymbolShapeHint.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/TextEncoder.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/DefaultPlacement.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/X12Encoder.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/ErrorCorrection.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/C40Encoder.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/Base256Encoder.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/ASCIIEncoder.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/HighLevelEncoder.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/EdifactEncoder.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/DataMatrixSymbolInfo144.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/SymbolInfo.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/EncoderContext.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/MinimalEncoder.java
+core/src/main/java/com/google/zxing/datamatrix/encoder/Encoder.java
+core/src/main/java/com/google/zxing/datamatrix/decoder/BitMatrixParser.java
+core/src/main/java/com/google/zxing/datamatrix/decoder/DataBlock.java
+core/src/main/java/com/google/zxing/datamatrix/decoder/Version.java
+core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java
+core/src/main/java/com/google/zxing/datamatrix/decoder/DecodedBitStreamParser.java
+core/src/main/java/com/google/zxing/datamatrix/detector/Detector.java
+
+exec
+/bin/bash -lc "rg -n \"new Decoder\\(|\\.decoder\\.Decoder|import com\\.google\\.zxing\\.datamatrix\\.decoder\\.Decoder\" core/src/main/java core/src/test/java -g'*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+core/src/test/java/com/google/zxing/aztec/encoder/EncoderTest.java:25:import com.google.zxing.aztec.decoder.Decoder;
+core/src/test/java/com/google/zxing/aztec/encoder/EncoderTest.java:497:    DecoderResult res = new Decoder().decode(r);
+core/src/test/java/com/google/zxing/aztec/encoder/EncoderTest.java:506:    res = new Decoder().decode(r);
+core/src/test/java/com/google/zxing/aztec/encoder/EncoderTest.java:531:    DecoderResult res = new Decoder().decode(r);
+core/src/test/java/com/google/zxing/aztec/encoder/EncoderTest.java:547:    res = new Decoder().decode(r);
+core/src/test/java/com/google/zxing/aztec/decoder/DecoderTest.java:94:    DecoderResult result = new Decoder().decode(r);
+core/src/test/java/com/google/zxing/aztec/decoder/DecoderTest.java:128:    DecoderResult result = new Decoder().decode(r);
+core/src/test/java/com/google/zxing/aztec/decoder/DecoderTest.java:164:    new Decoder().decode(r);
+core/src/test/java/com/google/zxing/aztec/decoder/DecoderTest.java:199:    new Decoder().decode(r);
+core/src/test/java/com/google/zxing/aztec/detector/DetectorTest.java:21:import com.google.zxing.aztec.decoder.Decoder;
+core/src/test/java/com/google/zxing/aztec/detector/DetectorTest.java:85:            DecoderResult res = new Decoder().decode(r);
+core/src/main/java/com/google/zxing/aztec/AztecReader.java:29:import com.google.zxing.aztec.decoder.Decoder;
+core/src/main/java/com/google/zxing/aztec/AztecReader.java:69:      decoderResult = new Decoder().decode(detectorResult);
+core/src/main/java/com/google/zxing/aztec/AztecReader.java:80:        decoderResult = new Decoder().decode(detectorResult);
+core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java:32:import com.google.zxing.datamatrix.decoder.Decoder;
+core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java:47:  private final Decoder decoder = new Decoder();
+core/src/main/java/com/google/zxing/qrcode/QRCodeReader.java:32:import com.google.zxing.qrcode.decoder.Decoder;
+core/src/main/java/com/google/zxing/qrcode/QRCodeReader.java:48:  private final Decoder decoder = new Decoder();
+core/src/main/java/com/google/zxing/maxicode/MaxiCodeReader.java:31:import com.google.zxing.maxicode.decoder.Decoder;
+core/src/main/java/com/google/zxing/maxicode/MaxiCodeReader.java:44:  private final Decoder decoder = new Decoder();
+
+codex
+I have enough to form a likely answer, but I’m doing one more targeted search for any other production or test classes that instantiate the Data Matrix decoder so the fan-in evidence is defensible.
+exec
+/bin/bash -lc "nl -ba core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright 2007 ZXing authors
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *      http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	
+    17	package com.google.zxing.datamatrix.decoder;
+    18	
+    19	import com.google.zxing.ChecksumException;
+    20	import com.google.zxing.FormatException;
+    21	import com.google.zxing.common.BitMatrix;
+    22	import com.google.zxing.common.DecoderResult;
+    23	import com.google.zxing.common.reedsolomon.GenericGF;
+    24	import com.google.zxing.common.reedsolomon.ReedSolomonDecoder;
+    25	import com.google.zxing.common.reedsolomon.ReedSolomonException;
+    26	
+    27	/**
+    28	 * <p>The main class which implements Data Matrix Code decoding -- as opposed to locating and extracting
+    29	 * the Data Matrix Code from an image.</p>
+    30	 *
+    31	 * @author bbrown@google.com (Brian Brown)
+    32	 */
+    33	public final class Decoder {
+    34	
+    35	  private final ReedSolomonDecoder rsDecoder;
+    36	
+    37	  public Decoder() {
+    38	    rsDecoder = new ReedSolomonDecoder(GenericGF.DATA_MATRIX_FIELD_256);
+    39	  }
+    40	
+    41	  /**
+    42	   * <p>Convenience method that can decode a Data Matrix Code represented as a 2D array of booleans.
+    43	   * "true" is taken to mean a black module.</p>
+    44	   *
+    45	   * @param image booleans representing white/black Data Matrix Code modules
+    46	   * @return text and bytes encoded within the Data Matrix Code
+    47	   * @throws FormatException if the Data Matrix Code cannot be decoded
+    48	   * @throws ChecksumException if error correction fails
+    49	   */
+    50	  public DecoderResult decode(boolean[][] image) throws FormatException, ChecksumException {
+    51	    return decode(BitMatrix.parse(image));
+    52	  }
+    53	
+    54	  /**
+    55	   * <p>Decodes a Data Matrix Code represented as a {@link BitMatrix}. A 1 or "true" is taken
+    56	   * to mean a black module.</p>
+    57	   *
+    58	   * @param bits booleans representing white/black Data Matrix Code modules
+    59	   * @return text and bytes encoded within the Data Matrix Code
+    60	   * @throws FormatException if the Data Matrix Code cannot be decoded
+    61	   * @throws ChecksumException if error correction fails
+    62	   */
+    63	  public DecoderResult decode(BitMatrix bits) throws FormatException, ChecksumException {
+    64	
+    65	    // Construct a parser and read version, error-correction level
+    66	    BitMatrixParser parser = new BitMatrixParser(bits);
+    67	    Version version = parser.getVersion();
+    68	
+    69	    // Read codewords
+    70	    byte[] codewords = parser.readCodewords();
+    71	    // Separate into data blocks
+    72	    DataBlock[] dataBlocks = DataBlock.getDataBlocks(codewords, version);
+    73	
+    74	    // Count total number of data bytes
+    75	    int totalBytes = 0;
+    76	    for (DataBlock db : dataBlocks) {
+    77	      totalBytes += db.getNumDataCodewords();
+    78	    }
+    79	    byte[] resultBytes = new byte[totalBytes];
+    80	
+    81	    int errorsCorrected = 0;
+    82	    int dataBlocksCount = dataBlocks.length;
+    83	    // Error-correct and copy data blocks together into a stream of bytes
+    84	    for (int j = 0; j < dataBlocksCount; j++) {
+    85	      DataBlock dataBlock = dataBlocks[j];
+    86	      byte[] codewordBytes = dataBlock.getCodewords();
+    87	      int numDataCodewords = dataBlock.getNumDataCodewords();
+    88	      errorsCorrected += correctErrors(codewordBytes, numDataCodewords);
+    89	      for (int i = 0; i < numDataCodewords; i++) {
+    90	        // De-interlace data blocks.
+    91	        resultBytes[i * dataBlocksCount + j] = codewordBytes[i];
+    92	      }
+    93	    }
+    94	
+    95	    // Decode the contents of that stream of bytes
+    96	    DecoderResult result = DecodedBitStreamParser.decode(resultBytes);
+    97	    result.setErrorsCorrected(errorsCorrected);
+    98	    return result;
+    99	  }
+   100	
+   101	  /**
+   102	   * <p>Given data and error-correction codewords received, possibly corrupted by errors, attempts to
+   103	   * correct the errors in-place using Reed-Solomon error correction.</p>
+   104	   *
+   105	   * @param codewordBytes data and error correction codewords
+   106	   * @param numDataCodewords number of codewords that are data bytes
+   107	   * @return the number of errors corrected
+   108	   * @throws ChecksumException if error correction fails
+   109	   */
+   110	  private int correctErrors(byte[] codewordBytes, int numDataCodewords) throws ChecksumException {
+   111	    int numCodewords = codewordBytes.length;
+   112	    // First read into an array of ints
+   113	    int[] codewordsInts = new int[numCodewords];
+   114	    for (int i = 0; i < numCodewords; i++) {
+   115	      codewordsInts[i] = codewordBytes[i] & 0xFF;
+   116	    }
+   117	    int errorsCorrected = 0;
+   118	    try {
+   119	      errorsCorrected = rsDecoder.decodeWithECCount(codewordsInts, codewordBytes.length - numDataCodewords);
+   120	    } catch (ReedSolomonException ignored) {
+   121	      throw ChecksumException.getChecksumInstance();
+   122	    }
+   123	    // Copy back into array of bytes -- only need to worry about the bytes that were data
+   124	    // We don't care about errors in the error-correction codewords
+   125	    for (int i = 0; i < numDataCodewords; i++) {
+   126	      codewordBytes[i] = (byte) codewordsInts[i];
+   127	    }
+   128	    return errorsCorrected;
+   129	  }
+   130	
+   131	}
+
+exec
+/bin/bash -lc "rg -n \"com\\.google\\.zxing\\.datamatrix\\.decoder\\.Decoder|new Decoder\\(\\)\" core/src/main/java core/src/test/java -g'*.java' | rg \"datamatrix/decoder/Decoder|DataMatrixReader|datamatrix\\.decoder\\.Decoder\"" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java:32:import com.google.zxing.datamatrix.decoder.Decoder;
+core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java:47:  private final Decoder decoder = new Decoder();
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright 2007 ZXing authors
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *      http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	
+    17	package com.google.zxing.datamatrix;
+    18	
+    19	import com.google.zxing.BarcodeFormat;
+    20	import com.google.zxing.BinaryBitmap;
+    21	import com.google.zxing.ChecksumException;
+    22	import com.google.zxing.DecodeHintType;
+    23	import com.google.zxing.FormatException;
+    24	import com.google.zxing.NotFoundException;
+    25	import com.google.zxing.Reader;
+    26	import com.google.zxing.Result;
+    27	import com.google.zxing.ResultMetadataType;
+    28	import com.google.zxing.ResultPoint;
+    29	import com.google.zxing.common.BitMatrix;
+    30	import com.google.zxing.common.DecoderResult;
+    31	import com.google.zxing.common.DetectorResult;
+    32	import com.google.zxing.datamatrix.decoder.Decoder;
+    33	import com.google.zxing.datamatrix.detector.Detector;
+    34	
+    35	import java.util.List;
+    36	import java.util.Map;
+    37	
+    38	/**
+    39	 * This implementation can detect and decode Data Matrix codes in an image.
+    40	 *
+    41	 * @author bbrown@google.com (Brian Brown)
+    42	 */
+    43	public final class DataMatrixReader implements Reader {
+    44	
+    45	  private static final ResultPoint[] NO_POINTS = new ResultPoint[0];
+    46	
+    47	  private final Decoder decoder = new Decoder();
+    48	
+    49	  /**
+    50	   * Locates and decodes a Data Matrix code in an image.
+    51	   *
+    52	   * @return a String representing the content encoded by the Data Matrix code
+    53	   * @throws NotFoundException if a Data Matrix code cannot be found
+    54	   * @throws FormatException if a Data Matrix code cannot be decoded
+    55	   * @throws ChecksumException if error correction fails
+    56	   */
+    57	  @Override
+    58	  public Result decode(BinaryBitmap image) throws NotFoundException, ChecksumException, FormatException {
+    59	    return decode(image, null);
+    60	  }
+    61	
+    62	  @Override
+    63	  public Result decode(BinaryBitmap image, Map<DecodeHintType,?> hints)
+    64	      throws NotFoundException, ChecksumException, FormatException {
+    65	    DecoderResult decoderResult;
+    66	    ResultPoint[] points;
+    67	    if (hints != null && hints.containsKey(DecodeHintType.PURE_BARCODE)) {
+    68	      BitMatrix bits = extractPureBits(image.getBlackMatrix());
+    69	      decoderResult = decoder.decode(bits);
+    70	      points = NO_POINTS;
+    71	    } else {
+    72	      DetectorResult detectorResult = new Detector(image.getBlackMatrix()).detect();
+    73	      decoderResult = decoder.decode(detectorResult.getBits());
+    74	      points = detectorResult.getPoints();
+    75	    }
+    76	    Result result = new Result(decoderResult.getText(), decoderResult.getRawBytes(), points,
+    77	        BarcodeFormat.DATA_MATRIX);
+    78	    List<byte[]> byteSegments = decoderResult.getByteSegments();
+    79	    if (byteSegments != null) {
+    80	      result.putMetadata(ResultMetadataType.BYTE_SEGMENTS, byteSegments);
+    81	    }
+    82	    String ecLevel = decoderResult.getECLevel();
+    83	    if (ecLevel != null) {
+    84	      result.putMetadata(ResultMetadataType.ERROR_CORRECTION_LEVEL, ecLevel);
+    85	    }
+    86	    result.putMetadata(ResultMetadataType.ERRORS_CORRECTED, decoderResult.getErrorsCorrected());
+    87	    result.putMetadata(ResultMetadataType.SYMBOLOGY_IDENTIFIER, "]d" + decoderResult.getSymbologyModifier());
+    88	    return result;
+    89	  }
+    90	
+    91	  @Override
+    92	  public void reset() {
+    93	    // do nothing
+    94	  }
+    95	
+    96	  /**
+    97	   * This method detects a code in a "pure" image -- that is, pure monochrome image
+    98	   * which contains only an unrotated, unskewed, image of a code, with some white border
+    99	   * around it. This is a specialized method that works exceptionally fast in this special
+   100	   * case.
+   101	   */
+   102	  private static BitMatrix extractPureBits(BitMatrix image) throws NotFoundException {
+   103	
+   104	    int[] leftTopBlack = image.getTopLeftOnBit();
+   105	    int[] rightBottomBlack = image.getBottomRightOnBit();
+   106	    if (leftTopBlack == null || rightBottomBlack == null) {
+   107	      throw NotFoundException.getNotFoundInstance();
+   108	    }
+   109	
+   110	    int moduleSize = moduleSize(leftTopBlack, image);
+   111	
+   112	    int top = leftTopBlack[1];
+   113	    int bottom = rightBottomBlack[1];
+   114	    int left = leftTopBlack[0];
+   115	    int right = rightBottomBlack[0];
+   116	
+   117	    int matrixWidth = (right - left + 1) / moduleSize;
+   118	    int matrixHeight = (bottom - top + 1) / moduleSize;
+   119	    if (matrixWidth <= 0 || matrixHeight <= 0) {
+   120	      throw NotFoundException.getNotFoundInstance();
+
+codex
+{"target":"com.google.zxing.datamatrix.decoder.Decoder","detection":false,"justification":"Inspected `core/src/main/java/com/google/zxing/datamatrix/decoder/Decoder.java` and `core/src/main/java/com/google/zxing/datamatrix/DataMatrixReader.java`, plus a repo-wide `rg` search over `core/src/main/java` and `core/src/test/java`. The Decoder class has a limited fan-out to `BitMatrixParser`, `Version`, `DataBlock`, `DecodedBitStreamParser`, and Reed-Solomon types, but I found only one in-repo direct client: `DataMatrixReader` instantiates it and calls `decode(...)`. No other production or test classes reference this Data Matrix decoder, so it does not show the high fan-in/high fan-out pattern expected for hub-like modularization."}
+tokens used
+15,232

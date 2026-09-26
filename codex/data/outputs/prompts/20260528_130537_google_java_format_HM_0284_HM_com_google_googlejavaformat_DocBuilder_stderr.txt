@@ -1,0 +1,1715 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f55-a033-7bc3-adb4-97ef861cb6ef
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.googlejavaformat.DocBuilder` in the repository located at:
+
+`data/repositories/google/google-java-format`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.googlejavaformat.DocBuilder",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.googlejavaformat.DocBuilder`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and tracing its direct dependencies first, then I’ll verify whether it has enough inbound and outbound coupling to qualify as a dependency hub.
+exec
+/bin/bash -lc "rg -n \"\\bDocBuilder\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "rg --files | rg 'DocBuilder\\.java"'$|DocBuilder'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 209ms:
+./core/src/main/java/com/google/googlejavaformat/OpsBuilder.java:37: * DocBuilder}.
+./core/src/main/java/com/google/googlejavaformat/Op.java:19: * and transformed by {@link DocBuilder} into a {@link Doc}. Leaf subclasses of {@link Doc}
+./core/src/main/java/com/google/googlejavaformat/Op.java:25:   * Add an {@code Op} to a {@link DocBuilder}.
+./core/src/main/java/com/google/googlejavaformat/Op.java:27:   * @param builder the {@link DocBuilder}
+./core/src/main/java/com/google/googlejavaformat/Op.java:29:  void add(DocBuilder builder);
+./core/src/main/java/com/google/googlejavaformat/CloseOp.java:21: * {@link OpsBuilder}. When the sequence is turned into a {@link Doc} by {@link DocBuilder}, ranges
+./core/src/main/java/com/google/googlejavaformat/CloseOp.java:37:  public void add(DocBuilder builder) {
+./core/src/main/java/com/google/googlejavaformat/DocBuilder.java:21:/** A {@code DocBuilder} converts a sequence of {@link Op}s into a {@link Doc}. */
+./core/src/main/java/com/google/googlejavaformat/DocBuilder.java:22:public final class DocBuilder {
+./core/src/main/java/com/google/googlejavaformat/DocBuilder.java:44:  /** Start to build a {@code DocBuilder}. */
+./core/src/main/java/com/google/googlejavaformat/DocBuilder.java:45:  public DocBuilder() {
+./core/src/main/java/com/google/googlejavaformat/DocBuilder.java:55:  public DocBuilder withOps(List<Op> ops) {
+./core/src/main/java/com/google/googlejavaformat/OpenOp.java:21: * {@link OpsBuilder}. When the sequence is turned into a {@link Doc} by {@link DocBuilder}, {@link
+./core/src/main/java/com/google/googlejavaformat/OpenOp.java:43:  public void add(DocBuilder builder) {
+./core/src/main/java/com/google/googlejavaformat/java/Formatter.java:27:import com.google.googlejavaformat.DocBuilder;
+./core/src/main/java/com/google/googlejavaformat/java/Formatter.java:117:    Doc doc = new DocBuilder().withOps(builder.build()).build();
+./core/src/main/java/com/google/googlejavaformat/Doc.java:35: * {@link DocBuilder} into a tree-structured {@code Doc}. The top-level {@code Doc} is a {@link
+./core/src/main/java/com/google/googlejavaformat/Doc.java:466:    public void add(DocBuilder builder) {
+./core/src/main/java/com/google/googlejavaformat/Doc.java:523:    public void add(DocBuilder builder) {
+./core/src/main/java/com/google/googlejavaformat/Doc.java:626:    public void add(DocBuilder builder) {
+./core/src/main/java/com/google/googlejavaformat/Doc.java:716:    public void add(DocBuilder builder) {
+
+ succeeded in 306ms:
+core/src/main/java/com/google/googlejavaformat/DocBuilder.java
+
+codex
+I found the class and its only visible call sites so far. Next I’m checking the implementation and the surrounding types it touches to see whether the coupling is broad enough to call it a hub.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/DocBuilder.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/Op.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/java/Formatter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 212ms:
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat;
+
+import com.google.common.base.MoreObjects;
+import java.util.ArrayDeque;
+import java.util.List;
+
+/** A {@code DocBuilder} converts a sequence of {@link Op}s into a {@link Doc}. */
+public final class DocBuilder {
+  private final Doc.Level base = Doc.Level.make(Indent.Const.ZERO);
+  private final ArrayDeque<Doc.Level> stack = new ArrayDeque<>();
+
+  /**
+   * A possibly earlier {@link Doc.Level} for appending text, à la Philip Wadler.
+   *
+   * <p>Processing {@link Doc}s presents a subtle problem. Suppose we have a {@link Doc} for to an
+   * assignment node, {@code a = b}, with an optional {@link Doc.Break} following the {@code =}.
+   * Suppose we have 5 characters to write it, so that we think we don't need the break.
+   * Unfortunately, this {@link Doc} lies in an expression statement {@link Doc} for the statement
+   * {@code a = b;} and this statement does not fit in 3 characters. This is why many formatters
+   * sometimes emit lines that are too long, or cheat by using a narrower line length to avoid such
+   * problems.
+   *
+   * <p>One solution to this problem is not to decide whether a {@link Doc.Level} should be broken
+   * until later (in this case, after the semicolon has been seen). A simpler approach is to rewrite
+   * the {@link Doc} as here, so that the semicolon moves inside the inner {@link Doc}, and we can
+   * decide whether to break that {@link Doc} without seeing later text.
+   */
+  private Doc.Level appendLevel = base;
+
+  /** Start to build a {@code DocBuilder}. */
+  public DocBuilder() {
+    stack.addLast(base);
+  }
+
+  /**
+   * Add a list of {@link Op}s to the {@link OpsBuilder}.
+   *
+   * @param ops the {@link Op}s
+   * @return the {@link OpsBuilder}
+   */
+  public DocBuilder withOps(List<Op> ops) {
+    for (Op op : ops) {
+      op.add(this); // These operations call the operations below to build the doc.
+    }
+    return this;
+  }
+
+  /**
+   * Open a new {@link Doc.Level}.
+   *
+   * @param plusIndent the extra indent for the {@link Doc.Level}
+   */
+  void open(Indent plusIndent) {
+    Doc.Level level = Doc.Level.make(plusIndent);
+    stack.addLast(level);
+  }
+
+  /** Close the current {@link Doc.Level}. */
+  void close() {
+    Doc.Level top = stack.removeLast();
+    stack.peekLast().add(top);
+  }
+
+  /**
+   * Add a {@link Doc} to the current {@link Doc.Level}.
+   *
+   * @param doc the {@link Doc}
+   */
+  void add(Doc doc) {
+    appendLevel.add(doc);
+  }
+
+  /**
+   * Add a {@link Doc.Break} to the current {@link Doc.Level}.
+   *
+   * @param breakDoc the {@link Doc.Break}
+   */
+  void breakDoc(Doc.Break breakDoc) {
+    appendLevel = stack.peekLast();
+    appendLevel.add(breakDoc);
+  }
+
+  /**
+   * Return the {@link Doc}.
+   *
+   * @return the {@link Doc}
+   */
+  public Doc build() {
+    return base;
+  }
+
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this)
+        .add("base", base)
+        .add("stack", stack)
+        .add("appendLevel", appendLevel)
+        .toString();
+  }
+}
+
+ succeeded in 213ms:
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat;
+
+/**
+ * An {@code Op} is a member of the sequence of formatting operations emitted by {@link OpsBuilder}
+ * and transformed by {@link DocBuilder} into a {@link Doc}. Leaf subclasses of {@link Doc}
+ * implement {@code Op}; {@link Doc.Level} is the only non-leaf, and is represented by paired {@link
+ * OpenOp}-{@link CloseOp} {@code Op}s.
+ */
+public interface Op {
+  /**
+   * Add an {@code Op} to a {@link DocBuilder}.
+   *
+   * @param builder the {@link DocBuilder}
+   */
+  void add(DocBuilder builder);
+}
+
+ succeeded in 259ms:
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java;
+
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeSet;
+import com.google.common.io.CharSink;
+import com.google.common.io.CharSource;
+import com.google.errorprone.annotations.Immutable;
+import com.google.googlejavaformat.Doc;
+import com.google.googlejavaformat.DocBuilder;
+import com.google.googlejavaformat.FormattingError;
+import com.google.googlejavaformat.Newlines;
+import com.google.googlejavaformat.Op;
+import com.google.googlejavaformat.OpsBuilder;
+import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
+import com.sun.tools.javac.util.Context;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import javax.tools.Diagnostic;
+import javax.tools.JavaFileObject;
+
+/**
+ * This is google-java-format, a new Java formatter that follows the Google Java Style Guide quite
+ * precisely---to the letter and to the spirit.
+ *
+ * <p>This formatter uses the javac parser to generate an AST. Because the AST loses information
+ * about the non-tokens in the input (including newlines, comments, etc.), and even some tokens
+ * (e.g., optional commas or semicolons), this formatter lexes the input again and follows along in
+ * the resulting list of tokens. Its lexer splits all multi-character operators (like "&gt;&gt;")
+ * into multiple single-character operators. Each non-token is assigned to a token---non-tokens
+ * following a token on the same line go with that token; those following go with the next token---
+ * and there is a final EOF token to hold final comments.
+ *
+ * <p>The formatter walks the AST to generate a Greg Nelson/Derek Oppen-style list of formatting
+ * {@link Op}s [1--2] that then generates a structured {@link Doc}. Each AST node type has a visitor
+ * to emit a sequence of {@link Op}s for the node.
+ *
+ * <p>Some data-structure operations are easier in the list of {@link Op}s, while others become
+ * easier in the {@link Doc}. The {@link Op}s are walked to attach the comments. As the {@link Op}s
+ * are generated, missing input tokens are inserted and incorrect output tokens are dropped,
+ * ensuring that the output matches the input even in the face of formatter errors. Finally, the
+ * formatter walks the {@link Doc} to format it in the given width.
+ *
+ * <p>This formatter also produces data structures of which tokens and comments appear where on the
+ * input, and on the output, to help output a partial reformatting of a slightly edited input.
+ *
+ * <p>Instances of the formatter are immutable and thread-safe.
+ *
+ * <p>[1] Nelson, Greg, and John DeTreville. Personal communication.
+ *
+ * <p>[2] Oppen, Derek C. "Prettyprinting". ACM Transactions on Programming Languages and Systems,
+ * Volume 2 Issue 4, Oct. 1980, pp. 465–483.
+ */
+@Immutable
+public final class Formatter {
+
+  public static final int MAX_LINE_LENGTH = 100;
+
+  static final Range<Integer> EMPTY_RANGE = Range.closedOpen(-1, -1);
+
+  private final JavaFormatterOptions options;
+
+  /** A new Formatter instance with default options. */
+  public Formatter() {
+    this(JavaFormatterOptions.defaultOptions());
+  }
+
+  public Formatter(JavaFormatterOptions options) {
+    this.options = options;
+  }
+
+  /**
+   * Construct a {@code Formatter} given a Java compilation unit. Parses the code; builds a {@link
+   * JavaInput} and the corresponding {@link JavaOutput}.
+   *
+   * @param javaInput the input, a Java compilation unit
+   * @param javaOutput the {@link JavaOutput}
+   * @param options the {@link JavaFormatterOptions}
+   */
+  static void format(final JavaInput javaInput, JavaOutput javaOutput, JavaFormatterOptions options)
+      throws FormatterException {
+    Context context = new Context();
+    List<Diagnostic<? extends JavaFileObject>> errorDiagnostics = new ArrayList<>();
+    JCCompilationUnit unit =
+        Trees.parse(
+            context, errorDiagnostics, /* allowStringFolding= */ false, javaInput.getText());
+
+    javaInput.setCompilationUnit(unit);
+    if (!errorDiagnostics.isEmpty()) {
+      throw FormatterException.fromJavacDiagnostics(errorDiagnostics);
+    }
+    OpsBuilder builder = new OpsBuilder(javaInput, javaOutput);
+    // Output the compilation unit.
+    JavaInputAstVisitor visitor = new JavaInputAstVisitor(builder, options.indentationMultiplier());
+    visitor.scan(unit, null);
+    builder.sync(javaInput.getText().length());
+    builder.drain();
+    Doc doc = new DocBuilder().withOps(builder.build()).build();
+    doc.computeBreaks(javaOutput.getCommentsHelper(), MAX_LINE_LENGTH, new Doc.State(+0, 0));
+    doc.write(javaOutput);
+    javaOutput.flush();
+  }
+
+  static boolean errorDiagnostic(Diagnostic<?> input) {
+    if (input.getKind() != Diagnostic.Kind.ERROR) {
+      return false;
+    }
+    // accept constructor-like method declarations that don't match the name of their
+    // enclosing class
+    return !input.getCode().equals("compiler.err.invalid.meth.decl.ret.type.req");
+  }
+
+  /**
+   * Format the given input (a Java compilation unit) into the output stream.
+   *
+   * @throws FormatterException if the input cannot be parsed
+   */
+  public void formatSource(CharSource input, CharSink output)
+      throws FormatterException, IOException {
+    // TODO(cushon): proper support for streaming input/output. Input may
+    // not be feasible (parsing) but output should be easier.
+    output.write(formatSource(input.read()));
+  }
+
+  /**
+   * Format an input string (a Java compilation unit) into an output string.
+   *
+   * <p>Leaves import statements untouched.
+   *
+   * @param input the input string
+   * @return the output string
+   * @throws FormatterException if the input string cannot be parsed
+   */
+  public String formatSource(String input) throws FormatterException {
+    return formatSource(input, ImmutableList.of(Range.closedOpen(0, input.length())));
+  }
+
+  /**
+   * Formats an input string (a Java compilation unit) and fixes imports.
+   *
+   * <p>Fixing imports includes ordering, spacing, and removal of unused import statements.
+   *
+   * @param input the input string
+   * @return the output string
+   * @throws FormatterException if the input string cannot be parsed
+   * @see <a
+   *     href="https://google.github.io/styleguide/javaguide.html#s3.3.3-import-ordering-and-spacing">
+   *     Google Java Style Guide - 3.3.3 Import ordering and spacing</a>
+   */
+  public String formatSourceAndFixImports(String input) throws FormatterException {
+    input = ImportOrderer.reorderImports(input, options.style());
+    input = RemoveUnusedImports.removeUnusedImports(input);
+    String formatted = formatSource(input);
+    formatted = StringWrapper.wrap(formatted, this);
+    return formatted;
+  }
+
+  /**
+   * Format an input string (a Java compilation unit), for only the specified character ranges.
+   * These ranges are extended as necessary (e.g., to encompass whole lines).
+   *
+   * @param input the input string
+   * @param characterRanges the character ranges to be reformatted
+   * @return the output string
+   * @throws FormatterException if the input string cannot be parsed
+   */
+  public String formatSource(String input, Collection<Range<Integer>> characterRanges)
+      throws FormatterException {
+    return JavaOutput.applyReplacements(input, getFormatReplacements(input, characterRanges));
+  }
+
+  /**
+   * Emit a list of {@link Replacement}s to convert from input to output.
+   *
+   * @param input the input compilation unit
+   * @param characterRanges the character ranges to reformat
+   * @return a list of {@link Replacement}s, sorted from low index to high index, without overlaps
+   * @throws FormatterException if the input string cannot be parsed
+   */
+  public ImmutableList<Replacement> getFormatReplacements(
+      String input, Collection<Range<Integer>> characterRanges) throws FormatterException {
+    JavaInput javaInput = new JavaInput(input);
+
+    // TODO(cushon): this is only safe because the modifier ordering doesn't affect whitespace,
+    // and doesn't change the replacements that are output. This is not true in general for
+    // 'de-linting' changes (e.g. import ordering).
+    if (options.reorderModifiers()) {
+      javaInput = ModifierOrderer.reorderModifiers(javaInput, characterRanges);
+    }
+
+    String lineSeparator = Newlines.guessLineSeparator(input);
+    JavaOutput javaOutput =
+        new JavaOutput(lineSeparator, javaInput, new JavaCommentsHelper(lineSeparator, options));
+    try {
+      format(javaInput, javaOutput, options);
+    } catch (FormattingError e) {
+      throw new FormatterException(e.diagnostics());
+    }
+    RangeSet<Integer> tokenRangeSet = javaInput.characterRangesToTokenRanges(characterRanges);
+    return javaOutput.getFormatReplacements(tokenRangeSet);
+  }
+
+codex
+I have the implementation now. I’m checking who actually calls its methods, because hub-like modularization depends on both the number of outgoing dependencies and the number of distinct incoming clients, not just one or two central touchpoints.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/OpenOp.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "rg -n \"\\.open\\(|\\.close\\(|\\.add\\(this\\)|\\.breakDoc\\(\" core/src/main/java/com/google/googlejavaformat" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/CloseOp.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 121ms:
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat;
+
+import com.google.common.base.MoreObjects;
+
+/**
+ * A {@code CloseOp} closes a level. It is an {@link Op} in the sequence of {@link Op}s generated by
+ * {@link OpsBuilder}. When the sequence is turned into a {@link Doc} by {@link DocBuilder}, ranges
+ * delimited by {@link OpenOp}-{@code CloseOp} pairs turn into nested {@link Doc.Level}s.
+ */
+public enum CloseOp implements Op {
+  CLOSE;
+
+  /**
+   * Make a {@code CloseOp}, returning a singleton since they are all the same.
+   *
+   * @return the singleton {@code CloseOp}
+   */
+  public static Op make() {
+    return CLOSE;
+  }
+
+  @Override
+  public void add(DocBuilder builder) {
+    builder.close();
+  }
+
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this).toString();
+  }
+}
+
+ succeeded in 163ms:
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat;
+
+import com.google.common.base.MoreObjects;
+
+/**
+ * An {@code OpenOp} opens a level. It is an {@link Op} in the sequence of {@link Op}s generated by
+ * {@link OpsBuilder}. When the sequence is turned into a {@link Doc} by {@link DocBuilder}, {@link
+ * Input.Tok}s delimited by {@code OpenOp}-{@link CloseOp} pairs turn into nested {@link
+ * Doc.Level}s.
+ */
+public final class OpenOp implements Op {
+  private final Indent plusIndent;
+
+  private OpenOp(Indent plusIndent) {
+    this.plusIndent = plusIndent;
+  }
+
+  /**
+   * Make an ordinary {@code OpenOp}.
+   *
+   * @param plusIndent the indent for breaks at this level
+   * @return the {@code OpenOp}
+   */
+  public static Op make(Indent plusIndent) {
+    return new OpenOp(plusIndent);
+  }
+
+  @Override
+  public void add(DocBuilder builder) {
+    builder.open(plusIndent);
+  }
+
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this).add("plusIndent", plusIndent).toString();
+  }
+}
+
+ succeeded in 202ms:
+core/src/main/java/com/google/googlejavaformat/CloseOp.java:38:    builder.close();
+core/src/main/java/com/google/googlejavaformat/DocBuilder.java:57:      op.add(this); // These operations call the operations below to build the doc.
+core/src/main/java/com/google/googlejavaformat/OpenOp.java:44:    builder.open(plusIndent);
+core/src/main/java/com/google/googlejavaformat/Doc.java:467:      builder.add(this);
+core/src/main/java/com/google/googlejavaformat/Doc.java:524:      builder.add(this);
+core/src/main/java/com/google/googlejavaformat/Doc.java:627:      builder.breakDoc(this);
+core/src/main/java/com/google/googlejavaformat/Doc.java:717:      builder.add(this);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:470:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:472:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:477:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:478:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:480:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:482:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:499:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:514:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:516:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:517:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:537:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:545:        builder.open(row.iterator().next().getKind() == NEW_ARRAY || cols == 1 ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:556:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:560:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:581:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:586:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:600:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:603:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:630:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:635:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:641:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:644:    builder.open(node.getDetail() == null ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:652:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:653:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:661:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:667:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:680:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:686:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:693:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:699:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:707:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:713:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:720:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:737:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:748:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:758:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:765:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:772:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:809:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:813:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:821:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:823:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:853:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:855:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:859:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:860:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:862:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:864:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:867:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:877:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:878:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:879:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:897:        builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:902:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:903:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:907:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:909:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:912:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:915:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:918:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:934:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:935:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:937:        builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:941:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:943:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:948:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:965:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:981:        builder.open(node.getImplementsClause().size() > 1 ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:993:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:996:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1019:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1028:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1093:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1094:    builder.open(
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1107:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1117:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1122:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1130:      builder.open(node.getUpdate().size() <= 1 ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1141:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1145:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1170:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1214:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1285:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1294:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1301:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1304:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1312:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1313:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1320:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1331:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1338:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1342:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1352:    builder.open(parens ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1371:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1374:    builder.open(statementBody ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1389:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1401:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1405:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1431:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1432:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1439:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1454:    builder.open(isArrayInitializer ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1464:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1541:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1544:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1570:          builder.open(make(breakBeforeType, plusFour, ZERO));
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1573:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1580:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1588:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1600:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1602:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1604:    builder.open(Indent.If.make(breakBeforeName, plusFour, ZERO));
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1605:    builder.open(Indent.If.make(breakBeforeType, plusFour, ZERO));
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1606:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1621:        builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1625:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1631:          builder.open(minusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1636:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1638:          builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1643:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1647:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1648:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1649:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1656:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1669:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1673:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1821:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1825:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1837:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1841:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1851:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1852:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1965:    builder.open(isArrayInitializer ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1973:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1986:    builder.open(node.getCaseKind().equals(CaseTree.CaseKind.RULE) ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1991:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2002:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2016:        builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2018:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2019:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2026:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2037:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2061:    builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2070:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2082:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2085:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2105:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2110:      builder.open(node.getResources().size() > 1 ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2145:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2171:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2188:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2206:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2218:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2224:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2226:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2237:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2238:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2240:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2268:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2271:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2276:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2278:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2334:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2335:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2343:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2345:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2369:        builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2372:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2457:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2471:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2484:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2493:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2678:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2681:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2683:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2687:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2689:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2691:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2701:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2735:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2763:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2795:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2839:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2853:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2869:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2883:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2988:    builder.open(plusIndent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2990:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3001:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3002:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3050:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3054:        builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3061:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3127:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3141:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3166:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3194:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3195:    builder.open(indent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3200:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3202:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3224:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3226:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3247:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3258:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3297:          builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3301:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3332:        builder.open(tyargIndent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3335:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3347:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3354:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3377:    builder.open(plusIndent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3387:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3400:    builder.open(plusIndent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3405:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3414:          builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3419:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3422:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3425:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3429:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3431:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3432:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3439:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3443:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3454:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3663:    builder.open(
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3677:      builder.open(hasType ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3679:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3681:          builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3687:              builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3689:              builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3697:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3705:          builder.open(Indent.If.make(typeBreak, plusFour, ZERO));
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3714:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3716:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3723:          builder.open(minusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3726:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3728:          builder.open(Indent.If.make(typeBreak, plusFour, ZERO));
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3733:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3741:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3743:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3826:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3833:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3834:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3850:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3858:        builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3861:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3863:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3865:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3869:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3871:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3882:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3884:          builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3886:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3890:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3896:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3898:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3928:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3934:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3944:    builder.open(types.size() > 1 ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3956:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:4158:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:4170:    builder.close();
+
+exec
+/bin/bash -lc "sed -n '430,760p' core/src/main/java/com/google/googlejavaformat/Doc.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/OpsBuilder.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 209ms:
+     * Make a {@code Token}.
+     *
+     * @param token the {@link Input.Token} to wrap
+     * @param realOrImaginary did this {@link Input.Token} appear in the input, or was it generated
+     *     incorrectly?
+     * @param plusIndentCommentsBefore extra {@code plusIndent} for comments just before this token
+     * @return the new {@code Token}
+     */
+    static Op make(
+        Input.Token token,
+        Doc.Token.RealOrImaginary realOrImaginary,
+        Indent plusIndentCommentsBefore,
+        Optional<Indent> breakAndIndentTrailingComment) {
+      return new Token(
+          token, realOrImaginary, plusIndentCommentsBefore, breakAndIndentTrailingComment);
+    }
+
+    /**
+     * Return the wrapped {@link Input.Token}.
+     *
+     * @return the {@link Input.Token}
+     */
+    Input.Token getToken() {
+      return token;
+    }
+
+    /**
+     * Is the token good? That is, does it match an {@link Input.Token}?
+     *
+     * @return whether the @code Token} is good
+     */
+    RealOrImaginary realOrImaginary() {
+      return realOrImaginary;
+    }
+
+    @Override
+    public void add(DocBuilder builder) {
+      builder.add(this);
+    }
+
+    @Override
+    int computeWidth() {
+      int idx = Newlines.firstBreak(tok().getOriginalText());
+      return (idx >= 0) ? MAX_LINE_WIDTH : tok().length();
+    }
+
+    @Override
+    String computeFlat() {
+      return token.getTok().getOriginalText();
+    }
+
+    @Override
+    Range<Integer> computeRange() {
+      return Range.singleton(token.getTok().getIndex()).canonical(INTEGERS);
+    }
+
+    @Override
+    public State computeBreaks(CommentsHelper commentsHelper, int maxWidth, State state) {
+      return state.withColumn(state.column + computeWidth());
+    }
+
+    @Override
+    public void write(Output output) {
+      String text = token.getTok().getOriginalText();
+      output.append(text, range());
+    }
+
+    @Override
+    public String toString() {
+      return MoreObjects.toStringHelper(this)
+          .add("token", token)
+          .add("realOrImaginary", realOrImaginary)
+          .add("plusIndentCommentsBefore", plusIndentCommentsBefore)
+          .toString();
+    }
+  }
+
+  /** A Leaf node in a {@link Doc} for a non-breaking space. */
+  static final class Space extends Doc implements Op {
+    private static final Space SPACE = new Space();
+
+    private Space() {}
+
+    /**
+     * Factor method for {@code Space}.
+     *
+     * @return the new {@code Space}
+     */
+    static Space make() {
+      return SPACE;
+    }
+
+    @Override
+    public void add(DocBuilder builder) {
+      builder.add(this);
+    }
+
+    @Override
+    int computeWidth() {
+      return 1;
+    }
+
+    @Override
+    String computeFlat() {
+      return " ";
+    }
+
+    @Override
+    Range<Integer> computeRange() {
+      return EMPTY_RANGE;
+    }
+
+    @Override
+    public State computeBreaks(CommentsHelper commentsHelper, int maxWidth, State state) {
+      return state.withColumn(state.column + 1);
+    }
+
+    @Override
+    public void write(Output output) {
+      output.append(" ", range());
+    }
+
+    @Override
+    public String toString() {
+      return MoreObjects.toStringHelper(this).toString();
+    }
+  }
+
+  /** A leaf node in a {@link Doc} for an optional break. */
+  public static final class Break extends Doc implements Op {
+    private final FillMode fillMode;
+    private final String flat;
+    private final Indent plusIndent;
+    private final Optional<BreakTag> optTag;
+
+    private Break(FillMode fillMode, String flat, Indent plusIndent, Optional<BreakTag> optTag) {
+      this.fillMode = fillMode;
+      this.flat = flat;
+      this.plusIndent = plusIndent;
+      this.optTag = optTag;
+    }
+
+    /**
+     * Make a {@code Break}.
+     *
+     * @param fillMode the {@link FillMode}
+     * @param flat the text when not broken
+     * @param plusIndent extra indent if taken
+     * @return the new {@code Break}
+     */
+    public static Break make(FillMode fillMode, String flat, Indent plusIndent) {
+      return new Break(fillMode, flat, plusIndent, /* optTag= */ Optional.empty());
+    }
+
+    /**
+     * Make a {@code Break}.
+     *
+     * @param fillMode the {@link FillMode}
+     * @param flat the text when not broken
+     * @param plusIndent extra indent if taken
+     * @param optTag an optional tag for remembering whether the break was taken
+     * @return the new {@code Break}
+     */
+    public static Break make(
+        FillMode fillMode, String flat, Indent plusIndent, Optional<BreakTag> optTag) {
+      return new Break(fillMode, flat, plusIndent, optTag);
+    }
+
+    /**
+     * Make a forced {@code Break}.
+     *
+     * @return the new forced {@code Break}
+     */
+    public static Break makeForced() {
+      return make(FillMode.FORCED, "", Indent.Const.ZERO);
+    }
+
+    /**
+     * Return the {@code Break}'s extra indent.
+     *
+     * @return the extra indent
+     */
+    int getPlusIndent() {
+      return plusIndent.eval();
+    }
+
+    /**
+     * Is the {@code Break} forced?
+     *
+     * @return whether the {@code Break} is forced
+     */
+    boolean isForced() {
+      return fillMode == FillMode.FORCED;
+    }
+
+    @Override
+    public void add(DocBuilder builder) {
+      builder.breakDoc(this);
+    }
+
+    @Override
+    int computeWidth() {
+      return isForced() ? MAX_LINE_WIDTH : flat.length();
+    }
+
+    @Override
+    String computeFlat() {
+      return flat;
+    }
+
+    @Override
+    Range<Integer> computeRange() {
+      return EMPTY_RANGE;
+    }
+
+    /** Was this break taken? */
+    boolean broken;
+
+    /** New indent after this break. */
+    int newIndent;
+
+    public State computeBreaks(State state, int lastIndent, boolean broken) {
+      if (optTag.isPresent()) {
+        optTag.get().recordBroken(broken);
+      }
+
+      if (broken) {
+        this.broken = true;
+        this.newIndent = max(lastIndent + plusIndent.eval(), 0);
+        return state.withColumn(newIndent);
+      } else {
+        this.broken = false;
+        this.newIndent = -1;
+        return state.withColumn(state.column + flat.length());
+      }
+    }
+
+    @Override
+    public State computeBreaks(CommentsHelper commentsHelper, int maxWidth, State state) {
+      // Updating the state for {@link Break}s requires deciding if the break
+      // should be taken.
+      // TODO(cushon): this hierarchy is wrong, create a separate interface
+      // for unbreakable Docs?
+      throw new UnsupportedOperationException("Did you mean computeBreaks(State, int, boolean)?");
+    }
+
+    @Override
+    public void write(Output output) {
+      if (broken) {
+        output.append("\n", EMPTY_RANGE);
+        output.indent(newIndent);
+      } else {
+        output.append(flat, range());
+      }
+    }
+
+    @Override
+    public String toString() {
+      return MoreObjects.toStringHelper(this)
+          .add("fillMode", fillMode)
+          .add("flat", flat)
+          .add("plusIndent", plusIndent)
+          .add("optTag", optTag)
+          .toString();
+    }
+  }
+
+  /** A leaf node in a {@link Doc} for a non-token. */
+  static final class Tok extends Doc implements Op {
+    private final Input.Tok tok;
+
+    private Tok(Input.Tok tok) {
+      this.tok = tok;
+    }
+
+    /**
+     * Factory method for a {@code Tok}.
+     *
+     * @param tok the {@link Input.Tok} to wrap
+     * @return the new {@code Tok}
+     */
+    static Tok make(Input.Tok tok) {
+      return new Tok(tok);
+    }
+
+    @Override
+    public void add(DocBuilder builder) {
+      builder.add(this);
+    }
+
+    @Override
+    int computeWidth() {
+      int idx = Newlines.firstBreak(tok.getOriginalText());
+      // only count the first line of multi-line block comments
+      if (tok.isComment()) {
+        if (idx > 0) {
+          return idx;
+        } else if (tok.isSlashSlashComment() && !tok.getOriginalText().startsWith("// ")) {
+          // Account for line comments with missing spaces, see computeFlat.
+          return tok.length() + 1;
+        } else {
+          return reformatParameterComment(tok).map(String::length).orElse(tok.length());
+        }
+      }
+      return idx != -1 ? MAX_LINE_WIDTH : tok.length();
+    }
+
+    @Override
+    String computeFlat() {
+      // TODO(cushon): commentsHelper.rewrite doesn't get called for spans that fit in a single
+      // line. That's fine for multi-line comment reflowing, but problematic for adding missing
+      // spaces in line comments.
+      if (tok.isSlashSlashComment() && !tok.getOriginalText().startsWith("// ")) {
+        return "// " + tok.getOriginalText().substring("//".length());
+      }
+      return reformatParameterComment(tok).orElse(tok.getOriginalText());
+    }
+
+    @Override
+    Range<Integer> computeRange() {
+      return Range.singleton(tok.getIndex()).canonical(INTEGERS);
+    }
+
+    String text;
+
+    @Override
+    public State computeBreaks(CommentsHelper commentsHelper, int maxWidth, State state) {
+      text = commentsHelper.rewrite(tok, maxWidth, state.column);
+      int firstLineLength = text.length() - Iterators.getLast(Newlines.lineOffsetIterator(text));
+      return state.withColumn(state.column + firstLineLength);
+    }
+
+ succeeded in 219ms:
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat;
+
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+
+import com.google.common.base.MoreObjects;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimap;
+import com.google.googlejavaformat.Indent.Const;
+import com.google.googlejavaformat.Input.Tok;
+import com.google.googlejavaformat.Input.Token;
+import com.google.googlejavaformat.Output.BreakTag;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * An {@code OpsBuilder} creates a list of {@link Op}s, which is turned into a {@link Doc} by {@link
+ * DocBuilder}.
+ */
+public final class OpsBuilder {
+
+  /** Returns the actual size of the AST node at position, including comments. */
+  public int actualSize(int position, int length) {
+    Token startToken = input.getPositionTokenMap().get(position);
+    int start = startToken.getTok().getPosition();
+    for (Tok tok : startToken.getToksBefore()) {
+      if (tok.isComment()) {
+        start = min(start, tok.getPosition());
+      }
+    }
+    Token endToken = input.getPositionTokenMap().get(position + length - 1);
+    int end = endToken.getTok().getPosition() + endToken.getTok().length();
+    for (Tok tok : endToken.getToksAfter()) {
+      if (tok.isComment()) {
+        end = max(end, tok.getPosition() + tok.length());
+      }
+    }
+    return end - start;
+  }
+
+  /** Returns the start column of the token at {@code position}, including leading comments. */
+  public Integer actualStartColumn(int position) {
+    Token startToken = input.getPositionTokenMap().get(position);
+    int start = startToken.getTok().getPosition();
+    int line0 = input.getLineNumber(start);
+    for (Tok tok : startToken.getToksBefore()) {
+      if (line0 != input.getLineNumber(tok.getPosition())) {
+        return start;
+      }
+      if (tok.isComment()) {
+        start = min(start, tok.getPosition());
+      }
+    }
+    return start;
+  }
+
+  /** A request to add or remove a blank line in the output. */
+  public abstract static class BlankLineWanted {
+
+    /** Always emit a blank line. */
+    public static final BlankLineWanted YES = new SimpleBlankLine(Optional.of(true));
+
+    /** Never emit a blank line. */
+    public static final BlankLineWanted NO = new SimpleBlankLine(Optional.of(false));
+
+    /**
+     * Explicitly preserve blank lines from the input (e.g. before the first member in a class
+     * declaration). Overrides conditional blank lines.
+     */
+    public static final BlankLineWanted PRESERVE =
+        new SimpleBlankLine(/* wanted= */ Optional.empty());
+
+    /** Is the blank line wanted? */
+    public abstract Optional<Boolean> wanted();
+
+    /** Merge this blank line request with another. */
+    public abstract BlankLineWanted merge(BlankLineWanted wanted);
+
+    /** Emit a blank line if the given break is taken. */
+    public static BlankLineWanted conditional(BreakTag breakTag) {
+      return new ConditionalBlankLine(ImmutableList.of(breakTag));
+    }
+
+    private static final class SimpleBlankLine extends BlankLineWanted {
+      private final Optional<Boolean> wanted;
+
+      SimpleBlankLine(Optional<Boolean> wanted) {
+        this.wanted = wanted;
+      }
+
+      @Override
+      public Optional<Boolean> wanted() {
+        return wanted;
+      }
+
+      @Override
+      public BlankLineWanted merge(BlankLineWanted other) {
+        return this;
+      }
+    }
+
+    private static final class ConditionalBlankLine extends BlankLineWanted {
+
+      private final ImmutableList<BreakTag> tags;
+
+      ConditionalBlankLine(Iterable<BreakTag> tags) {
+        this.tags = ImmutableList.copyOf(tags);
+      }
+
+      @Override
+      public Optional<Boolean> wanted() {
+        for (BreakTag tag : tags) {
+          if (tag.wasBreakTaken()) {
+            return Optional.of(true);
+          }
+        }
+        return Optional.empty();
+      }
+
+      @Override
+      public BlankLineWanted merge(BlankLineWanted other) {
+        if (!(other instanceof ConditionalBlankLine)) {
+          return other;
+        }
+        return new ConditionalBlankLine(
+            Iterables.concat(this.tags, ((ConditionalBlankLine) other).tags));
+      }
+    }
+  }
+
+  private final Input input;
+  private final List<Op> ops = new ArrayList<>();
+  private final Output output;
+  private static final Indent.Const ZERO = Indent.Const.ZERO;
+
+  private int tokenI = 0;
+  private int inputPosition = Integer.MIN_VALUE;
+
+  /** The number of unclosed open ops in the input stream. */
+  int depth = 0;
+
+  /** Add an {@link Op}, and record open/close ops for later validation of unclosed levels. */
+  public final void add(Op op) {
+    if (op instanceof OpenOp) {
+      depth++;
+    } else if (op instanceof CloseOp) {
+      depth--;
+      if (depth < 0) {
+        throw new AssertionError();
+      }
+    }
+    ops.add(op);
+  }
+
+  /** Add a list of {@link Op}s. */
+  public final void addAll(List<Op> ops) {
+    for (Op op : ops) {
+      add(op);
+    }
+  }
+
+  /**
+   * The {@code OpsBuilder} constructor.
+   *
+   * @param input the {@link Input}, used for retrieve information from the AST
+   * @param output the {@link Output}, used here only to record blank-line information
+   */
+  public OpsBuilder(Input input, Output output) {
+    this.input = input;
+    this.output = output;
+  }
+
+  /** Get the {@code OpsBuilder}'s {@link Input}. */
+  public final Input getInput() {
+    return input;
+  }
+
+  /** Returns the number of unclosed open ops in the input stream. */
+  public int depth() {
+    return depth;
+  }
+
+  /**
+   * Checks that all open ops in the op stream have matching close ops.
+   *
+   * @throws FormattingError if any ops were unclosed
+   */
+  public void checkClosed(int previous) {
+    if (depth != previous) {
+      throw new FormattingError(diagnostic(String.format("saw %d unclosed ops", depth)));
+    }
+  }
+
+  /** Create a {@link FormatterDiagnostic} at the current position. */
+  public FormatterDiagnostic diagnostic(String message) {
+    return input.createDiagnostic(inputPosition, message);
+  }
+
+  /**
+   * Sync to position in the input. If we've skipped outputting any tokens that were present in the
+   * input tokens, output them here and optionally complain.
+
+codex
+I’ve confirmed the class is pretty small and centrally used only in the formatting pipeline. I’m now counting the distinct files that reference it so I can distinguish “core helper” from a true hub with broad fan-in.
+exec
+/bin/bash -lc "rg -l \"\\bDocBuilder\\b\" core/src/main/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "rg -n \"import com\\.google\\.googlejavaformat\\.DocBuilder|new DocBuilder\\(|void add\\(DocBuilder builder\\)|builder\\.open\\(|builder\\.close\\(|builder\\.add\\(this\\)|builder\\.breakDoc\\(\" core/src/main/java/com/google/googlejavaformat" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+core/src/main/java/com/google/googlejavaformat/Op.java:29:  void add(DocBuilder builder);
+core/src/main/java/com/google/googlejavaformat/CloseOp.java:37:  public void add(DocBuilder builder) {
+core/src/main/java/com/google/googlejavaformat/CloseOp.java:38:    builder.close();
+core/src/main/java/com/google/googlejavaformat/OpenOp.java:43:  public void add(DocBuilder builder) {
+core/src/main/java/com/google/googlejavaformat/OpenOp.java:44:    builder.open(plusIndent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:470:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:472:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:477:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:478:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:480:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:482:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:499:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:514:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:516:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:517:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:537:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:545:        builder.open(row.iterator().next().getKind() == NEW_ARRAY || cols == 1 ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:556:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:560:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:581:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:586:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:600:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:603:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:630:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:635:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:641:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:644:    builder.open(node.getDetail() == null ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:652:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:653:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:661:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:667:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:680:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:686:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:693:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:699:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:707:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:713:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:720:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:737:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:748:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:758:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:765:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:772:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:809:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:813:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:821:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:823:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:853:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:855:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:859:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:860:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:862:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:864:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:867:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:877:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:878:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:879:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:897:        builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:902:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:903:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:907:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:909:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:912:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:915:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:918:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:934:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:935:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:937:        builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:941:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:943:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:948:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:965:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:981:        builder.open(node.getImplementsClause().size() > 1 ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:993:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:996:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1019:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1028:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1093:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1094:    builder.open(
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1107:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1117:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1122:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1130:      builder.open(node.getUpdate().size() <= 1 ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1141:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1145:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1170:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1214:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1285:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1294:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1301:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1304:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1312:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1313:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1320:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1331:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1338:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1342:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1352:    builder.open(parens ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1371:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1374:    builder.open(statementBody ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1389:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1401:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1405:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1431:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1432:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1439:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1454:    builder.open(isArrayInitializer ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1464:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1541:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1544:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1570:          builder.open(make(breakBeforeType, plusFour, ZERO));
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1573:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1580:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1588:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1600:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1602:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1604:    builder.open(Indent.If.make(breakBeforeName, plusFour, ZERO));
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1605:    builder.open(Indent.If.make(breakBeforeType, plusFour, ZERO));
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1606:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1621:        builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1625:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1631:          builder.open(minusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1636:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1638:          builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1643:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1647:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1648:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1649:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1656:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1669:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1673:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1821:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1825:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1837:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1841:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1851:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1852:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1965:    builder.open(isArrayInitializer ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1973:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1986:    builder.open(node.getCaseKind().equals(CaseTree.CaseKind.RULE) ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1991:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2002:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2016:        builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2018:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2019:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2026:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2037:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2061:    builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2070:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2082:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2085:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2105:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2110:      builder.open(node.getResources().size() > 1 ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2145:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2171:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2188:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2206:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2218:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2224:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2226:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2237:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2238:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2240:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2268:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2271:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2276:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2278:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2334:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2335:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2343:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2345:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2369:        builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2372:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2457:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2471:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2484:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2493:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2678:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2681:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2683:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2687:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2689:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2691:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2701:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2735:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2763:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2795:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2839:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2853:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2869:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2883:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2988:    builder.open(plusIndent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2990:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3001:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3002:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3050:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3054:        builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3061:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3127:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3141:      builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3166:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3194:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3195:    builder.open(indent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3200:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3202:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3224:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3226:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3247:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3258:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3297:          builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3301:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3332:        builder.open(tyargIndent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3335:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3347:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3354:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3377:    builder.open(plusIndent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3387:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3400:    builder.open(plusIndent);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3405:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3414:          builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3419:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3422:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3425:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3429:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3431:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3432:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3439:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3443:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3454:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3663:    builder.open(
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3677:      builder.open(hasType ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3679:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3681:          builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3687:              builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3689:              builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3697:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3705:          builder.open(Indent.If.make(typeBreak, plusFour, ZERO));
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3714:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3716:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3723:          builder.open(minusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3726:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3728:          builder.open(Indent.If.make(typeBreak, plusFour, ZERO));
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3733:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3741:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3743:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3826:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3833:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3834:    builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3850:      builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3858:        builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3861:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3863:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3865:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3869:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3871:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3882:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3884:          builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3886:          builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3890:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3896:        builder.open(ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3898:      builder.open(plusTwo);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3928:      builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3934:        builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3944:    builder.open(types.size() > 1 ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3956:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:4158:    builder.open(plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:4170:    builder.close();
+core/src/main/java/com/google/googlejavaformat/java/Formatter.java:27:import com.google.googlejavaformat.DocBuilder;
+core/src/main/java/com/google/googlejavaformat/java/Formatter.java:117:    Doc doc = new DocBuilder().withOps(builder.build()).build();
+core/src/main/java/com/google/googlejavaformat/Doc.java:466:    public void add(DocBuilder builder) {
+core/src/main/java/com/google/googlejavaformat/Doc.java:467:      builder.add(this);
+core/src/main/java/com/google/googlejavaformat/Doc.java:523:    public void add(DocBuilder builder) {
+core/src/main/java/com/google/googlejavaformat/Doc.java:524:      builder.add(this);
+core/src/main/java/com/google/googlejavaformat/Doc.java:626:    public void add(DocBuilder builder) {
+core/src/main/java/com/google/googlejavaformat/Doc.java:627:      builder.breakDoc(this);
+core/src/main/java/com/google/googlejavaformat/Doc.java:716:    public void add(DocBuilder builder) {
+core/src/main/java/com/google/googlejavaformat/Doc.java:717:      builder.add(this);
+
+ succeeded in 225ms:
+core/src/main/java/com/google/googlejavaformat/OpsBuilder.java
+core/src/main/java/com/google/googlejavaformat/Op.java
+core/src/main/java/com/google/googlejavaformat/CloseOp.java
+core/src/main/java/com/google/googlejavaformat/DocBuilder.java
+core/src/main/java/com/google/googlejavaformat/OpenOp.java
+core/src/main/java/com/google/googlejavaformat/java/Formatter.java
+core/src/main/java/com/google/googlejavaformat/Doc.java
+
+codex
+{"target":"com.google.googlejavaformat.DocBuilder","detection":false,"justification":"Inspected core/src/main/java/com/google/googlejavaformat/DocBuilder.java, OpenOp.java, CloseOp.java, Doc.java, Op.java, and core/src/main/java/com/google/googlejavaformat/java/Formatter.java. DocBuilder is small (5 methods) and its outgoing dependencies are limited to Doc, Indent, ArrayDeque, List, and MoreObjects. Its incoming use is also narrow: OpenOp and CloseOp each delegate one call, Doc.java’s four Op leaf types delegate to it, and Formatter.java creates a single instance to build one Doc. The references are concentrated in the formatting pipeline rather than spread broadly across the codebase, so there is not strong fan-in/fan-out evidence for a hub-like modularization smell."}
+tokens used
+21,942

@@ -1,0 +1,1048 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f1f-ccc9-7ac1-a182-6d316fb15500
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.googlejavaformat.java.ModifierOrderer.ModifierTokens` in the repository located at:
+
+`data/repositories/google/google-java-format`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.googlejavaformat.java.ModifierOrderer.ModifierTokens",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.googlejavaformat.java.ModifierOrderer.ModifierTokens`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and then I’ll trace its direct dependencies and any code paths that reference it, so the verdict is grounded in the repository evidence.
+exec
+/bin/bash -lc 'rg -n "class ModifierTokens|ModifierTokens" .' in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc 'rg --files . | rg "ModifierOrderer|ModifierTokens"' in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+./core/src/test/java/com/google/googlejavaformat/java/ModifierOrdererTest.java
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java
+
+ succeeded in 0ms:
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:53:  static class ModifierTokens implements Comparable<ModifierTokens> {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:57:    static ModifierTokens create(ImmutableList<Token> tokens) {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:58:      return new ModifierTokens(tokens, asModifier(tokens));
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:61:    static ModifierTokens empty() {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:62:      return new ModifierTokens(ImmutableList.of(), null);
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:65:    ModifierTokens(ImmutableList<Token> tokens, Modifier modifier) {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:107:    public int compareTo(ModifierTokens o) {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:108:      checkState(!isEmpty()); // empty ModifierTokens are filtered out prior to sorting
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:128:      ModifierTokens tokens = getModifierTokens(it);
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:135:      List<ModifierTokens> modifierTokens = new ArrayList<>();
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:142:        tokens = getModifierTokens(it);
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:151:        List<ModifierTokens> sorted = Ordering.natural().sortedCopy(modifierTokens);
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:174:  private static @Nullable ModifierTokens getModifierTokens(Iterator<? extends Token> it) {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:179:      return ModifierTokens.create(result.build());
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:182:      return ModifierTokens.empty();
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:187:      return ModifierTokens.empty();
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:190:    return ModifierTokens.create(result.build());
+
+codex
+I found the implementation in `core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java` and the corresponding test file. Next I’m checking whether `ModifierTokens` is actually a dependency hub or just a small internal value object inside one class.
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+/*
+ * Copyright 2016 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy
+ * of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+package com.google.googlejavaformat.java;
+
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.Iterables.getLast;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Ordering;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeMap;
+import com.google.googlejavaformat.Input.Tok;
+import com.google.googlejavaformat.Input.Token;
+import com.sun.tools.javac.parser.Tokens.TokenKind;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import javax.lang.model.element.Modifier;
+import org.jspecify.annotations.Nullable;
+
+/** Fixes sequences of modifiers to be in JLS order. */
+final class ModifierOrderer {
+
+  /** Reorders all modifiers in the given text to be in JLS order. */
+  static JavaInput reorderModifiers(String text) throws FormatterException {
+    return reorderModifiers(
+        new JavaInput(text), ImmutableList.of(Range.closedOpen(0, text.length())));
+  }
+
+  /**
+   * A class that contains the tokens corresponding to a modifier. This is usually a single token
+   * (e.g. for {@code public}), but may be multiple tokens for modifiers containing {@code -} (e.g.
+   * {@code non-sealed}).
+   */
+  static class ModifierTokens implements Comparable<ModifierTokens> {
+    private final ImmutableList<Token> tokens;
+    private final Modifier modifier;
+
+    static ModifierTokens create(ImmutableList<Token> tokens) {
+      return new ModifierTokens(tokens, asModifier(tokens));
+    }
+
+    static ModifierTokens empty() {
+      return new ModifierTokens(ImmutableList.of(), null);
+    }
+
+    ModifierTokens(ImmutableList<Token> tokens, Modifier modifier) {
+      this.tokens = tokens;
+      this.modifier = modifier;
+    }
+
+    boolean isEmpty() {
+      return tokens.isEmpty() || modifier == null;
+    }
+
+    Modifier modifier() {
+      return modifier;
+    }
+
+    ImmutableList<Token> tokens() {
+      return tokens;
+    }
+
+    private Token first() {
+      return tokens.get(0);
+    }
+
+    private Token last() {
+      return getLast(tokens);
+    }
+
+    int startPosition() {
+      return first().getTok().getPosition();
+    }
+
+    int endPosition() {
+      return last().getTok().getPosition() + last().getTok().getText().length();
+    }
+
+    ImmutableList<? extends Tok> getToksBefore() {
+      return first().getToksBefore();
+    }
+
+    ImmutableList<? extends Tok> getToksAfter() {
+      return last().getToksAfter();
+    }
+
+    @Override
+    public int compareTo(ModifierTokens o) {
+      checkState(!isEmpty()); // empty ModifierTokens are filtered out prior to sorting
+      return modifier.compareTo(o.modifier);
+    }
+  }
+
+  /**
+   * Reorders all modifiers in the given text and within the given character ranges to be in JLS
+   * order.
+   */
+  static JavaInput reorderModifiers(JavaInput javaInput, Collection<Range<Integer>> characterRanges)
+      throws FormatterException {
+    if (javaInput.getTokens().isEmpty()) {
+      // There weren't any tokens, possible because of a lexing error.
+      // Errors about invalid input will be reported later after parsing.
+      return javaInput;
+    }
+    RangeSet<Integer> tokenRanges = javaInput.characterRangesToTokenRanges(characterRanges);
+    Iterator<? extends Token> it = javaInput.getTokens().iterator();
+    TreeRangeMap<Integer, String> replacements = TreeRangeMap.create();
+    while (it.hasNext()) {
+      ModifierTokens tokens = getModifierTokens(it);
+      if (tokens.isEmpty()
+          || !tokens.tokens().stream()
+              .allMatch(token -> tokenRanges.contains(token.getTok().getIndex()))) {
+        continue;
+      }
+
+      List<ModifierTokens> modifierTokens = new ArrayList<>();
+
+      int begin = tokens.startPosition();
+      modifierTokens.add(tokens);
+
+      int end = -1;
+      while (it.hasNext()) {
+        tokens = getModifierTokens(it);
+        if (tokens.isEmpty()) {
+          break;
+        }
+        modifierTokens.add(tokens);
+        end = tokens.endPosition();
+      }
+
+      if (!Ordering.natural().isOrdered(modifierTokens)) {
+        List<ModifierTokens> sorted = Ordering.natural().sortedCopy(modifierTokens);
+        StringBuilder replacement = new StringBuilder();
+        for (int i = 0; i < sorted.size(); i++) {
+          if (i > 0) {
+            addTrivia(replacement, modifierTokens.get(i).getToksBefore());
+          }
+          replacement.append(sorted.get(i).modifier());
+          if (i < (sorted.size() - 1)) {
+            addTrivia(replacement, modifierTokens.get(i).getToksAfter());
+          }
+        }
+        replacements.put(Range.closedOpen(begin, end), replacement.toString());
+      }
+    }
+    return applyReplacements(javaInput, replacements);
+  }
+
+  private static void addTrivia(StringBuilder replacement, ImmutableList<? extends Tok> toks) {
+    for (Tok tok : toks) {
+      replacement.append(tok.getText());
+    }
+  }
+
+  private static @Nullable ModifierTokens getModifierTokens(Iterator<? extends Token> it) {
+    Token token = it.next();
+    ImmutableList.Builder<Token> result = ImmutableList.builder();
+    result.add(token);
+    if (!token.getTok().getText().equals("non")) {
+      return ModifierTokens.create(result.build());
+    }
+    if (!it.hasNext()) {
+      return ModifierTokens.empty();
+    }
+    Token dash = it.next();
+    result.add(dash);
+    if (!dash.getTok().getText().equals("-") || !it.hasNext()) {
+      return ModifierTokens.empty();
+    }
+    result.add(it.next());
+    return ModifierTokens.create(result.build());
+  }
+
+  private static @Nullable Modifier asModifier(ImmutableList<Token> tokens) {
+    if (tokens.size() == 1) {
+      return asModifier(tokens.get(0));
+    }
+    Modifier modifier = asModifier(getLast(tokens));
+    if (modifier == null) {
+      return null;
+    }
+    return Modifier.valueOf("NON_" + modifier.name());
+  }
+
+  /**
+   * Returns the given token as a {@link javax.lang.model.element.Modifier}, or {@code null} if it
+   * is not a modifier.
+   */
+  private static @Nullable Modifier asModifier(Token token) {
+    TokenKind kind = ((JavaInput.Tok) token.getTok()).kind();
+    if (kind == null) {
+      return null;
+    }
+    return switch (kind) {
+      case PUBLIC -> Modifier.PUBLIC;
+      case PROTECTED -> Modifier.PROTECTED;
+      case PRIVATE -> Modifier.PRIVATE;
+      case ABSTRACT -> Modifier.ABSTRACT;
+      case STATIC -> Modifier.STATIC;
+      case DEFAULT -> Modifier.DEFAULT;
+
+      case FINAL -> Modifier.FINAL;
+      case TRANSIENT -> Modifier.TRANSIENT;
+      case VOLATILE -> Modifier.VOLATILE;
+      case SYNCHRONIZED -> Modifier.SYNCHRONIZED;
+      case NATIVE -> Modifier.NATIVE;
+      case STRICTFP -> Modifier.STRICTFP;
+      default ->
+          switch (token.getTok().getText()) {
+            case "sealed" -> Modifier.SEALED;
+            default -> null;
+          };
+    };
+  }
+
+  /** Applies replacements to the given string. */
+  private static JavaInput applyReplacements(
+      JavaInput javaInput, TreeRangeMap<Integer, String> replacementMap) throws FormatterException {
+    // process in descending order so the replacement ranges aren't perturbed if any replacements
+    // differ in size from the input
+    Map<Range<Integer>, String> ranges = replacementMap.asDescendingMapOfRanges();
+    if (ranges.isEmpty()) {
+      return javaInput;
+    }
+    StringBuilder sb = new StringBuilder(javaInput.getText());
+    for (Entry<Range<Integer>, String> entry : ranges.entrySet()) {
+      Range<Integer> range = entry.getKey();
+      sb.replace(range.lowerEndpoint(), range.upperEndpoint(), entry.getValue());
+    }
+    return new JavaInput(sb.toString());
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/test/java/com/google/googlejavaformat/java/ModifierOrdererTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+/*
+ * Copyright 2016 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy
+ * of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+package com.google.googlejavaformat.java;
+
+import static com.google.common.truth.Truth.assertThat;
+
+import com.google.common.base.Joiner;
+import com.google.common.collect.Range;
+import java.util.Arrays;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+/** {@link ModifierOrderer}Test */
+@RunWith(JUnit4.class)
+public class ModifierOrdererTest {
+
+  @Test
+  public void simple() throws FormatterException {
+    assertThat(ModifierOrderer.reorderModifiers("static abstract class InnerClass {}").getText())
+        .isEqualTo("abstract static class InnerClass {}");
+  }
+
+  @Test
+  public void comment() throws FormatterException {
+    assertThat(ModifierOrderer.reorderModifiers("static/*1*/abstract/*2*/public").getText())
+        .isEqualTo("public/*1*/abstract/*2*/static");
+  }
+
+  @Test
+  public void everything() throws FormatterException {
+    assertThat(
+            ModifierOrderer.reorderModifiers(
+                    "strictfp native synchronized volatile transient final static abstract"
+                        + " private protected public")
+                .getText())
+        .isEqualTo(
+            "public protected private abstract static final transient volatile synchronized"
+                + " native strictfp");
+  }
+
+  @Test
+  public void everythingIncludingDefault() throws FormatterException {
+    assertThat(
+            ModifierOrderer.reorderModifiers(
+                    "strictfp native synchronized volatile transient final static default abstract"
+                        + " private protected public")
+                .getText())
+        .isEqualTo(
+            "public protected private abstract default static final transient volatile synchronized"
+                + " native strictfp");
+  }
+
+  @Test
+  public void subRange() throws FormatterException {
+    String[] lines = {
+      "class Test {", //
+      "  static public int a;",
+      "  static public int b;",
+      "}",
+    };
+    String input = Joiner.on('\n').join(lines);
+    String substring = "static public int a";
+    int start = input.indexOf(substring);
+    int end = start + substring.length();
+    String output =
+        ModifierOrderer.reorderModifiers(
+                new JavaInput(input), Arrays.asList(Range.closedOpen(start, end)))
+            .getText();
+    assertThat(output).contains("public static int a;");
+    assertThat(output).contains("static public int b;");
+  }
+
+  @Test
+  public void whitespace() throws FormatterException {
+    String[] lines = {
+      "class Test {", //
+      "  static",
+      "  public int a;",
+      "}",
+    };
+    String input = Joiner.on('\n').join(lines);
+    String substring = "static public int a";
+    int start = input.indexOf(substring);
+    int end = start + substring.length();
+    String output =
+        ModifierOrderer.reorderModifiers(
+                new JavaInput(input), Arrays.asList(Range.closedOpen(start, end)))
+            .getText();
+    assertThat(output).contains("public\n  static int a;");
+  }
+
+  @Test
+  public void sealedClass() throws FormatterException {
+    assertThat(ModifierOrderer.reorderModifiers("non-sealed sealed public").getText())
+        .isEqualTo("public sealed non-sealed");
+  }
+}
+
+codex
+I have the implementation and tests. I’m now checking whether `ModifierTokens` has meaningful fan-in from other classes or fan-out beyond a narrow set of collaborators, because HM requires dependency-hub behavior rather than just being an internal helper.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/java/JavaInput.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.collect.Iterables.getLast;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import com.google.common.base.MoreObjects;
+import com.google.common.base.Verify;
+import com.google.common.collect.DiscreteDomain;
+import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableRangeMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeSet;
+import com.google.googlejavaformat.Input;
+import com.google.googlejavaformat.Newlines;
+import com.google.googlejavaformat.java.JavacTokens.RawTok;
+import com.sun.tools.javac.file.JavacFileManager;
+import com.sun.tools.javac.parser.Tokens.TokenKind;
+import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
+import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.JCDiagnostic;
+import com.sun.tools.javac.util.Log;
+import com.sun.tools.javac.util.Log.DeferredDiagnosticHandler;
+import com.sun.tools.javac.util.Options;
+import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticCollector;
+import javax.tools.DiagnosticListener;
+import javax.tools.JavaFileManager;
+import javax.tools.JavaFileObject;
+import javax.tools.JavaFileObject.Kind;
+import javax.tools.SimpleJavaFileObject;
+import org.jspecify.annotations.Nullable;
+
+/** {@code JavaInput} extends {@link Input} to represent a Java input document. */
+public final class JavaInput extends Input {
+  /**
+   * A {@code JavaInput} is a sequence of {@link Tok}s that cover the Java input. A {@link Tok} is
+   * either a token (if {@code isToken()}), or a non-token, which is a comment (if {@code
+   * isComment()}) or a newline (if {@code isNewline()}) or a maximal sequence of other whitespace
+   * characters (if {@code isSpaces()}). Each {@link Tok} contains a sequence of characters, an
+   * index (sequential starting at {@code 0} for tokens and comments, else {@code -1}), and a
+   * ({@code 0}-origin) position in the input. The concatenation of the texts of all the {@link
+   * Tok}s equals the input. Each Input ends with a token EOF {@link Tok}, with empty text.
+   *
+   * <p>A {@code /*} comment possibly contains newlines; a {@code //} comment does not contain the
+   * terminating newline character, but is followed by a newline {@link Tok}.
+   */
+  static final class Tok implements Input.Tok {
+    private final int index;
+    private final String originalText;
+    private final String text;
+    private final int position;
+    private final int columnI;
+    private final boolean isToken;
+    private final TokenKind kind;
+
+    /**
+     * The {@code Tok} constructor.
+     *
+     * @param index its index
+     * @param originalText its original text, before removing Unicode escapes
+     * @param text its text after removing Unicode escapes
+     * @param position its {@code 0}-origin position in the input
+     * @param columnI its {@code 0}-origin column number in the input
+     * @param isToken whether the {@code Tok} is a token
+     * @param kind the token kind
+     */
+    Tok(
+        int index,
+        String originalText,
+        String text,
+        int position,
+        int columnI,
+        boolean isToken,
+        TokenKind kind) {
+      this.index = index;
+      this.originalText = originalText;
+      this.text = text;
+      this.position = position;
+      this.columnI = columnI;
+      this.isToken = isToken;
+      this.kind = kind;
+    }
+
+    @Override
+    public int getIndex() {
+      return index;
+    }
+
+    @Override
+    public String getText() {
+      return text;
+    }
+
+    @Override
+    public String getOriginalText() {
+      return originalText;
+    }
+
+    @Override
+    public int length() {
+      return originalText.length();
+    }
+
+    @Override
+    public int getPosition() {
+      return position;
+    }
+
+    @Override
+    public int getColumn() {
+      return columnI;
+    }
+
+    boolean isToken() {
+      return isToken;
+    }
+
+    @Override
+    public boolean isNewline() {
+      return Newlines.isNewline(text);
+    }
+
+    @Override
+    public boolean isSlashSlashComment() {
+      return text.startsWith("//");
+    }
+
+    @Override
+    public boolean isSlashStarComment() {
+      return text.startsWith("/*");
+    }
+
+    @Override
+    public boolean isJavadocComment() {
+      // comments like `/***` are also javadoc, but their formatting probably won't be improved
+      // by the javadoc formatter
+      return text.startsWith("/**") && text.charAt("/**".length()) != '*' && text.length() > 4;
+    }
+
+    @Override
+    public boolean isComment() {
+      return isSlashSlashComment() || isSlashStarComment();
+    }
+
+    @Override
+    public String toString() {
+      return MoreObjects.toStringHelper(this)
+          .add("index", index)
+          .add("text", text)
+          .add("position", position)
+          .add("columnI", columnI)
+          .add("isToken", isToken)
+          .toString();
+    }
+
+    public TokenKind kind() {
+      return kind;
+    }
+  }
+
+  /**
+   * A {@link Token} contains a token {@link Tok} and its associated non-tokens; each non-token
+   * {@link Tok} belongs to one {@link Token}. Each {@link Token} has an immutable list of its
+   * non-tokens that appear before it, and another list of its non-tokens that appear after it. The
+   * concatenation of the texts of all the {@link Token}s' {@link Tok}s, each preceded by the texts
+   * of its {@code toksBefore} and followed by the texts of its {@code toksAfter}, equals the input.
+   */
+  static final class Token implements Input.Token {
+    private final Tok tok;
+    private final ImmutableList<Tok> toksBefore;
+    private final ImmutableList<Tok> toksAfter;
+
+    /**
+     * Token constructor.
+     *
+     * @param toksBefore the earlier non-token {link Tok}s assigned to this {@code Token}
+     * @param tok this token {@link Tok}
+     * @param toksAfter the later non-token {link Tok}s assigned to this {@code Token}
+     */
+    Token(List<Tok> toksBefore, Tok tok, List<Tok> toksAfter) {
+      this.toksBefore = ImmutableList.copyOf(toksBefore);
+      this.tok = tok;
+      this.toksAfter = ImmutableList.copyOf(toksAfter);
+    }
+
+    /**
+     * Get the token's {@link Tok}.
+     *
+     * @return the token's {@link Tok}
+     */
+    @Override
+    public Tok getTok() {
+
+exec
+/bin/bash -lc 'rg -n "ModifierTokens" core/src/main/java core/src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:53:  static class ModifierTokens implements Comparable<ModifierTokens> {
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:57:    static ModifierTokens create(ImmutableList<Token> tokens) {
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:58:      return new ModifierTokens(tokens, asModifier(tokens));
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:61:    static ModifierTokens empty() {
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:62:      return new ModifierTokens(ImmutableList.of(), null);
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:65:    ModifierTokens(ImmutableList<Token> tokens, Modifier modifier) {
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:107:    public int compareTo(ModifierTokens o) {
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:108:      checkState(!isEmpty()); // empty ModifierTokens are filtered out prior to sorting
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:128:      ModifierTokens tokens = getModifierTokens(it);
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:135:      List<ModifierTokens> modifierTokens = new ArrayList<>();
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:142:        tokens = getModifierTokens(it);
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:151:        List<ModifierTokens> sorted = Ordering.natural().sortedCopy(modifierTokens);
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:174:  private static @Nullable ModifierTokens getModifierTokens(Iterator<? extends Token> it) {
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:179:      return ModifierTokens.create(result.build());
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:182:      return ModifierTokens.empty();
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:187:      return ModifierTokens.empty();
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:190:    return ModifierTokens.create(result.build());
+
+codex
+The dependency picture is narrow so far: I found no external references to `ModifierTokens` outside `ModifierOrderer.java`. I’m confirming the exact lines and the scope of its collaborators so the final verdict can cite concrete evidence instead of inference.
+exec
+/bin/bash -lc "nl -ba core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java | sed -n '40,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+    40	final class ModifierOrderer {
+    41	
+    42	  /** Reorders all modifiers in the given text to be in JLS order. */
+    43	  static JavaInput reorderModifiers(String text) throws FormatterException {
+    44	    return reorderModifiers(
+    45	        new JavaInput(text), ImmutableList.of(Range.closedOpen(0, text.length())));
+    46	  }
+    47	
+    48	  /**
+    49	   * A class that contains the tokens corresponding to a modifier. This is usually a single token
+    50	   * (e.g. for {@code public}), but may be multiple tokens for modifiers containing {@code -} (e.g.
+    51	   * {@code non-sealed}).
+    52	   */
+    53	  static class ModifierTokens implements Comparable<ModifierTokens> {
+    54	    private final ImmutableList<Token> tokens;
+    55	    private final Modifier modifier;
+    56	
+    57	    static ModifierTokens create(ImmutableList<Token> tokens) {
+    58	      return new ModifierTokens(tokens, asModifier(tokens));
+    59	    }
+    60	
+    61	    static ModifierTokens empty() {
+    62	      return new ModifierTokens(ImmutableList.of(), null);
+    63	    }
+    64	
+    65	    ModifierTokens(ImmutableList<Token> tokens, Modifier modifier) {
+    66	      this.tokens = tokens;
+    67	      this.modifier = modifier;
+    68	    }
+    69	
+    70	    boolean isEmpty() {
+    71	      return tokens.isEmpty() || modifier == null;
+    72	    }
+    73	
+    74	    Modifier modifier() {
+    75	      return modifier;
+    76	    }
+    77	
+    78	    ImmutableList<Token> tokens() {
+    79	      return tokens;
+    80	    }
+    81	
+    82	    private Token first() {
+    83	      return tokens.get(0);
+    84	    }
+    85	
+    86	    private Token last() {
+    87	      return getLast(tokens);
+    88	    }
+    89	
+    90	    int startPosition() {
+    91	      return first().getTok().getPosition();
+    92	    }
+    93	
+    94	    int endPosition() {
+    95	      return last().getTok().getPosition() + last().getTok().getText().length();
+    96	    }
+    97	
+    98	    ImmutableList<? extends Tok> getToksBefore() {
+    99	      return first().getToksBefore();
+   100	    }
+   101	
+   102	    ImmutableList<? extends Tok> getToksAfter() {
+   103	      return last().getToksAfter();
+   104	    }
+   105	
+   106	    @Override
+   107	    public int compareTo(ModifierTokens o) {
+   108	      checkState(!isEmpty()); // empty ModifierTokens are filtered out prior to sorting
+   109	      return modifier.compareTo(o.modifier);
+   110	    }
+   111	  }
+   112	
+   113	  /**
+   114	   * Reorders all modifiers in the given text and within the given character ranges to be in JLS
+   115	   * order.
+   116	   */
+   117	  static JavaInput reorderModifiers(JavaInput javaInput, Collection<Range<Integer>> characterRanges)
+   118	      throws FormatterException {
+   119	    if (javaInput.getTokens().isEmpty()) {
+   120	      // There weren't any tokens, possible because of a lexing error.
+   121	      // Errors about invalid input will be reported later after parsing.
+   122	      return javaInput;
+   123	    }
+   124	    RangeSet<Integer> tokenRanges = javaInput.characterRangesToTokenRanges(characterRanges);
+   125	    Iterator<? extends Token> it = javaInput.getTokens().iterator();
+   126	    TreeRangeMap<Integer, String> replacements = TreeRangeMap.create();
+   127	    while (it.hasNext()) {
+   128	      ModifierTokens tokens = getModifierTokens(it);
+   129	      if (tokens.isEmpty()
+   130	          || !tokens.tokens().stream()
+   131	              .allMatch(token -> tokenRanges.contains(token.getTok().getIndex()))) {
+   132	        continue;
+   133	      }
+   134	
+   135	      List<ModifierTokens> modifierTokens = new ArrayList<>();
+   136	
+   137	      int begin = tokens.startPosition();
+   138	      modifierTokens.add(tokens);
+   139	
+   140	      int end = -1;
+   141	      while (it.hasNext()) {
+   142	        tokens = getModifierTokens(it);
+   143	        if (tokens.isEmpty()) {
+   144	          break;
+   145	        }
+   146	        modifierTokens.add(tokens);
+   147	        end = tokens.endPosition();
+   148	      }
+   149	
+   150	      if (!Ordering.natural().isOrdered(modifierTokens)) {
+   151	        List<ModifierTokens> sorted = Ordering.natural().sortedCopy(modifierTokens);
+   152	        StringBuilder replacement = new StringBuilder();
+   153	        for (int i = 0; i < sorted.size(); i++) {
+   154	          if (i > 0) {
+   155	            addTrivia(replacement, modifierTokens.get(i).getToksBefore());
+   156	          }
+   157	          replacement.append(sorted.get(i).modifier());
+   158	          if (i < (sorted.size() - 1)) {
+   159	            addTrivia(replacement, modifierTokens.get(i).getToksAfter());
+   160	          }
+   161	        }
+   162	        replacements.put(Range.closedOpen(begin, end), replacement.toString());
+   163	      }
+   164	    }
+   165	    return applyReplacements(javaInput, replacements);
+   166	  }
+   167	
+   168	  private static void addTrivia(StringBuilder replacement, ImmutableList<? extends Tok> toks) {
+   169	    for (Tok tok : toks) {
+   170	      replacement.append(tok.getText());
+   171	    }
+   172	  }
+   173	
+   174	  private static @Nullable ModifierTokens getModifierTokens(Iterator<? extends Token> it) {
+   175	    Token token = it.next();
+   176	    ImmutableList.Builder<Token> result = ImmutableList.builder();
+   177	    result.add(token);
+   178	    if (!token.getTok().getText().equals("non")) {
+   179	      return ModifierTokens.create(result.build());
+   180	    }
+   181	    if (!it.hasNext()) {
+   182	      return ModifierTokens.empty();
+   183	    }
+   184	    Token dash = it.next();
+   185	    result.add(dash);
+   186	    if (!dash.getTok().getText().equals("-") || !it.hasNext()) {
+   187	      return ModifierTokens.empty();
+   188	    }
+   189	    result.add(it.next());
+   190	    return ModifierTokens.create(result.build());
+   191	  }
+   192	
+   193	  private static @Nullable Modifier asModifier(ImmutableList<Token> tokens) {
+   194	    if (tokens.size() == 1) {
+   195	      return asModifier(tokens.get(0));
+   196	    }
+   197	    Modifier modifier = asModifier(getLast(tokens));
+   198	    if (modifier == null) {
+   199	      return null;
+   200	    }
+   201	    return Modifier.valueOf("NON_" + modifier.name());
+   202	  }
+   203	
+   204	  /**
+   205	   * Returns the given token as a {@link javax.lang.model.element.Modifier}, or {@code null} if it
+   206	   * is not a modifier.
+   207	   */
+   208	  private static @Nullable Modifier asModifier(Token token) {
+   209	    TokenKind kind = ((JavaInput.Tok) token.getTok()).kind();
+   210	    if (kind == null) {
+   211	      return null;
+   212	    }
+   213	    return switch (kind) {
+   214	      case PUBLIC -> Modifier.PUBLIC;
+   215	      case PROTECTED -> Modifier.PROTECTED;
+   216	      case PRIVATE -> Modifier.PRIVATE;
+   217	      case ABSTRACT -> Modifier.ABSTRACT;
+   218	      case STATIC -> Modifier.STATIC;
+   219	      case DEFAULT -> Modifier.DEFAULT;
+   220	
+
+exec
+/bin/bash -lc "nl -ba core/src/test/java/com/google/googlejavaformat/java/ModifierOrdererTest.java | sed -n '1,180p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright 2016 Google Inc.
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+     5	 * use this file except in compliance with the License. You may obtain a copy
+     6	 * of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+    12	 * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+    13	 * License for the specific language governing permissions and limitations
+    14	 * under the License.
+    15	 */
+    16	
+    17	package com.google.googlejavaformat.java;
+    18	
+    19	import static com.google.common.truth.Truth.assertThat;
+    20	
+    21	import com.google.common.base.Joiner;
+    22	import com.google.common.collect.Range;
+    23	import java.util.Arrays;
+    24	import org.junit.Test;
+    25	import org.junit.runner.RunWith;
+    26	import org.junit.runners.JUnit4;
+    27	
+    28	/** {@link ModifierOrderer}Test */
+    29	@RunWith(JUnit4.class)
+    30	public class ModifierOrdererTest {
+    31	
+    32	  @Test
+    33	  public void simple() throws FormatterException {
+    34	    assertThat(ModifierOrderer.reorderModifiers("static abstract class InnerClass {}").getText())
+    35	        .isEqualTo("abstract static class InnerClass {}");
+    36	  }
+    37	
+    38	  @Test
+    39	  public void comment() throws FormatterException {
+    40	    assertThat(ModifierOrderer.reorderModifiers("static/*1*/abstract/*2*/public").getText())
+    41	        .isEqualTo("public/*1*/abstract/*2*/static");
+    42	  }
+    43	
+    44	  @Test
+    45	  public void everything() throws FormatterException {
+    46	    assertThat(
+    47	            ModifierOrderer.reorderModifiers(
+    48	                    "strictfp native synchronized volatile transient final static abstract"
+    49	                        + " private protected public")
+    50	                .getText())
+    51	        .isEqualTo(
+    52	            "public protected private abstract static final transient volatile synchronized"
+    53	                + " native strictfp");
+    54	  }
+    55	
+    56	  @Test
+    57	  public void everythingIncludingDefault() throws FormatterException {
+    58	    assertThat(
+    59	            ModifierOrderer.reorderModifiers(
+    60	                    "strictfp native synchronized volatile transient final static default abstract"
+    61	                        + " private protected public")
+    62	                .getText())
+    63	        .isEqualTo(
+    64	            "public protected private abstract default static final transient volatile synchronized"
+    65	                + " native strictfp");
+    66	  }
+    67	
+    68	  @Test
+    69	  public void subRange() throws FormatterException {
+    70	    String[] lines = {
+    71	      "class Test {", //
+    72	      "  static public int a;",
+    73	      "  static public int b;",
+    74	      "}",
+    75	    };
+    76	    String input = Joiner.on('\n').join(lines);
+    77	    String substring = "static public int a";
+    78	    int start = input.indexOf(substring);
+    79	    int end = start + substring.length();
+    80	    String output =
+    81	        ModifierOrderer.reorderModifiers(
+    82	                new JavaInput(input), Arrays.asList(Range.closedOpen(start, end)))
+    83	            .getText();
+    84	    assertThat(output).contains("public static int a;");
+    85	    assertThat(output).contains("static public int b;");
+    86	  }
+    87	
+    88	  @Test
+    89	  public void whitespace() throws FormatterException {
+    90	    String[] lines = {
+    91	      "class Test {", //
+    92	      "  static",
+    93	      "  public int a;",
+    94	      "}",
+    95	    };
+    96	    String input = Joiner.on('\n').join(lines);
+    97	    String substring = "static public int a";
+    98	    int start = input.indexOf(substring);
+    99	    int end = start + substring.length();
+   100	    String output =
+   101	        ModifierOrderer.reorderModifiers(
+   102	                new JavaInput(input), Arrays.asList(Range.closedOpen(start, end)))
+   103	            .getText();
+   104	    assertThat(output).contains("public\n  static int a;");
+   105	  }
+   106	
+   107	  @Test
+   108	  public void sealedClass() throws FormatterException {
+   109	    assertThat(ModifierOrderer.reorderModifiers("non-sealed sealed public").getText())
+   110	        .isEqualTo("public sealed non-sealed");
+   111	  }
+   112	}
+
+codex
+I have the line-level evidence now. I’m doing one last repo-wide check for any direct references to the nested class name itself; if there aren’t any, that strongly supports a non-hub verdict.
+exec
+/bin/bash -lc "rg -n \"ModifierOrderer\\.ModifierTokens|ModifierTokens\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:53:  static class ModifierTokens implements Comparable<ModifierTokens> {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:57:    static ModifierTokens create(ImmutableList<Token> tokens) {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:58:      return new ModifierTokens(tokens, asModifier(tokens));
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:61:    static ModifierTokens empty() {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:62:      return new ModifierTokens(ImmutableList.of(), null);
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:65:    ModifierTokens(ImmutableList<Token> tokens, Modifier modifier) {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:107:    public int compareTo(ModifierTokens o) {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:108:      checkState(!isEmpty()); // empty ModifierTokens are filtered out prior to sorting
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:128:      ModifierTokens tokens = getModifierTokens(it);
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:135:      List<ModifierTokens> modifierTokens = new ArrayList<>();
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:142:        tokens = getModifierTokens(it);
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:151:        List<ModifierTokens> sorted = Ordering.natural().sortedCopy(modifierTokens);
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:174:  private static @Nullable ModifierTokens getModifierTokens(Iterator<? extends Token> it) {
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:179:      return ModifierTokens.create(result.build());
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:182:      return ModifierTokens.empty();
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:187:      return ModifierTokens.empty();
+./core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:190:    return ModifierTokens.create(result.build());
+
+codex
+{"target":"com.google.googlejavaformat.java.ModifierOrderer.ModifierTokens","detection":false,"justification":"Inspected `core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java` and `core/src/test/java/com/google/googlejavaformat/java/ModifierOrdererTest.java`. `ModifierTokens` is a package-private static nested helper defined only inside `ModifierOrderer` (lines 53-111) and is referenced only by methods in the same file (`getModifierTokens`, `reorderModifiers`); `rg` found no other source files referencing `ModifierTokens` or `ModifierOrderer.ModifierTokens`. Its fan-in/fan-out is therefore narrow, limited to local tokens/modifier handling (`ImmutableList`, `Token`, `Modifier`, local helpers), not the high incoming/outgoing dependency pattern required for hub-like modularization."}
+tokens used
+13,385

@@ -1,0 +1,1312 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f6a-7c07-74d2-9748-38015fd668f4
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.Position` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.Position",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.Position`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `com.github.javaparser.Position` and checking both its own dependencies and where it is referenced so the verdict is based on concrete fan-in/fan-out evidence.
+exec
+/bin/bash -lc "rg -n \"\\bPosition\\b\" src test -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg --files | rg '("'^|/)Position'"\\.java"'$|Position'"\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ exited 2 in 160ms:
+rg: src: No such file or directory (os error 2)
+rg: test: No such file or directory (os error 2)
+
+ succeeded in 318ms:
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javaparser_src/proper_source/com/github/javaparser/Position.java
+javaparser-symbol-solver-testing/src/test/test_sourcecode/javaparser_new_src/javaparser-core/com/github/javaparser/Position.java
+javaparser-core/src/main/java/com/github/javaparser/Position.java
+
+codex
+I found the main source file and an initial search path issue; next I’m reading the class itself and then counting direct references across the repository to gauge fan-in.
+exec
+/bin/bash -lc "rg -n \"\\bPosition\\b\" . --glob '"'!**/target/**'"' --glob '"'!javaparser-symbol-solver-testing/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/Position.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 252ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser;
+
+import static com.github.javaparser.utils.Utils.assertNotNull;
+
+import java.util.Objects;
+
+/**
+ * A position in a source file. Lines and columns start counting at 1.
+ */
+public class Position implements Comparable<Position> {
+
+    public final int line;
+
+    public final int column;
+
+    /**
+     * The first line -- note that it is 1-indexed (i.e. the first line is line 1, as opposed to 0)
+     */
+    public static final int FIRST_LINE = 1;
+
+    /**
+     * The first column -- note that it is 1-indexed (i.e. the first column is column 1, as opposed to 0)
+     */
+    public static final int FIRST_COLUMN = 1;
+
+    /**
+     * The first position in the file.
+     */
+    public static final Position HOME = new Position(FIRST_LINE, FIRST_COLUMN);
+
+    /**
+     * Line numbers must be positive, thus
+     */
+    public static final int ABSOLUTE_BEGIN_LINE = -1;
+
+    public static final int ABSOLUTE_END_LINE = -2;
+
+    /**
+     * TODO: Do we refer to the characters as columns,
+     *  ...or the spaces between (thus also before/after) characters as columns?
+     */
+    public Position(int line, int column) {
+        if (line < Position.ABSOLUTE_END_LINE) {
+            throw new IllegalArgumentException("Can't position at line " + line);
+        }
+        if (column < -1) {
+            // TODO: This allows/permits column 0, which seemingly contradicts first column being 1
+            // ... (see also nextLine() which indicates 1 being the first column of the next line)
+            // ... (see also valid() which requires a column > 0)
+            // TODO: Maybe we need an "ABSOLUTE_BEGIN_LINE" and "ABSOLUTE_END_LINE"?
+            throw new IllegalArgumentException("Can't position at column " + column);
+        }
+        this.line = line;
+        this.column = column;
+    }
+
+    /**
+     * Convenient factory method.
+     *
+     * @deprecated Use the constructor (e.g. {@code new Position(line, column)})
+     */
+    @Deprecated
+    public static Position pos(int line, int column) {
+        return new Position(line, column);
+    }
+
+    /**
+     * @return Jump to the given column number, while retaining the current line number.
+     */
+    public Position withColumn(int column) {
+        return new Position(this.line, column);
+    }
+
+    /**
+     * @return Jump to the given line number, while retaining the current column number.
+     */
+    public Position withLine(int line) {
+        return new Position(line, this.column);
+    }
+
+    /**
+     * @return a position that is "characters" characters more to the right than this position.
+     */
+    public Position right(int characters) {
+        return new Position(line, this.column + characters);
+    }
+
+    /**
+     * @return a position that is on the start of the next line from this position.
+     */
+    public Position nextLine() {
+        return new Position(line + 1, FIRST_COLUMN);
+    }
+
+    /**
+     * Check if the position is usable,
+     * also checks for special positions (ABSOLUTE_BEGIN_LINE and ABSOLUTE_END_LINE).
+     * Does not know what it is pointing at, so it can't check if the position is after the end of the source.
+     * @return true if the position is usable or a special position.
+     */
+    public boolean valid() {
+        return ABSOLUTE_END_LINE == line || ABSOLUTE_BEGIN_LINE == line || line >= FIRST_LINE && column >= FIRST_COLUMN;
+    }
+
+    /**
+     * @see #valid()
+     * @return The inverse of {@link #valid()}
+     */
+    public boolean invalid() {
+        return !valid();
+    }
+
+    /**
+     * @return If this position is valid, this.
+     *   Otherwise, if the alternativePosition is valid, return that.
+     *   Otherwise, just return this.
+     */
+    public Position orIfInvalid(Position alternativePosition) {
+        assertNotNull(alternativePosition);
+        if (this.valid()) {
+            return this;
+        }
+        return alternativePosition.valid() ? alternativePosition : this;
+    }
+
+    /**
+     * @param otherPosition the other position to compare to
+     * @return true if this position is after the given position
+     */
+    public boolean isAfter(Position otherPosition) {
+        assertNotNull(otherPosition);
+        if (line == otherPosition.line) {
+            return column > otherPosition.column;
+        }
+        return line > otherPosition.line || otherPosition.line == Position.ABSOLUTE_BEGIN_LINE;
+    }
+
+    public boolean isAfterOrEqual(Position otherPosition) {
+        return isAfter(otherPosition) || equals(otherPosition);
+    }
+
+    /**
+     * @param otherPosition the other position to compare to
+     * @return true if this position is before the given position
+     */
+    public boolean isBefore(Position otherPosition) {
+        assertNotNull(otherPosition);
+        if (line == otherPosition.line) {
+            return column < otherPosition.column;
+        }
+        return line < otherPosition.line || otherPosition.line == Position.ABSOLUTE_END_LINE;
+    }
+
+    public boolean isBeforeOrEqual(Position otherPosition) {
+        return isBefore(otherPosition) || equals(otherPosition);
+    }
+
+    @Override
+    public int compareTo(Position otherPosition) {
+        assertNotNull(otherPosition);
+        if (isBefore(otherPosition)) {
+            return -1;
+        }
+        if (isAfter(otherPosition)) {
+            return 1;
+        }
+        return 0;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Position otherPosition = (Position) o;
+        return Objects.equals(line, otherPosition.line) && Objects.equals(column, otherPosition.column);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(line, column);
+    }
+
+    @Override
+    public String toString() {
+        return "(line " + line + ",col " + column + ")";
+    }
+}
+
+ succeeded in 353ms:
+./changelog.md:935:* Position (PR [#3734](https://github.com/javaparser/javaparser/pull/3734) by [@ameliagenova](https://github.com/ameliagenova))
+./javaparser-core/src/main/javacc/java.jj:95:import static com.github.javaparser.Position.*;
+./javaparser-core-testing/src/test/test_sourcecode/com/github/javaparser/printer/PrettyPrintVisitor.java:1385:                        "Expected comment, instead " + nodeToPrint.getClass() + ". Position of previous child: "
+./javaparser-core-testing/src/test/java/com/github/javaparser/JavaParserTest.java:72:                new Range(new Position(1, 17), new Position(1, 29)),
+./javaparser-core-testing/src/test/java/com/github/javaparser/JavaParserTest.java:84:                new Range(new Position(1, 22), new Position(1, 34)),
+./javaparser-core-testing/src/test/java/com/github/javaparser/JavaParserTest.java:115:                new Range(new Position(1, 17), new Position(1, 31)),
+./javaparser-core-testing/src/test/java/com/github/javaparser/JavaParserTest.java:127:        assertEquals(new Range(new Position(1, 8), new Position(1, 12)), range.get());
+./javaparser-core-testing/src/test/java/com/github/javaparser/JavaParserTest.java:131:        assertEquals(new Range(new Position(1, 13), new Position(1, 17)), range.get());
+./javaparser-core-testing/src/test/java/com/github/javaparser/JavaParserTest.java:142:        assertEquals(new Range(new Position(1, 8), new Position(1, 9)), range.get());
+./javaparser-core-testing/src/test/java/com/github/javaparser/JavaParserTest.java:146:        assertEquals(new Range(new Position(1, 10), new Position(1, 11)), range.get());
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionMappingTest.java:54:        assertSame(PositionMapping.PositionUpdate.NONE, mapping.lookup(new Position(10000, 1)));
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionMappingTest.java:119:                Position inPos = new Position(inPosLine, inPosColumn);
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionMappingTest.java:120:                Position outPos = new Position(outPosLine, outPosColumn);
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionMappingTest.java:121:                Position transfomedOutPos = mapping.transform(outPos);
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionMappingTest.java:126:                        "Position mismatch at '" + outPart + "' " + outPos + " -> '" + inPart + "' " + inPos + ".");
+./javaparser-core/src/main/java/com/github/javaparser/Problem.java:95:        final Optional<Position> aBegin =
+./javaparser-core/src/main/java/com/github/javaparser/Problem.java:97:        final Optional<Position> bBegin =
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:310:     * An algorithm mapping {@link Position} form two corresponding files.
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:335:         * Looks up the {@link PositionUpdate} for the given Position.
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:337:        public PositionUpdate lookup(Position position) {
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:351:         * Algorithm updating a {@link Position} from one file to a
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:352:         * {@link Position} in a corresponding file.
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:372:                public Position transform(Position pos) {
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:390:            default Position transform(Position pos) {
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:395:                return new Position(transformedLine, transformedColumn);
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:399:        private static final class DeltaInfo extends Position implements PositionUpdate {
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:439:         * Transforms the given {@link Position}.
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:441:        public Position transform(Position pos) {
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:449:            Position begin = transform(range.begin);
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:450:            Position end = transform(range.end);
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:542:        public Position getPosition() {
+./javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java:543:            return new Position(getLine(), getColumn());
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:28:    public final Position begin;
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:30:    public final Position end;
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:41:    public Range(Position begin, Position end) {
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:65:    public static Range range(Position begin, Position end) {
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:71:     * Valid values for each parameter are per the constructor of{@link Position}.
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:80:        return new Range(new Position(beginLine, beginColumn), new Position(endLine, endColumn));
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:85:     *                    Valid values are per the constructor of{@link Position}.
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:94:     *                  Valid values are per the constructor of{@link Position}.
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:103:     *                  Valid values are per the constructor of{@link Position}.
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:112:     *                Valid values are per the constructor of{@link Position}.
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:123:    public Range withBegin(Position begin) {
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:131:    public Range withEnd(Position end) {
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:150:     * As {@link #strictlyContains(Position)}, but a position that is on the "edge" of this range will also pass.
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:155:    public boolean contains(Position position) {
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:175:    public boolean strictlyContains(Position position) {
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:200:    public boolean isBefore(Position position) {
+./javaparser-core/src/main/java/com/github/javaparser/Range.java:216:    public boolean isAfter(Position position) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:30:public class Position implements Comparable<Position> {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:49:    public static final Position HOME = new Position(FIRST_LINE, FIRST_COLUMN);
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:62:    public Position(int line, int column) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:63:        if (line < Position.ABSOLUTE_END_LINE) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:80:     * @deprecated Use the constructor (e.g. {@code new Position(line, column)})
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:83:    public static Position pos(int line, int column) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:84:        return new Position(line, column);
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:90:    public Position withColumn(int column) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:91:        return new Position(this.line, column);
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:97:    public Position withLine(int line) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:98:        return new Position(line, this.column);
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:104:    public Position right(int characters) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:105:        return new Position(line, this.column + characters);
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:111:    public Position nextLine() {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:112:        return new Position(line + 1, FIRST_COLUMN);
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:138:    public Position orIfInvalid(Position alternativePosition) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:150:    public boolean isAfter(Position otherPosition) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:155:        return line > otherPosition.line || otherPosition.line == Position.ABSOLUTE_BEGIN_LINE;
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:158:    public boolean isAfterOrEqual(Position otherPosition) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:166:    public boolean isBefore(Position otherPosition) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:171:        return line < otherPosition.line || otherPosition.line == Position.ABSOLUTE_END_LINE;
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:174:    public boolean isBeforeOrEqual(Position otherPosition) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:179:    public int compareTo(Position otherPosition) {
+./javaparser-core/src/main/java/com/github/javaparser/Position.java:194:        Position otherPosition = (Position) o;
+./javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:2017:                        "Expected comment, instead " + nodeToPrint.getClass() + ". Position of previous child: "
+./javaparser-core/src/main/java/com/github/javaparser/printer/SourcePrinter.java:23:import com.github.javaparser.Position;
+./javaparser-core/src/main/java/com/github/javaparser/printer/SourcePrinter.java:49:    private Position cursor = new Position(Position.FIRST_LINE, Position.FIRST_COLUMN - 1);
+./javaparser-core/src/main/java/com/github/javaparser/printer/SourcePrinter.java:220:        cursor = new Position(cursor.line + 1, Position.FIRST_COLUMN - 1);
+./javaparser-core/src/main/java/com/github/javaparser/printer/SourcePrinter.java:235:    public Position getCursor() {
+./javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:1889:                        "Expected comment, instead " + nodeToPrint.getClass() + ". Position of previous child: "
+./javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:31:import com.github.javaparser.Position;
+./javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:492:     * @deprecated Use {@link Position#ABSOLUTE_BEGIN_LINE}
+./javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:495:    public static final int ABSOLUTE_BEGIN_LINE = Position.ABSOLUTE_BEGIN_LINE;
+./javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:498:     * @deprecated Use {@link Position#ABSOLUTE_END_LINE}
+./javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:501:    public static final int ABSOLUTE_END_LINE = Position.ABSOLUTE_END_LINE;
+./javaparser-core/src/main/java/com/github/javaparser/utils/PositionUtils.java:25:import com.github.javaparser.Position;
+./javaparser-core/src/main/java/com/github/javaparser/utils/PositionUtils.java:81:        Position aBegin = a.getBegin().get();
+./javaparser-core/src/main/java/com/github/javaparser/utils/PositionUtils.java:82:        Position bBegin = b.getBegin().get();
+./javaparser-core/src/main/java/com/github/javaparser/ast/CompilationUnit.java:747:        Position cursor = Position.HOME;
+./javaparser-core-testing-bdd/src/test/java/com/github/javaparser/visitors/PositionTestVisitor.java:29:import com.github.javaparser.Position;
+./javaparser-core-testing-bdd/src/test/java/com/github/javaparser/visitors/PositionTestVisitor.java:544:        Position begin = node.getRange().get().begin;
+./javaparser-core-testing-bdd/src/test/java/com/github/javaparser/visitors/PositionTestVisitor.java:545:        Position end = node.getRange().get().end;
+./javaparser-core-testing-bdd/src/test/java/com/github/javaparser/steps/PositionRangeSteps.java:28:import com.github.javaparser.Position;
+./javaparser-core-testing-bdd/src/test/java/com/github/javaparser/steps/PositionRangeSteps.java:37:    private Position position;
+./javaparser-core-testing-bdd/src/test/java/com/github/javaparser/steps/PositionRangeSteps.java:38:    private Position secondPosition;
+./javaparser-core-testing-bdd/src/test/java/com/github/javaparser/steps/PositionRangeSteps.java:55:        this.position = new Position(line, column);
+./javaparser-core-testing-bdd/src/test/java/com/github/javaparser/steps/PositionRangeSteps.java:69:        secondPosition = new Position(line, column);
+./javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/NodeWithRange.java:23:import com.github.javaparser.Position;
+./javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/NodeWithRange.java:40:    default Optional<Position> getBegin() {
+./javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/NodeWithRange.java:47:    default Optional<Position> getEnd() {
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:30:    private final Position pos1 = new Position(10, 11);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:31:    private final Position pos2 = new Position(20, 21);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:35:    private final Position posA1 = new Position(1, 1);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:36:    private final Position posB1 = new Position(2, 1);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:37:    private final Position posC1 = new Position(3, 1);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:38:    private final Position posD1 = new Position(4, 1);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:39:    private final Position posE1 = new Position(5, 1);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:41:    private final Position posA5 = new Position(1, 5);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:42:    private final Position posB5 = new Position(2, 5);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:43:    private final Position posC5 = new Position(3, 5);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:44:    private final Position posD5 = new Position(4, 5);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:45:    private final Position posE5 = new Position(5, 5);
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:268:        Range r1 = Range.range(new Position(1, 1), new Position(1, 2));
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:269:        Range r2 = Range.range(new Position(1, 3), new Position(1, 4));
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:275:        Range r1 = Range.range(new Position(1, 1), new Position(1, 2));
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:276:        Range r2 = Range.range(new Position(1, 3), new Position(1, 4));
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:277:        Range r3 = Range.range(new Position(1, 1), new Position(1, 4));
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:284:        Range r1 = Range.range(new Position(1, 1), new Position(1, 2));
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:285:        Range r2 = Range.range(new Position(1, 3), new Position(1, 4));
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:291:        Range r1 = Range.range(new Position(1, 1), new Position(1, 2));
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:292:        Range r2 = Range.range(new Position(1, 3), new Position(1, 4));
+./javaparser-core-testing/src/test/java/com/github/javaparser/RangeTest.java:293:        Range r3 = Range.range(new Position(1, 1), new Position(1, 4));
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionTest.java:32:        Position p1 = new Position(1, 1);
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionTest.java:33:        Position p2 = new Position(2, 2);
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionTest.java:37:        Position invalid = new Position(0, 0);
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionTest.java:38:        Position invalid2 = new Position(0, 1);
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionTest.java:47:                Assertions.assertThrows(IllegalArgumentException.class, () -> new Position(-10, 1));
+./javaparser-core-testing/src/test/java/com/github/javaparser/PositionTest.java:52:                Assertions.assertThrows(IllegalArgumentException.class, () -> new Position(1, -10));
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java:335:        Position begin = getNodeStartTokenPosition(node);
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java:342:    public static Position getNodeStartTokenPosition(Node node) {
+./javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonDeserializer.java:156:            Position begin = new Position(
+./javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonDeserializer.java:159:            Position end = new Position(
+./javaparser-core-testing/src/test/resources/com/github/javaparser/printer/PrettyPrintVisitor_prettyprinted:1328:                throw new RuntimeException("Expected comment, instead " + nodeToPrint.getClass() + ". Position of previous child: " + positionOfPreviousChild + ", position of child " + positionOfTheChild);
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeTest.java:30:import com.github.javaparser.Position;
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeTest.java:179:        Optional<Node> node = cu.findByRange(new Range(new Position(1, 1), new Position(4, 2)));
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeTest.java:184:        node = cu.findByRange(new Range(new Position(1, 1), new Position(4, 1)));
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeTest.java:189:        node = cu.findByRange(new Range(new Position(2, 3), new Position(3, 3)));
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeTest.java:194:        node = cu.findByRange(new Range(new Position(1, 1), new Position(1, 1)));
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeTest.java:199:        node = cu.findByRange(new Range(new Position(5, 1), new Position(5, 1)));
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeTest.java:203:        node = md.findByRange(new Range(new Position(1, 1), new Position(1, 1)));
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/visitor/NodeFinderVisitorTest.java:26:import com.github.javaparser.Position;
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/visitor/NodeFinderVisitorTest.java:40:        Position position = new Position(0, 0);
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/visitor/NodeFinderVisitorTest.java:51:        Range range = new Range(Position.HOME, Position.HOME);
+./javaparser-core-testing/src/test/java/com/github/javaparser/ast/visitor/NodeFinderVisitorTest.java:89:        return new Range(new Position(line, begin), new Position(line, length));
+
+codex
+The class itself looks like a small value object, so I’m checking whether the repository still makes it a dependency hub by showing how broadly it is consumed in main code and in tests.
+exec
+/bin/bash -lc "rg -l \"\\bPosition\\b\" javaparser-core/src/main/java javaparser-core-serialization/src/main/java javaparser-core/src/main/javacc/java.jj | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -l \"\\bPosition\\b\" . --glob '"'!**/target/**'"' --glob '"'!javaparser-symbol-solver-testing/**'"' | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,260p' javaparser-core/src/main/java/com/github/javaparser/Range.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 218ms:
+25
+
+ succeeded in 345ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser;
+
+/**
+ * A range of characters in a source file, from "begin" to "end", including the characters at "begin" and "end".
+ */
+public class Range {
+
+    public final Position begin;
+
+    public final Position end;
+
+    /**
+     * A range of characters in a source file, from "begin" to "end".
+     * This range is inclusive of the characters at the "begin" and "end" positions.
+     * <p>
+     * Note that if the given parameters are reversed (i.e. the end is earlier than begin, then the values are swapped.
+     *
+     * @param begin The starting position of the range.
+     * @param end   The end position of the range.
+     */
+    public Range(Position begin, Position end) {
+        if (begin == null) {
+            throw new IllegalArgumentException("begin can't be null");
+        }
+        if (end == null) {
+            throw new IllegalArgumentException("end can't be null");
+        }
+        // Force `begin` to be the position that is earliest within the document:
+        if (begin.isBefore(end)) {
+            this.begin = begin;
+            this.end = end;
+        } else {
+            this.begin = end;
+            this.end = begin;
+        }
+    }
+
+    /**
+     * Create a new `Range` object using the given begin and end position.
+     *
+     * @param begin The starting position of the range.
+     * @param end   The end position of the range.
+     * @return A new `Range` object with the given start/end position.
+     */
+    public static Range range(Position begin, Position end) {
+        return new Range(begin, end);
+    }
+
+    /**
+     * Create a new `Range` object using the given begin and end line/column values.
+     * Valid values for each parameter are per the constructor of{@link Position}.
+     *
+     * @param beginLine   The start line of the range.
+     * @param beginColumn The start line column of the range.
+     * @param endLine     The end line of the range.
+     * @param endColumn   The end column of the range.
+     * @return A new `Range` object with the given start/end position.
+     */
+    public static Range range(int beginLine, int beginColumn, int endLine, int endColumn) {
+        return new Range(new Position(beginLine, beginColumn), new Position(endLine, endColumn));
+    }
+
+    /**
+     * @param beginColumn The value used to replace the current begin column number.
+     *                    Valid values are per the constructor of{@link Position}.
+     * @return A copy of this `Range` object, but with the begin column number replaced with the given column number.
+     */
+    public Range withBeginColumn(int beginColumn) {
+        return range(begin.withColumn(beginColumn), end);
+    }
+
+    /**
+     * @param beginLine The value used to replace the current begin line number.
+     *                  Valid values are per the constructor of{@link Position}.
+     * @return A copy of this `Range` object, but with the begin line number replaced with the given line number.
+     */
+    public Range withBeginLine(int beginLine) {
+        return range(begin.withLine(beginLine), end);
+    }
+
+    /**
+     * @param endColumn The value used to replace the current end column number.
+     *                  Valid values are per the constructor of{@link Position}.
+     * @return A copy of this `Range` object, but with the end column number replaced with the given line column.
+     */
+    public Range withEndColumn(int endColumn) {
+        return range(begin, end.withColumn(endColumn));
+    }
+
+    /**
+     * @param endLine The value used to replace the current end line number.
+     *                Valid values are per the constructor of{@link Position}.
+     * @return A copy of this `Range` object, but with the end line number replaced with the given line number.
+     */
+    public Range withEndLine(int endLine) {
+        return range(begin, end.withLine(endLine));
+    }
+
+    /**
+     * @param begin The value used to replace the current begin position.
+     * @return A copy of this `Range` object, but with the begin position replaced with the given position.
+     */
+    public Range withBegin(Position begin) {
+        return range(begin, this.end);
+    }
+
+    /**
+     * @param end The value used to replace the current end position.
+     * @return A copy of this `Range` object, but with the end position replaced with the given position.
+     */
+    public Range withEnd(Position end) {
+        return range(this.begin, end);
+    }
+
+    /**
+     * Does this loosely contain the other range?
+     * <p>
+     * As {@link #strictlyContains(Range)}, but also allow ranges which have an equal start and/or end position.
+     * In these cases, the `other` range is not strictly "inside" of this range.
+     */
+    public boolean contains(Range other) {
+        boolean beginResult = (begin.isBeforeOrEqual(other.begin));
+        if (!beginResult) return false;
+        return end.isAfterOrEqual(other.end);
+    }
+
+    /**
+     * Does this loosely contain the other range?
+     * <p>
+     * As {@link #strictlyContains(Position)}, but a position that is on the "edge" of this range will also pass.
+     * <p>
+     * For example, if the given position is equal to the start or end position of this range.
+     * In these cases, the `other` range is not strictly "inside" of this range.
+     */
+    public boolean contains(Position position) {
+        return strictlyContains(position) || begin.equals(position) || end.equals(position);
+    }
+
+    /**
+     * Does this strictly contain the other range?
+     * <p>
+     * It means that this has to be larger than other and it has to start before other and end after other.
+     */
+    public boolean strictlyContains(Range other) {
+        boolean beginResult = (begin.isBefore(other.begin));
+        boolean endResult = (end.isAfter(other.end));
+        return beginResult && endResult;
+    }
+
+    /**
+     * Does this strictly contain position.
+     * <p>
+     * It means that the position is after the begin of this range and before the end of this range.
+     */
+    public boolean strictlyContains(Position position) {
+        return position.isAfter(begin) && position.isBefore(end);
+    }
+
+    /**
+     * Does the other 'Range' overlap with this 'Range'?
+     * <p>
+     * If two ranges overlap, this range or the other range contains the begin or the end of the other range.
+     * <p>
+     * Note that if the ends are "touching" (i.e. a begin position == end position), this counts as an overlap
+     * because the positions refer to characters, as opposed to boundary between characters.
+     * <p>
+     * For example, there is an overlap at "C" in the following ranges, with "C" existing within both ranges:
+     * <pre>
+     * Range 1: ABC
+     * Range 2:   CDE</pre>
+     */
+    public boolean overlapsWith(Range other) {
+        return (contains(other.begin) || contains(other.end)) || (other.contains(begin) || other.contains(end));
+    }
+
+    /**
+     * @param position The position to compare against.
+     * @return True if the end of this range is before (but not equal to) the given position to compare against.
+     */
+    public boolean isBefore(Position position) {
+        return end.isBefore(position);
+    }
+
+    /**
+     * @param other The range to compare against.
+     * @return True if the end of this range is before (but not equal to) the given position to compare against.
+     */
+    public boolean isBefore(Range other) {
+        return end.isBefore(other.begin);
+    }
+
+    /**
+     * @param position The position to compare against.
+     * @return True if the start of this range is after (but not equal to) the given position to compare against.
+     */
+    public boolean isAfter(Position position) {
+        return begin.isAfter(position);
+    }
+
+    /**
+     * @param other The range to compare against.
+     * @return True if the start of this range is after (but not equal to) the given position to compare against.
+     */
+    public boolean isAfter(Range other) {
+        return begin.isAfter(other.end);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Range range = (Range) o;
+        return begin.equals(range.begin) && end.equals(range.end);
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 * begin.hashCode() + end.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return begin + "-" + end;
+    }
+
+    /**
+     * @return The number of lines that this range represents.
+     * <p>
+     * If the start line and end line are the same, this range is limited to just one line.
+     */
+    public int getLineCount() {
+        return end.line - begin.line + 1;
+    }
+}
+
+ succeeded in 447ms:
+javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonDeserializer.java
+javaparser-core/src/main/java/com/github/javaparser/Position.java
+javaparser-core/src/main/java/com/github/javaparser/Problem.java
+javaparser-core/src/main/java/com/github/javaparser/Range.java
+javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java
+javaparser-core/src/main/java/com/github/javaparser/ast/CompilationUnit.java
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java
+javaparser-core/src/main/java/com/github/javaparser/ast/nodeTypes/NodeWithRange.java
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java
+javaparser-core/src/main/java/com/github/javaparser/printer/SourcePrinter.java
+javaparser-core/src/main/java/com/github/javaparser/utils/PositionUtils.java
+javaparser-core/src/main/javacc/java.jj
+
+codex
+I have enough to see `Position` is heavily reused, but I still need to verify whether it is also a dependency hub in the architectural sense by looking at the core consumers that create or transform positions.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/Problem.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '300,560p' javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,260p' javaparser-core/src/main/java/com/github/javaparser/utils/PositionUtils.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 183ms:
+    }
+
+    /**
+     * The {@link PositionMapping} being built during processing the file.
+     */
+    public PositionMapping getPositionMapping() {
+        return _mappingBuilder.getMapping();
+    }
+
+    /**
+     * An algorithm mapping {@link Position} form two corresponding files.
+     */
+    public static final class PositionMapping {
+
+        private final List<DeltaInfo> _deltas = new ArrayList<>();
+
+        /**
+         * Creates a {@link UnicodeEscapeProcessingProvider.PositionMapping}.
+         */
+        public PositionMapping() {
+            super();
+        }
+
+        /**
+         * Whether this is the identity transformation.
+         */
+        public boolean isEmpty() {
+            return _deltas.isEmpty();
+        }
+
+        void add(int line, int column, int lineDelta, int columnDelta) {
+            _deltas.add(new DeltaInfo(line, column, lineDelta, columnDelta));
+        }
+
+        /**
+         * Looks up the {@link PositionUpdate} for the given Position.
+         */
+        public PositionUpdate lookup(Position position) {
+            int result = Collections.binarySearch(_deltas, position);
+            if (result >= 0) {
+                return _deltas.get(result);
+            }
+            int insertIndex = -result - 1;
+            if (insertIndex == 0) {
+                // Before the first delta info, identity mapping.
+                return PositionUpdate.NONE;
+            }
+            return _deltas.get(insertIndex - 1);
+        }
+
+        /**
+         * Algorithm updating a {@link Position} from one file to a
+         * {@link Position} in a corresponding file.
+         */
+        public static interface PositionUpdate {
+
+            /**
+             * The identity position mapping.
+             */
+            PositionUpdate NONE = new PositionUpdate() {
+
+                @Override
+                public int transformLine(int line) {
+                    return line;
+                }
+
+                @Override
+                public int transformColumn(int column) {
+                    return column;
+                }
+
+                @Override
+                public Position transform(Position pos) {
+                    return pos;
+                }
+            };
+
+            /**
+             * Maps the given line to an original line.
+             */
+            int transformLine(int line);
+
+            /**
+             * Maps the given column to an original column.
+             */
+            int transformColumn(int column);
+
+            /**
+             * The transformed position.
+             */
+            default Position transform(Position pos) {
+                int line = pos.line;
+                int column = pos.column;
+                int transformedLine = transformLine(line);
+                int transformedColumn = transformColumn(column);
+                return new Position(transformedLine, transformedColumn);
+            }
+        }
+
+        private static final class DeltaInfo extends Position implements PositionUpdate {
+
+            /**
+             * The offset to add to the {@link #line} and all following source
+             * positions up to the next {@link PositionUpdate}.
+             */
+            private final int _lineDelta;
+
+            /**
+             * The offset to add to the {@link #column} and all following
+             * source positions up to the next {@link PositionUpdate}.
+             */
+            private final int _columnDelta;
+
+            /**
+             * Creates a {@link PositionUpdate}.
+             */
+            public DeltaInfo(int line, int column, int lineDelta, int columnDelta) {
+                super(line, column);
+                _lineDelta = lineDelta;
+                _columnDelta = columnDelta;
+            }
+
+            @Override
+            public int transformLine(int sourceLine) {
+                return sourceLine + _lineDelta;
+            }
+
+            @Override
+            public int transformColumn(int sourceColumn) {
+                return sourceColumn + _columnDelta;
+            }
+
+            @Override
+            public String toString() {
+                return "(" + line + ", " + column + ": " + _lineDelta + ", " + _columnDelta + ")";
+            }
+        }
+
+        /**
+         * Transforms the given {@link Position}.
+         */
+        public Position transform(Position pos) {
+            return lookup(pos).transform(pos);
+        }
+
+        /**
+         * Transforms the given {@link Range}.
+         */
+        public Range transform(Range range) {
+            Position begin = transform(range.begin);
+            Position end = transform(range.end);
+            if (begin == range.begin && end == range.end) {
+                // No change.
+                return range;
+            }
+            return new Range(begin, end);
+        }
+    }
+
+    private static final class PositionMappingBuilder {
+
+        private LineCounter _left;
+
+        private LineCounter _right;
+
+        private final PositionMapping _mapping = new PositionMapping();
+
+        private int _lineDelta = 0;
+
+        private int _columnDelta = 0;
+
+        /**
+         * Creates a {@link PositionMappingBuilder}.
+         *
+         * @param left The source {@link LineCounter}.
+         * @param right The target {@link LineCounter}.
+         */
+        public PositionMappingBuilder(LineCounter left, LineCounter right) {
+            _left = left;
+            _right = right;
+            update();
+        }
+
+        /**
+         * The built {@link PositionMapping}.
+         */
+        public PositionMapping getMapping() {
+            return _mapping;
+        }
+
+        public void update() {
+            int lineDelta = _right.getLine() - _left.getLine();
+            int columnDelta = _right.getColumn() - _left.getColumn();
+            if (lineDelta != _lineDelta || columnDelta != _columnDelta) {
+                _mapping.add(_left.getLine(), _left.getColumn(), lineDelta, columnDelta);
+                _lineDelta = lineDelta;
+                _columnDelta = columnDelta;
+            }
+        }
+    }
+
+    /**
+     * Processor keeping track of the current line and column in a stream of
+     * incoming characters.
+     *
+     * @see #process(int)
+     */
+    public static final class LineCounter {
+
+        /**
+         * Whether {@link #CR} has been seen on the input as last character.
+         */
+        private boolean _crSeen;
+
+        private int _line = 1;
+
+        private int _column = 1;
+
+        /**
+         * Creates a {@link UnicodeEscapeProcessingProvider.LineCounter}.
+         */
+        public LineCounter() {
+            super();
+        }
+
+        /**
+         * The line of the currently processed input character.
+         */
+        public int getLine() {
+            return _line;
+        }
+
+        /**
+         * The column of the currently processed input character.
+         */
+        public int getColumn() {
+            return _column;
+        }
+
+        /**
+         * The current position.
+         */
+        public Position getPosition() {
+            return new Position(getLine(), getColumn());
+        }
+
+        /**
+         * Analyzes the given character for line feed.
+         */
+        public int process(int ch) {
+            switch (ch) {
+                case EOF: {
+                    break;
+                }
+                case CR: {
+                    incLine();
+                    _crSeen = true;
+                    break;
+                }
+                case LF: {
+                    // CR LF does only count as a single line terminator.
+
+ succeeded in 182ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.utils;
+
+import static java.lang.Integer.signum;
+
+import com.github.javaparser.Position;
+import com.github.javaparser.Range;
+import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.expr.AnnotationExpr;
+import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
+import java.util.Comparator;
+import java.util.List;
+
+public final class PositionUtils {
+
+    private PositionUtils() {
+        // prevent instantiation
+    }
+
+    public static <T extends Node> void sortByBeginPosition(List<T> nodes) {
+        sortByBeginPosition(nodes, false);
+    }
+
+    public static <T extends Node> void sortByBeginPosition(NodeList<T> nodes) {
+        sortByBeginPosition(nodes, false);
+    }
+
+    public static <T extends Node> void sortByBeginPosition(List<T> nodes, final boolean ignoringAnnotations) {
+        nodes.sort((o1, o2) -> PositionUtils.compare(o1, o2, ignoringAnnotations));
+    }
+
+    public static boolean areInOrder(Node a, Node b) {
+        return areInOrder(a, b, false);
+    }
+
+    public static boolean areInOrder(Node a, Node b, boolean ignoringAnnotations) {
+        return compare(a, b, ignoringAnnotations) <= 0;
+    }
+
+    private static int compare(Node a, Node b, boolean ignoringAnnotations) {
+        if (a.hasRange() && !b.hasRange()) {
+            return -1;
+        }
+        if (!a.hasRange() && b.hasRange()) {
+            return 1;
+        }
+        if (!a.hasRange() && !b.hasRange()) {
+            return 0;
+        }
+        if (ignoringAnnotations) {
+            int signLine = signum(beginLineWithoutConsideringAnnotation(a) - beginLineWithoutConsideringAnnotation(b));
+            if (signLine == 0) {
+                return signum(beginColumnWithoutConsideringAnnotation(a) - beginColumnWithoutConsideringAnnotation(b));
+            }
+            return signLine;
+        }
+        Position aBegin = a.getBegin().get();
+        Position bBegin = b.getBegin().get();
+        int signLine = signum(aBegin.line - bBegin.line);
+        if (signLine == 0) {
+            return signum(aBegin.column - bBegin.column);
+        }
+        return signLine;
+    }
+
+    public static AnnotationExpr getLastAnnotation(Node node) {
+        if (node instanceof NodeWithAnnotations) {
+            NodeList<AnnotationExpr> annotations = NodeList.nodeList(((NodeWithAnnotations<?>) node).getAnnotations());
+            if (annotations.isEmpty()) {
+                return null;
+            }
+            sortByBeginPosition(annotations);
+            return annotations.get(annotations.size() - 1);
+        }
+        return null;
+    }
+
+    private static int beginLineWithoutConsideringAnnotation(Node node) {
+        return firstNonAnnotationNode(node).getRange().get().begin.line;
+    }
+
+    private static int beginColumnWithoutConsideringAnnotation(Node node) {
+        return firstNonAnnotationNode(node).getRange().get().begin.column;
+    }
+
+    private static Node firstNonAnnotationNode(Node node) {
+        if (node instanceof ClassOrInterfaceDeclaration) {
+            // Modifiers appear before the class name --
+            ClassOrInterfaceDeclaration casted = (ClassOrInterfaceDeclaration) node;
+            Modifier earliestModifier = casted.getModifiers().stream()
+                    .filter(modifier -> modifier.hasRange())
+                    .min(Comparator.comparing(o -> o.getRange().get().begin))
+                    .orElse(null);
+            if (earliestModifier == null) {
+                return casted.getName();
+            }
+            return earliestModifier;
+        }
+        if (node instanceof MethodDeclaration) {
+            // Modifiers appear before the class name --
+            MethodDeclaration casted = (MethodDeclaration) node;
+            Modifier earliestModifier = casted.getModifiers().stream()
+                    .filter(modifier -> modifier.hasRange())
+                    .min(Comparator.comparing(o -> o.getRange().get().begin))
+                    .orElse(null);
+            if (earliestModifier == null) {
+                return casted.getType();
+            }
+            return earliestModifier;
+        }
+        if (node instanceof FieldDeclaration) {
+            // Modifiers appear before the class name --
+            FieldDeclaration casted = (FieldDeclaration) node;
+            Modifier earliestModifier = casted.getModifiers().stream()
+                    .filter(modifier -> modifier.hasRange())
+                    .min(Comparator.comparing(o -> o.getRange().get().begin))
+                    .orElse(null);
+            if (earliestModifier == null) {
+                return casted.getVariable(0).getType();
+            }
+            return earliestModifier;
+        }
+        return node;
+    }
+
+    /**
+     * Compare the position of two nodes. Optionally include annotations within the range checks.
+     * This method takes into account whether the nodes are within the same compilation unit.
+     * <p>
+     * Note that this performs a "strict contains", where the container must extend beyond the other node in both
+     * directions (otherwise it would count as an overlap, rather than "contain").
+     * <p>
+     * If `ignoringAnnotations` is false, annotations on the container are ignored. For this reason, where
+     * `container == other`, the raw `other` may extend beyond the sans-annotations `container` thus return false.
+     */
+    public static boolean nodeContains(Node container, Node other, boolean ignoringAnnotations) {
+        if (!container.hasRange()) {
+            throw new IllegalArgumentException(
+                    "Cannot compare the positions of nodes if container node does not have a range.");
+        }
+        if (!other.hasRange()) {
+            throw new IllegalArgumentException(
+                    "Cannot compare the positions of nodes if contained node does not have a range.");
+        }
+        // // FIXME: Not all nodes seem to have the compilation unit available?
+        // if (!Objects.equals(container.findCompilationUnit(), other.findCompilationUnit())) {
+        // // Allow the check to complete if they are both within a known CU (i.e. the CUs are the same),
+        // // ... or both not within a CU (i.e. both are Optional.empty())
+        // return false;
+        // }
+        final boolean nodeCanHaveAnnotations = container instanceof NodeWithAnnotations;
+        // final boolean hasAnnotations = PositionUtils.getLastAnnotation(container) != null;
+        if (!ignoringAnnotations || PositionUtils.getLastAnnotation(container) == null) {
+            // No special consideration required - perform simple range check.
+            return container.containsWithinRange(other);
+        }
+        if (!container.containsWithinRange(other)) {
+            return false;
+        }
+        if (!nodeCanHaveAnnotations) {
+            return true;
+        }
+        // If the node is contained, but it comes immediately after the annotations,
+        // let's not consider it contained (i.e. it must be "strictly contained").
+        Node nodeWithoutAnnotations = firstNonAnnotationNode(container);
+        Range rangeWithoutAnnotations = container
+                .getRange()
+                .get()
+                .withBegin(nodeWithoutAnnotations.getBegin().get());
+        return // .contains(other.getRange().get());
+        rangeWithoutAnnotations.strictlyContains(other.getRange().get());
+    }
+}
+
+ succeeded in 220ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser;
+
+import static com.github.javaparser.utils.Utils.assertNotNull;
+
+import com.github.javaparser.utils.LineSeparator;
+import java.util.Comparator;
+import java.util.Optional;
+
+/**
+ * A problem that was encountered during parsing.
+ */
+public class Problem {
+
+    private final String message;
+
+    private final TokenRange location;
+
+    private final Throwable cause;
+
+    public Problem(String message, TokenRange location, Throwable cause) {
+        assertNotNull(message);
+        this.message = message;
+        this.location = location;
+        this.cause = cause;
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder str = new StringBuilder(getVerboseMessage());
+        if (cause != null) {
+            str.append(LineSeparator.SYSTEM).append("Problem stacktrace : ").append(LineSeparator.SYSTEM);
+            for (int i = 0; i < cause.getStackTrace().length; i++) {
+                StackTraceElement ste = cause.getStackTrace()[i];
+                str.append("  ").append(ste.toString());
+                if (i + 1 != cause.getStackTrace().length) str.append(LineSeparator.SYSTEM);
+            }
+        }
+        return str.toString();
+    }
+
+    /**
+     * @return the message that was passed into the constructor.
+     */
+    public String getMessage() {
+        return message;
+    }
+
+    /**
+     * @return the message plus location information.
+     */
+    public String getVerboseMessage() {
+        return getLocation()
+                .map(l -> l.getBegin().getRange().map(r -> r.begin.toString()).orElse("(line ?,col ?)") + " " + message)
+                .orElse(message);
+    }
+
+    /**
+     * @return the location that was passed into the constructor.
+     */
+    public Optional<TokenRange> getLocation() {
+        return Optional.ofNullable(location);
+    }
+
+    /**
+     * @return the cause that was passed into the constructor.
+     */
+    public Optional<Throwable> getCause() {
+        return Optional.ofNullable(cause);
+    }
+
+    /**
+     * Sorts problems on position.
+     */
+    public static Comparator<Problem> PROBLEM_BY_BEGIN_POSITION = (a, b) -> {
+        final Optional<Position> aBegin =
+                a.getLocation().flatMap(l -> l.getBegin().getRange().map(r -> r.begin));
+        final Optional<Position> bBegin =
+                b.getLocation().flatMap(l -> l.getBegin().getRange().map(r -> r.begin));
+        if (aBegin.isPresent() && bBegin.isPresent()) {
+            return aBegin.get().compareTo(bBegin.get());
+        }
+        if (a.getLocation().isPresent() || b.getLocation().isPresent()) {
+            if (a.getLocation().isPresent()) {
+                return 1;
+            }
+            return -1;
+        }
+        return 0;
+    };
+}
+
+codex
+{"target":"com.github.javaparser.Position","detection":false,"justification":"Inspected [javaparser-core/src/main/java/com/github/javaparser/Position.java](/data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser/javaparser-core/src/main/java/com/github/javaparser/Position.java), [javaparser-core/src/main/java/com/github/javaparser/Range.java](/data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser/javaparser-core/src/main/java/com/github/javaparser/Range.java), [javaparser-core/src/main/java/com/github/javaparser/Problem.java](/data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser/javaparser-core/src/main/java/com/github/javaparser/Problem.java), [javaparser-core/src/main/java/com/github/javaparser/utils/PositionUtils.java](/data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser/javaparser-core/src/main/java/com/github/javaparser/utils/PositionUtils.java), and [javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java](/data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser/javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java). `Position` itself has very low fan-out: it only imports `java.util.Objects` and `assertNotNull`, and its behavior is self-contained. Fan-in is broad but typical for a shared value type: `rg -l` showed 12 production files using it (including Range, Problem, NodeWithRange, PositionUtils, UnicodeEscapeProcessingProvider, printers, CompilationUnit, and JavaParserJsonDeserializer) plus many tests. That is heavy reuse, but not a dependency hub with both high fan-in and high fan-out."}
+tokens used
+20,573

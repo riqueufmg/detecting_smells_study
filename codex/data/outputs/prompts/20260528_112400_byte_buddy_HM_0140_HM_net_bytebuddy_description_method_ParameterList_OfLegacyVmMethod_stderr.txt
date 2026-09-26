@@ -1,0 +1,550 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ef8-8527-7c03-8fa4-1f285f4a53e0
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.description.method.ParameterList.OfLegacyVmMethod` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.description.method.ParameterList.OfLegacyVmMethod",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.description.method.ParameterList.OfLegacyVmMethod`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and tracing its direct dependencies first, then I’ll check how many other types reference it to judge fan-in/fan-out before I decide the verdict.
+exec
+/bin/bash -lc "rg --files . | rg \"ParameterList\\.java|ParameterList/|MethodDescription|ParameterDescription\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/method/MethodDescriptionForLoadedTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/method/MethodDescriptionTypeTokenTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/method/ParameterDescriptionTokenTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/method/MethodDescriptionTokenTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/method/MethodDescriptionSignatureTokenTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/method/AbstractMethodDescriptionTestNoNestMate.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/method/AbstractMethodDescriptionTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/method/MethodDescriptionLatentTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/method/MethodDescriptionLatentTypeInitializerTest.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/pool/TypePoolDefaultMethodDescriptionTest.java
+./byte-buddy-dep/src/test/java/net/bytebuddy/test/packaging/MethodDescriptionTestHelper.java
+
+exec
+/bin/bash -lc 'rg -n "class OfLegacyVmMethod|OfLegacyVmMethod" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:231:                    : new OfLegacyVmMethod(method, parameterAnnotationSource);
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:376:        protected static class OfLegacyVmMethod extends ParameterList.AbstractBase<ParameterDescription.InDefinedShape> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:399:            protected OfLegacyVmMethod(Method method, ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:409:                return new ParameterDescription.ForLoadedParameter.OfLegacyVmMethod(method, index, parameterType, parameterAnnotationSource);
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java:543:        protected static class OfLegacyVmMethod extends InDefinedShape.AbstractBase {
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java:573:            protected OfLegacyVmMethod(Method method, int index, Class<?>[] parameterType, ParameterAnnotationSource parameterAnnotationSource) {
+
+codex
+I found the target as a protected nested helper inside `ParameterList.java`. Next I’m checking how much it actually reaches out to other types and whether anything outside its own file depends on it.
+exec
+/bin/bash -lc "sed -n '340,440p' byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+            /**
+             * The parameter annotation source to query.
+             */
+            private final ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource;
+
+            /**
+             * Creates a legacy representation of a constructor's parameters.
+             *
+             * @param constructor               The constructor to represent.
+             * @param parameterAnnotationSource The parameter annotation source to query.
+             */
+            protected OfLegacyVmConstructor(Constructor<?> constructor, ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource) {
+                this.constructor = constructor;
+                this.parameterType = constructor.getParameterTypes();
+                this.parameterAnnotationSource = parameterAnnotationSource;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public ParameterDescription.InDefinedShape get(int index) {
+                return new ParameterDescription.ForLoadedParameter.OfLegacyVmConstructor(constructor, index, parameterType, parameterAnnotationSource);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public int size() {
+                return parameterType.length;
+            }
+        }
+
+        /**
+         * Represents a list of method parameters on virtual machines where the {@code java.lang.reflect.Parameter}
+         * type is not available.
+         */
+        protected static class OfLegacyVmMethod extends ParameterList.AbstractBase<ParameterDescription.InDefinedShape> {
+
+            /**
+             * The represented method.
+             */
+            private final Method method;
+
+            /**
+             * An array of this method's parameter types.
+             */
+            private final Class<?>[] parameterType;
+
+            /**
+             * The parameter annotation source to query.
+             */
+            private final ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource;
+
+            /**
+             * Creates a legacy representation of a method's parameters.
+             *
+             * @param method                    The method to represent.
+             * @param parameterAnnotationSource The parameter annotation source to query.
+             */
+            protected OfLegacyVmMethod(Method method, ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource) {
+                this.method = method;
+                this.parameterType = method.getParameterTypes();
+                this.parameterAnnotationSource = parameterAnnotationSource;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public ParameterDescription.InDefinedShape get(int index) {
+                return new ParameterDescription.ForLoadedParameter.OfLegacyVmMethod(method, index, parameterType, parameterAnnotationSource);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public int size() {
+                return parameterType.length;
+            }
+        }
+    }
+
+    /**
+     * A list of explicitly provided parameter descriptions.
+     *
+     * @param <S> The type of parameter descriptions represented by this list.
+     */
+    class Explicit<S extends ParameterDescription> extends AbstractBase<S> {
+
+        /**
+         * The list of parameter descriptions that are represented by this list.
+         */
+        private final List<? extends S> parameterDescriptions;
+
+        /**
+         * Creates a new list of explicit parameter descriptions.
+         *
+         * @param parameterDescription The list of parameter descriptions that are represented by this list.
+         */
+        @SuppressWarnings("unchecked")
+        public Explicit(S... parameterDescription) {
+            this(Arrays.asList(parameterDescription));
+
+exec
+/bin/bash -lc "sed -n '520,620p' byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            @SuppressFBWarnings(value = "BC_UNCONFIRMED_CAST", justification = "The implicit field type casting is not understood by Findbugs")
+            public AnnotationList getDeclaredAnnotations() {
+                Annotation[][] annotation = parameterAnnotationSource.getParameterAnnotations();
+                MethodDescription.InDefinedShape declaringMethod = getDeclaringMethod();
+                if (annotation.length != declaringMethod.getParameters().size() && declaringMethod.getDeclaringType().isInnerClass()) {
+                    return index == 0
+                            ? new AnnotationList.Empty()
+                            : new AnnotationList.ForLoadedAnnotations(annotation[index - 1]);
+                } else {
+                    return new AnnotationList.ForLoadedAnnotations(annotation[index]);
+                }
+            }
+        }
+
+        /**
+         * Description of a loaded method's parameter on a virtual machine where {@code java.lang.reflect.Parameter}
+         * is not available.
+         */
+        protected static class OfLegacyVmMethod extends InDefinedShape.AbstractBase {
+
+            /**
+             * The method that declares this parameter.
+             */
+            private final Method method;
+
+            /**
+             * The index of this parameter.
+             */
+            private final int index;
+
+            /**
+             * The type erasures of the represented method.
+             */
+            private final Class<?>[] parameterType;
+
+            /**
+             * The parameter annotation source to query.
+             */
+            private final ParameterAnnotationSource parameterAnnotationSource;
+
+            /**
+             * Creates a legacy representation of a method's parameter.
+             *
+             * @param method                    The method that declares this parameter.
+             * @param index                     The index of this parameter.
+             * @param parameterType             The type erasures of the represented method.
+             * @param parameterAnnotationSource The parameter annotation source to query.
+             */
+            protected OfLegacyVmMethod(Method method, int index, Class<?>[] parameterType, ParameterAnnotationSource parameterAnnotationSource) {
+                this.method = method;
+                this.index = index;
+                this.parameterType = parameterType;
+                this.parameterAnnotationSource = parameterAnnotationSource;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeDescription.Generic getType() {
+                if (TypeDescription.AbstractBase.RAW_TYPES) {
+                    return TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(parameterType[index]);
+                }
+                return new TypeDescription.Generic.LazyProjection.OfMethodParameter(method, index, parameterType);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MethodDescription.InDefinedShape getDeclaringMethod() {
+                return new MethodDescription.ForLoadedMethod(method);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public int getIndex() {
+                return index;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public boolean isNamed() {
+                return false;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public boolean hasModifiers() {
+                return false;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+
+exec
+/bin/bash -lc "sed -n '200,260p' byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+         * @param parameterAnnotationSource The parameter annotation source to query.
+         * @return A list describing the constructor's parameters.
+         */
+        public static ParameterList<ParameterDescription.InDefinedShape> of(Constructor<?> constructor,
+                                                                            ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource) {
+            return EXECUTABLE.isInstance(constructor)
+                    ? new OfConstructor(constructor, parameterAnnotationSource)
+                    : new OfLegacyVmConstructor(constructor, parameterAnnotationSource);
+        }
+
+        /**
+         * Creates a new list that describes the parameters of the given {@link Method}.
+         *
+         * @param method The method for which the parameters should be described.
+         * @return A list describing the method's parameters.
+         */
+        public static ParameterList<ParameterDescription.InDefinedShape> of(Method method) {
+            return of(method, new ParameterDescription.ForLoadedParameter.ParameterAnnotationSource.ForLoadedMethod(method));
+        }
+
+        /**
+         * Creates a new list that describes the parameters of the given {@link Method}.
+         *
+         * @param method                    The method for which the parameters should be described.
+         * @param parameterAnnotationSource The parameter annotation source to query.
+         * @return A list describing the method's parameters.
+         */
+        public static ParameterList<ParameterDescription.InDefinedShape> of(Method method,
+                                                                            ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource) {
+            return EXECUTABLE.isInstance(method)
+                    ? new OfMethod(method, parameterAnnotationSource)
+                    : new OfLegacyVmMethod(method, parameterAnnotationSource);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int size() {
+            int size = this.size;
+            if (size == 0) {
+                int actual = EXECUTABLE.getParameterCount(executable);
+                this.size = size = actual == 0 ? -1 : actual;
+            }
+            return size == -1 ? 0 : size;
+        }
+
+        /**
+         * A dispatcher for creating descriptions of parameter lists and for evaluating the size of an {@code java.lang.reflect.Executable}'s parameters.
+         */
+        @JavaDispatcher.Proxied("java.lang.reflect.Executable")
+        protected interface Executable {
+
+            /**
+             * Checks if the supplied instance is a {@code java.lang.reflect.Executable}.
+             *
+             * @param value The value to check for being a {@code java.lang.reflect.Executable}.
+             * @return {@code true} if the supplied instance is a {@code java.lang.reflect.Executable}.
+             */
+            @JavaDispatcher.Instance
+            boolean isInstance(Object value);
+
+
+codex
+I’ve confirmed the implementation is small and self-contained. I’m now checking whether the class has any real fan-in from other source files, because without external references it’s hard to call this a dependency hub.
+exec
+/bin/bash -lc 'rg -n "OfLegacyVmMethod" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:231:                    : new OfLegacyVmMethod(method, parameterAnnotationSource);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:376:        protected static class OfLegacyVmMethod extends ParameterList.AbstractBase<ParameterDescription.InDefinedShape> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:399:            protected OfLegacyVmMethod(Method method, ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:409:                return new ParameterDescription.ForLoadedParameter.OfLegacyVmMethod(method, index, parameterType, parameterAnnotationSource);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java:543:        protected static class OfLegacyVmMethod extends InDefinedShape.AbstractBase {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java:573:            protected OfLegacyVmMethod(Method method, int index, Class<?>[] parameterType, ParameterAnnotationSource parameterAnnotationSource) {
+
+exec
+/bin/bash -lc "rg -n \"new OfLegacyVmMethod\\(|OfMethod\\(|OfConstructor\\(\" byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+206:                    ? new OfConstructor(constructor, parameterAnnotationSource)
+230:                    ? new OfMethod(method, parameterAnnotationSource)
+231:                    : new OfLegacyVmMethod(method, parameterAnnotationSource);
+289:            protected OfConstructor(Constructor<?> constructor, ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource) {
+297:                return new ParameterDescription.ForLoadedParameter.OfConstructor(executable, index, parameterAnnotationSource);
+312:            protected OfMethod(Method method, ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource) {
+320:                return new ParameterDescription.ForLoadedParameter.OfMethod(executable, index, parameterAnnotationSource);
+
+exec
+/bin/bash -lc "rg -n \"ParameterList\\.of\\(Method|ParameterList<ParameterDescription\\.InDefinedShape> of\\(Method\" byte-buddy-dep/src/main/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:216:        public static ParameterList<ParameterDescription.InDefinedShape> of(Method method) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:227:        public static ParameterList<ParameterDescription.InDefinedShape> of(Method method,
+
+codex
+I have enough to decide, but I’m grabbing line numbers so the justification can point to the exact implementation and factory site rather than describing it vaguely.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java | sed -n '360,420p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   360	            public ParameterDescription.InDefinedShape get(int index) {
+   361	                return new ParameterDescription.ForLoadedParameter.OfLegacyVmConstructor(constructor, index, parameterType, parameterAnnotationSource);
+   362	            }
+   363	
+   364	            /**
+   365	             * {@inheritDoc}
+   366	             */
+   367	            public int size() {
+   368	                return parameterType.length;
+   369	            }
+   370	        }
+   371	
+   372	        /**
+   373	         * Represents a list of method parameters on virtual machines where the {@code java.lang.reflect.Parameter}
+   374	         * type is not available.
+   375	         */
+   376	        protected static class OfLegacyVmMethod extends ParameterList.AbstractBase<ParameterDescription.InDefinedShape> {
+   377	
+   378	            /**
+   379	             * The represented method.
+   380	             */
+   381	            private final Method method;
+   382	
+   383	            /**
+   384	             * An array of this method's parameter types.
+   385	             */
+   386	            private final Class<?>[] parameterType;
+   387	
+   388	            /**
+   389	             * The parameter annotation source to query.
+   390	             */
+   391	            private final ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource;
+   392	
+   393	            /**
+   394	             * Creates a legacy representation of a method's parameters.
+   395	             *
+   396	             * @param method                    The method to represent.
+   397	             * @param parameterAnnotationSource The parameter annotation source to query.
+   398	             */
+   399	            protected OfLegacyVmMethod(Method method, ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource) {
+   400	                this.method = method;
+   401	                this.parameterType = method.getParameterTypes();
+   402	                this.parameterAnnotationSource = parameterAnnotationSource;
+   403	            }
+   404	
+   405	            /**
+   406	             * {@inheritDoc}
+   407	             */
+   408	            public ParameterDescription.InDefinedShape get(int index) {
+   409	                return new ParameterDescription.ForLoadedParameter.OfLegacyVmMethod(method, index, parameterType, parameterAnnotationSource);
+   410	            }
+   411	
+   412	            /**
+   413	             * {@inheritDoc}
+   414	             */
+   415	            public int size() {
+   416	                return parameterType.length;
+   417	            }
+   418	        }
+   419	    }
+   420	
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java | sed -n '216,233p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   216	        public static ParameterList<ParameterDescription.InDefinedShape> of(Method method) {
+   217	            return of(method, new ParameterDescription.ForLoadedParameter.ParameterAnnotationSource.ForLoadedMethod(method));
+   218	        }
+   219	
+   220	        /**
+   221	         * Creates a new list that describes the parameters of the given {@link Method}.
+   222	         *
+   223	         * @param method                    The method for which the parameters should be described.
+   224	         * @param parameterAnnotationSource The parameter annotation source to query.
+   225	         * @return A list describing the method's parameters.
+   226	         */
+   227	        public static ParameterList<ParameterDescription.InDefinedShape> of(Method method,
+   228	                                                                            ParameterDescription.ForLoadedParameter.ParameterAnnotationSource parameterAnnotationSource) {
+   229	            return EXECUTABLE.isInstance(method)
+   230	                    ? new OfMethod(method, parameterAnnotationSource)
+   231	                    : new OfLegacyVmMethod(method, parameterAnnotationSource);
+   232	        }
+   233	
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java | sed -n '543,590p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   543	        protected static class OfLegacyVmMethod extends InDefinedShape.AbstractBase {
+   544	
+   545	            /**
+   546	             * The method that declares this parameter.
+   547	             */
+   548	            private final Method method;
+   549	
+   550	            /**
+   551	             * The index of this parameter.
+   552	             */
+   553	            private final int index;
+   554	
+   555	            /**
+   556	             * The type erasures of the represented method.
+   557	             */
+   558	            private final Class<?>[] parameterType;
+   559	
+   560	            /**
+   561	             * The parameter annotation source to query.
+   562	             */
+   563	            private final ParameterAnnotationSource parameterAnnotationSource;
+   564	
+   565	            /**
+   566	             * Creates a legacy representation of a method's parameter.
+   567	             *
+   568	             * @param method                    The method that declares this parameter.
+   569	             * @param index                     The index of this parameter.
+   570	             * @param parameterType             The type erasures of the represented method.
+   571	             * @param parameterAnnotationSource The parameter annotation source to query.
+   572	             */
+   573	            protected OfLegacyVmMethod(Method method, int index, Class<?>[] parameterType, ParameterAnnotationSource parameterAnnotationSource) {
+   574	                this.method = method;
+   575	                this.index = index;
+   576	                this.parameterType = parameterType;
+   577	                this.parameterAnnotationSource = parameterAnnotationSource;
+   578	            }
+   579	
+   580	            /**
+   581	             * {@inheritDoc}
+   582	             */
+   583	            public TypeDescription.Generic getType() {
+   584	                if (TypeDescription.AbstractBase.RAW_TYPES) {
+   585	                    return TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(parameterType[index]);
+   586	                }
+   587	                return new TypeDescription.Generic.LazyProjection.OfMethodParameter(method, index, parameterType);
+   588	            }
+   589	
+   590	            /**
+
+codex
+{"target":"net.bytebuddy.description.method.ParameterList.OfLegacyVmMethod","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java and ParameterDescription.java. The target is a small protected nested helper (lines 376-417) with only one constructor, one get() method, and size(); its outgoing dependencies are limited to Method, Class<?>[], ParameterDescription.ForLoadedParameter.ParameterAnnotationSource, and the paired ParameterDescription.ForLoadedParameter.OfLegacyVmMethod. The only instantiation site is the local factory in ParameterList.of(Method, ...) at lines 227-231. A repo-wide search found no references to OfLegacyVmMethod outside these source files, so there is no strong fan-in or fan-out evidence of a dependency hub."}
+tokens used
+10,191

@@ -1,0 +1,742 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f5e-e134-7240-ae2c-1ca1adbc3088
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.apache.commons.lang3.function.FailableRunnable` in the repository located at:
+
+`data/repositories/apache/commons-lang`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.apache.commons.lang3.function.FailableRunnable",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.apache.commons.lang3.function.FailableRunnable`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and counting its direct dependents and dependencies so I can decide whether it acts as a hub. First pass is the source file plus repository-wide references.
+exec
+/bin/bash -lc 'rg -n "FailableRunnable" src test .' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "rg --files | rg 'FailableRunnable\\.java"'$|FailableRunnable'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ exited 2 in 208ms:
+rg: test: No such file or directory (os error 2)
+./RELEASE-NOTES.txt:383:o            Make Failable.run(FailableRunnable) null-safe. Thanks to Gary Gregory.
+./src/test/java/org/apache/commons/lang3/FunctionsTest.java:1018:    void testThrows_FailableRunnable_Object_Throwable() {
+./src/test/java/org/apache/commons/lang3/FunctionsTest.java:1019:        new Functions.FailableRunnable<Throwable>() {
+./src/test/java/org/apache/commons/lang3/FunctionsTest.java:1034:    void testThrows_FailableRunnable_String_IOException() {
+./src/test/java/org/apache/commons/lang3/FunctionsTest.java:1035:        new Functions.FailableRunnable<IOException>() {
+./src/test/java/org/apache/commons/lang3/function/FailableTest.java:2649:    void testThrows_FailableRunnable_IOException() {
+./src/test/java/org/apache/commons/lang3/function/FailableTest.java:2650:        assertThrows(IOException.class, () -> new FailableRunnable<IOException>() {
+./src/test/java/org/apache/commons/lang3/function/FailableTest.java:2664:    void testThrows_FailableRunnable_Throwable() {
+./src/test/java/org/apache/commons/lang3/function/FailableTest.java:2665:        assertThrows(IOException.class, () -> new FailableRunnable<Throwable>() {
+./src/conf/pmd-exclude.properties:24:# Unnecessary use of fully qualified name 'org.apache.commons.lang3.function.FailableRunnable' due to existing same package import 'org.apache.commons.lang3.*'
+./src/main/java/org/apache/commons/lang3/Functions.java:250:     * @deprecated Use {@link org.apache.commons.lang3.function.FailableRunnable}.
+./src/main/java/org/apache/commons/lang3/Functions.java:254:    public interface FailableRunnable<T extends Throwable> {
+./src/main/java/org/apache/commons/lang3/Functions.java:434:     * Converts the given {@link FailableRunnable} into a standard {@link Runnable}.
+./src/main/java/org/apache/commons/lang3/Functions.java:436:     * @param runnable a {@link FailableRunnable}
+./src/main/java/org/apache/commons/lang3/Functions.java:440:    public static Runnable asRunnable(final FailableRunnable<?> runnable) {
+./src/main/java/org/apache/commons/lang3/Functions.java:539:    public static <T extends Throwable> void run(final FailableRunnable<T> runnable) {
+./src/main/java/org/apache/commons/lang3/Functions.java:624:     *        order. A resource action is an instance of {@link FailableRunnable}, which will be executed.
+./src/main/java/org/apache/commons/lang3/Functions.java:625:     * @see #tryWithResources(FailableRunnable, FailableRunnable...)
+./src/main/java/org/apache/commons/lang3/Functions.java:628:    public static void tryWithResources(final FailableRunnable<? extends Throwable> action,
+./src/main/java/org/apache/commons/lang3/Functions.java:630:        final FailableRunnable<? extends Throwable>... resources) {
+./src/main/java/org/apache/commons/lang3/Functions.java:631:        final org.apache.commons.lang3.function.FailableRunnable<?>[] fr = new org.apache.commons.lang3.function.FailableRunnable[resources.length];
+./src/main/java/org/apache/commons/lang3/Functions.java:651:     *        order. A resource action is an instance of {@link FailableRunnable}, which will be executed.
+./src/main/java/org/apache/commons/lang3/Functions.java:652:     * @see #tryWithResources(FailableRunnable, FailableConsumer, FailableRunnable...)
+./src/main/java/org/apache/commons/lang3/Functions.java:655:    public static void tryWithResources(final FailableRunnable<? extends Throwable> action,
+./src/main/java/org/apache/commons/lang3/Functions.java:656:        final FailableRunnable<? extends Throwable>... resources) {
+./src/main/java/org/apache/commons/lang3/time/StopWatch.java:31:import org.apache.commons.lang3.function.FailableRunnable;
+./src/main/java/org/apache/commons/lang3/time/StopWatch.java:70: * @see DurationUtils#of(FailableRunnable)
+./src/main/java/org/apache/commons/lang3/time/StopWatch.java:661:     * Delegates to {@link FailableRunnable#run()} while recording the duration of the call.
+./src/main/java/org/apache/commons/lang3/time/StopWatch.java:664:     * @param runnable The runnable to {@link FailableRunnable#run()}.
+./src/main/java/org/apache/commons/lang3/time/StopWatch.java:665:     * @throws Throwable Thrown by {@link FailableRunnable#run()}.
+./src/main/java/org/apache/commons/lang3/time/StopWatch.java:668:    public <E extends Throwable> void runT(final FailableRunnable<E> runnable) throws Throwable {
+./src/main/java/org/apache/commons/lang3/time/DurationUtils.java:33:import org.apache.commons.lang3.function.FailableRunnable;
+./src/main/java/org/apache/commons/lang3/time/DurationUtils.java:183:    public static <E extends Throwable> Duration of(final FailableRunnable<E> runnable) throws E {
+src/conf/pmd-exclude.properties:24:# Unnecessary use of fully qualified name 'org.apache.commons.lang3.function.FailableRunnable' due to existing same package import 'org.apache.commons.lang3.*'
+src/changes/changes.xml:230:    <action                   type="fix" dev="ggregory" due-to="Gary Gregory">Make Failable.run(FailableRunnable) null-safe.</action>
+./src/changes/changes.xml:230:    <action                   type="fix" dev="ggregory" due-to="Gary Gregory">Make Failable.run(FailableRunnable) null-safe.</action>
+./src/main/java/org/apache/commons/lang3/function/FailableRunnable.java:27:public interface FailableRunnable<E extends Throwable> {
+./src/main/java/org/apache/commons/lang3/function/Failable.java:367:     * Converts the given {@link FailableRunnable} into a standard {@link Runnable}.
+./src/main/java/org/apache/commons/lang3/function/Failable.java:369:     * @param runnable a {@link FailableRunnable}
+./src/main/java/org/apache/commons/lang3/function/Failable.java:372:    public static Runnable asRunnable(final FailableRunnable<?> runnable) {
+./src/main/java/org/apache/commons/lang3/function/Failable.java:530:    public static <E extends Throwable> void run(final FailableRunnable<E> runnable) {
+./src/main/java/org/apache/commons/lang3/function/Failable.java:540:    private static <E extends Throwable> void run(final Object test, final FailableRunnable<E> runnable) {
+./src/main/java/org/apache/commons/lang3/function/Failable.java:625:     *        order. A resource action is an instance of {@link FailableRunnable}, which will be executed.
+./src/main/java/org/apache/commons/lang3/function/Failable.java:626:     * @see #tryWithResources(FailableRunnable, FailableRunnable...)
+./src/main/java/org/apache/commons/lang3/function/Failable.java:629:    public static void tryWithResources(final FailableRunnable<? extends Throwable> action,
+./src/main/java/org/apache/commons/lang3/function/Failable.java:631:        final FailableRunnable<? extends Throwable>... resources) {
+./src/main/java/org/apache/commons/lang3/function/Failable.java:646:            for (final FailableRunnable<?> runnable : resources) {
+./src/main/java/org/apache/commons/lang3/function/Failable.java:679:     *        order. A resource action is an instance of {@link FailableRunnable}, which will be executed.
+./src/main/java/org/apache/commons/lang3/function/Failable.java:680:     * @see #tryWithResources(FailableRunnable, FailableConsumer, FailableRunnable...)
+./src/main/java/org/apache/commons/lang3/function/Failable.java:683:    public static void tryWithResources(final FailableRunnable<? extends Throwable> action, final FailableRunnable<? extends Throwable>... resources) {
+src/test/java/org/apache/commons/lang3/FunctionsTest.java:1018:    void testThrows_FailableRunnable_Object_Throwable() {
+src/test/java/org/apache/commons/lang3/FunctionsTest.java:1019:        new Functions.FailableRunnable<Throwable>() {
+src/test/java/org/apache/commons/lang3/FunctionsTest.java:1034:    void testThrows_FailableRunnable_String_IOException() {
+src/test/java/org/apache/commons/lang3/FunctionsTest.java:1035:        new Functions.FailableRunnable<IOException>() {
+src/test/java/org/apache/commons/lang3/function/FailableTest.java:2649:    void testThrows_FailableRunnable_IOException() {
+src/test/java/org/apache/commons/lang3/function/FailableTest.java:2650:        assertThrows(IOException.class, () -> new FailableRunnable<IOException>() {
+src/test/java/org/apache/commons/lang3/function/FailableTest.java:2664:    void testThrows_FailableRunnable_Throwable() {
+src/test/java/org/apache/commons/lang3/function/FailableTest.java:2665:        assertThrows(IOException.class, () -> new FailableRunnable<Throwable>() {
+src/main/java/org/apache/commons/lang3/Functions.java:250:     * @deprecated Use {@link org.apache.commons.lang3.function.FailableRunnable}.
+src/main/java/org/apache/commons/lang3/Functions.java:254:    public interface FailableRunnable<T extends Throwable> {
+src/main/java/org/apache/commons/lang3/Functions.java:434:     * Converts the given {@link FailableRunnable} into a standard {@link Runnable}.
+src/main/java/org/apache/commons/lang3/Functions.java:436:     * @param runnable a {@link FailableRunnable}
+src/main/java/org/apache/commons/lang3/Functions.java:440:    public static Runnable asRunnable(final FailableRunnable<?> runnable) {
+src/main/java/org/apache/commons/lang3/Functions.java:539:    public static <T extends Throwable> void run(final FailableRunnable<T> runnable) {
+src/main/java/org/apache/commons/lang3/Functions.java:624:     *        order. A resource action is an instance of {@link FailableRunnable}, which will be executed.
+src/main/java/org/apache/commons/lang3/Functions.java:625:     * @see #tryWithResources(FailableRunnable, FailableRunnable...)
+src/main/java/org/apache/commons/lang3/Functions.java:628:    public static void tryWithResources(final FailableRunnable<? extends Throwable> action,
+src/main/java/org/apache/commons/lang3/Functions.java:630:        final FailableRunnable<? extends Throwable>... resources) {
+src/main/java/org/apache/commons/lang3/Functions.java:631:        final org.apache.commons.lang3.function.FailableRunnable<?>[] fr = new org.apache.commons.lang3.function.FailableRunnable[resources.length];
+src/main/java/org/apache/commons/lang3/Functions.java:651:     *        order. A resource action is an instance of {@link FailableRunnable}, which will be executed.
+src/main/java/org/apache/commons/lang3/Functions.java:652:     * @see #tryWithResources(FailableRunnable, FailableConsumer, FailableRunnable...)
+src/main/java/org/apache/commons/lang3/Functions.java:655:    public static void tryWithResources(final FailableRunnable<? extends Throwable> action,
+src/main/java/org/apache/commons/lang3/Functions.java:656:        final FailableRunnable<? extends Throwable>... resources) {
+src/main/java/org/apache/commons/lang3/function/Failable.java:367:     * Converts the given {@link FailableRunnable} into a standard {@link Runnable}.
+src/main/java/org/apache/commons/lang3/function/Failable.java:369:     * @param runnable a {@link FailableRunnable}
+src/main/java/org/apache/commons/lang3/function/Failable.java:372:    public static Runnable asRunnable(final FailableRunnable<?> runnable) {
+src/main/java/org/apache/commons/lang3/function/Failable.java:530:    public static <E extends Throwable> void run(final FailableRunnable<E> runnable) {
+src/main/java/org/apache/commons/lang3/function/Failable.java:540:    private static <E extends Throwable> void run(final Object test, final FailableRunnable<E> runnable) {
+src/main/java/org/apache/commons/lang3/function/Failable.java:625:     *        order. A resource action is an instance of {@link FailableRunnable}, which will be executed.
+src/main/java/org/apache/commons/lang3/function/Failable.java:626:     * @see #tryWithResources(FailableRunnable, FailableRunnable...)
+src/main/java/org/apache/commons/lang3/function/Failable.java:629:    public static void tryWithResources(final FailableRunnable<? extends Throwable> action,
+src/main/java/org/apache/commons/lang3/function/Failable.java:631:        final FailableRunnable<? extends Throwable>... resources) {
+src/main/java/org/apache/commons/lang3/function/Failable.java:646:            for (final FailableRunnable<?> runnable : resources) {
+src/main/java/org/apache/commons/lang3/function/Failable.java:679:     *        order. A resource action is an instance of {@link FailableRunnable}, which will be executed.
+src/main/java/org/apache/commons/lang3/function/Failable.java:680:     * @see #tryWithResources(FailableRunnable, FailableConsumer, FailableRunnable...)
+src/main/java/org/apache/commons/lang3/function/Failable.java:683:    public static void tryWithResources(final FailableRunnable<? extends Throwable> action, final FailableRunnable<? extends Throwable>... resources) {
+src/main/java/org/apache/commons/lang3/function/FailableRunnable.java:27:public interface FailableRunnable<E extends Throwable> {
+src/main/java/org/apache/commons/lang3/time/DurationUtils.java:33:import org.apache.commons.lang3.function.FailableRunnable;
+src/main/java/org/apache/commons/lang3/time/DurationUtils.java:183:    public static <E extends Throwable> Duration of(final FailableRunnable<E> runnable) throws E {
+src/main/java/org/apache/commons/lang3/time/StopWatch.java:31:import org.apache.commons.lang3.function.FailableRunnable;
+src/main/java/org/apache/commons/lang3/time/StopWatch.java:70: * @see DurationUtils#of(FailableRunnable)
+src/main/java/org/apache/commons/lang3/time/StopWatch.java:661:     * Delegates to {@link FailableRunnable#run()} while recording the duration of the call.
+src/main/java/org/apache/commons/lang3/time/StopWatch.java:664:     * @param runnable The runnable to {@link FailableRunnable#run()}.
+src/main/java/org/apache/commons/lang3/time/StopWatch.java:665:     * @throws Throwable Thrown by {@link FailableRunnable#run()}.
+src/main/java/org/apache/commons/lang3/time/StopWatch.java:668:    public <E extends Throwable> void runT(final FailableRunnable<E> runnable) throws Throwable {
+
+ succeeded in 219ms:
+src/main/java/org/apache/commons/lang3/function/FailableRunnable.java
+
+codex
+I’ve found the source and the main references. Next I’m checking the target’s actual API surface to see whether it has meaningful outgoing dependencies or is just a tiny functional interface that others consume.
+exec
+/bin/bash -lc "sed -n '1,120p' src/main/java/org/apache/commons/lang3/function/FailableRunnable.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "sed -n '640,700p' src/main/java/org/apache/commons/lang3/time/StopWatch.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "sed -n '520,700p' src/main/java/org/apache/commons/lang3/function/Failable.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/apache/commons/lang3/time/DurationUtils.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 154ms:
+        }
+        throw new UndeclaredThrowableException(throwable);
+    }
+
+    /**
+     * Runs a runnable and rethrows any exception as a {@link RuntimeException}.
+     *
+     * @param runnable The runnable to run, may be null for a noop.
+     * @param <E> the type of checked exception the runnable may throw.
+     */
+    public static <E extends Throwable> void run(final FailableRunnable<E> runnable) {
+        if (runnable != null) {
+            try {
+                runnable.run();
+            } catch (final Throwable t) {
+                throw rethrow(t);
+            }
+        }
+    }
+
+    private static <E extends Throwable> void run(final Object test, final FailableRunnable<E> runnable) {
+        if (runnable != null && test != null) {
+            try {
+                runnable.run();
+            } catch (final Throwable t) {
+                throw rethrow(t);
+            }
+        }
+    }
+
+    /**
+     * Converts the given collection into a {@link FailableStream}. The {@link FailableStream} consists of the
+     * collections elements. Shortcut for
+     *
+     * <pre>
+     * Functions.stream(collection.stream());
+     * </pre>
+     *
+     * @param collection The collection, which is being converted into a {@link FailableStream}.
+     * @param <E> The collections element type. (In turn, the result streams element type.)
+     * @return The created {@link FailableStream}.
+     */
+    public static <E> FailableStream<E> stream(final Collection<E> collection) {
+        return new FailableStream<>(collection.stream());
+    }
+
+    /**
+     * Converts the given stream into a {@link FailableStream}. The {@link FailableStream} consists of the same
+     * elements, than the input stream. However, failable lambdas, like {@link FailablePredicate},
+     * {@link FailableFunction}, and {@link FailableConsumer} may be applied, rather than {@link Predicate},
+     * {@link Function}, {@link Consumer}, etc.
+     *
+     * @param stream The stream, which is being converted into a {@link FailableStream}.
+     * @param <T> The streams element type.
+     * @return The created {@link FailableStream}.
+     */
+    public static <T> FailableStream<T> stream(final Stream<T> stream) {
+        return new FailableStream<>(stream);
+    }
+
+    /**
+     * Tests a predicate and rethrows any exception as a {@link RuntimeException}.
+     *
+     * @param predicate the predicate to test
+     * @param object1 the first input to test by {@code predicate}
+     * @param object2 the second input to test by {@code predicate}
+     * @param <T> the type of the first argument the predicate tests
+     * @param <U> the type of the second argument the predicate tests
+     * @param <E> the type of checked exception the predicate may throw
+     * @return the boolean value returned by the predicate
+     */
+    public static <T, U, E extends Throwable> boolean test(final FailableBiPredicate<T, U, E> predicate,
+        final T object1, final U object2) {
+        return getAsBoolean(() -> predicate.test(object1, object2));
+    }
+
+    /**
+     * Tests a predicate and rethrows any exception as a {@link RuntimeException}.
+     *
+     * @param predicate the predicate to test
+     * @param object the input to test by {@code predicate}
+     * @param <T> the type of argument the predicate tests
+     * @param <E> the type of checked exception the predicate may throw
+     * @return the boolean value returned by the predicate
+     */
+    public static <T, E extends Throwable> boolean test(final FailablePredicate<T, E> predicate, final T object) {
+        return getAsBoolean(() -> predicate.test(object));
+    }
+
+    /**
+     * A simple try-with-resources implementation, that can be used, if your objects do not implement the
+     * {@link AutoCloseable} interface. The method executes the {@code action}. The method guarantees, that <em>all</em>
+     * the {@code resources} are being executed, in the given order, afterwards, and regardless of success, or failure.
+     * If either the original action, or any of the resource action fails, then the <em>first</em> failure (AKA
+     * {@link Throwable}) is rethrown. Example use:
+     *
+     * <pre>{@code
+     * final FileInputStream fis = new FileInputStream("my.file");
+     * Functions.tryWithResources(useInputStream(fis), null, () -> fis.close());
+     * }</pre>
+     *
+     * @param action The action to execute. This object <em>will</em> always be invoked.
+     * @param errorHandler An optional error handler, which will be invoked finally, if any error occurred. The error
+     *        handler will receive the first error, AKA {@link Throwable}.
+     * @param resources The resource actions to execute. <em>All</em> resource actions will be invoked, in the given
+     *        order. A resource action is an instance of {@link FailableRunnable}, which will be executed.
+     * @see #tryWithResources(FailableRunnable, FailableRunnable...)
+     */
+    @SafeVarargs
+    public static void tryWithResources(final FailableRunnable<? extends Throwable> action,
+        final FailableConsumer<Throwable, ? extends Throwable> errorHandler,
+        final FailableRunnable<? extends Throwable>... resources) {
+        final FailableConsumer<Throwable, ? extends Throwable> actualErrorHandler;
+        if (errorHandler == null) {
+            actualErrorHandler = Failable::rethrow;
+        } else {
+            actualErrorHandler = errorHandler;
+        }
+        Streams.of(resources).forEach(r -> Objects.requireNonNull(r, "runnable"));
+        Throwable th = null;
+        try {
+            action.run();
+        } catch (final Throwable t) {
+            th = t;
+        }
+        if (resources != null) {
+            for (final FailableRunnable<?> runnable : resources) {
+                try {
+                    runnable.run();
+                } catch (final Throwable t) {
+                    if (th == null) {
+                        th = t;
+                    }
+                }
+            }
+        }
+        if (th != null) {
+            try {
+                actualErrorHandler.accept(th);
+            } catch (final Throwable t) {
+                throw rethrow(t);
+            }
+        }
+    }
+
+    /**
+     * A simple try-with-resources implementation, that can be used, if your objects do not implement the
+     * {@link AutoCloseable} interface. The method executes the {@code action}. The method guarantees, that <em>all</em>
+     * the {@code resources} are being executed, in the given order, afterwards, and regardless of success, or failure.
+     * If either the original action, or any of the resource action fails, then the <em>first</em> failure (AKA
+     * {@link Throwable}) is rethrown. Example use:
+     *
+     * <pre>{@code
+     * final FileInputStream fis = new FileInputStream("my.file");
+     * Functions.tryWithResources(useInputStream(fis), () -> fis.close());
+     * }</pre>
+     *
+     * @param action The action to execute. This object <em>will</em> always be invoked.
+     * @param resources The resource actions to execute. <em>All</em> resource actions will be invoked, in the given
+     *        order. A resource action is an instance of {@link FailableRunnable}, which will be executed.
+     * @see #tryWithResources(FailableRunnable, FailableConsumer, FailableRunnable...)
+     */
+    @SafeVarargs
+    public static void tryWithResources(final FailableRunnable<? extends Throwable> action, final FailableRunnable<? extends Throwable>... resources) {
+        tryWithResources(action, null, resources);
+    }
+
+    private Failable() {
+        // empty
+    }
+
+}
+
+ succeeded in 205ms:
+        }
+        startTimeNanos += System.nanoTime() - stopTimeNanos;
+        runningState = State.RUNNING;
+    }
+
+    /**
+     * Delegates to {@link Runnable#run()} while recording the duration of the call.
+     *
+     * @param runnable The runnable to {@link Runnable#run()}.
+     * @since 3.18.0
+     */
+    public void run(final Runnable runnable) {
+        startResume();
+        try {
+            runnable.run();
+        } finally {
+            suspend();
+        }
+    }
+
+    /**
+     * Delegates to {@link FailableRunnable#run()} while recording the duration of the call.
+     *
+     * @param <E>      The kind of {@link Throwable}.
+     * @param runnable The runnable to {@link FailableRunnable#run()}.
+     * @throws Throwable Thrown by {@link FailableRunnable#run()}.
+     * @since 3.18.0
+     */
+    public <E extends Throwable> void runT(final FailableRunnable<E> runnable) throws Throwable {
+        startResume();
+        try {
+            runnable.run();
+        } finally {
+            suspend();
+        }
+    }
+
+    /**
+     * Splits the time.
+     *
+     * <p>
+     * This method sets the stop time of the watch to allow a time to be extracted. The start time is unaffected, enabling {@link #unsplit()} to continue the
+     * timing from the original start point.
+     * </p>
+     *
+     * @throws IllegalStateException if this StopWatch is not running.
+     */
+    public void split() {
+        if (runningState != State.RUNNING) {
+            throw new IllegalStateException("Stopwatch is not running.");
+        }
+        stopTimeNanos = System.nanoTime();
+        splitState = SplitState.SPLIT;
+        splits.add(new Split(String.valueOf(splits.size()), Duration.ofNanos(stopTimeNanos - startTimeNanos)));
+    }
+
+    /**
+     * Splits the time with a label.
+     *
+     * <p>
+     * This method sets the stop time of the watch to allow a time to be extracted. The start time is unaffected, enabling {@link #unsplit()} to continue the
+
+ succeeded in 222ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.lang3.function;
+
+/**
+ * A functional interface like {@link Runnable} that declares a kind of {@link Throwable}.
+ *
+ * @param <E> The kind of {@link Throwable}.
+ * @since 3.11
+ */
+@FunctionalInterface
+public interface FailableRunnable<E extends Throwable> {
+
+    /**
+     * Runs the function.
+     *
+     * @throws E Thrown when the function fails.
+     */
+    void run() throws E;
+}
+
+ succeeded in 172ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.lang3.time;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.Temporal;
+import java.time.temporal.TemporalUnit;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.lang3.LongRange;
+import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.function.FailableBiConsumer;
+import org.apache.commons.lang3.function.FailableConsumer;
+import org.apache.commons.lang3.function.FailableRunnable;
+import org.apache.commons.lang3.math.NumberUtils;
+
+/**
+ * Utilities for {@link Duration}.
+ *
+ * @since 3.12.0
+ */
+public class DurationUtils {
+
+    /**
+     * An Integer Range that accepts Longs.
+     */
+    static final LongRange LONG_TO_INT_RANGE = LongRange.of(NumberUtils.LONG_INT_MIN_VALUE, NumberUtils.LONG_INT_MAX_VALUE);
+
+    /**
+     * Accepts the function with the duration as a long milliseconds and int nanoseconds.
+     *
+     * @param <T> The function exception.
+     * @param consumer Accepting function.
+     * @param duration The duration to pick apart.
+     * @throws T See the function signature.
+     * @see StopWatch
+     */
+    @SuppressWarnings("boxing") // boxing unavoidable
+    public static <T extends Throwable> void accept(final FailableBiConsumer<Long, Integer, T> consumer, final Duration duration)
+            throws T {
+        if (consumer != null && duration != null) {
+            consumer.accept(duration.toMillis(), getNanosOfMilli(duration));
+        }
+    }
+
+    /**
+     * Gets a Duration of unit stored in the system property at the given key.
+     *
+     * @param key  The property name.
+     * @param unit The unit that the duration is measured in, not null.
+     * @param def  The default value in the given unit.
+     * @return a Duration of seconds.
+     * @since 3.19.0
+     */
+    public static Duration get(final String key, final TemporalUnit unit, final long def) {
+        return Duration.of(getLong(key, def), unit);
+    }
+
+    private static long getLong(final String key, final long def) {
+        return StringUtils.isEmpty(key) ? def : Long.getLong(key, def);
+    }
+
+    /**
+     * Gets a Duration of milliseconds stored in the system property at the given key.
+     *
+     * @param key The property name.
+     * @param def The default value in milliseconds.
+     * @return a Duration of milliseconds.
+     * @since 3.19.0
+     */
+    public static Duration getMillis(final String key, final long def) {
+        return Duration.ofMillis(getLong(key, def));
+    }
+
+    /**
+     * Gets the nanosecond part of a Duration converted to milliseconds.
+     * <p>
+     * Handy when calling an API that takes a long of milliseconds and an int of nanoseconds. For example,
+     * {@link Object#wait(long, int)} and {@link Thread#sleep(long, int)}.
+     * </p>
+     * <p>
+     * Note that is this different from {@link Duration#getNano()} because a duration are seconds and nanoseconds.
+     * </p>
+     *
+     * @param duration The duration to query.
+     * @return nanoseconds between 0 and 999,999.
+     * @deprecated Use {@link #getNanosOfMilli(Duration)}.
+     */
+    @Deprecated
+    public static int getNanosOfMiili(final Duration duration) {
+        return getNanosOfMilli(duration);
+    }
+
+    /**
+     * Gets the nanosecond part of a Duration converted to milliseconds.
+     * <p>
+     * Handy when calling an API that takes a long of milliseconds and an int of nanoseconds. For example,
+     * {@link Object#wait(long, int)} and {@link Thread#sleep(long, int)}.
+     * </p>
+     * <p>
+     * Note that is this different from {@link Duration#getNano()} because a duration are seconds and nanoseconds.
+     * </p>
+     *
+     * @param duration The duration to query.
+     * @return nanoseconds between 0 and 999,999.
+     * @since 3.13.0
+     */
+    public static int getNanosOfMilli(final Duration duration) {
+        return zeroIfNull(duration).getNano() % 1_000_000;
+    }
+
+    /**
+     * Gets a Duration of seconds stored in the system property at the given key.
+     *
+     * @param key The property name.
+     * @param def The default value in seconds.
+     * @return a Duration of seconds.
+     * @since 3.19.0
+     */
+    public static Duration getSeconds(final String key, final long def) {
+        return Duration.ofSeconds(getLong(key, def));
+    }
+
+    /**
+     * Tests whether the given Duration is positive (duration &gt; 0).
+     *
+     * @param duration the value to test
+     * @return whether the given Duration is positive (duration &gt; 0).
+     */
+    public static boolean isPositive(final Duration duration) {
+        return !duration.isNegative() && !duration.isZero();
+    }
+
+    private static <E extends Throwable> Instant now(final FailableConsumer<Instant, E> nowConsumer) throws E {
+        final Instant start = Instant.now();
+        nowConsumer.accept(start);
+        return start;
+    }
+
+    /**
+     * Runs the lambda and returns the duration of its execution.
+     *
+     * @param <E> The type of exception throw by the lambda.
+     * @param consumer What to execute.
+     * @return The Duration of execution.
+     * @throws E thrown by the lambda.
+     * @see StopWatch
+     * @since 3.13.0
+     */
+    public static <E extends Throwable> Duration of(final FailableConsumer<Instant, E> consumer) throws E {
+        return since(now(consumer::accept));
+    }
+
+    /**
+     * Runs the lambda and returns the duration of its execution.
+     *
+     * @param <E> The type of exception throw by the lambda.
+     * @param runnable What to execute.
+     * @return The Duration of execution.
+     * @throws E thrown by the lambda.
+     * @see StopWatch
+     * @since 3.13.0
+     */
+    public static <E extends Throwable> Duration of(final FailableRunnable<E> runnable) throws E {
+        return of(start -> runnable.run());
+    }
+
+    /**
+     * Computes the Duration between a start instant and now.
+     *
+     * @param startInclusive the start instant, inclusive, not null.
+     * @return a {@link Duration}, not null.
+     * @since 3.13.0
+     */
+    public static Duration since(final Temporal startInclusive) {
+        return Duration.between(startInclusive, Instant.now());
+    }
+
+    /**
+     * Converts a {@link TimeUnit} to a {@link ChronoUnit}.
+     *
+     * @param timeUnit A non-null TimeUnit.
+     * @return The corresponding ChronoUnit.
+     */
+    static ChronoUnit toChronoUnit(final TimeUnit timeUnit) {
+        // TODO when using Java >= 9: Use TimeUnit.toChronoUnit().
+        switch (Objects.requireNonNull(timeUnit)) {
+        case NANOSECONDS:
+            return ChronoUnit.NANOS;
+        case MICROSECONDS:
+            return ChronoUnit.MICROS;
+        case MILLISECONDS:
+            return ChronoUnit.MILLIS;
+        case SECONDS:
+            return ChronoUnit.SECONDS;
+        case MINUTES:
+            return ChronoUnit.MINUTES;
+        case HOURS:
+            return ChronoUnit.HOURS;
+        case DAYS:
+            return ChronoUnit.DAYS;
+
+codex
+I have enough to see the API is extremely small; I’m now collecting exact line references and a tighter count of production usages so the verdict is grounded in the repository, not just intuition.
+exec
+/bin/bash -lc 'nl -ba src/main/java/org/apache/commons/lang3/function/FailableRunnable.java' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "rg -l \"\\bFailableRunnable\\b\" src/test/java | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+exec
+/bin/bash -lc "rg -l \"\\bFailableRunnable\\b\" src/main/java | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-lang
+ succeeded in 228ms:
+     1	/*
+     2	 * Licensed to the Apache Software Foundation (ASF) under one or more
+     3	 * contributor license agreements.  See the NOTICE file distributed with
+     4	 * this work for additional information regarding copyright ownership.
+     5	 * The ASF licenses this file to You under the Apache License, Version 2.0
+     6	 * (the "License"); you may not use this file except in compliance with
+     7	 * the License.  You may obtain a copy of the License at
+     8	 *
+     9	 *      https://www.apache.org/licenses/LICENSE-2.0
+    10	 *
+    11	 * Unless required by applicable law or agreed to in writing, software
+    12	 * distributed under the License is distributed on an "AS IS" BASIS,
+    13	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    14	 * See the License for the specific language governing permissions and
+    15	 * limitations under the License.
+    16	 */
+    17	
+    18	package org.apache.commons.lang3.function;
+    19	
+    20	/**
+    21	 * A functional interface like {@link Runnable} that declares a kind of {@link Throwable}.
+    22	 *
+    23	 * @param <E> The kind of {@link Throwable}.
+    24	 * @since 3.11
+    25	 */
+    26	@FunctionalInterface
+    27	public interface FailableRunnable<E extends Throwable> {
+    28	
+    29	    /**
+    30	     * Runs the function.
+    31	     *
+    32	     * @throws E Thrown when the function fails.
+    33	     */
+    34	    void run() throws E;
+    35	}
+
+ succeeded in 266ms:
+src/test/java/org/apache/commons/lang3/FunctionsTest.java
+src/test/java/org/apache/commons/lang3/function/FailableTest.java
+
+ succeeded in 291ms:
+src/main/java/org/apache/commons/lang3/Functions.java
+src/main/java/org/apache/commons/lang3/function/Failable.java
+src/main/java/org/apache/commons/lang3/function/FailableRunnable.java
+src/main/java/org/apache/commons/lang3/time/DurationUtils.java
+src/main/java/org/apache/commons/lang3/time/StopWatch.java
+
+codex
+{"target":"org.apache.commons.lang3.function.FailableRunnable","detection":false,"justification":"Inspected src/main/java/org/apache/commons/lang3/function/FailableRunnable.java: it is a tiny @FunctionalInterface with exactly one abstract method (run()) and only a Throwable type bound, so its outgoing dependencies are minimal. Repository-wide references are limited to four production files using it as a parameter/type token (src/main/java/org/apache/commons/lang3/function/Failable.java, src/main/java/org/apache/commons/lang3/time/DurationUtils.java, src/main/java/org/apache/commons/lang3/time/StopWatch.java, src/main/java/org/apache/commons/lang3/Functions.java) plus two test files; that is not strong fan-in, and the class itself does not depend on many other classes. This is not evidence of hub-like modularization."}
+tokens used
+12,118

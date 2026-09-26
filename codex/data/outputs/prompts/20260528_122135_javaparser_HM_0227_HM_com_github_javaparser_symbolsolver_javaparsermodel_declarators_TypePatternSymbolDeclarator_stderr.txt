@@ -1,0 +1,477 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f2d-4ad7-71d2-8234-765b9378bb0f
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.symbolsolver.javaparsermodel.declarators.TypePatternSymbolDeclarator` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.symbolsolver.javaparsermodel.declarators.TypePatternSymbolDeclarator",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.symbolsolver.javaparsermodel.declarators.TypePatternSymbolDeclarator`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and its direct references first, then I’ll judge fan-in and fan-out from the source graph around it.
+exec
+/bin/bash -lc 'rg --files . | rg "TypePatternSymbolDeclarator|PatternSymbolDeclarator|symbolsolver/javaparsermodel/declarators"' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "class TypePatternSymbolDeclarator|TypePatternSymbolDeclarator" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 107ms:
+ succeeded in 301ms:
+./javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/javaparsermodel/declarators/NoSymbolDeclarator.java
+./javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/javaparsermodel/declarators/VariableSymbolDeclarator.java
+./javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/javaparsermodel/declarators/AbstractSymbolDeclarator.java
+./javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/javaparsermodel/declarators/FieldSymbolDeclarator.java
+./javaparser-symbol-solver-testing/src/test/test_sourcecode/javasymbolsolver_0_6_0/src/java-symbol-solver-core/com/github/javaparser/symbolsolver/javaparsermodel/declarators/ParameterSymbolDeclarator.java
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/NoSymbolDeclarator.java
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/VariableSymbolDeclarator.java
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/TypePatternSymbolDeclarator.java
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/AbstractSymbolDeclarator.java
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/FieldSymbolDeclarator.java
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/ParameterSymbolDeclarator.java
+
+codex
+I found the implementation and one direct constructor use. Next I’m checking the class itself and the surrounding declarator factory code to see whether this is a genuine hub or just a narrow adapter.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/AbstractSymbolDeclarator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/TypePatternSymbolDeclarator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '150,240p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFactory.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 264ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.javaparsermodel.declarators;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.resolution.SymbolDeclarator;
+import com.github.javaparser.resolution.TypeSolver;
+
+/**
+ * @author Federico Tomassetti
+ */
+public abstract class AbstractSymbolDeclarator<N extends Node> implements SymbolDeclarator {
+
+    protected N wrappedNode;
+    protected TypeSolver typeSolver;
+
+    public AbstractSymbolDeclarator(N wrappedNode, TypeSolver typeSolver) {
+        this.wrappedNode = wrappedNode;
+        this.typeSolver = typeSolver;
+    }
+}
+
+ succeeded in 350ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.javaparsermodel.declarators;
+
+import com.github.javaparser.ast.expr.TypePatternExpr;
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
+import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserSymbolDeclaration;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * @author Roger Howell
+ */
+public class TypePatternSymbolDeclarator extends AbstractSymbolDeclarator<TypePatternExpr> {
+
+    public TypePatternSymbolDeclarator(TypePatternExpr wrappedNode, TypeSolver typeSolver) {
+        super(wrappedNode, typeSolver);
+    }
+
+    @Override
+    public List<ResolvedValueDeclaration> getSymbolDeclarations() {
+        List<ResolvedValueDeclaration> symbols = new LinkedList<>();
+        symbols.add(JavaParserSymbolDeclaration.patternVar(wrappedNode, typeSolver));
+        return symbols;
+    }
+}
+
+ succeeded in 356ms:
+                    ancestor = ancestor.getParentNode().get();
+                    if (!(ancestor instanceof FieldAccessExpr)) {
+                        break;
+                    }
+                }
+                return getContext(ancestor, typeSolver);
+            }
+            if (node.getParentNode().isPresent()
+                    && node.getParentNode().get() instanceof ObjectCreationExpr
+                    && node.getParentNode().get().getParentNode().isPresent()) {
+                return getContext(node.getParentNode().get().getParentNode().get(), typeSolver);
+            }
+        }
+        final Node parentNode = demandParentNode(node);
+        if (node instanceof ClassOrInterfaceType && parentNode instanceof ClassOrInterfaceDeclaration) {
+            ClassOrInterfaceDeclaration parentDeclaration = (ClassOrInterfaceDeclaration) parentNode;
+            if (parentDeclaration.getImplementedTypes().contains(node)
+                    || parentDeclaration.getExtendedTypes().contains(node)) {
+                // When resolving names in implements and extends the body of the declaration
+                // should not be searched so use limited context.
+                return new ClassOrInterfaceDeclarationExtendsContext(parentDeclaration, typeSolver);
+            }
+        }
+        return getContext(parentNode, typeSolver);
+    }
+
+    public static SymbolDeclarator getSymbolDeclarator(Node node, TypeSolver typeSolver) {
+        if (node instanceof FieldDeclaration) {
+            return new FieldSymbolDeclarator((FieldDeclaration) node, typeSolver);
+        }
+        if (node instanceof Parameter) {
+            return new ParameterSymbolDeclarator((Parameter) node, typeSolver);
+        }
+        if (node instanceof TypePatternExpr) {
+            return new TypePatternSymbolDeclarator((TypePatternExpr) node, typeSolver);
+        }
+        if (node instanceof ExpressionStmt) {
+            ExpressionStmt expressionStmt = (ExpressionStmt) node;
+            if (expressionStmt.getExpression().isVariableDeclarationExpr()) {
+                return new VariableSymbolDeclarator(
+                        expressionStmt.getExpression().asVariableDeclarationExpr(), typeSolver);
+            }
+            return new NoSymbolDeclarator<>(expressionStmt, typeSolver);
+        }
+        if (node instanceof ForEachStmt) {
+            ForEachStmt foreachStmt = (ForEachStmt) node;
+            return new VariableSymbolDeclarator(foreachStmt.getVariable(), typeSolver);
+        }
+        if (node instanceof ForStmt) {
+            ForStmt forStmt = (ForStmt) node;
+            Optional<VariableDeclarationExpr> variableDecl = forStmt.getInitialization().stream()
+                    .filter(expr -> expr.isVariableDeclarationExpr())
+                    .map(expr -> expr.asVariableDeclarationExpr())
+                    .findFirst();
+            if (variableDecl.isPresent()) {
+                return new VariableSymbolDeclarator(variableDecl.get(), typeSolver);
+            }
+        }
+        return new NoSymbolDeclarator<>(node, typeSolver);
+    }
+}
+
+codex
+I’ve confirmed the class is a tiny one-method adapter. I’m now checking whether there are enough incoming references elsewhere in the repo to justify calling it a dependency hub, or whether it remains a low-degree leaf.
+exec
+/bin/bash -lc "rg -n \"new TypePatternSymbolDeclarator\\b|TypePatternSymbolDeclarator\\b\" javaparser-symbol-solver-core javaparser-symbol-solver-testing -S" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/VariableSymbolDeclarator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/FieldSymbolDeclarator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 252ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.javaparsermodel.declarators;
+
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
+import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserSymbolDeclaration;
+import java.util.LinkedList;
+import java.util.List;
+
+/**
+ * @author Federico Tomassetti
+ */
+public class FieldSymbolDeclarator extends AbstractSymbolDeclarator<FieldDeclaration> {
+
+    public FieldSymbolDeclarator(FieldDeclaration wrappedNode, TypeSolver typeSolver) {
+        super(wrappedNode, typeSolver);
+    }
+
+    @Override
+    public List<ResolvedValueDeclaration> getSymbolDeclarations() {
+        List<ResolvedValueDeclaration> symbols = new LinkedList<>();
+        for (VariableDeclarator v : wrappedNode.getVariables()) {
+            symbols.add(JavaParserSymbolDeclaration.field(v, typeSolver));
+        }
+        return symbols;
+    }
+}
+
+ succeeded in 267ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.javaparsermodel.declarators;
+
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.expr.VariableDeclarationExpr;
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
+import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserSymbolDeclaration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * @author Federico Tomassetti
+ */
+public class VariableSymbolDeclarator extends AbstractSymbolDeclarator<VariableDeclarationExpr> {
+
+    public VariableSymbolDeclarator(VariableDeclarationExpr wrappedNode, TypeSolver typeSolver) {
+        super(wrappedNode, typeSolver);
+        wrappedNode.getParentNode().ifPresent(p -> {
+            if (p instanceof FieldDeclaration) {
+                throw new IllegalArgumentException();
+            }
+        });
+    }
+
+    @Override
+    public List<ResolvedValueDeclaration> getSymbolDeclarations() {
+        List<ResolvedValueDeclaration> variables = wrappedNode.getVariables().stream()
+                .map(v -> JavaParserSymbolDeclaration.localVar(v, typeSolver))
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        //        // FIXME: This returns ALL PatternExpr, regardless of whether it is in scope or not.
+        //        List<JavaParserSymbolDeclaration> patterns = wrappedNode.getVariables()
+        //                .stream()
+        //                .filter(variableDeclarator -> variableDeclarator.getInitializer().isPresent())
+        //                .map(variableDeclarator -> variableDeclarator.getInitializer().get())
+        //                .map(expression -> expression.findAll(PatternExpr.class))
+        //                .flatMap(Collection::stream)
+        //                .map(v -> JavaParserSymbolDeclaration.patternVar(v, typeSolver))
+        //                .collect(Collectors.toCollection(ArrayList::new));
+
+        List<ResolvedValueDeclaration> all = new ArrayList<>(variables);
+        //        all.addAll(patterns);
+
+        return all;
+    }
+}
+
+ succeeded in 306ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFactory.java:184:            return new TypePatternSymbolDeclarator((TypePatternExpr) node, typeSolver);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/TypePatternSymbolDeclarator.java:34:public class TypePatternSymbolDeclarator extends AbstractSymbolDeclarator<TypePatternExpr> {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/TypePatternSymbolDeclarator.java:36:    public TypePatternSymbolDeclarator(TypePatternExpr wrappedNode, TypeSolver typeSolver) {
+
+codex
+The evidence is pointing the same way: one constructor use, one method override, and no broad reuse. I’m grabbing line numbers so the verdict can be tied to specific files rather than a generic description.
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/TypePatternSymbolDeclarator.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFactory.java | sed -n '170,195p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "TypePatternSymbolDeclarator" javaparser-symbol-solver-core/src/main/java javaparser-symbol-solver-testing/src/test -S' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 194ms:
+   170	                return new ClassOrInterfaceDeclarationExtendsContext(parentDeclaration, typeSolver);
+   171	            }
+   172	        }
+   173	        return getContext(parentNode, typeSolver);
+   174	    }
+   175	
+   176	    public static SymbolDeclarator getSymbolDeclarator(Node node, TypeSolver typeSolver) {
+   177	        if (node instanceof FieldDeclaration) {
+   178	            return new FieldSymbolDeclarator((FieldDeclaration) node, typeSolver);
+   179	        }
+   180	        if (node instanceof Parameter) {
+   181	            return new ParameterSymbolDeclarator((Parameter) node, typeSolver);
+   182	        }
+   183	        if (node instanceof TypePatternExpr) {
+   184	            return new TypePatternSymbolDeclarator((TypePatternExpr) node, typeSolver);
+   185	        }
+   186	        if (node instanceof ExpressionStmt) {
+   187	            ExpressionStmt expressionStmt = (ExpressionStmt) node;
+   188	            if (expressionStmt.getExpression().isVariableDeclarationExpr()) {
+   189	                return new VariableSymbolDeclarator(
+   190	                        expressionStmt.getExpression().asVariableDeclarationExpr(), typeSolver);
+   191	            }
+   192	            return new NoSymbolDeclarator<>(expressionStmt, typeSolver);
+   193	        }
+   194	        if (node instanceof ForEachStmt) {
+   195	            ForEachStmt foreachStmt = (ForEachStmt) node;
+
+ succeeded in 276ms:
+     1	/*
+     2	 * Copyright (C) 2015-2016 Federico Tomassetti
+     3	 * Copyright (C) 2017-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	
+    22	package com.github.javaparser.symbolsolver.javaparsermodel.declarators;
+    23	
+    24	import com.github.javaparser.ast.expr.TypePatternExpr;
+    25	import com.github.javaparser.resolution.TypeSolver;
+    26	import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
+    27	import com.github.javaparser.symbolsolver.javaparsermodel.declarations.JavaParserSymbolDeclaration;
+    28	import java.util.LinkedList;
+    29	import java.util.List;
+    30	
+    31	/**
+    32	 * @author Roger Howell
+    33	 */
+    34	public class TypePatternSymbolDeclarator extends AbstractSymbolDeclarator<TypePatternExpr> {
+    35	
+    36	    public TypePatternSymbolDeclarator(TypePatternExpr wrappedNode, TypeSolver typeSolver) {
+    37	        super(wrappedNode, typeSolver);
+    38	    }
+    39	
+    40	    @Override
+    41	    public List<ResolvedValueDeclaration> getSymbolDeclarations() {
+    42	        List<ResolvedValueDeclaration> symbols = new LinkedList<>();
+    43	        symbols.add(JavaParserSymbolDeclaration.patternVar(wrappedNode, typeSolver));
+    44	        return symbols;
+    45	    }
+    46	}
+
+ succeeded in 284ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFactory.java:184:            return new TypePatternSymbolDeclarator((TypePatternExpr) node, typeSolver);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/TypePatternSymbolDeclarator.java:34:public class TypePatternSymbolDeclarator extends AbstractSymbolDeclarator<TypePatternExpr> {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/TypePatternSymbolDeclarator.java:36:    public TypePatternSymbolDeclarator(TypePatternExpr wrappedNode, TypeSolver typeSolver) {
+
+codex
+{"target":"com.github.javaparser.symbolsolver.javaparsermodel.declarators.TypePatternSymbolDeclarator","detection":false,"justification":"Inspected [TypePatternSymbolDeclarator.java](./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/declarators/TypePatternSymbolDeclarator.java) and [JavaParserFactory.java](./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFactory.java). The class is a narrow adapter: one constructor and one overridden method that only creates a LinkedList and delegates to JavaParserSymbolDeclaration.patternVar. Repository search found only one production instantiation site, in JavaParserFactory.getSymbolDeclarator() at line 184, and no other callers, so fan-in/fan-out are both low rather than hub-like."}
+tokens used
+8,739

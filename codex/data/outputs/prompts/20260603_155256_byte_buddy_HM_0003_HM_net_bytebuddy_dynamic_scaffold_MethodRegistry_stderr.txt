@@ -1,0 +1,2067 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e8ed4-e403-7920-92fc-d7bf9c54c0d4
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.dynamic.scaffold.MethodRegistry` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.dynamic.scaffold.MethodRegistry",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.dynamic.scaffold.MethodRegistry`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `MethodRegistry` and the main call sites first, then I’ll inspect whether it sits at the center of many inbound and outbound dependencies before deciding the verdict.
+exec
+/bin/bash -lc "rg --files | rg 'MethodRegistry\\.java|MethodRegistry|net/bytebuddy/dynamic/scaffold'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldLocator.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/package-info.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeInitializer.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/ClassWriterStrategy.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodGraph.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeValidation.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/MethodNameTransformer.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/package-info.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolver.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/AbstractInliningDynamicTypeBuilder.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/InliningImplementationMatcher.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/package-info.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassImplementationTarget.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseImplementationTarget.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/DecoratingDynamicTypeBuilder.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilder.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldRegistryDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerForDeclaredMethodsTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphSimpleTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeValidationTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDeclarationPreservationTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterInitializerRemapperTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphNodeListTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeInitializerDrainDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldLocatorForExactTypeTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterRecordComponentPoolDisabledTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphNodeUnresolvedTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryHandlerTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultKeyTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodNameTransformerSuffixingTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/DecoratingDynamicTypeBuilderTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/InlineImplementationMatcherTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolverDisabledTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RebaseImplementationTargetFactoryTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilderTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodNameTransformerPrefixingTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolverDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RebaseImplementationTargetSpecialMethodInvocationTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolverResolutionForRebasedConstructorTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolverResolutionForRebasedMethodTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/MethodRebaseResolverResolutionPreservedTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilderTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/AbstractDynamicTypeBuilderForInliningTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/inline/RebaseImplementationTargetTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterRecordComponentPoolRecordTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldRegistryCompiledNoOpTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldLocatorNoOpTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterMethodPoolRecordTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldLocatorForTopLevelTypeTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultForInliningWithFullProcessingInitializationHandlerAppendingFrameWriterNoOpTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphNodeSimpleTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassImplementationTargetFactoryTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilderTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilderInstrumentableMatcherTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyForDefaultConstructorTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassImplementationTargetTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphNodeSortTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJavaMethodTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphEmptyTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultMergerDirectionalTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldLocatorResolutionTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeFrozenTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterFieldPoolDisabledTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeFactoryDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/FieldLocatorForClassHierarchyTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultHarmonizerForJVMMethodTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphLinkedDelegationTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterFieldPoolRecordTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultForInliningWithFullProcessingInitializationHandlerAppendingFrameWriterActiveTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypePrepareableNoOpTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultForInliningWithFullProcessingInitializationHandlerAppendingFrameWriterExpandingTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java
+
+exec
+/bin/bash -lc 'rg -n "MethodRegistry" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./release-notes.md:1813:- Reimplemented `TypeWriter`, `MethodRegistry` and other supporting infrastructure to make  the code simpler.
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java:38: * This registry is the counterpart of a {@link net.bytebuddy.dynamic.scaffold.MethodRegistry}.
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java:28:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java:86:                new MethodRegistry.Default(),
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java:134:                                             MethodRegistry methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java:177:                                                 MethodRegistry methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java:219:        MethodRegistry.Prepared methodRegistry = this.methodRegistry.prepare(instrumentedType,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/AbstractInliningDynamicTypeBuilder.java:29:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/AbstractInliningDynamicTypeBuilder.java:89:                                                 MethodRegistry methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java:29:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java:98:                new MethodRegistry.Default(),
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java:148:                                       MethodRegistry methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java:193:                                                 MethodRegistry methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java:236:        MethodRegistry.Prepared methodRegistry = this.methodRegistry.prepare(instrumentedType,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:38: * This registry is the counterpart of a {@link MethodRegistry}.
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilder.java:28:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilder.java:97:                new MethodRegistry.Default(),
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilder.java:141:                                         MethodRegistry methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilder.java:182:                                                 MethodRegistry methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilder.java:230:        MethodRegistry.Compiled methodRegistry = constructorStrategy
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:23:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:69:    MethodRegistry inject(TypeDescription instrumentedType, MethodRegistry methodRegistry);
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:88:            protected MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:114:            protected MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:116:                        new MethodRegistry.Handler.ForImplementation(SuperMethodCall.INSTANCE),
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:138:            public MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:140:                        new MethodRegistry.Handler.ForImplementation(SuperMethodCall.INSTANCE),
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:161:            public MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:163:                        new MethodRegistry.Handler.ForImplementation(SuperMethodCall.INSTANCE),
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:184:            public MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:186:                        new MethodRegistry.Handler.ForImplementation(SuperMethodCall.INSTANCE),
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:237:        public MethodRegistry inject(TypeDescription instrumentedType, MethodRegistry methodRegistry) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:248:        protected abstract MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory);
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:306:            public MethodRegistry inject(TypeDescription instrumentedType, MethodRegistry methodRegistry) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:381:        public MethodRegistry inject(TypeDescription instrumentedType, MethodRegistry methodRegistry) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:399:                    new MethodRegistry.Handler.ForImplementation(methodCall),
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:45:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:3864:                    protected final MethodRegistry.Handler handler;
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:3883:                    protected Adapter(MethodRegistry.Handler handler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:3914:                    protected abstract MethodDefinition<V> materialize(MethodRegistry.Handler handler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:4929:                protected final MethodRegistry methodRegistry;
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:5030:                                  MethodRegistry methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:5636:                                                          MethodRegistry methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6555:                        return materialize(new MethodRegistry.Handler.ForImplementation(implementation));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6572:                                token.getReceiverType())).materialize(MethodRegistry.Handler.ForAbstractMethod.INSTANCE);
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6587:                                token.getReceiverType())).materialize(new MethodRegistry.Handler.ForAnnotationValue(annotationValue));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6596:                    private MethodDefinition.ReceiverTypeDefinition<U> materialize(MethodRegistry.Handler handler) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6742:                        protected AnnotationAdapter(MethodRegistry.Handler handler) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6755:                        protected AnnotationAdapter(MethodRegistry.Handler handler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6812:                        protected MethodDefinition<U> materialize(MethodRegistry.Handler handler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6869:                        return materialize(new MethodRegistry.Handler.ForImplementation(implementation));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6876:                        return materialize(MethodRegistry.Handler.ForAbstractMethod.INSTANCE);
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6883:                        return materialize(new MethodRegistry.Handler.ForAnnotationValue(annotationValue));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6892:                    private MethodDefinition.ReceiverTypeDefinition<U> materialize(MethodRegistry.Handler handler) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6907:                        protected AnnotationAdapter(MethodRegistry.Handler handler) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6918:                        protected AnnotationAdapter(MethodRegistry.Handler handler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6952:                        protected MethodDefinition<U> materialize(MethodRegistry.Handler handler,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2042:        public static <U> TypeWriter<U> forCreation(MethodRegistry.Compiled methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2104:        public static <U> TypeWriter<U> forRedefinition(MethodRegistry.Prepared methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2173:        public static <U> TypeWriter<U> forRebasing(MethodRegistry.Prepared methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4305:                private final MethodRegistry.Prepared methodRegistry;
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4369:                                             MethodRegistry.Prepared methodRegistry,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:59:public interface MethodRegistry {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:70:    MethodRegistry prepend(LatentMatcher<? super MethodDescription> methodMatcher,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:84:    MethodRegistry append(LatentMatcher<? super MethodDescription> methodMatcher,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:420:    class Default implements MethodRegistry {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:446:        public MethodRegistry prepend(LatentMatcher<? super MethodDescription> matcher,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:456:        public MethodRegistry append(LatentMatcher<? super MethodDescription> matcher,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:466:        public MethodRegistry.Prepared prepare(InstrumentedType instrumentedType,
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:654:        protected static class Prepared implements MethodRegistry.Prepared {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:748:            public MethodRegistry.Compiled compile(Implementation.Target.Factory implementationTargetFactory, ClassFileVersion classFileVersion) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java:917:        protected static class Compiled implements MethodRegistry.Compiled {
+./byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:44:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+./byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1812:        public MethodRegistry inject(TypeDescription instrumentedType, MethodRegistry methodRegistry) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1814:                    new MethodRegistry.Handler.ForImplementation(this),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:38:public class MethodRegistryDefaultTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:50:    private MethodRegistry.Handler firstHandler, secondHandler;
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:53:    private MethodRegistry.Handler.Compiled firstCompiledHandler, secondCompiledHandler;
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:149:        MethodRegistry.Prepared methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:165:        MethodRegistry.Prepared methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:182:        MethodRegistry.Prepared methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:199:        MethodRegistry.Prepared methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:217:        MethodRegistry.Prepared methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:242:        MethodRegistry.Compiled methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:265:        MethodRegistry.Compiled methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:288:        MethodRegistry.Compiled methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:313:        MethodRegistry.Compiled methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:352:        MethodRegistry.Compiled methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java:391:        MethodRegistry.Compiled methodRegistry = new MethodRegistry.Default()
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryHandlerTest.java:21:public class MethodRegistryHandlerTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryHandlerTest.java:57:        MethodRegistry.Handler handler = MethodRegistry.Handler.ForAbstractMethod.INSTANCE;
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryHandlerTest.java:67:        MethodRegistry.Handler handler = new MethodRegistry.Handler.ForImplementation(implementation);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryHandlerTest.java:77:        MethodRegistry.Handler handler = new MethodRegistry.Handler.ForAnnotationValue(annotationValue);
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryHandlerTest.java:87:        MethodRegistry.Handler.ForVisibilityBridge.INSTANCE.prepare(mock(InstrumentedType.class));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyForDefaultConstructorTest.java:15:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyForDefaultConstructorTest.java:45:    private MethodRegistry methodRegistry;
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyForDefaultConstructorTest.java:66:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:16:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:51:    private MethodRegistry methodRegistry;
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:74:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:135:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:152:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:168:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:183:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:200:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:216:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:238:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:256:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:273:                any(MethodRegistry.Handler.class),
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java:311:                any(MethodRegistry.Handler.class),
+
+codex
+I’ve confirmed the target file and already see a wide set of production and test references. Next I’m reading the class itself to measure how many collaborators it directly depends on and whether it is used as a central registry API.
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.dynamic.scaffold;
+
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.annotation.AnnotationValue;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.MethodList;
+import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.Transformer;
+import net.bytebuddy.dynamic.VisibilityBridgeStrategy;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.LoadedTypeInitializer;
+import net.bytebuddy.implementation.attribute.MethodAttributeAppender;
+import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.matcher.LatentMatcher;
+import net.bytebuddy.utility.CompoundList;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static net.bytebuddy.matcher.ElementMatchers.anyOf;
+import static net.bytebuddy.matcher.ElementMatchers.failSafe;
+import static net.bytebuddy.matcher.ElementMatchers.hasParameters;
+import static net.bytebuddy.matcher.ElementMatchers.hasType;
+import static net.bytebuddy.matcher.ElementMatchers.isTypeInitializer;
+import static net.bytebuddy.matcher.ElementMatchers.isVirtual;
+import static net.bytebuddy.matcher.ElementMatchers.isVisibleTo;
+import static net.bytebuddy.matcher.ElementMatchers.not;
+import static net.bytebuddy.matcher.ElementMatchers.returns;
+import static net.bytebuddy.matcher.ElementMatchers.whereNone;
+
+/**
+ * A method registry is responsible for storing information on how a method is intercepted.
+ */
+public interface MethodRegistry {
+
+    /**
+     * Prepends the given method definition to this method registry, i.e. this configuration is applied first.
+     *
+     * @param methodMatcher            A matcher to identify any method that this definition concerns.
+     * @param handler                  The handler to instrument any matched method.
+     * @param attributeAppenderFactory A method attribute appender to apply to any matched method.
+     * @param transformer              The method transformer to be applied to implemented methods.
+     * @return An adapted version of this method registry.
+     */
+    MethodRegistry prepend(LatentMatcher<? super MethodDescription> methodMatcher,
+                           Handler handler,
+                           MethodAttributeAppender.Factory attributeAppenderFactory,
+                           Transformer<MethodDescription> transformer);
+
+    /**
+     * Appends the given method definition to this method registry, i.e. this configuration is applied last.
+     *
+     * @param methodMatcher            A matcher to identify all entries that are to be matched.
+     * @param handler                  The handler to instrument any matched method.
+     * @param attributeAppenderFactory A method attribute appender to apply to any matched method.
+     * @param transformer              The method transformer to be applied to implemented methods.
+     * @return An adapted version of this method registry.
+     */
+    MethodRegistry append(LatentMatcher<? super MethodDescription> methodMatcher,
+                          Handler handler,
+                          MethodAttributeAppender.Factory attributeAppenderFactory,
+                          Transformer<MethodDescription> transformer);
+
+    /**
+     * Prepares this method registry.
+     *
+     * @param instrumentedType         The instrumented type that should be created.
+     * @param methodGraphCompiler      The method graph compiler to be used for analyzing the fully assembled instrumented type.
+     * @param typeValidation           Determines if a type should be explicitly validated.
+     * @param visibilityBridgeStrategy The visibility bridge strategy to apply.
+     * @param ignoredMethods           A filter that only matches methods that should be instrumented.
+     * @return A prepared version of this method registry.
+     */
+    Prepared prepare(InstrumentedType instrumentedType,
+                     MethodGraph.Compiler methodGraphCompiler,
+                     TypeValidation typeValidation,
+                     VisibilityBridgeStrategy visibilityBridgeStrategy,
+                     LatentMatcher<? super MethodDescription> ignoredMethods);
+
+    /**
+     * A handler for implementing a method.
+     */
+    interface Handler extends InstrumentedType.Prepareable {
+
+        /**
+         * Compiles this handler.
+         *
+         * @param implementationTarget The implementation target to compile this handler for.
+         * @return A compiled handler.
+         */
+        Handler.Compiled compile(Implementation.Target implementationTarget);
+
+        /**
+         * A handler for defining an abstract or native method.
+         */
+        enum ForAbstractMethod implements Handler, Compiled {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                return instrumentedType;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Compiled compile(Implementation.Target implementationTarget) {
+                return this;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeWriter.MethodPool.Record assemble(MethodDescription methodDescription, MethodAttributeAppender attributeAppender, Visibility visibility) {
+                return new TypeWriter.MethodPool.Record.ForDefinedMethod.WithoutBody(methodDescription, attributeAppender, visibility);
+            }
+        }
+
+        /**
+         * A handler for implementing a visibility bridge.
+         */
+        enum ForVisibilityBridge implements Handler {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                throw new IllegalStateException("A visibility bridge handler must not apply any preparations");
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Compiled compile(Implementation.Target implementationTarget) {
+                return new Compiled(implementationTarget.getInstrumentedType());
+            }
+
+            /**
+             * A compiled handler for a visibility bridge handler.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            protected static class Compiled implements Handler.Compiled {
+
+                /**
+                 * The instrumented type.
+                 */
+                private final TypeDescription instrumentedType;
+
+                /**
+                 * Creates a new compiled handler for a visibility bridge.
+                 *
+                 * @param instrumentedType The instrumented type.
+                 */
+                protected Compiled(TypeDescription instrumentedType) {
+                    this.instrumentedType = instrumentedType;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public TypeWriter.MethodPool.Record assemble(MethodDescription methodDescription, MethodAttributeAppender attributeAppender, Visibility visibility) {
+                    return TypeWriter.MethodPool.Record.ForDefinedMethod.OfVisibilityBridge.of(instrumentedType, methodDescription, attributeAppender);
+                }
+            }
+        }
+
+        /**
+         * A compiled handler for implementing a method.
+         */
+        interface Compiled {
+
+            /**
+             * Assembles this compiled entry with a method attribute appender.
+             *
+             * @param methodDescription The method description to apply with this handler.
+             * @param attributeAppender The method attribute appender to apply together with this handler.
+             * @param visibility        The represented method's minimum visibility.
+             * @return A method pool entry representing this handler and the given attribute appender.
+             */
+            TypeWriter.MethodPool.Record assemble(MethodDescription methodDescription, MethodAttributeAppender attributeAppender, Visibility visibility);
+        }
+
+        /**
+         * A handler for a method that is implemented as byte code.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForImplementation implements Handler {
+
+            /**
+             * The implementation to apply.
+             */
+            private final Implementation implementation;
+
+            /**
+             * Creates a new handler for implementing a method with byte code.
+             *
+             * @param implementation The implementation to apply.
+             */
+            public ForImplementation(Implementation implementation) {
+                this.implementation = implementation;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                return implementation.prepare(instrumentedType);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Compiled compile(Implementation.Target implementationTarget) {
+                return new Compiled(implementation.appender(implementationTarget));
+            }
+
+            /**
+             * A compiled handler for implementing a method.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            protected static class Compiled implements Handler.Compiled {
+
+                /**
+                 * The byte code appender to apply.
+
+exec
+/bin/bash -lc "sed -n '260,560p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+                 * The byte code appender to apply.
+                 */
+                private final ByteCodeAppender byteCodeAppender;
+
+                /**
+                 * Creates a new compiled handler for a method implementation.
+                 *
+                 * @param byteCodeAppender The byte code appender to apply.
+                 */
+                protected Compiled(ByteCodeAppender byteCodeAppender) {
+                    this.byteCodeAppender = byteCodeAppender;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public TypeWriter.MethodPool.Record assemble(MethodDescription methodDescription, MethodAttributeAppender attributeAppender, Visibility visibility) {
+                    return new TypeWriter.MethodPool.Record.ForDefinedMethod.WithBody(methodDescription, byteCodeAppender, attributeAppender, visibility);
+                }
+            }
+        }
+
+        /**
+         * A handler for defining a default annotation value for a method.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForAnnotationValue implements Handler, Compiled {
+
+            /**
+             * The annotation value to set as a default value.
+             */
+            private final AnnotationValue<?, ?> annotationValue;
+
+            /**
+             * Creates a handler for defining a default annotation value for a method.
+             *
+             * @param annotationValue The annotation value to set as a default value.
+             */
+            public ForAnnotationValue(AnnotationValue<?, ?> annotationValue) {
+                this.annotationValue = annotationValue;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                return instrumentedType;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Compiled compile(Implementation.Target implementationTarget) {
+                return this;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeWriter.MethodPool.Record assemble(MethodDescription methodDescription, MethodAttributeAppender attributeAppender, Visibility visibility) {
+                return new TypeWriter.MethodPool.Record.ForDefinedMethod.WithAnnotationDefaultValue(methodDescription, annotationValue, attributeAppender);
+            }
+        }
+    }
+
+    /**
+     * A method registry that fully prepared the instrumented type.
+     */
+    interface Prepared {
+
+        /**
+         * Returns the fully prepared instrumented type.
+         *
+         * @return The fully prepared instrumented type.
+         */
+        TypeDescription getInstrumentedType();
+
+        /**
+         * Returns the declared or virtually inherited methods of this type.
+         *
+         * @return The declared or virtually inherited methods of this type.
+         */
+        MethodList<?> getMethods();
+
+        /**
+         * Returns a list of all methods that should be instrumented.
+         *
+         * @return A list of all methods that should be instrumented.
+         */
+        MethodList<?> getInstrumentedMethods();
+
+        /**
+         * Returns the loaded type initializer of the instrumented type.
+         *
+         * @return The loaded type initializer of the instrumented type.
+         */
+        LoadedTypeInitializer getLoadedTypeInitializer();
+
+        /**
+         * The type initializer of the instrumented type.
+         *
+         * @return The type initializer of the instrumented type.
+         */
+        TypeInitializer getTypeInitializer();
+
+        /**
+         * Compiles this prepared method registry.
+         *
+         * @param implementationTargetFactory A factory for creating an implementation target.
+         * @param classFileVersion            The type's class file version.
+         * @return A factory for creating an implementation target.
+         */
+        Compiled compile(Implementation.Target.Factory implementationTargetFactory, ClassFileVersion classFileVersion);
+    }
+
+    /**
+     * A compiled version of a method registry.
+     */
+    interface Compiled extends TypeWriter.MethodPool {
+
+        /**
+         * Returns the instrumented type that is to be created.
+         *
+         * @return The instrumented type that is to be created.
+         */
+        TypeDescription getInstrumentedType();
+
+        /**
+         * Returns the declared or virtually inherited methods of this type.
+         *
+         * @return The declared or virtually inherited methods of this type.
+         */
+        MethodList<?> getMethods();
+
+        /**
+         * Returns a list of all methods that should be instrumented.
+         *
+         * @return A list of all methods that should be instrumented.
+         */
+        MethodList<?> getInstrumentedMethods();
+
+        /**
+         * Returns the loaded type initializer of the instrumented type.
+         *
+         * @return The loaded type initializer of the instrumented type.
+         */
+        LoadedTypeInitializer getLoadedTypeInitializer();
+
+        /**
+         * The type initializer of the instrumented type.
+         *
+         * @return The type initializer of the instrumented type.
+         */
+        TypeInitializer getTypeInitializer();
+    }
+
+    /**
+     * A default implementation of a method registry.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class Default implements MethodRegistry {
+
+        /**
+         * The list of currently registered entries in their application order.
+         */
+        private final List<Entry> entries;
+
+        /**
+         * Creates a new default method registry without entries.
+         */
+        public Default() {
+            entries = Collections.emptyList();
+        }
+
+        /**
+         * Creates a new default method registry.
+         *
+         * @param entries The currently registered entries.
+         */
+        private Default(List<Entry> entries) {
+            this.entries = entries;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public MethodRegistry prepend(LatentMatcher<? super MethodDescription> matcher,
+                                      Handler handler,
+                                      MethodAttributeAppender.Factory attributeAppenderFactory,
+                                      Transformer<MethodDescription> transformer) {
+            return new Default(CompoundList.of(new Entry(matcher, handler, attributeAppenderFactory, transformer), entries));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public MethodRegistry append(LatentMatcher<? super MethodDescription> matcher,
+                                     Handler handler,
+                                     MethodAttributeAppender.Factory attributeAppenderFactory,
+                                     Transformer<MethodDescription> transformer) {
+            return new Default(CompoundList.of(entries, new Entry(matcher, handler, attributeAppenderFactory, transformer)));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public MethodRegistry.Prepared prepare(InstrumentedType instrumentedType,
+                                               MethodGraph.Compiler methodGraphCompiler,
+                                               TypeValidation typeValidation,
+                                               VisibilityBridgeStrategy visibilityBridgeStrategy,
+                                               LatentMatcher<? super MethodDescription> ignoredMethods) {
+            LinkedHashMap<MethodDescription, Prepared.Entry> implementations = new LinkedHashMap<MethodDescription, Prepared.Entry>();
+            Set<Handler> handlers = new HashSet<Handler>();
+            Set<MethodDescription> declaredMethods = new HashSet<MethodDescription>(instrumentedType.getDeclaredMethods());
+            for (Entry entry : entries) {
+                if (handlers.add(entry.getHandler())) {
+                    InstrumentedType typeDescription = entry.getHandler().prepare(instrumentedType);
+                    if (instrumentedType != typeDescription) { // Avoid unnecessary scanning for helper methods if instrumented type was not changed.
+                        for (MethodDescription methodDescription : typeDescription.getDeclaredMethods()) {
+                            if (!declaredMethods.contains(methodDescription)) {
+                                implementations.put(methodDescription, entry.asSupplementaryEntry(methodDescription));
+                                declaredMethods.add(methodDescription);
+                            }
+                        }
+                        instrumentedType = typeDescription;
+                    }
+                }
+            }
+            MethodGraph.Linked methodGraph = methodGraphCompiler.compile((TypeDefinition) instrumentedType);
+            // Casting required for Java 6 compiler.
+            ElementMatcher<? super MethodDescription> relevanceMatcher = (ElementMatcher<? super MethodDescription>) failSafe(not(anyOf(implementations.keySet()))
+                    .and(returns(isVisibleTo(instrumentedType)))
+                    .and(hasParameters(whereNone(hasType(not(isVisibleTo(instrumentedType))))))).and(ignoredMethods.resolve(instrumentedType));
+            List<MethodDescription> methods = new ArrayList<MethodDescription>();
+            for (MethodGraph.Node node : methodGraph.listNodes()) {
+                MethodDescription methodDescription = node.getRepresentative();
+                boolean visibilityBridge = instrumentedType.isPublic() && !instrumentedType.isInterface();
+                if (relevanceMatcher.matches(methodDescription)) {
+                    for (Entry entry : entries) {
+                        if (entry.resolve(instrumentedType).matches(methodDescription)) {
+                            implementations.put(methodDescription, entry.asPreparedEntry(instrumentedType,
+                                    methodDescription,
+                                    node.getMethodTypes(),
+                                    node.getVisibility()));
+                            visibilityBridge = false;
+                            break;
+                        }
+                    }
+                }
+                if (visibilityBridge
+                        && !node.getSort().isMadeVisible()
+                        && methodDescription.isPublic()
+                        && !(methodDescription.isAbstract() || methodDescription.isFinal())
+                        && methodDescription.getDeclaringType().isPackagePrivate()
+                        && visibilityBridgeStrategy.generateVisibilityBridge(methodDescription)) {
+                    // Visibility bridges are required for public classes that inherit a public method from a package-private class.
+                    implementations.put(methodDescription, Prepared.Entry.forVisibilityBridge(methodDescription, node.getVisibility()));
+                }
+                methods.add(methodDescription);
+            }
+            for (MethodDescription methodDescription : CompoundList.of(
+                    instrumentedType.getDeclaredMethods().filter(not(isVirtual()).and(relevanceMatcher)),
+                    new MethodDescription.Latent.TypeInitializer(instrumentedType))) {
+                for (Entry entry : entries) {
+                    if (entry.resolve(instrumentedType).matches(methodDescription)) {
+                        implementations.put(methodDescription, entry.asPreparedEntry(instrumentedType, methodDescription, methodDescription.getVisibility()));
+                        break;
+                    }
+                }
+                methods.add(methodDescription);
+            }
+            return new Prepared(implementations,
+                    instrumentedType.getLoadedTypeInitializer(),
+                    instrumentedType.getTypeInitializer(),
+                    typeValidation.isEnabled()
+                            ? instrumentedType.validated()
+                            : instrumentedType,
+                    methodGraph,
+                    new MethodList.Explicit<MethodDescription>(methods));
+        }
+
+        /**
+         * An entry of a default method registry.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class Entry implements LatentMatcher<MethodDescription> {
+
+            /**
+             * The latent method matcher that this entry represents.
+             */
+            private final LatentMatcher<? super MethodDescription> matcher;
+
+            /**
+             * The handler to apply to all matched entries.
+             */
+            private final Handler handler;
+
+            /**
+             * A method attribute appender factory to apply to all entries.
+             */
+            private final MethodAttributeAppender.Factory attributeAppenderFactory;
+
+exec
+/bin/bash -lc "sed -n '560,980p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+            private final MethodAttributeAppender.Factory attributeAppenderFactory;
+
+            /**
+             * The method transformer to be applied to implemented methods.
+             */
+            private final Transformer<MethodDescription> transformer;
+
+            /**
+             * Creates a new entry.
+             *
+             * @param matcher                  The latent method matcher that this entry represents.
+             * @param handler                  The handler to apply to all matched entries.
+             * @param attributeAppenderFactory A method attribute appender factory to apply to all entries.
+             * @param transformer              The method transformer to be applied to implemented methods.
+             */
+            protected Entry(LatentMatcher<? super MethodDescription> matcher,
+                            Handler handler,
+                            MethodAttributeAppender.Factory attributeAppenderFactory,
+                            Transformer<MethodDescription> transformer) {
+                this.matcher = matcher;
+                this.handler = handler;
+                this.attributeAppenderFactory = attributeAppenderFactory;
+                this.transformer = transformer;
+            }
+
+            /**
+             * Transforms this entry into a prepared state.
+             *
+             * @param instrumentedType  The instrumented type.
+             * @param methodDescription The non-transformed method to be implemented.
+             * @param visibility        The represented method's minimum visibility.
+             * @return A prepared version of this entry.
+             */
+            protected Prepared.Entry asPreparedEntry(TypeDescription instrumentedType, MethodDescription methodDescription, Visibility visibility) {
+                return asPreparedEntry(instrumentedType, methodDescription, Collections.<MethodDescription.TypeToken>emptySet(), visibility);
+            }
+
+            /**
+             * Transforms this entry into a prepared state.
+             *
+             * @param instrumentedType  The instrumented type.
+             * @param methodDescription The non-transformed method to be implemented.
+             * @param methodTypes       The method types this method represents.
+             * @param visibility        The represented method's minimum visibility.
+             * @return A prepared version of this entry.
+             */
+            protected Prepared.Entry asPreparedEntry(TypeDescription instrumentedType,
+                                                     MethodDescription methodDescription,
+                                                     Set<MethodDescription.TypeToken> methodTypes,
+                                                     Visibility visibility) {
+                return new Prepared.Entry(handler,
+                        attributeAppenderFactory,
+                        transformer.transform(instrumentedType, methodDescription),
+                        methodTypes,
+                        visibility,
+                        false);
+            }
+
+            /**
+             * Returns a prepared entry for a supplementary method.
+             *
+             * @param methodDescription The method to be implemented.
+             * @return An entry for a supplementary entry that is defined by a method implementation instance.
+             */
+            protected Prepared.Entry asSupplementaryEntry(MethodDescription methodDescription) {
+                return new Prepared.Entry(handler,
+                        MethodAttributeAppender.Explicit.of(methodDescription),
+                        methodDescription,
+                        Collections.<MethodDescription.TypeToken>emptySet(),
+                        methodDescription.getVisibility(),
+                        false);
+            }
+
+            /**
+             * Returns this entry's handler.
+             *
+             * @return The handler of this entry.
+             */
+            protected Handler getHandler() {
+                return handler;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public ElementMatcher<? super MethodDescription> resolve(TypeDescription typeDescription) {
+                return matcher.resolve(typeDescription);
+            }
+        }
+
+        /**
+         * A prepared version of a default method registry.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class Prepared implements MethodRegistry.Prepared {
+
+            /**
+             * A map of all method descriptions mapped to their handling entries.
+             */
+            private final LinkedHashMap<MethodDescription, Entry> implementations;
+
+            /**
+             * The loaded type initializer of the instrumented type.
+             */
+            private final LoadedTypeInitializer loadedTypeInitializer;
+
+            /**
+             * The type initializer of the instrumented type.
+             */
+            private final TypeInitializer typeInitializer;
+
+            /**
+             * The instrumented type.
+             */
+            private final TypeDescription instrumentedType;
+
+            /**
+             * A method graph describing the instrumented type.
+             */
+            private final MethodGraph.Linked methodGraph;
+
+            /**
+             * The declared or virtually inherited methods of this type.
+             */
+            private final MethodList<?> methods;
+
+            /**
+             * Creates a prepared version of a default method registry.
+             *
+             * @param implementations       A map of all method descriptions mapped to their handling entries.
+             * @param loadedTypeInitializer The loaded type initializer of the instrumented type.
+             * @param typeInitializer       The type initializer of the instrumented type.
+             * @param instrumentedType      The instrumented type.
+             * @param methodGraph           A method graph describing the instrumented type.
+             * @param methods               The declared or virtually inherited methods of this type.
+             */
+            protected Prepared(LinkedHashMap<MethodDescription, Entry> implementations,
+                               LoadedTypeInitializer loadedTypeInitializer,
+                               TypeInitializer typeInitializer,
+                               TypeDescription instrumentedType,
+                               MethodGraph.Linked methodGraph,
+                               MethodList<?> methods) {
+                this.implementations = implementations;
+                this.loadedTypeInitializer = loadedTypeInitializer;
+                this.typeInitializer = typeInitializer;
+                this.instrumentedType = instrumentedType;
+                this.methodGraph = methodGraph;
+                this.methods = methods;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeDescription getInstrumentedType() {
+                return instrumentedType;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public LoadedTypeInitializer getLoadedTypeInitializer() {
+                return loadedTypeInitializer;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeInitializer getTypeInitializer() {
+                return typeInitializer;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MethodList<?> getMethods() {
+                return methods;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MethodList<?> getInstrumentedMethods() {
+                return new MethodList.Explicit<MethodDescription>(new ArrayList<MethodDescription>(implementations.keySet())).filter(not(isTypeInitializer()));
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public MethodRegistry.Compiled compile(Implementation.Target.Factory implementationTargetFactory, ClassFileVersion classFileVersion) {
+                Map<Handler, Handler.Compiled> compilationCache = new HashMap<Handler, Handler.Compiled>();
+                Map<MethodAttributeAppender.Factory, MethodAttributeAppender> attributeAppenderCache = new HashMap<MethodAttributeAppender.Factory, MethodAttributeAppender>();
+                LinkedHashMap<MethodDescription, Compiled.Entry> entries = new LinkedHashMap<MethodDescription, Compiled.Entry>();
+                Implementation.Target implementationTarget = implementationTargetFactory.make(instrumentedType, methodGraph, classFileVersion);
+                for (Map.Entry<MethodDescription, Entry> entry : implementations.entrySet()) {
+                    Handler.Compiled cachedHandler = compilationCache.get(entry.getValue().getHandler());
+                    if (cachedHandler == null) {
+                        cachedHandler = entry.getValue().getHandler().compile(implementationTarget);
+                        compilationCache.put(entry.getValue().getHandler(), cachedHandler);
+                    }
+                    MethodAttributeAppender cachedAttributeAppender = attributeAppenderCache.get(entry.getValue().getAppenderFactory());
+                    if (cachedAttributeAppender == null) {
+                        cachedAttributeAppender = entry.getValue().getAppenderFactory().make(instrumentedType);
+                        attributeAppenderCache.put(entry.getValue().getAppenderFactory(), cachedAttributeAppender);
+                    }
+                    entries.put(entry.getKey(), new Compiled.Entry(cachedHandler,
+                            cachedAttributeAppender,
+                            entry.getValue().getMethodDescription(),
+                            entry.getValue().resolveBridgeTypes(),
+                            entry.getValue().getVisibility(),
+                            entry.getValue().isBridgeMethod()));
+                }
+                return new Compiled(instrumentedType,
+                        loadedTypeInitializer,
+                        typeInitializer,
+                        methods,
+                        entries,
+                        classFileVersion.isAtLeast(ClassFileVersion.JAVA_V5));
+            }
+
+            /**
+             * An entry of a prepared method registry.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            protected static class Entry {
+
+                /**
+                 * The handler for implementing methods.
+                 */
+                private final Handler handler;
+
+                /**
+                 * A attribute appender factory for appending attributes for any implemented method.
+                 */
+                private final MethodAttributeAppender.Factory attributeAppenderFactory;
+
+                /**
+                 * The method this entry represents.
+                 */
+                private final MethodDescription methodDescription;
+
+                /**
+                 * The method's type tokens.
+                 */
+                private final Set<MethodDescription.TypeToken> typeTokens;
+
+                /**
+                 * The minimum required visibility of this method.
+                 */
+                private final Visibility visibility;
+
+                /**
+                 * Is {@code true} if this entry represents a bridge method.
+                 */
+                private final boolean bridgeMethod;
+
+                /**
+                 * Creates a new prepared entry.
+                 *
+                 * @param handler                  The handler for implementing methods.
+                 * @param attributeAppenderFactory A attribute appender factory for appending attributes for any implemented method.
+                 * @param methodDescription        The method this entry represents.
+                 * @param typeTokens               A set of bridges representing the bridge methods of this method.
+                 * @param visibility               The minimum required visibility of this method.
+                 * @param bridgeMethod             {@code true} if this entry represents a bridge method.
+                 */
+                protected Entry(Handler handler,
+                                MethodAttributeAppender.Factory attributeAppenderFactory,
+                                MethodDescription methodDescription,
+                                Set<MethodDescription.TypeToken> typeTokens,
+                                Visibility visibility,
+                                boolean bridgeMethod) {
+                    this.handler = handler;
+                    this.attributeAppenderFactory = attributeAppenderFactory;
+                    this.methodDescription = methodDescription;
+                    this.typeTokens = typeTokens;
+                    this.visibility = visibility;
+                    this.bridgeMethod = bridgeMethod;
+                }
+
+                /**
+                 * Creates an entry for a visibility bridge.
+                 *
+                 * @param bridgeTarget The bridge method's target.
+                 * @param visibility   The represented method's minimum visibility.
+                 * @return An entry representing a visibility bridge.
+                 */
+                protected static Entry forVisibilityBridge(MethodDescription bridgeTarget, Visibility visibility) {
+                    return new Entry(Handler.ForVisibilityBridge.INSTANCE,
+                            MethodAttributeAppender.Explicit.of(bridgeTarget),
+                            bridgeTarget,
+                            Collections.<MethodDescription.TypeToken>emptySet(),
+                            visibility,
+                            true);
+                }
+
+                /**
+                 * Returns this entry's handler.
+                 *
+                 * @return The entry's handler.
+                 */
+                protected Handler getHandler() {
+                    return handler;
+                }
+
+                /**
+                 * Returns this entry's attribute appender factory.
+                 *
+                 * @return This entry's attribute appender factory.
+                 */
+                protected MethodAttributeAppender.Factory getAppenderFactory() {
+                    return attributeAppenderFactory;
+                }
+
+                /**
+                 * Returns the method description this entry represents.
+                 *
+                 * @return The method description this entry represents.
+                 */
+                protected MethodDescription getMethodDescription() {
+                    return methodDescription;
+                }
+
+                /**
+                 * Resolves the type tokens of all bridge methods that are required to be implemented for this entry.
+                 *
+                 * @return A set of type tokens representing the bridge methods required for implementing this type.
+                 */
+                protected Set<MethodDescription.TypeToken> resolveBridgeTypes() {
+                    HashSet<MethodDescription.TypeToken> typeTokens = new HashSet<MethodDescription.TypeToken>(this.typeTokens);
+                    typeTokens.remove(methodDescription.asTypeToken());
+                    return typeTokens;
+                }
+
+                /**
+                 * Returns the represented method's minimum visibility.
+                 *
+                 * @return The represented method's minimum visibility.
+                 */
+                protected Visibility getVisibility() {
+                    return visibility;
+                }
+
+                /**
+                 * Returns {@code true} if this entry represents a bridge method.
+                 *
+                 * @return {@code true} if this entry represents a bridge method.
+                 */
+                protected boolean isBridgeMethod() {
+                    return bridgeMethod;
+                }
+            }
+        }
+
+        /**
+         * A compiled version of a default method registry.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        protected static class Compiled implements MethodRegistry.Compiled {
+
+            /**
+             * The instrumented type.
+             */
+            private final TypeDescription instrumentedType;
+
+            /**
+             * The loaded type initializer of the instrumented type.
+             */
+            private final LoadedTypeInitializer loadedTypeInitializer;
+
+            /**
+             * The type initializer of the instrumented type.
+             */
+            private final TypeInitializer typeInitializer;
+
+            /**
+             * The declared or virtually inherited methods of this type.
+             */
+            private final MethodList<?> methods;
+
+            /**
+             * A map of all method descriptions mapped to their handling entries.
+             */
+            private final LinkedHashMap<MethodDescription, Entry> implementations;
+
+            /**
+             * {@code true} if the created type supports bridge methods.
+             */
+            private final boolean supportsBridges;
+
+            /**
+             * Creates a new compiled version of a default method registry.
+             *
+             * @param instrumentedType      The instrumented type.
+             * @param loadedTypeInitializer The loaded type initializer of the instrumented type.
+             * @param typeInitializer       The type initializer of the instrumented type.
+             * @param methods               The declared or virtually inherited methods of this type.
+             * @param implementations       A map of all method descriptions mapped to their handling entries.
+             * @param supportsBridges       {@code true} if the created type supports bridge methods.
+             */
+            protected Compiled(TypeDescription instrumentedType,
+                               LoadedTypeInitializer loadedTypeInitializer,
+                               TypeInitializer typeInitializer,
+                               MethodList<?> methods,
+                               LinkedHashMap<MethodDescription, Entry> implementations,
+                               boolean supportsBridges) {
+                this.instrumentedType = instrumentedType;
+                this.loadedTypeInitializer = loadedTypeInitializer;
+                this.typeInitializer = typeInitializer;
+                this.methods = methods;
+                this.implementations = implementations;
+                this.supportsBridges = supportsBridges;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeDescription getInstrumentedType() {
+                return instrumentedType;
+            }
+
+            /**
+
+codex
+I have the implementation shape now: `MethodRegistry` is not a tiny interface, it carries nested handler/prepared/compiled models and directly coordinates method graphs, type validation, matchers, transformers, and bytecode appenders. I’m verifying the inbound side next by counting production and test classes that depend on it.
+exec
+/bin/bash -lc "rg -l \"\\bMethodRegistry\\b\" byte-buddy-dep/src/test/java | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -l \"\\bMethodRegistry\\b\" byte-buddy-dep/src/main/java | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+4
+
+ succeeded in 0ms:
+11
+
+exec
+/bin/bash -lc "rg -n \"\\bMethodRegistry\\b\" byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/*.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java:29:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java:98:                new MethodRegistry.Default(),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java:148:                                       MethodRegistry methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java:193:                                                 MethodRegistry methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java:236:        MethodRegistry.Prepared methodRegistry = this.methodRegistry.prepare(instrumentedType,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java:28:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java:86:                new MethodRegistry.Default(),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java:134:                                             MethodRegistry methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java:177:                                                 MethodRegistry methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java:219:        MethodRegistry.Prepared methodRegistry = this.methodRegistry.prepare(instrumentedType,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2042:        public static <U> TypeWriter<U> forCreation(MethodRegistry.Compiled methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2104:        public static <U> TypeWriter<U> forRedefinition(MethodRegistry.Prepared methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2173:        public static <U> TypeWriter<U> forRebasing(MethodRegistry.Prepared methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4305:                private final MethodRegistry.Prepared methodRegistry;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4369:                                             MethodRegistry.Prepared methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/AbstractInliningDynamicTypeBuilder.java:29:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/AbstractInliningDynamicTypeBuilder.java:89:                                                 MethodRegistry methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:23:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:69:    MethodRegistry inject(TypeDescription instrumentedType, MethodRegistry methodRegistry);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:88:            protected MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:114:            protected MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:116:                        new MethodRegistry.Handler.ForImplementation(SuperMethodCall.INSTANCE),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:138:            public MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:140:                        new MethodRegistry.Handler.ForImplementation(SuperMethodCall.INSTANCE),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:161:            public MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:163:                        new MethodRegistry.Handler.ForImplementation(SuperMethodCall.INSTANCE),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:184:            public MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:186:                        new MethodRegistry.Handler.ForImplementation(SuperMethodCall.INSTANCE),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:237:        public MethodRegistry inject(TypeDescription instrumentedType, MethodRegistry methodRegistry) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:248:        protected abstract MethodRegistry doInject(MethodRegistry methodRegistry, MethodAttributeAppender.Factory methodAttributeAppenderFactory);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:306:            public MethodRegistry inject(TypeDescription instrumentedType, MethodRegistry methodRegistry) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:381:        public MethodRegistry inject(TypeDescription instrumentedType, MethodRegistry methodRegistry) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java:399:                    new MethodRegistry.Handler.ForImplementation(methodCall),
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:44:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1812:        public MethodRegistry inject(TypeDescription instrumentedType, MethodRegistry methodRegistry) {
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1814:                    new MethodRegistry.Handler.ForImplementation(this),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:45:import net.bytebuddy.dynamic.scaffold.MethodRegistry;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:3864:                    protected final MethodRegistry.Handler handler;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:3883:                    protected Adapter(MethodRegistry.Handler handler,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:3914:                    protected abstract MethodDefinition<V> materialize(MethodRegistry.Handler handler,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:4929:                protected final MethodRegistry methodRegistry;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:5030:                                  MethodRegistry methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:5636:                                                          MethodRegistry methodRegistry,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6555:                        return materialize(new MethodRegistry.Handler.ForImplementation(implementation));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6572:                                token.getReceiverType())).materialize(MethodRegistry.Handler.ForAbstractMethod.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6587:                                token.getReceiverType())).materialize(new MethodRegistry.Handler.ForAnnotationValue(annotationValue));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6596:                    private MethodDefinition.ReceiverTypeDefinition<U> materialize(MethodRegistry.Handler handler) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6742:                        protected AnnotationAdapter(MethodRegistry.Handler handler) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6755:                        protected AnnotationAdapter(MethodRegistry.Handler handler,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6812:                        protected MethodDefinition<U> materialize(MethodRegistry.Handler handler,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6869:                        return materialize(new MethodRegistry.Handler.ForImplementation(implementation));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6876:                        return materialize(MethodRegistry.Handler.ForAbstractMethod.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6883:                        return materialize(new MethodRegistry.Handler.ForAnnotationValue(annotationValue));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6892:                    private MethodDefinition.ReceiverTypeDefinition<U> materialize(MethodRegistry.Handler handler) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6907:                        protected AnnotationAdapter(MethodRegistry.Handler handler) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6918:                        protected AnnotationAdapter(MethodRegistry.Handler handler,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:6952:                        protected MethodDefinition<U> materialize(MethodRegistry.Handler handler,
+
+codex
+I have enough to judge the pattern, but I’m pulling exact line references from the target file so the verdict can point to concrete outbound dependencies rather than just a broad impression.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy.dynamic.scaffold;
+    17	
+    18	import net.bytebuddy.ClassFileVersion;
+    19	import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+    20	import net.bytebuddy.description.annotation.AnnotationValue;
+    21	import net.bytebuddy.description.method.MethodDescription;
+    22	import net.bytebuddy.description.method.MethodList;
+    23	import net.bytebuddy.description.modifier.Visibility;
+    24	import net.bytebuddy.description.type.TypeDefinition;
+    25	import net.bytebuddy.description.type.TypeDescription;
+    26	import net.bytebuddy.dynamic.Transformer;
+    27	import net.bytebuddy.dynamic.VisibilityBridgeStrategy;
+    28	import net.bytebuddy.implementation.Implementation;
+    29	import net.bytebuddy.implementation.LoadedTypeInitializer;
+    30	import net.bytebuddy.implementation.attribute.MethodAttributeAppender;
+    31	import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+    32	import net.bytebuddy.matcher.ElementMatcher;
+    33	import net.bytebuddy.matcher.LatentMatcher;
+    34	import net.bytebuddy.utility.CompoundList;
+    35	
+    36	import java.util.ArrayList;
+    37	import java.util.Collections;
+    38	import java.util.HashMap;
+    39	import java.util.HashSet;
+    40	import java.util.LinkedHashMap;
+    41	import java.util.List;
+    42	import java.util.Map;
+    43	import java.util.Set;
+    44	
+    45	import static net.bytebuddy.matcher.ElementMatchers.anyOf;
+    46	import static net.bytebuddy.matcher.ElementMatchers.failSafe;
+    47	import static net.bytebuddy.matcher.ElementMatchers.hasParameters;
+    48	import static net.bytebuddy.matcher.ElementMatchers.hasType;
+    49	import static net.bytebuddy.matcher.ElementMatchers.isTypeInitializer;
+    50	import static net.bytebuddy.matcher.ElementMatchers.isVirtual;
+    51	import static net.bytebuddy.matcher.ElementMatchers.isVisibleTo;
+    52	import static net.bytebuddy.matcher.ElementMatchers.not;
+    53	import static net.bytebuddy.matcher.ElementMatchers.returns;
+    54	import static net.bytebuddy.matcher.ElementMatchers.whereNone;
+    55	
+    56	/**
+    57	 * A method registry is responsible for storing information on how a method is intercepted.
+    58	 */
+    59	public interface MethodRegistry {
+    60	
+    61	    /**
+    62	     * Prepends the given method definition to this method registry, i.e. this configuration is applied first.
+    63	     *
+    64	     * @param methodMatcher            A matcher to identify any method that this definition concerns.
+    65	     * @param handler                  The handler to instrument any matched method.
+    66	     * @param attributeAppenderFactory A method attribute appender to apply to any matched method.
+    67	     * @param transformer              The method transformer to be applied to implemented methods.
+    68	     * @return An adapted version of this method registry.
+    69	     */
+    70	    MethodRegistry prepend(LatentMatcher<? super MethodDescription> methodMatcher,
+    71	                           Handler handler,
+    72	                           MethodAttributeAppender.Factory attributeAppenderFactory,
+    73	                           Transformer<MethodDescription> transformer);
+    74	
+    75	    /**
+    76	     * Appends the given method definition to this method registry, i.e. this configuration is applied last.
+    77	     *
+    78	     * @param methodMatcher            A matcher to identify all entries that are to be matched.
+    79	     * @param handler                  The handler to instrument any matched method.
+    80	     * @param attributeAppenderFactory A method attribute appender to apply to any matched method.
+    81	     * @param transformer              The method transformer to be applied to implemented methods.
+    82	     * @return An adapted version of this method registry.
+    83	     */
+    84	    MethodRegistry append(LatentMatcher<? super MethodDescription> methodMatcher,
+    85	                          Handler handler,
+    86	                          MethodAttributeAppender.Factory attributeAppenderFactory,
+    87	                          Transformer<MethodDescription> transformer);
+    88	
+    89	    /**
+    90	     * Prepares this method registry.
+    91	     *
+    92	     * @param instrumentedType         The instrumented type that should be created.
+    93	     * @param methodGraphCompiler      The method graph compiler to be used for analyzing the fully assembled instrumented type.
+    94	     * @param typeValidation           Determines if a type should be explicitly validated.
+    95	     * @param visibilityBridgeStrategy The visibility bridge strategy to apply.
+    96	     * @param ignoredMethods           A filter that only matches methods that should be instrumented.
+    97	     * @return A prepared version of this method registry.
+    98	     */
+    99	    Prepared prepare(InstrumentedType instrumentedType,
+   100	                     MethodGraph.Compiler methodGraphCompiler,
+   101	                     TypeValidation typeValidation,
+   102	                     VisibilityBridgeStrategy visibilityBridgeStrategy,
+   103	                     LatentMatcher<? super MethodDescription> ignoredMethods);
+   104	
+   105	    /**
+   106	     * A handler for implementing a method.
+   107	     */
+   108	    interface Handler extends InstrumentedType.Prepareable {
+   109	
+   110	        /**
+   111	         * Compiles this handler.
+   112	         *
+   113	         * @param implementationTarget The implementation target to compile this handler for.
+   114	         * @return A compiled handler.
+   115	         */
+   116	        Handler.Compiled compile(Implementation.Target implementationTarget);
+   117	
+   118	        /**
+   119	         * A handler for defining an abstract or native method.
+   120	         */
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java | sed -n '420,780p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   420	    class Default implements MethodRegistry {
+   421	
+   422	        /**
+   423	         * The list of currently registered entries in their application order.
+   424	         */
+   425	        private final List<Entry> entries;
+   426	
+   427	        /**
+   428	         * Creates a new default method registry without entries.
+   429	         */
+   430	        public Default() {
+   431	            entries = Collections.emptyList();
+   432	        }
+   433	
+   434	        /**
+   435	         * Creates a new default method registry.
+   436	         *
+   437	         * @param entries The currently registered entries.
+   438	         */
+   439	        private Default(List<Entry> entries) {
+   440	            this.entries = entries;
+   441	        }
+   442	
+   443	        /**
+   444	         * {@inheritDoc}
+   445	         */
+   446	        public MethodRegistry prepend(LatentMatcher<? super MethodDescription> matcher,
+   447	                                      Handler handler,
+   448	                                      MethodAttributeAppender.Factory attributeAppenderFactory,
+   449	                                      Transformer<MethodDescription> transformer) {
+   450	            return new Default(CompoundList.of(new Entry(matcher, handler, attributeAppenderFactory, transformer), entries));
+   451	        }
+   452	
+   453	        /**
+   454	         * {@inheritDoc}
+   455	         */
+   456	        public MethodRegistry append(LatentMatcher<? super MethodDescription> matcher,
+   457	                                     Handler handler,
+   458	                                     MethodAttributeAppender.Factory attributeAppenderFactory,
+   459	                                     Transformer<MethodDescription> transformer) {
+   460	            return new Default(CompoundList.of(entries, new Entry(matcher, handler, attributeAppenderFactory, transformer)));
+   461	        }
+   462	
+   463	        /**
+   464	         * {@inheritDoc}
+   465	         */
+   466	        public MethodRegistry.Prepared prepare(InstrumentedType instrumentedType,
+   467	                                               MethodGraph.Compiler methodGraphCompiler,
+   468	                                               TypeValidation typeValidation,
+   469	                                               VisibilityBridgeStrategy visibilityBridgeStrategy,
+   470	                                               LatentMatcher<? super MethodDescription> ignoredMethods) {
+   471	            LinkedHashMap<MethodDescription, Prepared.Entry> implementations = new LinkedHashMap<MethodDescription, Prepared.Entry>();
+   472	            Set<Handler> handlers = new HashSet<Handler>();
+   473	            Set<MethodDescription> declaredMethods = new HashSet<MethodDescription>(instrumentedType.getDeclaredMethods());
+   474	            for (Entry entry : entries) {
+   475	                if (handlers.add(entry.getHandler())) {
+   476	                    InstrumentedType typeDescription = entry.getHandler().prepare(instrumentedType);
+   477	                    if (instrumentedType != typeDescription) { // Avoid unnecessary scanning for helper methods if instrumented type was not changed.
+   478	                        for (MethodDescription methodDescription : typeDescription.getDeclaredMethods()) {
+   479	                            if (!declaredMethods.contains(methodDescription)) {
+   480	                                implementations.put(methodDescription, entry.asSupplementaryEntry(methodDescription));
+   481	                                declaredMethods.add(methodDescription);
+   482	                            }
+   483	                        }
+   484	                        instrumentedType = typeDescription;
+   485	                    }
+   486	                }
+   487	            }
+   488	            MethodGraph.Linked methodGraph = methodGraphCompiler.compile((TypeDefinition) instrumentedType);
+   489	            // Casting required for Java 6 compiler.
+   490	            ElementMatcher<? super MethodDescription> relevanceMatcher = (ElementMatcher<? super MethodDescription>) failSafe(not(anyOf(implementations.keySet()))
+   491	                    .and(returns(isVisibleTo(instrumentedType)))
+   492	                    .and(hasParameters(whereNone(hasType(not(isVisibleTo(instrumentedType))))))).and(ignoredMethods.resolve(instrumentedType));
+   493	            List<MethodDescription> methods = new ArrayList<MethodDescription>();
+   494	            for (MethodGraph.Node node : methodGraph.listNodes()) {
+   495	                MethodDescription methodDescription = node.getRepresentative();
+   496	                boolean visibilityBridge = instrumentedType.isPublic() && !instrumentedType.isInterface();
+   497	                if (relevanceMatcher.matches(methodDescription)) {
+   498	                    for (Entry entry : entries) {
+   499	                        if (entry.resolve(instrumentedType).matches(methodDescription)) {
+   500	                            implementations.put(methodDescription, entry.asPreparedEntry(instrumentedType,
+   501	                                    methodDescription,
+   502	                                    node.getMethodTypes(),
+   503	                                    node.getVisibility()));
+   504	                            visibilityBridge = false;
+   505	                            break;
+   506	                        }
+   507	                    }
+   508	                }
+   509	                if (visibilityBridge
+   510	                        && !node.getSort().isMadeVisible()
+   511	                        && methodDescription.isPublic()
+   512	                        && !(methodDescription.isAbstract() || methodDescription.isFinal())
+   513	                        && methodDescription.getDeclaringType().isPackagePrivate()
+   514	                        && visibilityBridgeStrategy.generateVisibilityBridge(methodDescription)) {
+   515	                    // Visibility bridges are required for public classes that inherit a public method from a package-private class.
+   516	                    implementations.put(methodDescription, Prepared.Entry.forVisibilityBridge(methodDescription, node.getVisibility()));
+   517	                }
+   518	                methods.add(methodDescription);
+   519	            }
+   520	            for (MethodDescription methodDescription : CompoundList.of(
+   521	                    instrumentedType.getDeclaredMethods().filter(not(isVirtual()).and(relevanceMatcher)),
+   522	                    new MethodDescription.Latent.TypeInitializer(instrumentedType))) {
+   523	                for (Entry entry : entries) {
+   524	                    if (entry.resolve(instrumentedType).matches(methodDescription)) {
+   525	                        implementations.put(methodDescription, entry.asPreparedEntry(instrumentedType, methodDescription, methodDescription.getVisibility()));
+   526	                        break;
+   527	                    }
+   528	                }
+   529	                methods.add(methodDescription);
+   530	            }
+   531	            return new Prepared(implementations,
+   532	                    instrumentedType.getLoadedTypeInitializer(),
+   533	                    instrumentedType.getTypeInitializer(),
+   534	                    typeValidation.isEnabled()
+   535	                            ? instrumentedType.validated()
+   536	                            : instrumentedType,
+   537	                    methodGraph,
+   538	                    new MethodList.Explicit<MethodDescription>(methods));
+   539	        }
+   540	
+   541	        /**
+   542	         * An entry of a default method registry.
+   543	         */
+   544	        @HashCodeAndEqualsPlugin.Enhance
+   545	        protected static class Entry implements LatentMatcher<MethodDescription> {
+   546	
+   547	            /**
+   548	             * The latent method matcher that this entry represents.
+   549	             */
+   550	            private final LatentMatcher<? super MethodDescription> matcher;
+   551	
+   552	            /**
+   553	             * The handler to apply to all matched entries.
+   554	             */
+   555	            private final Handler handler;
+   556	
+   557	            /**
+   558	             * A method attribute appender factory to apply to all entries.
+   559	             */
+   560	            private final MethodAttributeAppender.Factory attributeAppenderFactory;
+   561	
+   562	            /**
+   563	             * The method transformer to be applied to implemented methods.
+   564	             */
+   565	            private final Transformer<MethodDescription> transformer;
+   566	
+   567	            /**
+   568	             * Creates a new entry.
+   569	             *
+   570	             * @param matcher                  The latent method matcher that this entry represents.
+   571	             * @param handler                  The handler to apply to all matched entries.
+   572	             * @param attributeAppenderFactory A method attribute appender factory to apply to all entries.
+   573	             * @param transformer              The method transformer to be applied to implemented methods.
+   574	             */
+   575	            protected Entry(LatentMatcher<? super MethodDescription> matcher,
+   576	                            Handler handler,
+   577	                            MethodAttributeAppender.Factory attributeAppenderFactory,
+   578	                            Transformer<MethodDescription> transformer) {
+   579	                this.matcher = matcher;
+   580	                this.handler = handler;
+   581	                this.attributeAppenderFactory = attributeAppenderFactory;
+   582	                this.transformer = transformer;
+   583	            }
+   584	
+   585	            /**
+   586	             * Transforms this entry into a prepared state.
+   587	             *
+   588	             * @param instrumentedType  The instrumented type.
+   589	             * @param methodDescription The non-transformed method to be implemented.
+   590	             * @param visibility        The represented method's minimum visibility.
+   591	             * @return A prepared version of this entry.
+   592	             */
+   593	            protected Prepared.Entry asPreparedEntry(TypeDescription instrumentedType, MethodDescription methodDescription, Visibility visibility) {
+   594	                return asPreparedEntry(instrumentedType, methodDescription, Collections.<MethodDescription.TypeToken>emptySet(), visibility);
+   595	            }
+   596	
+   597	            /**
+   598	             * Transforms this entry into a prepared state.
+   599	             *
+   600	             * @param instrumentedType  The instrumented type.
+   601	             * @param methodDescription The non-transformed method to be implemented.
+   602	             * @param methodTypes       The method types this method represents.
+   603	             * @param visibility        The represented method's minimum visibility.
+   604	             * @return A prepared version of this entry.
+   605	             */
+   606	            protected Prepared.Entry asPreparedEntry(TypeDescription instrumentedType,
+   607	                                                     MethodDescription methodDescription,
+   608	                                                     Set<MethodDescription.TypeToken> methodTypes,
+   609	                                                     Visibility visibility) {
+   610	                return new Prepared.Entry(handler,
+   611	                        attributeAppenderFactory,
+   612	                        transformer.transform(instrumentedType, methodDescription),
+   613	                        methodTypes,
+   614	                        visibility,
+   615	                        false);
+   616	            }
+   617	
+   618	            /**
+   619	             * Returns a prepared entry for a supplementary method.
+   620	             *
+   621	             * @param methodDescription The method to be implemented.
+   622	             * @return An entry for a supplementary entry that is defined by a method implementation instance.
+   623	             */
+   624	            protected Prepared.Entry asSupplementaryEntry(MethodDescription methodDescription) {
+   625	                return new Prepared.Entry(handler,
+   626	                        MethodAttributeAppender.Explicit.of(methodDescription),
+   627	                        methodDescription,
+   628	                        Collections.<MethodDescription.TypeToken>emptySet(),
+   629	                        methodDescription.getVisibility(),
+   630	                        false);
+   631	            }
+   632	
+   633	            /**
+   634	             * Returns this entry's handler.
+   635	             *
+   636	             * @return The handler of this entry.
+   637	             */
+   638	            protected Handler getHandler() {
+   639	                return handler;
+   640	            }
+   641	
+   642	            /**
+   643	             * {@inheritDoc}
+   644	             */
+   645	            public ElementMatcher<? super MethodDescription> resolve(TypeDescription typeDescription) {
+   646	                return matcher.resolve(typeDescription);
+   647	            }
+   648	        }
+   649	
+   650	        /**
+   651	         * A prepared version of a default method registry.
+   652	         */
+   653	        @HashCodeAndEqualsPlugin.Enhance
+   654	        protected static class Prepared implements MethodRegistry.Prepared {
+   655	
+   656	            /**
+   657	             * A map of all method descriptions mapped to their handling entries.
+   658	             */
+   659	            private final LinkedHashMap<MethodDescription, Entry> implementations;
+   660	
+   661	            /**
+   662	             * The loaded type initializer of the instrumented type.
+   663	             */
+   664	            private final LoadedTypeInitializer loadedTypeInitializer;
+   665	
+   666	            /**
+   667	             * The type initializer of the instrumented type.
+   668	             */
+   669	            private final TypeInitializer typeInitializer;
+   670	
+   671	            /**
+   672	             * The instrumented type.
+   673	             */
+   674	            private final TypeDescription instrumentedType;
+   675	
+   676	            /**
+   677	             * A method graph describing the instrumented type.
+   678	             */
+   679	            private final MethodGraph.Linked methodGraph;
+   680	
+   681	            /**
+   682	             * The declared or virtually inherited methods of this type.
+   683	             */
+   684	            private final MethodList<?> methods;
+   685	
+   686	            /**
+   687	             * Creates a prepared version of a default method registry.
+   688	             *
+   689	             * @param implementations       A map of all method descriptions mapped to their handling entries.
+   690	             * @param loadedTypeInitializer The loaded type initializer of the instrumented type.
+   691	             * @param typeInitializer       The type initializer of the instrumented type.
+   692	             * @param instrumentedType      The instrumented type.
+   693	             * @param methodGraph           A method graph describing the instrumented type.
+   694	             * @param methods               The declared or virtually inherited methods of this type.
+   695	             */
+   696	            protected Prepared(LinkedHashMap<MethodDescription, Entry> implementations,
+   697	                               LoadedTypeInitializer loadedTypeInitializer,
+   698	                               TypeInitializer typeInitializer,
+   699	                               TypeDescription instrumentedType,
+   700	                               MethodGraph.Linked methodGraph,
+   701	                               MethodList<?> methods) {
+   702	                this.implementations = implementations;
+   703	                this.loadedTypeInitializer = loadedTypeInitializer;
+   704	                this.typeInitializer = typeInitializer;
+   705	                this.instrumentedType = instrumentedType;
+   706	                this.methodGraph = methodGraph;
+   707	                this.methods = methods;
+   708	            }
+   709	
+   710	            /**
+   711	             * {@inheritDoc}
+   712	             */
+   713	            public TypeDescription getInstrumentedType() {
+   714	                return instrumentedType;
+   715	            }
+   716	
+   717	            /**
+   718	             * {@inheritDoc}
+   719	             */
+   720	            public LoadedTypeInitializer getLoadedTypeInitializer() {
+   721	                return loadedTypeInitializer;
+   722	            }
+   723	
+   724	            /**
+   725	             * {@inheritDoc}
+   726	             */
+   727	            public TypeInitializer getTypeInitializer() {
+   728	                return typeInitializer;
+   729	            }
+   730	
+   731	            /**
+   732	             * {@inheritDoc}
+   733	             */
+   734	            public MethodList<?> getMethods() {
+   735	                return methods;
+   736	            }
+   737	
+   738	            /**
+   739	             * {@inheritDoc}
+   740	             */
+   741	            public MethodList<?> getInstrumentedMethods() {
+   742	                return new MethodList.Explicit<MethodDescription>(new ArrayList<MethodDescription>(implementations.keySet())).filter(not(isTypeInitializer()));
+   743	            }
+   744	
+   745	            /**
+   746	             * {@inheritDoc}
+   747	             */
+   748	            public MethodRegistry.Compiled compile(Implementation.Target.Factory implementationTargetFactory, ClassFileVersion classFileVersion) {
+   749	                Map<Handler, Handler.Compiled> compilationCache = new HashMap<Handler, Handler.Compiled>();
+   750	                Map<MethodAttributeAppender.Factory, MethodAttributeAppender> attributeAppenderCache = new HashMap<MethodAttributeAppender.Factory, MethodAttributeAppender>();
+   751	                LinkedHashMap<MethodDescription, Compiled.Entry> entries = new LinkedHashMap<MethodDescription, Compiled.Entry>();
+   752	                Implementation.Target implementationTarget = implementationTargetFactory.make(instrumentedType, methodGraph, classFileVersion);
+   753	                for (Map.Entry<MethodDescription, Entry> entry : implementations.entrySet()) {
+   754	                    Handler.Compiled cachedHandler = compilationCache.get(entry.getValue().getHandler());
+   755	                    if (cachedHandler == null) {
+   756	                        cachedHandler = entry.getValue().getHandler().compile(implementationTarget);
+   757	                        compilationCache.put(entry.getValue().getHandler(), cachedHandler);
+   758	                    }
+   759	                    MethodAttributeAppender cachedAttributeAppender = attributeAppenderCache.get(entry.getValue().getAppenderFactory());
+   760	                    if (cachedAttributeAppender == null) {
+   761	                        cachedAttributeAppender = entry.getValue().getAppenderFactory().make(instrumentedType);
+   762	                        attributeAppenderCache.put(entry.getValue().getAppenderFactory(), cachedAttributeAppender);
+   763	                    }
+   764	                    entries.put(entry.getKey(), new Compiled.Entry(cachedHandler,
+   765	                            cachedAttributeAppender,
+   766	                            entry.getValue().getMethodDescription(),
+   767	                            entry.getValue().resolveBridgeTypes(),
+   768	                            entry.getValue().getVisibility(),
+   769	                            entry.getValue().isBridgeMethod()));
+   770	                }
+   771	                return new Compiled(instrumentedType,
+   772	                        loadedTypeInitializer,
+   773	                        typeInitializer,
+   774	                        methods,
+   775	                        entries,
+   776	                        classFileVersion.isAtLeast(ClassFileVersion.JAVA_V5));
+   777	            }
+   778	
+   779	            /**
+   780	             * An entry of a prepared method registry.
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java | sed -n '780,980p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+   780	             * An entry of a prepared method registry.
+   781	             */
+   782	            @HashCodeAndEqualsPlugin.Enhance
+   783	            protected static class Entry {
+   784	
+   785	                /**
+   786	                 * The handler for implementing methods.
+   787	                 */
+   788	                private final Handler handler;
+   789	
+   790	                /**
+   791	                 * A attribute appender factory for appending attributes for any implemented method.
+   792	                 */
+   793	                private final MethodAttributeAppender.Factory attributeAppenderFactory;
+   794	
+   795	                /**
+   796	                 * The method this entry represents.
+   797	                 */
+   798	                private final MethodDescription methodDescription;
+   799	
+   800	                /**
+   801	                 * The method's type tokens.
+   802	                 */
+   803	                private final Set<MethodDescription.TypeToken> typeTokens;
+   804	
+   805	                /**
+   806	                 * The minimum required visibility of this method.
+   807	                 */
+   808	                private final Visibility visibility;
+   809	
+   810	                /**
+   811	                 * Is {@code true} if this entry represents a bridge method.
+   812	                 */
+   813	                private final boolean bridgeMethod;
+   814	
+   815	                /**
+   816	                 * Creates a new prepared entry.
+   817	                 *
+   818	                 * @param handler                  The handler for implementing methods.
+   819	                 * @param attributeAppenderFactory A attribute appender factory for appending attributes for any implemented method.
+   820	                 * @param methodDescription        The method this entry represents.
+   821	                 * @param typeTokens               A set of bridges representing the bridge methods of this method.
+   822	                 * @param visibility               The minimum required visibility of this method.
+   823	                 * @param bridgeMethod             {@code true} if this entry represents a bridge method.
+   824	                 */
+   825	                protected Entry(Handler handler,
+   826	                                MethodAttributeAppender.Factory attributeAppenderFactory,
+   827	                                MethodDescription methodDescription,
+   828	                                Set<MethodDescription.TypeToken> typeTokens,
+   829	                                Visibility visibility,
+   830	                                boolean bridgeMethod) {
+   831	                    this.handler = handler;
+   832	                    this.attributeAppenderFactory = attributeAppenderFactory;
+   833	                    this.methodDescription = methodDescription;
+   834	                    this.typeTokens = typeTokens;
+   835	                    this.visibility = visibility;
+   836	                    this.bridgeMethod = bridgeMethod;
+   837	                }
+   838	
+   839	                /**
+   840	                 * Creates an entry for a visibility bridge.
+   841	                 *
+   842	                 * @param bridgeTarget The bridge method's target.
+   843	                 * @param visibility   The represented method's minimum visibility.
+   844	                 * @return An entry representing a visibility bridge.
+   845	                 */
+   846	                protected static Entry forVisibilityBridge(MethodDescription bridgeTarget, Visibility visibility) {
+   847	                    return new Entry(Handler.ForVisibilityBridge.INSTANCE,
+   848	                            MethodAttributeAppender.Explicit.of(bridgeTarget),
+   849	                            bridgeTarget,
+   850	                            Collections.<MethodDescription.TypeToken>emptySet(),
+   851	                            visibility,
+   852	                            true);
+   853	                }
+   854	
+   855	                /**
+   856	                 * Returns this entry's handler.
+   857	                 *
+   858	                 * @return The entry's handler.
+   859	                 */
+   860	                protected Handler getHandler() {
+   861	                    return handler;
+   862	                }
+   863	
+   864	                /**
+   865	                 * Returns this entry's attribute appender factory.
+   866	                 *
+   867	                 * @return This entry's attribute appender factory.
+   868	                 */
+   869	                protected MethodAttributeAppender.Factory getAppenderFactory() {
+   870	                    return attributeAppenderFactory;
+   871	                }
+   872	
+   873	                /**
+   874	                 * Returns the method description this entry represents.
+   875	                 *
+   876	                 * @return The method description this entry represents.
+   877	                 */
+   878	                protected MethodDescription getMethodDescription() {
+   879	                    return methodDescription;
+   880	                }
+   881	
+   882	                /**
+   883	                 * Resolves the type tokens of all bridge methods that are required to be implemented for this entry.
+   884	                 *
+   885	                 * @return A set of type tokens representing the bridge methods required for implementing this type.
+   886	                 */
+   887	                protected Set<MethodDescription.TypeToken> resolveBridgeTypes() {
+   888	                    HashSet<MethodDescription.TypeToken> typeTokens = new HashSet<MethodDescription.TypeToken>(this.typeTokens);
+   889	                    typeTokens.remove(methodDescription.asTypeToken());
+   890	                    return typeTokens;
+   891	                }
+   892	
+   893	                /**
+   894	                 * Returns the represented method's minimum visibility.
+   895	                 *
+   896	                 * @return The represented method's minimum visibility.
+   897	                 */
+   898	                protected Visibility getVisibility() {
+   899	                    return visibility;
+   900	                }
+   901	
+   902	                /**
+   903	                 * Returns {@code true} if this entry represents a bridge method.
+   904	                 *
+   905	                 * @return {@code true} if this entry represents a bridge method.
+   906	                 */
+   907	                protected boolean isBridgeMethod() {
+   908	                    return bridgeMethod;
+   909	                }
+   910	            }
+   911	        }
+   912	
+   913	        /**
+   914	         * A compiled version of a default method registry.
+   915	         */
+   916	        @HashCodeAndEqualsPlugin.Enhance
+   917	        protected static class Compiled implements MethodRegistry.Compiled {
+   918	
+   919	            /**
+   920	             * The instrumented type.
+   921	             */
+   922	            private final TypeDescription instrumentedType;
+   923	
+   924	            /**
+   925	             * The loaded type initializer of the instrumented type.
+   926	             */
+   927	            private final LoadedTypeInitializer loadedTypeInitializer;
+   928	
+   929	            /**
+   930	             * The type initializer of the instrumented type.
+   931	             */
+   932	            private final TypeInitializer typeInitializer;
+   933	
+   934	            /**
+   935	             * The declared or virtually inherited methods of this type.
+   936	             */
+   937	            private final MethodList<?> methods;
+   938	
+   939	            /**
+   940	             * A map of all method descriptions mapped to their handling entries.
+   941	             */
+   942	            private final LinkedHashMap<MethodDescription, Entry> implementations;
+   943	
+   944	            /**
+   945	             * {@code true} if the created type supports bridge methods.
+   946	             */
+   947	            private final boolean supportsBridges;
+   948	
+   949	            /**
+   950	             * Creates a new compiled version of a default method registry.
+   951	             *
+   952	             * @param instrumentedType      The instrumented type.
+   953	             * @param loadedTypeInitializer The loaded type initializer of the instrumented type.
+   954	             * @param typeInitializer       The type initializer of the instrumented type.
+   955	             * @param methods               The declared or virtually inherited methods of this type.
+   956	             * @param implementations       A map of all method descriptions mapped to their handling entries.
+   957	             * @param supportsBridges       {@code true} if the created type supports bridge methods.
+   958	             */
+   959	            protected Compiled(TypeDescription instrumentedType,
+   960	                               LoadedTypeInitializer loadedTypeInitializer,
+   961	                               TypeInitializer typeInitializer,
+   962	                               MethodList<?> methods,
+   963	                               LinkedHashMap<MethodDescription, Entry> implementations,
+   964	                               boolean supportsBridges) {
+   965	                this.instrumentedType = instrumentedType;
+   966	                this.loadedTypeInitializer = loadedTypeInitializer;
+   967	                this.typeInitializer = typeInitializer;
+   968	                this.methods = methods;
+   969	                this.implementations = implementations;
+   970	                this.supportsBridges = supportsBridges;
+   971	            }
+   972	
+   973	            /**
+   974	             * {@inheritDoc}
+   975	             */
+   976	            public TypeDescription getInstrumentedType() {
+   977	                return instrumentedType;
+   978	            }
+   979	
+   980	            /**
+
+codex
+The target’s fan-in is broad enough that I want the exact dependents on record, not just counts. I’m listing the concrete production and test files that reference `MethodRegistry` so the final justification can stay evidence-based.
+exec
+/bin/bash -lc "rg -l \"\\bMethodRegistry\\b\" byte-buddy-dep/src/main/java | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/FieldRegistry.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/AbstractInliningDynamicTypeBuilder.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RebaseDynamicTypeBuilder.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/RedefinitionDynamicTypeBuilder.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategy.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/subclass/SubclassDynamicTypeBuilder.java
+
+exec
+/bin/bash -lc "rg -l \"\\bMethodRegistry\\b\" byte-buddy-dep/src/test/java | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodRegistryHandlerTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/subclass/ConstructorStrategyForDefaultConstructorTest.java
+
+codex
+{"target":"net.bytebuddy.dynamic.scaffold.MethodRegistry","detection":true,"justification":"`byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/MethodRegistry.java` is a central hub API: it defines `Handler`, `Prepared`, `Compiled`, and `Default`, and its implementation directly depends on many collaborators (`MethodGraph.Compiler`, `TypeValidation`, `VisibilityBridgeStrategy`, `Implementation.Target.Factory`, `MethodAttributeAppender.Factory`, `Transformer`, `LoadedTypeInitializer`, `TypeInitializer`, `ByteCodeAppender`, `ElementMatcher`, `CompoundList`; see lines 18-54, 59-103, 420-777, 782-980). Fan-in is also broad: 11 production files and 4 test files reference it, including `ByteBuddy.java`, `DynamicType.java`, `TypeWriter.java`, `ConstructorStrategy.java`, `SubclassDynamicTypeBuilder.java`, `RebaseDynamicTypeBuilder.java`, `RedefinitionDynamicTypeBuilder.java`, `AbstractInliningDynamicTypeBuilder.java`, `MethodRegistryDefaultTest.java`, and `MethodRegistryHandlerTest.java`."}
+tokens used
+27,702

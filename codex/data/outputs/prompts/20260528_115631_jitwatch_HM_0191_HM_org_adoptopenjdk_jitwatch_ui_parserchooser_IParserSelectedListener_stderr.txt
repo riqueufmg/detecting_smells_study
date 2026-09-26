@@ -1,0 +1,609 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f16-4c96-7e81-824e-6fff66de80d5
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’ll locate the interface and inspect its usages and references to judge fan-in/fan-out from the repository evidence only.
+exec
+/bin/bash -lc "rg --files | rg 'IParserSelectedListener|parserchooser'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/ParserChooser.java
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/IParserSelectedListener.java
+
+exec
+/bin/bash -lc 'rg -n "IParserSelectedListener" .' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/ParserChooser.java:22:	public ParserChooser(final IParserSelectedListener selectionListener)
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/IParserSelectedListener.java:5:public interface IParserSelectedListener
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:54:import org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:105:		IParserSelectedListener
+
+codex
+I found the target interface and two direct references. Next I’m checking the interface itself plus the consuming classes to see whether the dependency pattern is actually hub-like or just a narrow callback API.
+exec
+/bin/bash -lc "sed -n '1,120p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/IParserSelectedListener.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+package org.adoptopenjdk.jitwatch.ui.parserchooser;
+
+import org.adoptopenjdk.jitwatch.parser.ParserType;
+
+public interface IParserSelectedListener
+{
+	void parserSelected(ParserType parserType);
+}
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/ParserChooser.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2018 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+
+package org.adoptopenjdk.jitwatch.ui.parserchooser;
+
+import org.adoptopenjdk.jitwatch.parser.ParserType;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.scene.control.ComboBox;
+
+public class ParserChooser
+{
+	private ObservableList<ParserType> parserTypeList = FXCollections.observableArrayList();
+
+	private ComboBox<ParserType> comboParser;
+
+	public ParserChooser(final IParserSelectedListener selectionListener)
+	{
+		comboParser = new ComboBox<>(parserTypeList);
+
+		clear();
+		
+		comboParser.setStyle("-fx-font-size: 10px");
+
+		comboParser.valueProperty().addListener(new ChangeListener<ParserType>()
+		{
+			@Override
+			public void changed(ObservableValue<? extends ParserType> ov, ParserType oldVal, ParserType newVal)
+			{
+				selectionListener.parserSelected(newVal);
+			}
+		});
+	}
+
+	public synchronized void clear()
+	{
+		parserTypeList.clear();
+
+		parserTypeList.addAll(ParserType.values());
+
+		comboParser.getSelectionModel().clearSelection();
+	}
+
+	public ComboBox<ParserType> getCombo()
+	{
+		return comboParser;
+	}
+}
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2022 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.main;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.DEFAULT_PACKAGE_NAME;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_CLOSE_PARENTHESES;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_OPEN_PARENTHESES;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_SLASH;
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.FONT_MONOSPACE_FAMILY;
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.FONT_MONOSPACE_SIZE;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
+import org.adoptopenjdk.jitwatch.compilation.codecache.CodeCacheEventWalker;
+import org.adoptopenjdk.jitwatch.compilation.codecache.CodeCacheWalkerResult;
+import org.adoptopenjdk.jitwatch.core.ErrorLog;
+import org.adoptopenjdk.jitwatch.core.IJITListener;
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.core.JITWatchConstants;
+import org.adoptopenjdk.jitwatch.model.*;
+import org.adoptopenjdk.jitwatch.parser.ILogParseErrorListener;
+import org.adoptopenjdk.jitwatch.parser.ILogParser;
+import org.adoptopenjdk.jitwatch.parser.ParserFactory;
+import org.adoptopenjdk.jitwatch.parser.ParserType;
+import org.adoptopenjdk.jitwatch.parser.hotspot.HotSpotLogParser;
+import org.adoptopenjdk.jitwatch.report.Report;
+import org.adoptopenjdk.jitwatch.report.comparator.ScoreComparator;
+import org.adoptopenjdk.jitwatch.report.escapeanalysis.eliminatedallocation.EliminatedAllocationWalker;
+import org.adoptopenjdk.jitwatch.report.inlining.InliningWalker;
+import org.adoptopenjdk.jitwatch.report.locks.OptimisedLocksWalker;
+import org.adoptopenjdk.jitwatch.report.suggestion.SuggestionWalker;
+import org.adoptopenjdk.jitwatch.ui.Dialogs;
+import org.adoptopenjdk.jitwatch.ui.browser.BrowserStage;
+import org.adoptopenjdk.jitwatch.ui.compilechain.CompileChainStage;
+import org.adoptopenjdk.jitwatch.ui.graphing.CodeCacheStage;
+import org.adoptopenjdk.jitwatch.ui.graphing.HistoStage;
+import org.adoptopenjdk.jitwatch.ui.graphing.TimeLineStage;
+import org.adoptopenjdk.jitwatch.ui.nmethod.codecache.CodeCacheLayoutStage;
+import org.adoptopenjdk.jitwatch.ui.nmethod.compilerthread.CompilerThreadStage;
+import org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener;
+import org.adoptopenjdk.jitwatch.ui.parserchooser.ParserChooser;
+import org.adoptopenjdk.jitwatch.ui.report.ReportStage;
+import org.adoptopenjdk.jitwatch.ui.report.ReportStageType;
+import org.adoptopenjdk.jitwatch.ui.sandbox.SandboxStage;
+import org.adoptopenjdk.jitwatch.ui.stage.IStageClosedListener;
+import org.adoptopenjdk.jitwatch.ui.stage.StageManager;
+import org.adoptopenjdk.jitwatch.ui.stats.StatsStage;
+import org.adoptopenjdk.jitwatch.ui.toplist.TopListStage;
+import org.adoptopenjdk.jitwatch.ui.triview.TriView;
+import org.adoptopenjdk.jitwatch.ui.viewer.JournalViewerStage;
+import org.adoptopenjdk.jitwatch.ui.viewer.TextViewerStage;
+import org.adoptopenjdk.jitwatch.util.LocaleCell;
+import org.adoptopenjdk.jitwatch.util.OSUtil;
+import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TreeItem;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
+import javafx.util.Duration;
+
+public class JITWatchUI extends Application
+		implements IJITListener, ILogParseErrorListener, IStageClosedListener, IStageAccessProxy, IMemberSelectedListener,
+		IParserSelectedListener
+{
+	private static final Logger logger = LoggerFactory.getLogger(JITWatchUI.class);
+
+	public static final int WINDOW_WIDTH = 1024;
+	public static final int WINDOW_HEIGHT = 550;
+
+	private static final String JAVA_VERSION_7 = "1.7";
+	public static final boolean IS_JAVA_FX2;
+
+	private boolean selectedProgrammatically = false;
+
+	static
+	{
+		String version = System.getProperty("java.version", JAVA_VERSION_7);
+
+		if (version.contains(JAVA_VERSION_7))
+		{
+			IS_JAVA_FX2 = true;
+
+			if (OSUtil.getOperatingSystem() == OSUtil.OperatingSystem.MAC)
+			{
+				UserInterfaceUtil.initMacFonts();
+			}
+		}
+		else
+		{
+			IS_JAVA_FX2 = false;
+		}
+	}
+
+	private Stage stage;
+
+	private ILogParser logParser;
+
+	private ClassTree classTree;
+	private ClassMemberList classMemberList;
+
+	private TableView<CompilationTableRow> compilationTable;
+	private ObservableList<CompilationTableRow> compilationRowList;
+
+	private TextArea textAreaLog;
+
+	private File jitLogFile = null;
+
+	private String lastVmCommand = null;
+	private IMetaMember lastSelectedMember = null;
+	private MetaClass lastSelectedClass = null;
+
+	private String focusMemberFromProperty = null;
+
+	private static final String PROPERTY_LOGFILE = "jitwatch.logfile";
+	private static final String PROPERTY_SOURCES = "jitwatch.sourcepath";
+	private static final String PROPERTY_CLASSPATH = "jitwatch.classpath";
+
+	private static final String PROPERTY_FOCUS_MEMBER = "jitwatch.focus.member";
+
+	private boolean isReadingLogFile = false;
+
+	private Label lblVmVersion;
+	private Label lblTweakLog;
+
+	private Button btnStart;
+	private Button btnStop;
+	private Button btnConfigure;
+	private Button btnTimeLine;
+	private Button btnStats;
+	private Button btnReset;
+	private Button btnHisto;
+	private Button btnTopList;
+	private Button btnErrorLog;
+	private Button btnCodeCacheTimeline;
+	private Button btnNMethods;
+	private Button btnCompilerThreads;
+	private Button btnTriView;
+	private Button btnReportSuggestions;
+	private Button btnReportEliminatedAllocations;
+	private Button btnReportOptimisedLocks;
+	private Button btnSandbox;
+
+	private Label lblHeap;
+
+	private MainConfigStage configStage;
+	private TimeLineStage timeLineStage;
+	private StatsStage statsStage;
+	private HistoStage histoStage;
+	private TopListStage topListStage;
+	private CodeCacheStage codeCacheTimelineStage;
+	private CodeCacheLayoutStage codeCacheBlocksStage;
+	private CompilerThreadStage compilerThreadStage;
+	private TriView triViewStage;
+	private BrowserStage browserStage;
+
+	private ReportStage reportStageSuggestions;
+	private ReportStage reportStageElminatedAllocations;
+	private ReportStage reportStageOptimisedLocks;
+
+	private SandboxStage sandBoxStage;
+
+	private NothingMountedStage nothingMountedStage;
+
+	private IMetaMember selectedMember;
+	private MetaClass selectedMetaClass;
+
+	private List<Report> reportListSuggestions = new ArrayList<>();
+	private List<Report> reportListEliminatedAllocations = new ArrayList<>();
+	private List<Report> reportListOptimisedLocks = new ArrayList<>();
+
+	private CodeCacheWalkerResult codeCacheWalkerResult;
+
+	private Runtime runtime = Runtime.getRuntime();
+
+	// synchronized as buffer is drained async on GUI thread
+	private StringBuffer logBuffer = new StringBuffer();
+
+	private ErrorLog errorLog = new ErrorLog();
+
+codex
+I have the core shape now: the interface is a one-method callback, and `JITWatchUI` is the only class I’ve seen implement it so far. I’m checking the exact call path and whether there are any additional consumers or implementers.
+exec
+/bin/bash -lc "rg -n \"parserSelected\\(|new ParserChooser|implements .*IParserSelectedListener|IParserSelectedListener\" ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java ui/src/main/java/org/adoptopenjdk/jitwatch/ui -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:54:import org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener;
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:105:		IParserSelectedListener
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:494:		parserChooser = new ParserChooser(this);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:1715:	public void parserSelected(ParserType parserType)
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/ParserChooser.java:22:	public ParserChooser(final IParserSelectedListener selectionListener)
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/ParserChooser.java:35:				selectionListener.parserSelected(newVal);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/IParserSelectedListener.java:5:public interface IParserSelectedListener
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/IParserSelectedListener.java:7:	void parserSelected(ParserType parserType);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:54:import org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener;
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:105:		IParserSelectedListener
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:494:		parserChooser = new ParserChooser(this);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:1715:	public void parserSelected(ParserType parserType)
+
+exec
+/bin/bash -lc "rg -n \"interface IParserSelectedListener|class .*implements .*IParserSelectedListener|IParserSelectedListener\" ui/src/main/java -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:54:import org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener;
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:105:		IParserSelectedListener
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/ParserChooser.java:22:	public ParserChooser(final IParserSelectedListener selectionListener)
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/IParserSelectedListener.java:5:public interface IParserSelectedListener
+
+exec
+/bin/bash -lc "sed -n '470,520p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+	}
+
+	@Override
+	public void start(final Stage stage)
+	{
+		StageManager.registerStageClosedListener(this);
+
+		this.stage = stage;
+
+		stage.setOnCloseRequest(new EventHandler<WindowEvent>()
+		{
+			@Override
+			public void handle(WindowEvent arg0)
+			{
+				StageManager.closeStage(stage);
+
+				stopParsing();
+			}
+		});
+
+		BorderPane borderPane = new BorderPane();
+
+		Scene scene = UserInterfaceUtil.getScene(borderPane, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+		parserChooser = new ParserChooser(this);
+
+		ComboBox<ParserType> comboParser = parserChooser.getCombo();
+
+		String parserProperty = System.getProperty("jitwatch.parser", ParserType.HOTSPOT.toString());
+
+		comboParser.getSelectionModel()
+				   .select(ParserType.fromString(parserProperty));
+
+		Button btnChooseWatchFile = UserInterfaceUtil.createButton("OPEN_LOG");
+		btnChooseWatchFile.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+				stopParsing();
+				chooseJITLog();
+			}
+		});
+
+		btnStart = UserInterfaceUtil.createButton("START");
+
+		btnStart.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+
+exec
+/bin/bash -lc "sed -n '1700,1745p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+	}
+
+	public PackageManager getPackageManager()
+	{
+		return logParser.getModel()
+						.getPackageManager();
+	}
+
+	@Override
+	public Stage getStageForDialog()
+	{
+		return stage;
+	}
+
+	@Override
+	public void parserSelected(ParserType parserType)
+	{
+		if (logParser != null)
+		{
+			logParser.reset();
+		}
+
+		logParser = ParserFactory.getParser(parserType, this);
+	}
+}
+
+codex
+The evidence is converging on a narrow callback interface, not a hub: one method, one implementing class, and one constructor consumer. I’m grabbing line numbers so the verdict can cite the exact files cleanly.
+exec
+/bin/bash -lc 'nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/IParserSelectedListener.java' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	package org.adoptopenjdk.jitwatch.ui.parserchooser;
+     2	
+     3	import org.adoptopenjdk.jitwatch.parser.ParserType;
+     4	
+     5	public interface IParserSelectedListener
+     6	{
+     7		void parserSelected(ParserType parserType);
+     8	}
+
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/parserchooser/ParserChooser.java | sed -n '1,80p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2018 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	
+     7	package org.adoptopenjdk.jitwatch.ui.parserchooser;
+     8	
+     9	import org.adoptopenjdk.jitwatch.parser.ParserType;
+    10	import javafx.beans.value.ChangeListener;
+    11	import javafx.beans.value.ObservableValue;
+    12	import javafx.collections.FXCollections;
+    13	import javafx.collections.ObservableList;
+    14	import javafx.scene.control.ComboBox;
+    15	
+    16	public class ParserChooser
+    17	{
+    18		private ObservableList<ParserType> parserTypeList = FXCollections.observableArrayList();
+    19	
+    20		private ComboBox<ParserType> comboParser;
+    21	
+    22		public ParserChooser(final IParserSelectedListener selectionListener)
+    23		{
+    24			comboParser = new ComboBox<>(parserTypeList);
+    25	
+    26			clear();
+    27			
+    28			comboParser.setStyle("-fx-font-size: 10px");
+    29	
+    30			comboParser.valueProperty().addListener(new ChangeListener<ParserType>()
+    31			{
+    32				@Override
+    33				public void changed(ObservableValue<? extends ParserType> ov, ParserType oldVal, ParserType newVal)
+    34				{
+    35					selectionListener.parserSelected(newVal);
+    36				}
+    37			});
+    38		}
+    39	
+    40		public synchronized void clear()
+    41		{
+    42			parserTypeList.clear();
+    43	
+    44			parserTypeList.addAll(ParserType.values());
+    45	
+    46			comboParser.getSelectionModel().clearSelection();
+    47		}
+    48	
+    49		public ComboBox<ParserType> getCombo()
+    50		{
+    51			return comboParser;
+    52		}
+    53	}
+
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java | sed -n '95,110p;490,500p;1710,1725p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+    95	import javafx.scene.layout.Priority;
+    96	import javafx.scene.layout.Region;
+    97	import javafx.scene.text.Text;
+    98	import javafx.stage.FileChooser;
+    99	import javafx.stage.Stage;
+   100	import javafx.stage.WindowEvent;
+   101	import javafx.util.Duration;
+   102	
+   103	public class JITWatchUI extends Application
+   104			implements IJITListener, ILogParseErrorListener, IStageClosedListener, IStageAccessProxy, IMemberSelectedListener,
+   105			IParserSelectedListener
+   106	{
+   107		private static final Logger logger = LoggerFactory.getLogger(JITWatchUI.class);
+   108	
+   109		public static final int WINDOW_WIDTH = 1024;
+   110		public static final int WINDOW_HEIGHT = 550;
+   490			BorderPane borderPane = new BorderPane();
+   491	
+   492			Scene scene = UserInterfaceUtil.getScene(borderPane, WINDOW_WIDTH, WINDOW_HEIGHT);
+   493	
+   494			parserChooser = new ParserChooser(this);
+   495	
+   496			ComboBox<ParserType> comboParser = parserChooser.getCombo();
+   497	
+   498			String parserProperty = System.getProperty("jitwatch.parser", ParserType.HOTSPOT.toString());
+   499	
+   500			comboParser.getSelectionModel()
+  1710		{
+  1711			return stage;
+  1712		}
+  1713	
+  1714		@Override
+  1715		public void parserSelected(ParserType parserType)
+  1716		{
+  1717			if (logParser != null)
+  1718			{
+  1719				logParser.reset();
+  1720			}
+  1721	
+  1722			logParser = ParserFactory.getParser(parserType, this);
+  1723		}
+  1724	}
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener","detection":false,"justification":"Inspected [IParserSelectedListener.java](\/data\/henrique\/detecting_smells_study\/codex\/data\/repositories\/adoptopenjdk\/jitwatch\/ui\/src\/main\/java\/org\/adoptopenjdk\/jitwatch\/ui\/parserchooser\/IParserSelectedListener.java), [ParserChooser.java](\/data\/henrique\/detecting_smells_study\/codex\/data\/repositories\/adoptopenjdk\/jitwatch\/ui\/src\/main\/java\/org\/adoptopenjdk\/jitwatch\/ui\/parserchooser\/ParserChooser.java), and [JITWatchUI.java](\/data\/henrique\/detecting_smells_study\/codex\/data\/repositories\/adoptopenjdk\/jitwatch\/ui\/src\/main\/java\/org\/adoptopenjdk\/jitwatch\/ui\/main\/JITWatchUI.java). The interface is a one-method callback (`parserSelected(ParserType)`), and repository-wide `rg` found only one implementing class (`JITWatchUI`) and one direct consumer (`ParserChooser` constructor calling `selectionListener.parserSelected(newVal)`). That is very limited fan-in/fan-out, with no evidence of the high incoming and outgoing dependency counts required for hub-like modularization."}
+tokens used
+8,891

@@ -1,0 +1,461 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6efc-1577-71b1-9577-2c929acc71e7
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.gson.internal.bind.CollectionTypeAdapterFactory.Adapter` in the repository located at:
+
+`data/repositories/google/gson`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.gson.internal.bind.CollectionTypeAdapterFactory.Adapter",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.gson.internal.bind.CollectionTypeAdapterFactory.Adapter`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and then tracing its incoming and outgoing dependencies so the verdict is based on concrete repository evidence, not inference.
+exec
+/bin/bash -lc "rg --files . | rg \"CollectionTypeAdapterFactory\\.java|TypeAdapterFactory|CollectionTypeAdapterFactory\"" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+./gson/src/test/java/com/google/gson/internal/bind/Java17ReflectiveTypeAdapterFactoryTest.java
+./gson/src/test/java/com/google/gson/functional/RuntimeTypeAdapterFactoryFunctionalTest.java
+./extras/src/test/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactoryTest.java
+./extras/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java
+./gson/src/main/java/com/google/gson/TypeAdapterFactory.java
+./gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java
+./gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java
+./gson/src/main/java/com/google/gson/internal/bind/JsonAdapterAnnotationTypeAdapterFactory.java
+./gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java
+
+exec
+/bin/bash -lc 'rg -n "class Adapter|CollectionTypeAdapterFactory" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+./gson/src/main/java/com/google/gson/Gson.java:27:import com.google.gson.internal.bind.CollectionTypeAdapterFactory;
+./gson/src/main/java/com/google/gson/Gson.java:388:    factories.add(new CollectionTypeAdapterFactory(constructorConstructor));
+./gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java:161:  private final class Adapter<K, V> extends TypeAdapter<Map<K, V>> {
+./gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:474:  public abstract static class Adapter<T, A> extends TypeAdapter<T> {
+./gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:34:public final class CollectionTypeAdapterFactory implements TypeAdapterFactory {
+./gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:37:  public CollectionTypeAdapterFactory(ConstructorConstructor constructorConstructor) {
+./gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:64:  private static final class Adapter<E> extends TypeAdapter<Collection<E>> {
+./test-shrinker/src/main/java/com/example/GenericClasses.java:56:    static class Adapter extends TypeAdapter<DummyClass> {
+./test-shrinker/src/main/java/com/example/ClassWithAdapter.java:11:  static class Adapter extends TypeAdapter<ClassWithAdapter> {
+./test-shrinker/src/main/java/com/example/ClassWithJsonAdapterAnnotation.java:71:  static class Adapter extends TypeAdapter<DummyClass> {
+
+codex
+I found the implementation file and am checking whether the nested `Adapter` is actually a dependency hub or just a small private implementation detail of one factory. Next I’m reading the class and the call sites that construct it.
+exec
+/bin/bash -lc "sed -n '1,220p' gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2011 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson.internal.bind;
+
+import com.google.gson.Gson;
+import com.google.gson.TypeAdapter;
+import com.google.gson.TypeAdapterFactory;
+import com.google.gson.internal.ConstructorConstructor;
+import com.google.gson.internal.GsonTypes;
+import com.google.gson.internal.ObjectConstructor;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.util.Collection;
+
+/** Adapt a homogeneous collection of objects. */
+public final class CollectionTypeAdapterFactory implements TypeAdapterFactory {
+  private final ConstructorConstructor constructorConstructor;
+
+  public CollectionTypeAdapterFactory(ConstructorConstructor constructorConstructor) {
+    this.constructorConstructor = constructorConstructor;
+  }
+
+  @Override
+  public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> typeToken) {
+    Type type = typeToken.getType();
+
+    Class<? super T> rawType = typeToken.getRawType();
+    if (!Collection.class.isAssignableFrom(rawType)) {
+      return null;
+    }
+
+    Type elementType = GsonTypes.getCollectionElementType(type, rawType);
+    TypeAdapter<?> elementTypeAdapter = gson.getAdapter(TypeToken.get(elementType));
+    TypeAdapter<?> wrappedTypeAdapter =
+        new TypeAdapterRuntimeTypeWrapper<>(gson, elementTypeAdapter, elementType);
+    // Don't allow Unsafe usage to create instance; instances might be in broken state and calling
+    // Collection methods could lead to confusing exceptions
+    boolean allowUnsafe = false;
+    ObjectConstructor<T> constructor = constructorConstructor.get(typeToken, allowUnsafe);
+
+    @SuppressWarnings({"unchecked", "rawtypes"}) // create() doesn't define a type parameter
+    TypeAdapter<T> result = new Adapter(wrappedTypeAdapter, constructor);
+    return result;
+  }
+
+  private static final class Adapter<E> extends TypeAdapter<Collection<E>> {
+    private final TypeAdapter<E> elementTypeAdapter;
+    private final ObjectConstructor<? extends Collection<E>> constructor;
+
+    Adapter(
+        TypeAdapter<E> elementTypeAdapter, ObjectConstructor<? extends Collection<E>> constructor) {
+      this.elementTypeAdapter = elementTypeAdapter;
+      this.constructor = constructor;
+    }
+
+    @Override
+    public Collection<E> read(JsonReader in) throws IOException {
+      if (in.peek() == JsonToken.NULL) {
+        in.nextNull();
+        return null;
+      }
+
+      Collection<E> collection = constructor.construct();
+      in.beginArray();
+      while (in.hasNext()) {
+        E instance = elementTypeAdapter.read(in);
+        collection.add(instance);
+      }
+      in.endArray();
+      return collection;
+    }
+
+    @Override
+    public void write(JsonWriter out, Collection<E> collection) throws IOException {
+      if (collection == null) {
+        out.nullValue();
+        return;
+      }
+
+      out.beginArray();
+      for (E element : collection) {
+        elementTypeAdapter.write(out, element);
+      }
+      out.endArray();
+    }
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '340,430p' gson/src/main/java/com/google/gson/Gson.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "rg -n \"CollectionTypeAdapterFactory|new Adapter\\(|Adapter<Collection|Adapter<.*Collection\" gson/src/main/java gson/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 121ms:
+gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:34:public final class CollectionTypeAdapterFactory implements TypeAdapterFactory {
+gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:37:  public CollectionTypeAdapterFactory(ConstructorConstructor constructorConstructor) {
+gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:60:    TypeAdapter<T> result = new Adapter(wrappedTypeAdapter, constructor);
+gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:64:  private static final class Adapter<E> extends TypeAdapter<Collection<E>> {
+gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:69:        TypeAdapter<E> elementTypeAdapter, ObjectConstructor<? extends Collection<E>> constructor) {
+gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java:150:    TypeAdapter<T> result = new Adapter(wrappedKeyAdapter, wrappedValueAdapter, constructor);
+
+ succeeded in 160ms:
+    TypeAdapter<Number> longAdapter = longAdapter(longSerializationPolicy);
+    factories.add(TypeAdapters.newFactory(long.class, Long.class, longAdapter));
+    factories.add(
+        TypeAdapters.newFactory(
+            double.class, Double.class, doubleAdapter(serializeSpecialFloatingPointValues)));
+    factories.add(
+        TypeAdapters.newFactory(
+            float.class, Float.class, floatAdapter(serializeSpecialFloatingPointValues)));
+    factories.add(NumberTypeAdapter.getFactory(numberToNumberStrategy));
+    factories.add(TypeAdapters.ATOMIC_INTEGER_FACTORY);
+    factories.add(TypeAdapters.ATOMIC_BOOLEAN_FACTORY);
+    factories.add(TypeAdapters.newFactory(AtomicLong.class, atomicLongAdapter(longAdapter)));
+    factories.add(
+        TypeAdapters.newFactory(AtomicLongArray.class, atomicLongArrayAdapter(longAdapter)));
+    factories.add(TypeAdapters.ATOMIC_INTEGER_ARRAY_FACTORY);
+    factories.add(TypeAdapters.CHARACTER_FACTORY);
+    factories.add(TypeAdapters.STRING_BUILDER_FACTORY);
+    factories.add(TypeAdapters.STRING_BUFFER_FACTORY);
+    factories.add(TypeAdapters.newFactory(BigDecimal.class, TypeAdapters.BIG_DECIMAL));
+    factories.add(TypeAdapters.newFactory(BigInteger.class, TypeAdapters.BIG_INTEGER));
+    // Add adapter for LazilyParsedNumber because user can obtain it from Gson and then try to
+    // serialize it again
+    factories.add(
+        TypeAdapters.newFactory(LazilyParsedNumber.class, TypeAdapters.LAZILY_PARSED_NUMBER));
+    factories.add(TypeAdapters.URL_FACTORY);
+    factories.add(TypeAdapters.URI_FACTORY);
+    factories.add(TypeAdapters.UUID_FACTORY);
+    factories.add(TypeAdapters.CURRENCY_FACTORY);
+    factories.add(TypeAdapters.LOCALE_FACTORY);
+    factories.add(TypeAdapters.INET_ADDRESS_FACTORY);
+    factories.add(TypeAdapters.BIT_SET_FACTORY);
+    factories.add(DefaultDateTypeAdapter.DEFAULT_STYLE_FACTORY);
+    factories.add(TypeAdapters.CALENDAR_FACTORY);
+    TypeAdapterFactory javaTimeFactory = TypeAdapters.javaTimeTypeAdapterFactory();
+    if (javaTimeFactory != null) {
+      factories.add(javaTimeFactory);
+    }
+
+    if (SqlTypesSupport.SUPPORTS_SQL_TYPES) {
+      factories.add(SqlTypesSupport.TIME_FACTORY);
+      factories.add(SqlTypesSupport.DATE_FACTORY);
+      factories.add(SqlTypesSupport.TIMESTAMP_FACTORY);
+    }
+
+    factories.add(ArrayTypeAdapter.FACTORY);
+    factories.add(TypeAdapters.CLASS_FACTORY);
+
+    // type adapters for composite and user-defined types
+    factories.add(new CollectionTypeAdapterFactory(constructorConstructor));
+    factories.add(new MapTypeAdapterFactory(constructorConstructor, complexMapKeySerialization));
+    this.jsonAdapterFactory = new JsonAdapterAnnotationTypeAdapterFactory(constructorConstructor);
+    factories.add(jsonAdapterFactory);
+    factories.add(TypeAdapters.ENUM_FACTORY);
+    factories.add(
+        new ReflectiveTypeAdapterFactory(
+            constructorConstructor,
+            fieldNamingStrategy,
+            excluder,
+            jsonAdapterFactory,
+            reflectionFilters));
+
+    this.factories = Collections.unmodifiableList(factories);
+  }
+
+  /**
+   * Returns a new GsonBuilder containing all custom factories and configuration used by the current
+   * instance.
+   *
+   * @return a GsonBuilder instance.
+   * @since 2.8.3
+   */
+  public GsonBuilder newBuilder() {
+    return new GsonBuilder(this);
+  }
+
+  /**
+   * @deprecated This method by accident exposes an internal Gson class; it might be removed in a
+   *     future version.
+   */
+  @Deprecated
+  public Excluder excluder() {
+    return excluder;
+  }
+
+  /**
+   * Returns the field naming strategy used by this Gson instance.
+   *
+   * @see GsonBuilder#setFieldNamingStrategy(FieldNamingStrategy)
+   */
+  public FieldNamingStrategy fieldNamingStrategy() {
+    return fieldNamingStrategy;
+
+codex
+The evidence so far points the other way: the nested `Adapter` is a private implementation class with only two direct collaborators and a single construction site. I’m verifying there are no additional references before I finalize the verdict.
+exec
+/bin/bash -lc "rg -n \"CollectionTypeAdapterFactory\\"'$Adapter|new Adapter'"\\(|Adapter<E>|Adapter<Collection\" gson/src/main/java gson/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+gson/src/main/java/com/google/gson/TypeAdapterFactory.java:120: *       TypeAdapter<E> elementAdapter) {
+gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:60:    TypeAdapter<T> result = new Adapter(wrappedTypeAdapter, constructor);
+gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:64:  private static final class Adapter<E> extends TypeAdapter<Collection<E>> {
+gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:65:    private final TypeAdapter<E> elementTypeAdapter;
+gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java:69:        TypeAdapter<E> elementTypeAdapter, ObjectConstructor<? extends Collection<E>> constructor) {
+gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java:150:    TypeAdapter<T> result = new Adapter(wrappedKeyAdapter, wrappedValueAdapter, constructor);
+gson/src/main/java/com/google/gson/internal/bind/ArrayTypeAdapter.java:34:public final class ArrayTypeAdapter<E> extends TypeAdapter<Object> {
+gson/src/main/java/com/google/gson/internal/bind/ArrayTypeAdapter.java:56:  private final TypeAdapter<E> componentTypeAdapter;
+gson/src/main/java/com/google/gson/internal/bind/ArrayTypeAdapter.java:59:      Gson context, TypeAdapter<E> componentTypeAdapter, Class<E> componentType) {
+
+exec
+/bin/bash -lc "nl -ba gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java | sed -n '1,140p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2011 Google Inc.
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *      http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	
+    17	package com.google.gson.internal.bind;
+    18	
+    19	import com.google.gson.Gson;
+    20	import com.google.gson.TypeAdapter;
+    21	import com.google.gson.TypeAdapterFactory;
+    22	import com.google.gson.internal.ConstructorConstructor;
+    23	import com.google.gson.internal.GsonTypes;
+    24	import com.google.gson.internal.ObjectConstructor;
+    25	import com.google.gson.reflect.TypeToken;
+    26	import com.google.gson.stream.JsonReader;
+    27	import com.google.gson.stream.JsonToken;
+    28	import com.google.gson.stream.JsonWriter;
+    29	import java.io.IOException;
+    30	import java.lang.reflect.Type;
+    31	import java.util.Collection;
+    32	
+    33	/** Adapt a homogeneous collection of objects. */
+    34	public final class CollectionTypeAdapterFactory implements TypeAdapterFactory {
+    35	  private final ConstructorConstructor constructorConstructor;
+    36	
+    37	  public CollectionTypeAdapterFactory(ConstructorConstructor constructorConstructor) {
+    38	    this.constructorConstructor = constructorConstructor;
+    39	  }
+    40	
+    41	  @Override
+    42	  public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> typeToken) {
+    43	    Type type = typeToken.getType();
+    44	
+    45	    Class<? super T> rawType = typeToken.getRawType();
+    46	    if (!Collection.class.isAssignableFrom(rawType)) {
+    47	      return null;
+    48	    }
+    49	
+    50	    Type elementType = GsonTypes.getCollectionElementType(type, rawType);
+    51	    TypeAdapter<?> elementTypeAdapter = gson.getAdapter(TypeToken.get(elementType));
+    52	    TypeAdapter<?> wrappedTypeAdapter =
+    53	        new TypeAdapterRuntimeTypeWrapper<>(gson, elementTypeAdapter, elementType);
+    54	    // Don't allow Unsafe usage to create instance; instances might be in broken state and calling
+    55	    // Collection methods could lead to confusing exceptions
+    56	    boolean allowUnsafe = false;
+    57	    ObjectConstructor<T> constructor = constructorConstructor.get(typeToken, allowUnsafe);
+    58	
+    59	    @SuppressWarnings({"unchecked", "rawtypes"}) // create() doesn't define a type parameter
+    60	    TypeAdapter<T> result = new Adapter(wrappedTypeAdapter, constructor);
+    61	    return result;
+    62	  }
+    63	
+    64	  private static final class Adapter<E> extends TypeAdapter<Collection<E>> {
+    65	    private final TypeAdapter<E> elementTypeAdapter;
+    66	    private final ObjectConstructor<? extends Collection<E>> constructor;
+    67	
+    68	    Adapter(
+    69	        TypeAdapter<E> elementTypeAdapter, ObjectConstructor<? extends Collection<E>> constructor) {
+    70	      this.elementTypeAdapter = elementTypeAdapter;
+    71	      this.constructor = constructor;
+    72	    }
+    73	
+    74	    @Override
+    75	    public Collection<E> read(JsonReader in) throws IOException {
+    76	      if (in.peek() == JsonToken.NULL) {
+    77	        in.nextNull();
+    78	        return null;
+    79	      }
+    80	
+    81	      Collection<E> collection = constructor.construct();
+    82	      in.beginArray();
+    83	      while (in.hasNext()) {
+    84	        E instance = elementTypeAdapter.read(in);
+    85	        collection.add(instance);
+    86	      }
+    87	      in.endArray();
+    88	      return collection;
+    89	    }
+    90	
+    91	    @Override
+    92	    public void write(JsonWriter out, Collection<E> collection) throws IOException {
+    93	      if (collection == null) {
+    94	        out.nullValue();
+    95	        return;
+    96	      }
+    97	
+    98	      out.beginArray();
+    99	      for (E element : collection) {
+   100	        elementTypeAdapter.write(out, element);
+   101	      }
+   102	      out.endArray();
+   103	    }
+   104	  }
+   105	}
+
+exec
+/bin/bash -lc "nl -ba gson/src/main/java/com/google/gson/Gson.java | sed -n '378,392p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+   378	    if (SqlTypesSupport.SUPPORTS_SQL_TYPES) {
+   379	      factories.add(SqlTypesSupport.TIME_FACTORY);
+   380	      factories.add(SqlTypesSupport.DATE_FACTORY);
+   381	      factories.add(SqlTypesSupport.TIMESTAMP_FACTORY);
+   382	    }
+   383	
+   384	    factories.add(ArrayTypeAdapter.FACTORY);
+   385	    factories.add(TypeAdapters.CLASS_FACTORY);
+   386	
+   387	    // type adapters for composite and user-defined types
+   388	    factories.add(new CollectionTypeAdapterFactory(constructorConstructor));
+   389	    factories.add(new MapTypeAdapterFactory(constructorConstructor, complexMapKeySerialization));
+   390	    this.jsonAdapterFactory = new JsonAdapterAnnotationTypeAdapterFactory(constructorConstructor);
+   391	    factories.add(jsonAdapterFactory);
+   392	    factories.add(TypeAdapters.ENUM_FACTORY);
+
+codex
+{"target":"com.google.gson.internal.bind.CollectionTypeAdapterFactory.Adapter","detection":false,"justification":"Inspected gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java and gson/src/main/java/com/google/gson/Gson.java. The target is a private static nested class with only two injected collaborators (`TypeAdapter<E>` and `ObjectConstructor<? extends Collection<E>>`) and two operation methods (`read`/`write`), so its out-degree is small. Repo search found only one construction site (`new Adapter(...)` inside CollectionTypeAdapterFactory.create) and no other references to the nested class across src/main/java or src/test/java, so there is no evidence of high fan-in either. The class is a local helper, not a dependency hub."}
+tokens used
+10,917

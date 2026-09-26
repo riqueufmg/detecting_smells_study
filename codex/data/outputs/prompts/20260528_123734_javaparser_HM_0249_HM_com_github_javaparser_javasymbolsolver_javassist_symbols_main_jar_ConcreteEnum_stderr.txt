@@ -1,0 +1,272 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f3b-f233-7611-93dc-9d5d9a66bb37
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.javasymbolsolver.javassist.symbols.main.jar.ConcreteEnum` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.javasymbolsolver.javassist.symbols.main.jar.ConcreteEnum",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.javasymbolsolver.javassist.symbols.main.jar.ConcreteEnum`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and its direct references first, then I’ll inspect the class body and nearby usages to judge fan-in and fan-out from repository evidence only.
+exec
+/bin/bash -lc "rg --files . | rg \"ConcreteEnum\\.java"'$"' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+./javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/ConcreteEnum.java
+
+exec
+/bin/bash -lc "rg -n \"class\\s+ConcreteEnum|ConcreteEnum\" -S ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 171ms:
+./javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/ConcreteEnum.java:3:public enum ConcreteEnum {
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/SymbolSolverWithJavassistEnumTest.java:59:                typeSolver.solveType("com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar.ConcreteEnum");
+
+codex
+I found the target under test resources, not production source, so I’m checking whether it actually acts as a dependency hub or is just a small fixture used by one test.
+exec
+/bin/bash -lc "sed -n '1,120p' javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/ConcreteEnum.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,140p' javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/SymbolSolverWithJavassistEnumTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 209ms:
+package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+
+public enum ConcreteEnum {
+    ENUM_VAL_ONE,
+    ENUM_VAL_TWO;
+
+    public static final String STATIC_STRING = "ThisIsAString";
+    public static final String SECOND_STRING = "ThisIsASecondString";
+
+}
+ succeeded in 203ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.resolution;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import com.github.javaparser.resolution.Solver;
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.UnsolvedSymbolException;
+import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
+import com.github.javaparser.resolution.model.SymbolReference;
+import com.github.javaparser.symbolsolver.AbstractSymbolResolutionTest;
+import com.github.javaparser.symbolsolver.javassistmodel.JavassistEnumDeclaration;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
+import java.io.IOException;
+import java.nio.file.Path;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+class SymbolSolverWithJavassistEnumTest extends AbstractSymbolResolutionTest {
+    private TypeSolver typeSolver;
+    private Solver symbolSolver;
+    private JavassistEnumDeclaration enumDeclarationConcrete;
+    private JavassistEnumDeclaration enumDeclarationInterfaceUserOwnJar;
+    private JavassistEnumDeclaration enumDeclarationInterfaceUserIncludedJar;
+    private JavassistEnumDeclaration enumDeclarationInterfaceUserExcludedJar;
+
+    @BeforeEach
+    void setup() throws IOException {
+        final Path pathToMainJar = adaptPath("src/test/resources/javassist_symbols/main_jar/main_jar.jar");
+        final Path pathToIncludedJar = adaptPath("src/test/resources/javassist_symbols/included_jar/included_jar.jar");
+        typeSolver = new CombinedTypeSolver(
+                new JarTypeSolver(pathToIncludedJar), new JarTypeSolver(pathToMainJar), new ReflectionTypeSolver());
+
+        symbolSolver = new SymbolSolver(typeSolver);
+
+        enumDeclarationConcrete = (JavassistEnumDeclaration)
+                typeSolver.solveType("com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar.ConcreteEnum");
+        enumDeclarationInterfaceUserOwnJar = (JavassistEnumDeclaration) typeSolver.solveType(
+                "com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar.EnumInterfaceUserOwnJar");
+        enumDeclarationInterfaceUserIncludedJar = (JavassistEnumDeclaration) typeSolver.solveType(
+                "com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar.EnumInterfaceUserIncludedJar");
+        enumDeclarationInterfaceUserExcludedJar = (JavassistEnumDeclaration) typeSolver.solveType(
+                "com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar.EnumInterfaceUserExcludedJar");
+    }
+
+    @Test
+    void testSolveSymbolInTypeCanResolveFirstEnumValue() {
+        assertCanSolveSymbol("ENUM_VAL_ONE", enumDeclarationConcrete);
+    }
+
+    @Test
+    void testSolveSymbolInTypeCanResolveSecondEnumValue() {
+        assertCanSolveSymbol("ENUM_VAL_TWO", enumDeclarationConcrete);
+    }
+
+    @Test
+    void testSolveSymbolInTypeCanResolveFirstNormalField() {
+        assertCanSolveSymbol("STATIC_STRING", enumDeclarationConcrete);
+    }
+
+    @Test
+    void testSolveSymbolInTypeCanResolveSecondNormalField() {
+        assertCanSolveSymbol("SECOND_STRING", enumDeclarationConcrete);
+    }
+
+    @Test
+    void testSolveSymbolInTypeCantResolveNonExistentField() {
+        SymbolReference<? extends ResolvedValueDeclaration> solvedSymbol =
+                symbolSolver.solveSymbolInType(enumDeclarationConcrete, "FIELD_THAT_DOES_NOT_EXIST");
+
+        assertFalse(solvedSymbol.isSolved());
+
+        assertThrows(
+                UnsolvedSymbolException.class,
+                () -> {
+                    solvedSymbol.getCorrespondingDeclaration();
+                },
+                "Expected UnsolvedSymbolException when requesting CorrespondingDeclaration on unsolved SymbolRefernce");
+    }
+
+    @Test
+    void testSolveSymbolInTypeCanResolveFieldInInterface() {
+        assertCanSolveSymbol("INTERFACE_FIELD", enumDeclarationInterfaceUserOwnJar);
+    }
+
+    @Test
+    void testSolveSymbolInTypeCanResolveFieldInInterfaceIncludedJar() {
+        assertCanSolveSymbol("INTERFACE_FIELD", enumDeclarationInterfaceUserIncludedJar);
+    }
+
+    @Test
+    void testSolveSymbolInTypeThrowsExceptionOnResolveFieldInInterfaceExcludedJar() {
+        try {
+            symbolSolver.solveSymbolInType(enumDeclarationInterfaceUserExcludedJar, "INTERFACE_FIELD");
+        } catch (Exception e) {
+            assertTrue(e instanceof UnsolvedSymbolException);
+            assertEquals(
+                    "Unsolved symbol : com.github.javaparser.javasymbolsolver.javassist_symbols.excluded_jar.InterfaceExcludedJar",
+                    e.getMessage());
+            return;
+        }
+        fail("Excepted NotFoundException wrapped in a RuntimeException, but got no exception.");
+    }
+
+    private void assertCanSolveSymbol(String symbolName, JavassistEnumDeclaration enumDeclaration) {
+        SymbolReference<? extends ResolvedValueDeclaration> solvedSymbol =
+                symbolSolver.solveSymbolInType(enumDeclaration, symbolName);
+
+        assertTrue(solvedSymbol.isSolved());
+        assertEquals(
+                symbolName, solvedSymbol.getCorrespondingDeclaration().asField().getName());
+    }
+}
+
+codex
+I have the class body and one direct test reference. I’m checking for additional in-repo references to measure fan-in before deciding whether this is a hub or just a fixture.
+exec
+/bin/bash -lc "rg -n \"com\\.github\\.javaparser\\.javasymbolsolver\\.javassist_symbols\\.main_jar\\.ConcreteEnum|ConcreteEnum\" javaparser-symbol-solver-testing/src/test javaparser-symbol-solver-core/src main src -S" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"package com\\.github\\.javaparser\\.javasymbolsolver\\.javassist_symbols\\.main_jar;|enum ConcreteEnum\" javaparser-symbol-solver-testing/src/test/resources -S" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 207ms:
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/ConcreteEnum.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/ConcreteEnum.java:3:public enum ConcreteEnum {
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/EnumInterfaceUserIncludedJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/InterfaceUserOwnJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/SuperClassOwnJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/SubInterfaceExcludedJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/ConcreteClass.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/StandaloneInterface.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/InterfaceOwnJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/InterfaceUserExcludedJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/SubClassExcludedJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/SubInterfaceOwnJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/InterfaceUserIncludedJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/SubClassIncludedJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/EnumInterfaceUserExcludedJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/EnumInterfaceUserOwnJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/SubClassOwnJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/SubInterfaceIncludedJar.java:1:package com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar;
+
+ exited 2 in 291ms:
+rg: main: No such file or directory (os error 2)
+rg: src: No such file or directory (os error 2)
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/SymbolSolverWithJavassistEnumTest.java:59:                typeSolver.solveType("com.github.javaparser.javasymbolsolver.javassist_symbols.main_jar.ConcreteEnum");
+javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/ConcreteEnum.java:3:public enum ConcreteEnum {
+
+codex
+{"target":"com.github.javaparser.javasymbolsolver.javassist.symbols.main.jar.ConcreteEnum","detection":false,"justification":"Inspected javaparser-symbol-solver-testing/src/test/resources/javassist_symbols/main_jar/src/com/github/javaparser/javasymbolsolver/javassist_symbols/main_jar/ConcreteEnum.java and javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/SymbolSolverWithJavassistEnumTest.java. The enum is a tiny fixture with only two enum constants and two String fields, no methods, imports, inheritance, or references to other project types. Repo search found only one in-repo usage: SymbolSolverWithJavassistEnumTest resolves this type name; there is no evidence of broad fan-in or fan-out, so it is not a hub-like dependency node."}
+tokens used
+5,623

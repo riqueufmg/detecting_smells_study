@@ -1,0 +1,943 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f71-2d43-7190-8443-6f3c5ff06242
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.HashCodeMethod.UsingJump` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.HashCodeMethod.UsingJump",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.HashCodeMethod.UsingJump`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct dependencies first, then I’ll check who references it so the verdict is based on observed fan-in and fan-out rather than inference.
+exec
+/bin/bash -lc "rg -n \"class UsingJump|UsingJump\" net src -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files | rg 'HashCodeMethod\\.java"'$|UsingJump|HashCodeMethod'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 194ms:
+rg: net: No such file or directory (os error 2)
+rg: src: No such file or directory (os error 2)
+
+ succeeded in 280ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodTest.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java
+
+codex
+I found the source file in `byte-buddy-dep`; next I’m reading the class and the tests that exercise it to see whether it is a shared dependency hub or just a local implementation detail.
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"HashCodeMethod\\.UsingJump|new HashCodeMethod|HashCodeMethod\\.byte|HashCodeMethod\\.Test|HashCodeMethod\" byte-buddy-dep/src/test/java byte-buddy-dep/src/main/java -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 217ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.scaffold.InstrumentedType;
+import net.bytebuddy.implementation.bytecode.Addition;
+import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+import net.bytebuddy.implementation.bytecode.Multiplication;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.StackSize;
+import net.bytebuddy.implementation.bytecode.constant.ClassConstant;
+import net.bytebuddy.implementation.bytecode.constant.IntegerConstant;
+import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+import net.bytebuddy.implementation.bytecode.member.MethodInvocation;
+import net.bytebuddy.implementation.bytecode.member.MethodReturn;
+import net.bytebuddy.implementation.bytecode.member.MethodVariableAccess;
+import net.bytebuddy.matcher.ElementMatcher;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static net.bytebuddy.matcher.ElementMatchers.isHashCode;
+import static net.bytebuddy.matcher.ElementMatchers.isStatic;
+import static net.bytebuddy.matcher.ElementMatchers.named;
+import static net.bytebuddy.matcher.ElementMatchers.none;
+import static net.bytebuddy.matcher.ElementMatchers.not;
+import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+
+/**
+ * An implementation of {@link Object#hashCode()} that takes a class's declared fields into consideration. A hash code is computed by transforming
+ * primitive field types to an {@code int} value and by summing those values up starting from a given offset after multiplying any previous value
+ * with a multiplier. Reference values are checked against {@code null} values unless specified otherwise.
+ */
+@HashCodeAndEqualsPlugin.Enhance
+public class HashCodeMethod implements Implementation {
+
+    /**
+     * The default offset which should be a prime number.
+     */
+    private static final int DEFAULT_OFFSET = 17;
+
+    /**
+     * The default multiplier for each value before adding a field's hash code value which should be a prime number.
+     */
+    private static final int DEFAULT_MULTIPLIER = 31;
+
+    /**
+     * The {@link Object#hashCode()} method.
+     */
+    private static final MethodDescription.InDefinedShape HASH_CODE = TypeDescription.ForLoadedType.of(Object.class)
+            .getDeclaredMethods()
+            .filter(isHashCode())
+            .getOnly();
+
+    /**
+     * The {@link Object#getClass()} method.
+     */
+    private static final MethodDescription.InDefinedShape GET_CLASS = TypeDescription.ForLoadedType.of(Object.class)
+            .getDeclaredMethods()
+            .filter(named("getClass").and(takesArguments(0)))
+            .getOnly();
+
+    /**
+     * The hash code's offset provider.
+     */
+    private final OffsetProvider offsetProvider;
+
+    /**
+     * A multiplier for each value before adding a field's hash code value.
+     */
+    private final int multiplier;
+
+    /**
+     * A matcher to filter fields that should not be used for a hash codes computation.
+     */
+    private final ElementMatcher.Junction<? super FieldDescription.InDefinedShape> ignored;
+
+    /**
+     * A matcher to determine fields of a reference type that cannot be {@code null}.
+     */
+    private final ElementMatcher.Junction<? super FieldDescription.InDefinedShape> nonNullable;
+
+    /**
+     * A matcher to determine that a field should be considered by its identity.
+     */
+    private final ElementMatcher.Junction<? super FieldDescription.InDefinedShape> identity;
+
+    /**
+     * Creates a new hash code method implementation.
+     *
+     * @param offsetProvider The hash code's offset provider.
+     */
+    protected HashCodeMethod(OffsetProvider offsetProvider) {
+        this(offsetProvider, DEFAULT_MULTIPLIER, none(), none(), none());
+    }
+
+    /**
+     * Creates a new hash code method implementation.
+     *
+     * @param offsetProvider The hash code's offset provider.
+     * @param multiplier     A multiplier for each value before adding a field's hash code value
+     * @param ignored        A matcher to filter fields that should not be used for a hash codes computation.
+     * @param nonNullable    A matcher to determine fields of a reference type that cannot be {@code null}.
+     * @param identity       A matcher to determine that a field should be considered by its identity.
+     */
+    private HashCodeMethod(OffsetProvider offsetProvider,
+                           int multiplier,
+                           ElementMatcher.Junction<? super FieldDescription.InDefinedShape> ignored,
+                           ElementMatcher.Junction<? super FieldDescription.InDefinedShape> nonNullable,
+                           ElementMatcher.Junction<? super FieldDescription.InDefinedShape> identity) {
+        this.offsetProvider = offsetProvider;
+        this.multiplier = multiplier;
+        this.ignored = ignored;
+        this.nonNullable = nonNullable;
+        this.identity = identity;
+    }
+
+    /**
+     * Creates a hash code method implementation that bases the hash code on the instrumented type's super class's hash code value.
+     *
+     * @return A hash code method implementation that bases the hash code on the instrumented type's super class's hash code value.
+     */
+    public static HashCodeMethod usingSuperClassOffset() {
+        return new HashCodeMethod(OffsetProvider.ForSuperMethodCall.INSTANCE);
+    }
+
+    /**
+     * Creates a hash code method implementation that bases the hash code on the instrumented type's class constant's hash code..
+     *
+     * @param dynamic {@code true} if the type should be resolved from the instance and not be set as the declaring class.
+     * @return A hash code method implementation that bases the hash code on the instrumented type's class constant's hash code.
+     */
+    public static HashCodeMethod usingTypeHashOffset(boolean dynamic) {
+        return new HashCodeMethod(dynamic ? OffsetProvider.ForDynamicTypeHash.INSTANCE : OffsetProvider.ForStaticTypeHash.INSTANCE);
+    }
+
+    /**
+     * Creates a hash code method implementation that bases the hash code on a fixed value.
+     *
+     * @return A hash code method implementation that bases the hash code on a fixed value.
+     */
+    public static HashCodeMethod usingDefaultOffset() {
+        return usingOffset(DEFAULT_OFFSET);
+    }
+
+    /**
+     * Creates a hash code method implementation that bases the hash code on a fixed value.
+     *
+     * @param value The fixed value.
+     * @return A hash code method implementation that bases the hash code on a fixed value.
+     */
+    public static HashCodeMethod usingOffset(int value) {
+        return new HashCodeMethod(new OffsetProvider.ForFixedValue(value));
+    }
+
+    /**
+     * Returns a new version of this hash code method implementation that ignores the specified fields additionally to any
+     * previously specified fields.
+     *
+     * @param ignored A matcher to specify any fields that should be ignored.
+     * @return A new version of this hash code method implementation that also ignores any fields matched by the provided matcher.
+     */
+    public HashCodeMethod withIgnoredFields(ElementMatcher<? super FieldDescription.InDefinedShape> ignored) {
+        return new HashCodeMethod(offsetProvider, multiplier, this.ignored.<FieldDescription.InDefinedShape>or(ignored), nonNullable, identity);
+    }
+
+    /**
+     * Returns a new version of this hash code method implementation that does not apply a {@code null} value check for the specified fields
+     * if they have a reference type additionally to any previously specified fields.
+     *
+     * @param nonNullable A matcher to specify any fields that should not be guarded against {@code null} values.
+     * @return A new version of this hash code method implementation that also does not apply {@code null} value checks to any fields matched by
+     * the provided matcher.
+     */
+    public HashCodeMethod withNonNullableFields(ElementMatcher<? super FieldDescription.InDefinedShape> nonNullable) {
+        return new HashCodeMethod(offsetProvider, multiplier, ignored, this.nonNullable.<FieldDescription.InDefinedShape>or(nonNullable), identity);
+    }
+
+    /**
+     * Returns a new version of this hash code method implementation that considers the matched fields by their identity.
+     *
+     * @param identity A matcher to specify any fields that should be considered by their identity.
+     * @return A new version of this hash code method implementation that also considers the matched fields by their identity.
+     */
+    public HashCodeMethod withIdentityFields(ElementMatcher<? super FieldDescription.InDefinedShape> identity) {
+        return new HashCodeMethod(offsetProvider, multiplier, ignored, nonNullable, this.identity.<FieldDescription.InDefinedShape>or(identity));
+    }
+
+    /**
+     * Returns a new version of this hash code method implementation that uses the given multiplier onto any given hash code before adding a
+     * field's hash code.
+     *
+     * @param multiplier The multiplier to use for any hash code before adding any field's hash code.
+     * @return A new version of this hash code method implementation that uses the given multiplier onto any given hash code before adding a
+     * field's hash code.
+     */
+    public HashCodeMethod withMultiplier(int multiplier) {
+        if (multiplier == 0) {
+            throw new IllegalArgumentException("Hash code multiplier must not be zero");
+        }
+        return new HashCodeMethod(offsetProvider, multiplier, ignored, nonNullable, identity);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public InstrumentedType prepare(InstrumentedType instrumentedType) {
+        return instrumentedType;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public ByteCodeAppender appender(Target implementationTarget) {
+        if (implementationTarget.getInstrumentedType().isInterface()) {
+            throw new IllegalStateException("Cannot implement meaningful hash code method for " + implementationTarget.getInstrumentedType());
+        }
+        return new Appender(offsetProvider.resolve(implementationTarget.getInstrumentedType()),
+                multiplier,
+                implementationTarget.getInstrumentedType().getDeclaredFields().filter(not(isStatic().or(ignored))),
+                nonNullable,
+                identity);
+    }
+
+    /**
+     * An offset provider is responsible for supplying the initial hash code.
+     */
+    protected interface OffsetProvider {
+
+        /**
+         * Resolves this offset provider for a given instrumented type.
+         *
+         * @param instrumentedType The instrumented type.
+         * @return A stack manipulation that loads the initial hash code onto the operand stack.
+         */
+        StackManipulation resolve(TypeDescription instrumentedType);
+
+
+ succeeded in 298ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:28:import net.bytebuddy.implementation.HashCodeMethod;
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:315:                protected HashCodeMethod hashCodeMethod(TypeDescription instrumentedType, boolean typeHash, boolean subclassEquality) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:319:                            return HashCodeMethod.usingSuperClassOffset();
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:324:                                    ? (typeHash ? HashCodeMethod.usingTypeHashOffset(!subclassEquality) : HashCodeMethod.usingDefaultOffset())
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:325:                                    : HashCodeMethod.usingSuperClassOffset();
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:329:                    return typeHash ? HashCodeMethod.usingTypeHashOffset(!subclassEquality) : HashCodeMethod.usingDefaultOffset();
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:356:                protected HashCodeMethod hashCodeMethod(TypeDescription instrumentedType, boolean typeHash, boolean subclassEquality) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:359:                            ? HashCodeMethod.usingSuperClassOffset()
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:360:                            : (typeHash ? HashCodeMethod.usingTypeHashOffset(!subclassEquality) : HashCodeMethod.usingDefaultOffset());
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:377:                protected HashCodeMethod hashCodeMethod(TypeDescription instrumentedType, boolean typeHash, boolean subclassEquality) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:378:                    return HashCodeMethod.usingSuperClassOffset();
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:392:                protected HashCodeMethod hashCodeMethod(TypeDescription instrumentedType, boolean typeHash, boolean subclassEquality) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:393:                    return typeHash ? HashCodeMethod.usingTypeHashOffset(!subclassEquality) : HashCodeMethod.usingDefaultOffset();
+byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java:410:            protected abstract HashCodeMethod hashCodeMethod(TypeDescription instrumentedType, boolean typeHash, boolean subclassEquality);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:15:public class HashCodeMethodOtherTest {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:25:                .intercept(HashCodeMethod.usingDefaultOffset().withNonNullableFields(named(FOO)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:40:                .intercept(HashCodeMethod.usingOffset(0).withIgnoredFields(named(FOO)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:57:                .intercept(HashCodeMethod.usingOffset(0).withIdentityFields(named(FOO)))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:74:                .intercept(HashCodeMethod.usingSuperClassOffset())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:91:                .intercept(HashCodeMethod.usingTypeHashOffset(false))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:108:                .intercept(HashCodeMethod.usingTypeHashOffset(true))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:125:                .intercept(HashCodeMethod.usingOffset(0).withMultiplier(1))
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:138:        HashCodeMethod.usingDefaultOffset().withMultiplier(0);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:146:                .intercept(HashCodeMethod.usingDefaultOffset())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:155:                .intercept(HashCodeMethod.usingDefaultOffset())
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodOtherTest.java:164:                .intercept(HashCodeMethod.usingDefaultOffset())
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:58:public class HashCodeMethod implements Implementation {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:116:    protected HashCodeMethod(OffsetProvider offsetProvider) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:129:    private HashCodeMethod(OffsetProvider offsetProvider,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:146:    public static HashCodeMethod usingSuperClassOffset() {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:147:        return new HashCodeMethod(OffsetProvider.ForSuperMethodCall.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:156:    public static HashCodeMethod usingTypeHashOffset(boolean dynamic) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:157:        return new HashCodeMethod(dynamic ? OffsetProvider.ForDynamicTypeHash.INSTANCE : OffsetProvider.ForStaticTypeHash.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:165:    public static HashCodeMethod usingDefaultOffset() {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:175:    public static HashCodeMethod usingOffset(int value) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:176:        return new HashCodeMethod(new OffsetProvider.ForFixedValue(value));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:186:    public HashCodeMethod withIgnoredFields(ElementMatcher<? super FieldDescription.InDefinedShape> ignored) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:187:        return new HashCodeMethod(offsetProvider, multiplier, this.ignored.<FieldDescription.InDefinedShape>or(ignored), nonNullable, identity);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:198:    public HashCodeMethod withNonNullableFields(ElementMatcher<? super FieldDescription.InDefinedShape> nonNullable) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:199:        return new HashCodeMethod(offsetProvider, multiplier, ignored, this.nonNullable.<FieldDescription.InDefinedShape>or(nonNullable), identity);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:208:    public HashCodeMethod withIdentityFields(ElementMatcher<? super FieldDescription.InDefinedShape> identity) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:209:        return new HashCodeMethod(offsetProvider, multiplier, ignored, nonNullable, this.identity.<FieldDescription.InDefinedShape>or(identity));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:220:    public HashCodeMethod withMultiplier(int multiplier) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:224:        return new HashCodeMethod(offsetProvider, multiplier, ignored, nonNullable, identity);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodTest.java:19:public class HashCodeMethodTest {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodTest.java:86:    public HashCodeMethodTest(Class<?> type, Object value, int hashOffset) {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/HashCodeMethodTest.java:98:                .intercept(HashCodeMethod.usingOffset(0))
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:509:    public void testHashCodeMethod() throws Exception {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:51:import net.bytebuddy.implementation.HashCodeMethod;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:4487:                        .intercept(HashCodeMethod.usingDefaultOffset().withIgnoredFields(isSynthetic()))
+
+codex
+I’ve confirmed there are several call sites, but they may all be within the same module. I’m now narrowing to `UsingJump` itself and checking whether it has broad fan-in from elsewhere or just internal use inside `HashCodeMethod`.
+exec
+/bin/bash -lc "rg -n \"class UsingJump|UsingJump\" byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java byte-buddy-dep/src/main/java -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '260,520p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"HashCodeMethod\\.UsingJump|new HashCodeMethod\\.UsingJump|UsingJump\" byte-buddy-dep/src/test/java byte-buddy-dep/src/main/java -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 182ms:
+
+        /**
+         * An offset provider that supplies a fixed value.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForFixedValue implements OffsetProvider {
+
+            /**
+             * The value to load onto the operand stack.
+             */
+            private final int value;
+
+            /**
+             * Creates a new offset provider for a fixed value.
+             *
+             * @param value The value to load onto the operand stack.
+             */
+            protected ForFixedValue(int value) {
+                this.value = value;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation resolve(TypeDescription instrumentedType) {
+                return IntegerConstant.forValue(value);
+            }
+        }
+
+        /**
+         * An offset provider that invokes the super class's {@link Object#hashCode()} implementation.
+         */
+        enum ForSuperMethodCall implements OffsetProvider {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation resolve(TypeDescription instrumentedType) {
+                TypeDefinition superClass = instrumentedType.getSuperClass();
+                if (superClass == null) {
+                    throw new IllegalStateException(instrumentedType + " does not declare a super class");
+                }
+                return new StackManipulation.Compound(MethodVariableAccess.loadThis(), MethodInvocation.invoke(HASH_CODE).special(superClass.asErasure()));
+            }
+        }
+
+        /**
+         * An offset provider that uses the instrumented type's class constant's hash code.
+         */
+        enum ForStaticTypeHash implements OffsetProvider {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation resolve(TypeDescription instrumentedType) {
+                return new StackManipulation.Compound(ClassConstant.of(instrumentedType), MethodInvocation.invoke(HASH_CODE).virtual(TypeDescription.ForLoadedType.of(Class.class)));
+            }
+        }
+
+        /**
+         * An offset provider that uses the instance's class's hash code.
+         */
+        enum ForDynamicTypeHash implements OffsetProvider {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation resolve(TypeDescription instrumentedType) {
+                return new StackManipulation.Compound(MethodVariableAccess.loadThis(),
+                        MethodInvocation.invoke(GET_CLASS).virtual(instrumentedType),
+                        MethodInvocation.invoke(HASH_CODE).virtual(TypeDescription.ForLoadedType.of(Class.class)));
+            }
+        }
+    }
+
+    /**
+     * A guard against {@code null} values for fields with reference types.
+     */
+    protected interface NullValueGuard {
+
+        /**
+         * Returns a stack manipulation to apply before computing a hash value.
+         *
+         * @return A stack manipulation to apply before computing a hash value.
+         */
+        StackManipulation before();
+
+        /**
+         * Returns a stack manipulation to apply after computing a hash value.
+         *
+         * @return A stack manipulation to apply after computing a hash value.
+         */
+        StackManipulation after();
+
+        /**
+         * Returns the required padding for the local variable array to apply this guard.
+         *
+         * @return The required padding for the local variable array to apply this guard.
+         */
+        int getRequiredVariablePadding();
+
+        /**
+         * A non-operational null value guard.
+         */
+        enum NoOp implements NullValueGuard {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation before() {
+                return StackManipulation.Trivial.INSTANCE;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation after() {
+                return StackManipulation.Trivial.INSTANCE;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public int getRequiredVariablePadding() {
+                return StackSize.ZERO.getSize();
+            }
+        }
+
+        /**
+         * A null value guard that expects a reference type and that uses a jump if a field value is {@code null}.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class UsingJump implements NullValueGuard {
+
+            /**
+             * The instrumented method.
+             */
+            private final MethodDescription instrumentedMethod;
+
+            /**
+             * A label to indicate the target of a jump.
+             */
+            private final Label label;
+
+            /**
+             * Creates a new null value guard using a jump instruction for {@code null} values.
+             *
+             * @param instrumentedMethod The instrumented method.
+             */
+            protected UsingJump(MethodDescription instrumentedMethod) {
+                this.instrumentedMethod = instrumentedMethod;
+                label = new Label();
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation before() {
+                return new BeforeInstruction();
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public StackManipulation after() {
+                return new AfterInstruction();
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public int getRequiredVariablePadding() {
+                return 1;
+            }
+
+            /**
+             * The stack manipulation to apply before the hash value computation.
+             */
+            @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+            protected class BeforeInstruction extends StackManipulation.AbstractBase {
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Size apply(MethodVisitor methodVisitor, Context implementationContext) {
+                    methodVisitor.visitVarInsn(Opcodes.ASTORE, instrumentedMethod.getStackSize());
+                    methodVisitor.visitVarInsn(Opcodes.ALOAD, instrumentedMethod.getStackSize());
+                    methodVisitor.visitJumpInsn(Opcodes.IFNULL, label);
+                    methodVisitor.visitVarInsn(Opcodes.ALOAD, instrumentedMethod.getStackSize());
+                    return Size.ZERO;
+                }
+            }
+
+            /**
+             * The stack manipulation to apply after the hash value computation.
+             */
+            @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+            protected class AfterInstruction extends StackManipulation.AbstractBase {
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Size apply(MethodVisitor methodVisitor, Context implementationContext) {
+                    methodVisitor.visitLabel(label);
+                    implementationContext.getFrameGeneration().same1(methodVisitor,
+                            TypeDescription.ForLoadedType.of(int.class),
+                            Arrays.asList(implementationContext.getInstrumentedType(), TypeDescription.ForLoadedType.of(Object.class)));
+                    return Size.ZERO;
+                }
+            }
+        }
+    }
+
+    /**
+     * A value transformer that is responsible for resolving a field value to an {@code int} value.
+     */
+    protected enum ValueTransformer implements StackManipulation {
+
+        /**
+         * A transformer for a {@code long} value.
+         */
+        LONG {
+            /** {@inheritDoc} */
+            public Size apply(MethodVisitor methodVisitor, Context implementationContext) {
+                methodVisitor.visitInsn(Opcodes.DUP2);
+                methodVisitor.visitIntInsn(Opcodes.BIPUSH, 32);
+                methodVisitor.visitInsn(Opcodes.LUSHR);
+                methodVisitor.visitInsn(Opcodes.LXOR);
+                methodVisitor.visitInsn(Opcodes.L2I);
+                return new Size(-1, 3);
+            }
+        },
+
+        /**
+         * A transformer for a {@code float} value.
+         */
+        FLOAT {
+            /** {@inheritDoc} */
+            public Size apply(MethodVisitor methodVisitor, Context implementationContext) {
+                methodVisitor.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Float", "floatToIntBits", "(F)I", false);
+                return Size.ZERO;
+
+ succeeded in 183ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:412:        class UsingJump implements NullValueGuard {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:429:            protected UsingJump(MethodDescription instrumentedMethod) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:789:                            : new NullValueGuard.UsingJump(instrumentedMethod);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:428:        class UsingJump implements NullValueGuard {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:455:            protected UsingJump(MethodDescription instrumentedMethod) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:466:                return new UsingJump.BeforeInstruction();
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:473:                return new UsingJump.AfterInstruction();
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:813:                            : new NullValueGuard.UsingJump(instrumentedMethod);
+
+ succeeded in 277ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:412:        class UsingJump implements NullValueGuard {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:429:            protected UsingJump(MethodDescription instrumentedMethod) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:789:                            : new NullValueGuard.UsingJump(instrumentedMethod);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:412:        class UsingJump implements NullValueGuard {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:429:            protected UsingJump(MethodDescription instrumentedMethod) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:789:                            : new NullValueGuard.UsingJump(instrumentedMethod);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:428:        class UsingJump implements NullValueGuard {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:455:            protected UsingJump(MethodDescription instrumentedMethod) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:466:                return new UsingJump.BeforeInstruction();
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:473:                return new UsingJump.AfterInstruction();
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:813:                            : new NullValueGuard.UsingJump(instrumentedMethod);
+
+codex
+I’ve established that `UsingJump` appears to be an internal helper, not a widely reused type. I’m pulling exact line references now so the verdict can point to specific constructor use and type dependencies in the source.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java | sed -n '400,470p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java | sed -n '770,800p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java | sed -n '1,90p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/build/HashCodeAndEqualsPlugin.java | sed -n '300,330p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 192ms:
+   400	            /**
+   401	             * {@inheritDoc}
+   402	             */
+   403	            public int getRequiredVariablePadding() {
+   404	                return StackSize.ZERO.getSize();
+   405	            }
+   406	        }
+   407	
+   408	        /**
+   409	         * A null value guard that expects a reference type and that uses a jump if a field value is {@code null}.
+   410	         */
+   411	        @HashCodeAndEqualsPlugin.Enhance
+   412	        class UsingJump implements NullValueGuard {
+   413	
+   414	            /**
+   415	             * The instrumented method.
+   416	             */
+   417	            private final MethodDescription instrumentedMethod;
+   418	
+   419	            /**
+   420	             * A label to indicate the target of a jump.
+   421	             */
+   422	            private final Label label;
+   423	
+   424	            /**
+   425	             * Creates a new null value guard using a jump instruction for {@code null} values.
+   426	             *
+   427	             * @param instrumentedMethod The instrumented method.
+   428	             */
+   429	            protected UsingJump(MethodDescription instrumentedMethod) {
+   430	                this.instrumentedMethod = instrumentedMethod;
+   431	                label = new Label();
+   432	            }
+   433	
+   434	            /**
+   435	             * {@inheritDoc}
+   436	             */
+   437	            public StackManipulation before() {
+   438	                return new BeforeInstruction();
+   439	            }
+   440	
+   441	            /**
+   442	             * {@inheritDoc}
+   443	             */
+   444	            public StackManipulation after() {
+   445	                return new AfterInstruction();
+   446	            }
+   447	
+   448	            /**
+   449	             * {@inheritDoc}
+   450	             */
+   451	            public int getRequiredVariablePadding() {
+   452	                return 1;
+   453	            }
+   454	
+   455	            /**
+   456	             * The stack manipulation to apply before the hash value computation.
+   457	             */
+   458	            @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+   459	            protected class BeforeInstruction extends StackManipulation.AbstractBase {
+   460	
+   461	                /**
+   462	                 * {@inheritDoc}
+   463	                 */
+   464	                public Size apply(MethodVisitor methodVisitor, Context implementationContext) {
+   465	                    methodVisitor.visitVarInsn(Opcodes.ASTORE, instrumentedMethod.getStackSize());
+   466	                    methodVisitor.visitVarInsn(Opcodes.ALOAD, instrumentedMethod.getStackSize());
+   467	                    methodVisitor.visitJumpInsn(Opcodes.IFNULL, label);
+   468	                    methodVisitor.visitVarInsn(Opcodes.ALOAD, instrumentedMethod.getStackSize());
+   469	                    return Size.ZERO;
+   470	                }
+
+ succeeded in 197ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy.implementation;
+    17	
+    18	import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+    19	import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+    20	import net.bytebuddy.description.field.FieldDescription;
+    21	import net.bytebuddy.description.method.MethodDescription;
+    22	import net.bytebuddy.description.type.TypeDefinition;
+    23	import net.bytebuddy.description.type.TypeDescription;
+    24	import net.bytebuddy.dynamic.scaffold.InstrumentedType;
+    25	import net.bytebuddy.implementation.bytecode.Addition;
+    26	import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
+    27	import net.bytebuddy.implementation.bytecode.Multiplication;
+    28	import net.bytebuddy.implementation.bytecode.StackManipulation;
+    29	import net.bytebuddy.implementation.bytecode.StackSize;
+    30	import net.bytebuddy.implementation.bytecode.constant.ClassConstant;
+    31	import net.bytebuddy.implementation.bytecode.constant.IntegerConstant;
+    32	import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+    33	import net.bytebuddy.implementation.bytecode.member.MethodInvocation;
+    34	import net.bytebuddy.implementation.bytecode.member.MethodReturn;
+    35	import net.bytebuddy.implementation.bytecode.member.MethodVariableAccess;
+    36	import net.bytebuddy.matcher.ElementMatcher;
+    37	import org.objectweb.asm.Label;
+    38	import org.objectweb.asm.MethodVisitor;
+    39	import org.objectweb.asm.Opcodes;
+    40	
+    41	import java.util.ArrayList;
+    42	import java.util.Arrays;
+    43	import java.util.List;
+    44	
+    45	import static net.bytebuddy.matcher.ElementMatchers.isHashCode;
+    46	import static net.bytebuddy.matcher.ElementMatchers.isStatic;
+    47	import static net.bytebuddy.matcher.ElementMatchers.named;
+    48	import static net.bytebuddy.matcher.ElementMatchers.none;
+    49	import static net.bytebuddy.matcher.ElementMatchers.not;
+    50	import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+    51	
+    52	/**
+    53	 * An implementation of {@link Object#hashCode()} that takes a class's declared fields into consideration. A hash code is computed by transforming
+    54	 * primitive field types to an {@code int} value and by summing those values up starting from a given offset after multiplying any previous value
+    55	 * with a multiplier. Reference values are checked against {@code null} values unless specified otherwise.
+    56	 */
+    57	@HashCodeAndEqualsPlugin.Enhance
+    58	public class HashCodeMethod implements Implementation {
+    59	
+    60	    /**
+    61	     * The default offset which should be a prime number.
+    62	     */
+    63	    private static final int DEFAULT_OFFSET = 17;
+    64	
+    65	    /**
+    66	     * The default multiplier for each value before adding a field's hash code value which should be a prime number.
+    67	     */
+    68	    private static final int DEFAULT_MULTIPLIER = 31;
+    69	
+    70	    /**
+    71	     * The {@link Object#hashCode()} method.
+    72	     */
+    73	    private static final MethodDescription.InDefinedShape HASH_CODE = TypeDescription.ForLoadedType.of(Object.class)
+    74	            .getDeclaredMethods()
+    75	            .filter(isHashCode())
+    76	            .getOnly();
+    77	
+    78	    /**
+    79	     * The {@link Object#getClass()} method.
+    80	     */
+    81	    private static final MethodDescription.InDefinedShape GET_CLASS = TypeDescription.ForLoadedType.of(Object.class)
+    82	            .getDeclaredMethods()
+    83	            .filter(named("getClass").and(takesArguments(0)))
+    84	            .getOnly();
+    85	
+    86	    /**
+    87	     * The hash code's offset provider.
+    88	     */
+    89	    private final OffsetProvider offsetProvider;
+    90	
+
+ succeeded in 249ms:
+   300	         *
+   301	         * @return {@code true} if the hash code constant should be derived of the instrumented type.
+   302	         */
+   303	        boolean useTypeHashConstant() default true;
+   304	
+   305	        /**
+   306	         * A strategy for determining the base value of a hash code or equality contract.
+   307	         */
+   308	        enum InvokeSuper {
+   309	
+   310	            /**
+   311	             * Only invokes the super method's hash code and equality methods if any super class that is not {@link Object} explicitly defines such a method.
+   312	             */
+   313	            IF_DECLARED {
+   314	                @Override
+   315	                protected HashCodeMethod hashCodeMethod(TypeDescription instrumentedType, boolean typeHash, boolean subclassEquality) {
+   316	                    TypeDefinition typeDefinition = instrumentedType.getSuperClass();
+   317	                    while (typeDefinition != null && !typeDefinition.represents(Object.class)) {
+   318	                        if (typeDefinition.asErasure().getDeclaredAnnotations().isAnnotationPresent(Enhance.class)) {
+   319	                            return HashCodeMethod.usingSuperClassOffset();
+   320	                        }
+   321	                        MethodList<?> hashCode = typeDefinition.getDeclaredMethods().filter(isHashCode());
+   322	                        if (!hashCode.isEmpty()) {
+   323	                            return hashCode.getOnly().isAbstract()
+   324	                                    ? (typeHash ? HashCodeMethod.usingTypeHashOffset(!subclassEquality) : HashCodeMethod.usingDefaultOffset())
+   325	                                    : HashCodeMethod.usingSuperClassOffset();
+   326	                        }
+   327	                        typeDefinition = typeDefinition.getSuperClass();
+   328	                    }
+   329	                    return typeHash ? HashCodeMethod.usingTypeHashOffset(!subclassEquality) : HashCodeMethod.usingDefaultOffset();
+   330	                }
+
+ succeeded in 282ms:
+   770	            if (instrumentedMethod.isStatic()) {
+   771	                throw new IllegalStateException("Hash code method must not be static: " + instrumentedMethod);
+   772	            } else if (!instrumentedMethod.getReturnType().represents(int.class)) {
+   773	                throw new IllegalStateException("Hash code method does not return primitive integer: " + instrumentedMethod);
+   774	            }
+   775	            List<StackManipulation> stackManipulations = new ArrayList<StackManipulation>(2 + fieldDescriptions.size() * 8);
+   776	            stackManipulations.add(initialValue);
+   777	            int padding = 0;
+   778	            for (FieldDescription.InDefinedShape fieldDescription : fieldDescriptions) {
+   779	                stackManipulations.add(IntegerConstant.forValue(multiplier));
+   780	                stackManipulations.add(Multiplication.INTEGER);
+   781	                stackManipulations.add(MethodVariableAccess.loadThis());
+   782	                stackManipulations.add(FieldAccess.forField(fieldDescription).read());
+   783	                if (!fieldDescription.getType().isPrimitive() && identity.matches(fieldDescription)) {
+   784	                    stackManipulations.add(ValueTransformer.REFERENCE_IDENTITY);
+   785	                    stackManipulations.add(Addition.INTEGER);
+   786	                } else {
+   787	                    NullValueGuard nullValueGuard = fieldDescription.getType().isPrimitive() || fieldDescription.getType().isArray() || nonNullable.matches(fieldDescription)
+   788	                            ? NullValueGuard.NoOp.INSTANCE
+   789	                            : new NullValueGuard.UsingJump(instrumentedMethod);
+   790	                    stackManipulations.add(nullValueGuard.before());
+   791	                    stackManipulations.add(ValueTransformer.of(fieldDescription.getType()));
+   792	                    stackManipulations.add(Addition.INTEGER);
+   793	                    stackManipulations.add(nullValueGuard.after());
+   794	                    padding = Math.max(padding, nullValueGuard.getRequiredVariablePadding());
+   795	                }
+   796	            }
+   797	            stackManipulations.add(MethodReturn.INTEGER);
+   798	            return new Size(new StackManipulation.Compound(stackManipulations).apply(methodVisitor, implementationContext).getMaximalSize(), instrumentedMethod.getStackSize() + padding);
+   799	        }
+   800	    }
+
+codex
+{"target":"net.bytebuddy.implementation.HashCodeMethod.UsingJump","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java` and found `UsingJump` is a nested null-value-guard helper defined at lines 412-469, with only one in-repo construction at line 789 (`new NullValueGuard.UsingJump(instrumentedMethod)`). A repository-wide `rg` over `byte-buddy-dep/src/main/java` and `byte-buddy-dep/src/test/java` found no other references to `HashCodeMethod.UsingJump`. Its outgoing dependencies are narrow and local (`MethodDescription`, `Label`, `StackManipulation`, `MethodVisitor`, `Context`, ASM opcodes), so it does not show the high fan-in/fan-out characteristic of a hub-like modularization smell."}
+tokens used
+12,866

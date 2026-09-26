@@ -1,0 +1,858 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f5b-dbcd-71d0-a6fe-1042a37cc5ca
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.googlejavaformat.java.Main` in the repository located at:
+
+`data/repositories/google/google-java-format`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.googlejavaformat.java.Main",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.googlejavaformat.java.Main`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `com.google.googlejavaformat.java.Main` and tracing both its outbound dependencies and the classes that call into it, so the verdict is grounded in repository evidence only.
+exec
+/bin/bash -lc 'rg -n "class Main|interface Main|enum Main" .' in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "rg --files | rg '("'^|/)Main'"\\.java"'$|(''^|/)main'"\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 402ms:
+./core/src/test/java/com/google/googlejavaformat/java/RemoveUnusedImportsCaseLabelsTest.java:39:                "public class Main {",
+./core/src/test/java/com/google/googlejavaformat/java/MainTest.java:48:public class MainTest {
+./core/src/test/resources/com/google/googlejavaformat/java/testdata/I684.output:7:public class Main {
+./core/src/test/resources/com/google/googlejavaformat/java/testdata/I684.input:7:public class Main {
+./core/src/main/java/com/google/googlejavaformat/java/Main.java:44:public final class Main {
+
+ succeeded in 437ms:
+core/src/main/java/com/google/googlejavaformat/java/Main.java
+
+codex
+I found the target source file and now I’m checking its dependency profile directly in code: what it calls, and which classes invoke its entry points.
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/main/java/com/google/googlejavaformat/java/Main.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "rg -n \"com\\.google\\.googlejavaformat\\.java\\.Main|\\bMain\\.main\\(|new Main\\(|\\bMain\\b\" core/src/main/java core/src/test/java core/src/test/resources | head -n 200" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 230ms:
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java;
+
+import static java.lang.Math.min;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Comparator.comparing;
+
+import com.google.common.io.ByteStreams;
+import com.google.common.util.concurrent.MoreExecutors;
+import com.google.googlejavaformat.java.JavaFormatterOptions.Style;
+import java.io.IOError;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/** The main class for the Java formatter CLI. */
+public final class Main {
+  private static final int MAX_THREADS = 20;
+  private static final String STDIN_FILENAME = "<stdin>";
+
+  static String versionString() {
+    return "google-java-format: Version " + GoogleJavaFormatVersion.version();
+  }
+
+  private final PrintWriter outWriter;
+  private final PrintWriter errWriter;
+  private final InputStream inStream;
+
+  public Main(PrintWriter outWriter, PrintWriter errWriter, InputStream inStream) {
+    this.outWriter = outWriter;
+    this.errWriter = errWriter;
+    this.inStream = inStream;
+  }
+
+  /**
+   * The main method for the formatter, with some number of file names to format. We process them in
+   * parallel, but we must be careful; if multiple file names refer to the same file (which is hard
+   * to determine), we must serialize their updates.
+   *
+   * @param args the command-line arguments
+   */
+  public static void main(String... args) {
+    int result = main(System.in, System.out, System.err, args);
+    System.exit(result);
+  }
+
+  /**
+   * Package-private main entry point used by the {@link javax.tools.Tool Tool} implementation in
+   * the same package as this Main class.
+   */
+  static int main(InputStream in, PrintStream out, PrintStream err, String... args) {
+    PrintWriter outWriter = new PrintWriter(new OutputStreamWriter(out, UTF_8));
+    PrintWriter errWriter = new PrintWriter(new OutputStreamWriter(err, UTF_8));
+    return main(in, outWriter, errWriter, args);
+  }
+
+  /**
+   * Package-private main entry point used by the {@link java.util.spi.ToolProvider ToolProvider}
+   * implementation in the same package as this Main class.
+   */
+  static int main(InputStream in, PrintWriter out, PrintWriter err, String... args) {
+    try {
+      Main formatter = new Main(out, err, in);
+      return formatter.format(args);
+    } catch (UsageException e) {
+      err.print(e.getMessage());
+      // We return exit code 2 to differentiate usage issues from code formatting issues.
+      return 2;
+    } finally {
+      err.flush();
+      out.flush();
+    }
+  }
+
+  /**
+   * The main entry point for the formatter, with some number of file names to format. We process
+   * them in parallel, but we must be careful; if multiple file names refer to the same file (which
+   * is hard to determine), we must serialize their update.
+   *
+   * @param args the command-line arguments
+   */
+  public int format(String... args) throws UsageException {
+    CommandLineOptions parameters = processArgs(args);
+    if (parameters.version()) {
+      errWriter.println(versionString());
+      return 0;
+    }
+    if (parameters.help()) {
+      throw new UsageException();
+    }
+
+    JavaFormatterOptions options =
+        JavaFormatterOptions.builder()
+            .style(parameters.aosp() ? Style.AOSP : Style.GOOGLE)
+            .formatJavadoc(parameters.formatJavadoc())
+            .build();
+
+    if (parameters.stdin()) {
+      return formatStdin(parameters, options);
+    } else {
+      return formatFiles(parameters, options);
+    }
+  }
+
+  private int formatFiles(CommandLineOptions parameters, JavaFormatterOptions options) {
+    int numThreads = min(MAX_THREADS, parameters.files().size());
+    ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+
+    ExecutorCompletionService<FormatFileCallable.Result> cs =
+        new ExecutorCompletionService<>(executorService);
+    boolean allOk = true;
+
+    int files = 0;
+    for (String fileName : parameters.files()) {
+      if (!fileName.endsWith(".java")) {
+        errWriter.println("Skipping non-Java file: " + fileName);
+        continue;
+      }
+      Path path = Paths.get(fileName);
+      try {
+        String input = new String(Files.readAllBytes(path), UTF_8);
+        cs.submit(new FormatFileCallable(parameters, path, input, options));
+        files++;
+      } catch (IOException e) {
+        errWriter.println(fileName + ": could not read file: " + e.getMessage());
+        allOk = false;
+      }
+    }
+
+    List<FormatFileCallable.Result> results = new ArrayList<>();
+    while (files > 0) {
+      try {
+        files--;
+        results.add(cs.take().get());
+      } catch (InterruptedException e) {
+        errWriter.println(e.getMessage());
+        allOk = false;
+        continue;
+      } catch (ExecutionException e) {
+        errWriter.println("error: " + e.getCause().getMessage());
+        e.getCause().printStackTrace(errWriter);
+        allOk = false;
+        continue;
+      }
+    }
+    Collections.sort(results, comparing(FormatFileCallable.Result::path));
+    for (FormatFileCallable.Result result : results) {
+      Path path = result.path();
+      if (result.exception() != null) {
+        errWriter.print(result.exception().formatDiagnostics(path.toString(), result.input()));
+        allOk = false;
+        continue;
+      }
+      String formatted = result.output();
+      boolean changed = result.changed();
+      if (changed && parameters.setExitIfChanged()) {
+        allOk = false;
+      }
+      if (parameters.inPlace()) {
+        if (!changed) {
+          continue; // preserve original file
+        }
+        try {
+          Files.write(path, formatted.getBytes(UTF_8));
+        } catch (IOException e) {
+          errWriter.println(path + ": could not write file: " + e.getMessage());
+          allOk = false;
+          continue;
+        }
+      } else if (parameters.dryRun()) {
+        if (changed) {
+          outWriter.println(path);
+        }
+      } else {
+        outWriter.write(formatted);
+      }
+    }
+    if (!MoreExecutors.shutdownAndAwaitTermination(executorService, Duration.ofSeconds(5))) {
+      errWriter.println("Failed to shut down ExecutorService");
+      allOk = false;
+    }
+    return allOk ? 0 : 1;
+  }
+
+  private int formatStdin(CommandLineOptions parameters, JavaFormatterOptions options) {
+    String input;
+    try {
+      input = new String(ByteStreams.toByteArray(inStream), UTF_8);
+    } catch (IOException e) {
+      throw new IOError(e);
+    }
+    String stdinFilename = parameters.assumeFilename().orElse(STDIN_FILENAME);
+    boolean ok = true;
+    FormatFileCallable.Result result =
+        new FormatFileCallable(parameters, null, input, options).call();
+    if (result.exception() != null) {
+      errWriter.print(result.exception().formatDiagnostics(stdinFilename, input));
+      ok = false;
+    } else {
+      String output = result.output();
+      boolean changed = result.changed();
+      if (changed && parameters.setExitIfChanged()) {
+        ok = false;
+      }
+      if (parameters.dryRun()) {
+        if (changed) {
+          outWriter.println(stdinFilename);
+        }
+      } else {
+        outWriter.write(output);
+      }
+    }
+    return ok ? 0 : 1;
+  }
+
+  /** Parses and validates command-line flags. */
+  public static CommandLineOptions processArgs(String... args) throws UsageException {
+    CommandLineOptions parameters;
+    try {
+      parameters = CommandLineOptionsParser.parse(Arrays.asList(args));
+    } catch (IllegalArgumentException e) {
+      throw new UsageException(e.getMessage());
+    } catch (Throwable t) {
+      t.printStackTrace();
+      throw new UsageException(t.getMessage());
+    }
+    int filesToFormat = parameters.files().size();
+    if (parameters.stdin()) {
+      filesToFormat++;
+    }
+
+    if (parameters.inPlace() && parameters.files().isEmpty()) {
+      throw new UsageException("in-place formatting was requested but no files were provided");
+
+ succeeded in 291ms:
+core/src/test/resources/com/google/googlejavaformat/java/testdata/I684.output:7:public class Main {
+core/src/test/resources/com/google/googlejavaformat/java/testdata/I684.input:7:public class Main {
+core/src/test/java/com/google/googlejavaformat/java/RemoveUnusedImportsCaseLabelsTest.java:39:                "public class Main {",
+core/src/test/java/com/google/googlejavaformat/java/DiagnosticTest.java:74:    Main main = new Main(new PrintWriter(stdout, true), new PrintWriter(stderr, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/DiagnosticTest.java:92:    Main main = new Main(new PrintWriter(stdout, true), new PrintWriter(stderr, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/DiagnosticTest.java:111:    Main main = new Main(new PrintWriter(stdout, true), new PrintWriter(stderr, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/DiagnosticTest.java:133:    Main main = new Main(new PrintWriter(stdout, true), new PrintWriter(stderr, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/DiagnosticTest.java:162:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/DiagnosticTest.java:177:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), inStream);
+core/src/test/java/com/google/googlejavaformat/java/DiagnosticTest.java:196:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/DiagnosticTest.java:210:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), inStream);
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:33:      Main.processArgs("-i");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:40:      Main.processArgs("-i", "-");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:46:    Main.processArgs("-i", "Foo.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:47:    Main.processArgs("-i", "Foo.java", "Bar.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:52:    Main.processArgs("-lines", "10", "Foo.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:55:      Main.processArgs("-lines", "10");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:62:      Main.processArgs("-lines", "10", "Foo.java", "Bar.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:68:    Main.processArgs("-offset", "10", "-length", "10", "Foo.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:71:      Main.processArgs("-offset", "10", "-length", "10");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:78:      Main.processArgs("-offset", "10", "-length", "10", "Foo.java", "Bar.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:89:    Main.processArgs("-offset", "10", "-length", "20", "Foo.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:92:      Main.processArgs("-offset", "10", "-length", "20", "-offset", "50", "Foo.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:99:      Main.processArgs("-offset", "10", "-length", "20", "-length", "50", "Foo.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:108:    Main.processArgs("-version");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:110:    Main.processArgs("-help");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:113:      Main.processArgs();
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:120:      Main.processArgs("-aosp");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:130:      Main.processArgs("-", "A.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:142:      Main.processArgs("-i", "-");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:154:      Main.processArgs("-i", "-n", "A.java");
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java:166:      Main.processArgs("--assume-filename=Foo.java", "Foo.java");
+core/src/test/java/com/google/googlejavaformat/java/FormatterTest.java:71:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/FormatterTest.java:81:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/FormatterTest.java:104:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/FormatterTest.java:123:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/FormatterTest.java:140:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/FormatterTest.java:158:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/FormatterTest.java:327:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:46:/** Tests for {@link Main}. */
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:68:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:94:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:108:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:109:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:126:                    .add(Main.class.getName())
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:174:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:175:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:210:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:211:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:251:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:252:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:280:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:281:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:304:      Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:305:          new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:330:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:331:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:343:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:344:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:356:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:357:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:371:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:372:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:392:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:424:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:454:                    .add(Main.class.getName())
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:482:                    .add(Main.class.getName())
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:505:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:506:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:522:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:523:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:550:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:551:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:577:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:578:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:607:    Main main =
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:608:        new Main(
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:654:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java:682:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:404:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:436:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:482:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:528:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:574:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:722:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:937:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:965:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:1089:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:1116:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:1141:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:1164:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:1185:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:1437:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:1467:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:1513:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java:1663:    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+core/src/main/java/com/google/googlejavaformat/java/Main.java:44:public final class Main {
+core/src/main/java/com/google/googlejavaformat/java/Main.java:56:  public Main(PrintWriter outWriter, PrintWriter errWriter, InputStream inStream) {
+core/src/main/java/com/google/googlejavaformat/java/Main.java:76:   * the same package as this Main class.
+core/src/main/java/com/google/googlejavaformat/java/Main.java:86:   * implementation in the same package as this Main class.
+core/src/main/java/com/google/googlejavaformat/java/Main.java:90:      Main formatter = new Main(out, err, in);
+core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatToolProvider.java:32:      return Main.main(System.in, out, err, args);
+core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatTool.java:46:      return Main.main(in, outStream, errStream, args);
+core/src/main/java/com/google/googlejavaformat/java/UsageException.java:96:    appendLine(builder, Main.versionString());
+
+codex
+I have enough to start quantifying. Next I’m checking whether the class is a genuine dependency hub in production code or mostly a test-facing entry point.
+exec
+/bin/bash -lc "sed -n '260,520p' core/src/main/java/com/google/googlejavaformat/java/Main.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatTool.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatToolProvider.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 116ms:
+      throw new UsageException("in-place formatting was requested but no files were provided");
+    }
+    if (parameters.isSelection() && filesToFormat != 1) {
+      throw new UsageException("partial formatting is only support for a single file");
+    }
+    if (parameters.offsets().size() != parameters.lengths().size()) {
+      throw new UsageException("-offsets and -lengths flags must be provided in matching pairs");
+    }
+    if (filesToFormat <= 0 && !parameters.version() && !parameters.help()) {
+      throw new UsageException("no files were provided");
+    }
+    if (parameters.stdin() && !parameters.files().isEmpty()) {
+      throw new UsageException("cannot format from standard input and files simultaneously");
+    }
+    if (parameters.assumeFilename().isPresent() && !parameters.stdin()) {
+      throw new UsageException(
+          "--assume-filename is only supported when formatting standard input");
+    }
+    if (parameters.dryRun() && parameters.inPlace()) {
+      throw new UsageException("cannot use --dry-run and --in-place at the same time");
+    }
+    return parameters;
+  }
+}
+
+ succeeded in 250ms:
+/*
+ * Copyright 2021 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java;
+
+import static com.google.common.collect.Sets.toImmutableEnumSet;
+
+import com.google.auto.service.AutoService;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.util.Arrays;
+import java.util.Set;
+import javax.lang.model.SourceVersion;
+import javax.tools.Tool;
+
+/** Provide a way to be invoked without necessarily starting a new VM. */
+@AutoService(Tool.class)
+public class GoogleJavaFormatTool implements Tool {
+  @Override
+  public String name() {
+    return "google-java-format";
+  }
+
+  @Override
+  public Set<SourceVersion> getSourceVersions() {
+    return Arrays.stream(SourceVersion.values()).collect(toImmutableEnumSet());
+  }
+
+  @Override
+  public int run(InputStream in, OutputStream out, OutputStream err, String... args) {
+    PrintStream outStream = new PrintStream(out);
+    PrintStream errStream = new PrintStream(err);
+    try {
+      return Main.main(in, outStream, errStream, args);
+    } catch (RuntimeException e) {
+      errStream.print(e.getMessage());
+      errStream.flush();
+      return 1; // pass non-zero value back indicating an error has happened
+    }
+  }
+}
+
+ succeeded in 252ms:
+/*
+ * Copyright 2021 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java;
+
+import com.google.auto.service.AutoService;
+import java.io.PrintWriter;
+import java.util.spi.ToolProvider;
+
+/** Provide a way to be invoked without necessarily starting a new VM. */
+@AutoService(ToolProvider.class)
+public class GoogleJavaFormatToolProvider implements ToolProvider {
+  @Override
+  public String name() {
+    return "google-java-format";
+  }
+
+  @Override
+  public int run(PrintWriter out, PrintWriter err, String... args) {
+    try {
+      return Main.main(System.in, out, err, args);
+    } catch (RuntimeException e) {
+      err.print(e.getMessage());
+      err.flush();
+      return 1; // pass non-zero value back indicating an error has happened
+    }
+  }
+}
+
+codex
+I’ve confirmed two production callers so far. I’m now separating production fan-in from test-only fan-in, because a CLI entry point can look “central” in tests without being a dependency hub in the architecture.
+exec
+/bin/bash -lc "rg -l \"\\bMain\\b|Main\\.main\\(\" core/src/test/java | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/test/java/com/google/googlejavaformat/java/MainTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "rg -l \"\\bMain\\b|Main\\.main\\(\" core/src/main/java | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 263ms:
+core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatTool.java
+core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatToolProvider.java
+core/src/main/java/com/google/googlejavaformat/java/Main.java
+core/src/main/java/com/google/googlejavaformat/java/UsageException.java
+
+ succeeded in 285ms:
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java;
+
+import static com.google.common.base.StandardSystemProperty.JAVA_CLASS_PATH;
+import static com.google.common.base.StandardSystemProperty.JAVA_HOME;
+import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth.assertWithMessage;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableList;
+import com.google.common.io.ByteStreams;
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.ProcessBuilder.Redirect;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.EnumSet;
+import java.util.Locale;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+/** Tests for {@link Main}. */
+@RunWith(JUnit4.class)
+public class MainTest {
+
+  @Rule public TemporaryFolder testFolder = new TemporaryFolder();
+
+  // PrintWriter instances used below are hard-coded to use system-default line separator.
+  private final Joiner joiner = Joiner.on(System.lineSeparator());
+
+  private static final ImmutableList<String> ADD_EXPORTS =
+      ImmutableList.of(
+          "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+          "--add-exports=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED",
+          "--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
+          "--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED",
+          "--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
+          "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED");
+
+  @Test
+  public void testUsageOutput() {
+    StringWriter out = new StringWriter();
+    StringWriter err = new StringWriter();
+    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+
+    try {
+      main.format("--help");
+      throw new AssertionError("Expected UsageException to be thrown");
+    } catch (UsageException e) {
+
+      String usage = e.getMessage();
+
+      // Check that doc links are included.
+      assertThat(usage).contains("https://github.com/google/google-java-format");
+      assertThat(usage).contains("Usage: google-java-format");
+
+      // Sanity check that a flag and description is in included.
+      assertThat(usage).contains("--length");
+      assertThat(usage).contains("Character length to format.");
+
+      // Check that some of the additional text is included.
+      assertThat(usage).contains("the result is sent to stdout");
+    }
+  }
+
+  @Test
+  public void version() throws UsageException {
+    StringWriter out = new StringWriter();
+    StringWriter err = new StringWriter();
+    Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+    assertThat(main.format("-version")).isEqualTo(0);
+    assertThat(err.toString()).contains("google-java-format: Version ");
+  }
+
+  @Test
+  public void preserveOriginalFile() throws Exception {
+    Path path = testFolder.newFile("Test.java").toPath();
+    Files.write(path, "class Test {}\n".getBytes(UTF_8));
+    try {
+      Files.setPosixFilePermissions(path, EnumSet.of(PosixFilePermission.OWNER_READ));
+    } catch (UnsupportedOperationException e) {
+      return;
+    }
+    Main main =
+        new Main(
+            new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.out, UTF_8)), true),
+            new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.err, UTF_8)), true),
+            System.in);
+    int errorCode = main.format("-replace", path.toAbsolutePath().toString());
+    assertWithMessage("Error Code").that(errorCode).isEqualTo(0);
+  }
+
+  @Test
+  public void testMain() throws Exception {
+    Process process =
+        new ProcessBuilder(
+                ImmutableList.<String>builder()
+                    .add(Paths.get(JAVA_HOME.value()).resolve("bin/java").toString())
+                    .addAll(ADD_EXPORTS)
+                    .add("-cp")
+                    .add(JAVA_CLASS_PATH.value())
+                    .add(Main.class.getName())
+                    .build())
+            .redirectError(Redirect.PIPE)
+            .redirectOutput(Redirect.PIPE)
+            .start();
+    process.waitFor();
+    String err = new String(ByteStreams.toByteArray(process.getErrorStream()), UTF_8);
+    assertThat(err).contains("Usage: google-java-format");
+    assertThat(process.exitValue()).isEqualTo(2);
+  }
+
+  // end to end javadoc formatting test
+  @Test
+  public void javadoc() throws Exception {
+    String[] input = {
+      "/**",
+      " * graph",
+      " *",
+      " * graph",
+      " *",
+      " * @param foo lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do"
+          + " eiusmod tempor incididunt ut labore et dolore magna aliqua",
+      " */",
+      "class Test {",
+      "  /**",
+      "   * creates entropy",
+      "   */",
+      "  public static void main(String... args) {}",
+      "}",
+    };
+    String[] expected = {
+      "/**",
+      " * graph",
+      " *",
+      " * <p>graph",
+      " *",
+      " * @param foo lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do"
+          + " eiusmod tempor",
+      " *     incididunt ut labore et dolore magna aliqua",
+      " */",
+      "class Test {",
+      "  /** creates entropy */",
+      "  public static void main(String... args) {}",
+      "}",
+      "",
+    };
+    InputStream in = new ByteArrayInputStream(joiner.join(input).getBytes(UTF_8));
+    StringWriter out = new StringWriter();
+    Main main =
+        new Main(
+            new PrintWriter(out, true),
+            new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.err, UTF_8)), true),
+            in);
+    assertThat(main.format("-")).isEqualTo(0);
+    assertThat(out.toString()).isEqualTo(joiner.join(expected));
+  }
+
+  // end to end import fixing test
+  @Test
+  public void imports() throws Exception {
+    String[] input = {
+      "import java.util.LinkedList;",
+      "import java.util.List;",
+      "import java.util.ArrayList;",
+      "class Test {",
+      "  /**",
+      "   * May be an {@link ArrayList}.",
+      "   */",
+      "  public static List<String> names;",
+      "}",
+    };
+    String[] expected = {
+      "import java.util.ArrayList;",
+      "import java.util.List;",
+      "",
+      "class Test {",
+      "  /**",
+      "   * May be an {@link ArrayList}.",
+      "   */",
+      "  public static List<String> names;",
+      "}",
+    };
+    InputStream in = new ByteArrayInputStream(joiner.join(input).getBytes(UTF_8));
+    StringWriter out = new StringWriter();
+    Main main =
+        new Main(
+            new PrintWriter(out, true),
+            new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.err, UTF_8)), true),
+            in);
+    assertThat(main.format("-", "--fix-imports-only")).isEqualTo(0);
+    assertThat(out.toString()).isEqualTo(joiner.join(expected));
+  }
+
+  @Test
+  public void optimizeImportsDoesNotLeaveEmptyLines() throws Exception {
+
+ succeeded in 299ms:
+core/src/test/java/com/google/googlejavaformat/java/CommandLineFlagsTest.java
+core/src/test/java/com/google/googlejavaformat/java/DiagnosticTest.java
+core/src/test/java/com/google/googlejavaformat/java/FormatterTest.java
+core/src/test/java/com/google/googlejavaformat/java/MainTest.java
+core/src/test/java/com/google/googlejavaformat/java/PartialFormattingTest.java
+core/src/test/java/com/google/googlejavaformat/java/RemoveUnusedImportsCaseLabelsTest.java
+
+codex
+I’ve got the architectural shape: `Main` is heavily exercised by tests, but I need the production fan-in/fan-out numbers before deciding whether that rises to a hub smell.
+exec
+/bin/bash -lc 'rg -n "''^import |''^import static " core/src/main/java/com/google/googlejavaformat/java/Main.java | wc -l' in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+24
+
+exec
+/bin/bash -lc "rg -n \"Main\\.main\\(|new Main\\(\" core/src/main/java/com/google/googlejavaformat/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "rg -n \"\\bMain\\b\" core/src/main/java/com/google/googlejavaformat/java/UsageException.java core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatTool.java core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatToolProvider.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 164ms:
+core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatTool.java:46:      return Main.main(in, outStream, errStream, args);
+core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatToolProvider.java:32:      return Main.main(System.in, out, err, args);
+core/src/main/java/com/google/googlejavaformat/java/UsageException.java:96:    appendLine(builder, Main.versionString());
+
+ succeeded in 222ms:
+core/src/main/java/com/google/googlejavaformat/java/Main.java:90:      Main formatter = new Main(out, err, in);
+core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatToolProvider.java:32:      return Main.main(System.in, out, err, args);
+core/src/main/java/com/google/googlejavaformat/java/GoogleJavaFormatTool.java:46:      return Main.main(in, outStream, errStream, args);
+
+codex
+{"target":"com.google.googlejavaformat.java.Main","detection":false,"justification":"`core/src/main/java/com/google/googlejavaformat/java/Main.java` has moderate fan-out (24 import statements, mostly standard-library plus formatter helpers) but the production fan-in is low: only `GoogleJavaFormatTool.java`, `GoogleJavaFormatToolProvider.java`, and `UsageException.java` reference it directly. `core/src/test/java/com/google/googlejavaformat/java/MainTest.java` and other tests exercise it heavily, but that is test-only usage and does not show broad architectural dependency in the main codebase."}
+tokens used
+17,149

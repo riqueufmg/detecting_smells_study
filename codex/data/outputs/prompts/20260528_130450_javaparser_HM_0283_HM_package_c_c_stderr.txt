@@ -1,0 +1,330 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f54-e42e-7f41-a597-3b10762f5e55
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`package.c.c` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "package.c.c",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `package.c.c`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct dependencies and dependents so I can make a structural call on hub-like modularization without relying on tooling.
+exec
+/bin/bash -lc "rg --files | rg '("'^|/)c'"\\.java"'$|package/c/c|/c/'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"class c\\b|interface c\\b|enum c\\b\" -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 239ms:
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/c.java
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/package_c/c.java
+javaparser-symbol-solver-testing/src/test/resources/issue1526/errors/a/b/c/DataObject.java
+javaparser-symbol-solver-testing/src/test/resources/issue1526/errors/a/b/c/ExampleClass.java
+javaparser-symbol-solver-testing/src/test/resources/issue1526/errors/a/b/c/DataObjectFactory.java
+javaparser-symbol-solver-testing/src/test/resources/issue1526/compiles/a/b/c/DataObject.java
+javaparser-symbol-solver-testing/src/test/resources/issue1526/compiles/a/b/c/ExampleClass.java
+javaparser-symbol-solver-testing/src/test/resources/issue1526/compiles/a/b/c/DataObjectFactory.java
+
+ succeeded in 299ms:
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/PrettyPrintVisitorTest.java:265:        String code = "import x.y.z;import a.b.c;import static b.c.d;class c {}";
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/PrettyPrintVisitorTest.java:269:                "import x.y.z;\n" + "import a.b.c;\n" + "import static b.c.d;\n" + "\n" + "class c {\n" + "}\n",
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/PrettyPrintVisitorTest.java:275:        String code = "import x.y.z;import a.b.c;import static b.c.d;class c {}";
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/PrettyPrintVisitorTest.java:281:                "import static b.c.d;\n" + "import a.b.c;\n" + "import x.y.z;\n" + "\n" + "class c {\n" + "}\n",
+javaparser-core/src/main/java/com/github/javaparser/utils/CodeGenerationUtils.java:130:     * @return the root directory of the classloader for class c.
+javaparser-core/src/main/java/com/github/javaparser/utils/CodeGenerationUtils.java:142:     * Useful for locating source code in your Maven project. Finds the classpath for class c, then backs up out of
+javaparser-core/src/main/java/com/github/javaparser/metamodel/PropertyMetaModel.java:71:     * @return is this the field fieldName on class c?
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/c.java:1:public class c {
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/package_c/c.java:3:public class c {
+
+codex
+I found two candidate `c.java` files under test resources; I’m checking the packaged one and then counting references to see whether it is actually used as a dependency hub or just a simple fixture.
+exec
+/bin/bash -lc "rg -n \"package_c\\.c\\b|import package_c\\.c\\b|new c\\(|\\bc\\s*\\.\" javaparser-symbol-solver-testing/src/test/resources javaparser-core/src/main/java javaparser-core-testing/src/test/java javaparser-symbol-solver-testing/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,200p' javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/package_c/c.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 217ms:
+package package_c;
+
+public class c {
+}
+
+ succeeded in 380ms:
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/PrettyPrinterTest.java:254:                "class Foo { void bar() { a.b.c.d.e; a.b.c().d().e(); a.b.c().d.e(); foo().bar().baz(boo().baa().bee()).bam(); foo().bar().baz(boo().baa().bee()).bam; foo().bar(Long.foo().b.bar(), bam).baz(); foo().bar().baz(foo, () -> { boo().baa().bee(); }).baz(() -> { boo().baa().bee(); }).bam(() -> { boo().baa().bee(); }); } }");
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/PrettyPrinterTest.java:267:                        + "\t\ta.b.c.d.e;\n"
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/PrettyPrintVisitorTest.java:265:        String code = "import x.y.z;import a.b.c;import static b.c.d;class c {}";
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/PrettyPrintVisitorTest.java:269:                "import x.y.z;\n" + "import a.b.c;\n" + "import static b.c.d;\n" + "\n" + "class c {\n" + "}\n",
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/PrettyPrintVisitorTest.java:275:        String code = "import x.y.z;import a.b.c;import static b.c.d;class c {}";
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/PrettyPrintVisitorTest.java:281:                "import static b.c.d;\n" + "import a.b.c;\n" + "import x.y.z;\n" + "\n" + "class c {\n" + "}\n",
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/ContextTest.java:707:                        + "    c.cField;\n"
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/ContextTest.java:719:        // verifying the number of variable defined before the statement c.cField
+javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedEnumDeclaration.java:45:        return getEnumConstants().stream().anyMatch(c -> c.getName().equals(name));
+javaparser-core/src/main/java/com/github/javaparser/resolution/declarations/ResolvedEnumDeclaration.java:50:                .filter(c -> c.getName().equals(name))
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/Issue2481Test.java:43:            c.accept(
+javaparser-core/src/main/java/com/github/javaparser/utils/CodeGenerationUtils.java:130:     * @return the root directory of the classloader for class c.
+javaparser-core/src/main/java/com/github/javaparser/utils/CodeGenerationUtils.java:135:                    c.getProtectionDomain().getCodeSource().getLocation().toURI());
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/javaparser/contexts/CompilationUnitContextResolutionTest.java:85:        assertEquals(false, c.isPresent());
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/javaparser/contexts/ClassOrInterfaceDeclarationContextResolutionTest.java:86:        assertEquals(true, c.isPresent());
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/javaparser/contexts/ClassOrInterfaceDeclarationContextResolutionTest.java:87:        assertEquals("C", c.get().describe());
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/javaparser/contexts/ClassOrInterfaceDeclarationContextResolutionTest.java:88:        assertEquals(true, c.get().isTypeVariable());
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/Issue2397Test.java:67:        cu.ifSuccessful(c -> c.accept(
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/Issue3087Test.java:53:        ClassOrInterfaceDeclaration coid = cu.findFirst(ClassOrInterfaceDeclaration.class, c -> c.getNameAsString()
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/TypeResolutionWithSameNameTest.java:131:                c.getFieldByName("field_a").get().resolve().getType().describe();
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/TypeResolutionWithSameNameTest.java:153:                c.getFieldByName("field_a").get().resolve().getType().describe();
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/TypeResolutionWithSameNameTest.java:175:                c.getFieldByName("field_a").get().resolve().getType().describe();
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/TypeResolutionWithSameNameTest.java:196:        String qualifiedName = c.getFieldByName("s").get().resolve().getType().describe();
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/Issue3277Test.java:45:                + "		String localVariable = ConstantA.b.new innerClassInB(c.d.str1, c.d.str2).toString();\n"
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:484:                "class Bar { Bar() { a.b.c.anExpression[0]; } } ",
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:489:                "class Bar { Bar() { a.b.c.anExpression[0]; } } ",
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:494:                "class Bar { Bar() { a.b.c.anExpression[0]; } } ",
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:503:                "class Bar { Bar() { a.b.c.aMethod(); } } ",
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:526:        String code = "package a.b.c; class A { void foo(int param) { return a.b.c.D.e; } }";
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:556:        assertEquals(true, NameLogic.isAName(fieldAccessExpr.getScope())); // a.b.c.D
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:582:        String code = "package a.b.c; class A { void foo(int param) { return a.b.c.D.e; } }";
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:604:                REFERENCE, NameLogic.classifyRole(returnStmt.getExpression().get())); // a.b.c.D.e
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:606:        assertEquals(REFERENCE, NameLogic.classifyRole(fieldAccessExpr.getScope())); // a.b.c.D
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:1082:                "class Bar { Bar() { a.b.c.anExpression[0]; } } ", "a.b.c", REFERENCE, ParseStart.COMPILATION_UNIT);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:1084:                "class Bar { Bar() { a.b.c.anExpression[0]; } } ", "a.b", REFERENCE, ParseStart.COMPILATION_UNIT);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:1086:                "class Bar { Bar() { a.b.c.anExpression[0]; } } ", "a", REFERENCE, ParseStart.COMPILATION_UNIT);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/naming/NameLogicTest.java:1092:                "class Bar { Bar() { a.b.c.aMethod(); } } ", "a.b.c", REFERENCE, ParseStart.COMPILATION_UNIT);
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/PatternVariableIntroductionTest.java:359:     * - A pattern variable introduced by a when false is definitely matched at c.
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacadeTest.java:89:                + "        classNames.stream().map(c -> c.asSubclass(IMutator.class));\n"
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/DefaultPrettyPrinterTest.java:260:                "class Foo { void bar() { a.b.c.d.e; a.b.c().d().e(); a.b.c().d.e(); foo().bar().baz(boo().baa().bee()).bam(); foo().bar().baz(boo().baa().bee()).bam; foo().bar(Long.foo().b.bar(), bam).baz(); foo().bar().baz(foo, () -> { boo().baa().bee(); }).baz(() -> { boo().baa().bee(); }).bam(() -> { boo().baa().bee(); }); } }");
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/DefaultPrettyPrinterTest.java:272:                        + "\t\ta.b.c.d.e;\n"
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/comments/CommentTest.java:60:        assertTrue(c.remove());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/comments/CommentTest.java:70:        assertTrue(c.remove());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/comments/CommentTest.java:77:        assertFalse(c.remove());
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinterTest.java:201:        String code = "import a.b.c.D;";
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinterTest.java:207:                Arrays.asList("import", " ", "a.b.c.D", ";", ""),
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinterTest.java:426:        c.getMembers().remove(0);
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinterTest.java:443:        c.getMembers().remove(1);
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinterTest.java:564:        String code = "import a.b.c.D;";
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinterTest.java:568:        assertEquals("import a.b.c.D;", LexicalPreservingPrinter.print(imp));
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinterTest.java:1173:            List<MethodDeclaration> methods = c.getMethodsByName("writeExternal");
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinterTest.java:1175:                c.remove(method);
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/LexicalPreservingPrinterTest.java:1733:        cu.getAllContainedComments().stream().forEach(c -> c.remove());
+javaparser-core/src/main/java/com/github/javaparser/ast/comments/MarkdownComment.java:137:     *   c.getHeader() + c.getContent() + c.getFooter().
+javaparser-core/src/main/java/com/github/javaparser/ast/comments/CommentsCollection.java:75:            if (!c.hasRange()) {
+javaparser-core/src/main/java/com/github/javaparser/ast/comments/CommentsCollection.java:78:            Range cRange = c.getRange().get();
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/validator/Java9ValidatorTest.java:44:        ParseResult<Statement> result = javaParser.parse(STATEMENT, provider("a.b._.c.d = act(_, _ -> _);"));
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:218:        return findCompilationUnit().map(c -> c.getPrinter()).orElseGet(() -> createDefaultPrinter());
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:226:                .map(c -> c.getPrinter(configuration))
+javaparser-core/src/main/java/com/github/javaparser/ast/Node.java:721:        this.getChildNodes().forEach(c -> c.registerForSubtree(observer));
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/expr/CharLiteralExprTest.java:37:        assertEquals("a", c.getValue());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/expr/CharLiteralExprTest.java:43:        assertEquals("\\t", c.getValue());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/expr/CharLiteralExprTest.java:49:        assertEquals("Ω", c.getValue());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/expr/CharLiteralExprTest.java:55:        assertEquals("\\177", c.getValue());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/expr/CharLiteralExprTest.java:61:        assertEquals("\\u03a9", c.getValue());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/expr/CharLiteralExprTest.java:73:        assertEquals("\\'", c.getValue());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/imports/ImportDeclarationTest.java:42:        ImportDeclaration i = parseImport("import a.b.c.X;");
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/imports/ImportDeclarationTest.java:43:        assertEquals("a.b.c.X", i.getNameAsString());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/imports/ImportDeclarationTest.java:48:        ImportDeclaration i = parseImport("import a.b.c.D.*;");
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/imports/ImportDeclarationTest.java:49:        assertEquals("a.b.c.D", i.getName().toString());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/imports/ImportDeclarationTest.java:55:        ImportDeclaration i = parseImport("import static a.b.c.X.def;");
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/imports/ImportDeclarationTest.java:56:        assertEquals("a.b.c.X", i.getName().getQualifier().get().asString());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/imports/ImportDeclarationTest.java:62:        ImportDeclaration i = parseImport("import static a.b.c.X.*;");
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/imports/ImportDeclarationTest.java:63:        assertEquals("a.b.c.X", i.getNameAsString());
+javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:339:        c.forEach(this::add);
+javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:340:        return !c.isEmpty();
+javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:351:        return !c.isEmpty();
+javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:372:        for (Object e : this.stream().filter(it -> !c.contains(it)).toArray()) {
+javaparser-core/src/main/java/com/github/javaparser/ast/NodeList.java:373:            if (!c.contains(e)) {
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/body/TypeDeclarationTest.java:45:        assertFQN("a.b.c.X", parseCompilationUnit("package a.b.c; class X{}"));
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/body/TypeDeclarationTest.java:50:        assertFQN("a.b.c.X", parseCompilationUnit("package a.b.c; interface X{}"));
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/body/TypeDeclarationTest.java:55:        assertFQN("a.b.c.X", parseCompilationUnit("package a.b.c; enum X{}"));
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/body/TypeDeclarationTest.java:60:        assertFQN("a.b.c.X", parseCompilationUnit("package a.b.c; @interface X{}"));
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/body/TypeDeclarationTest.java:66:                "a.b.c.Outer,a.b.c.Outer.Nested",
+javaparser-core/src/main/java/com/github/javaparser/CommentsInserter.java:142:            if (c.isOrphan()) {
+javaparser-core/src/main/java/com/github/javaparser/CommentsInserter.java:207:        if (!c.hasRange() || !a.hasRange()) return false;
+javaparser-core/src/main/java/com/github/javaparser/CommentsInserter.java:208:        return c.getRange().get().end.line + 1 == a.getRange().get().begin.line;
+javaparser-core/src/main/java/com/github/javaparser/StaticJavaParser.java:354:     * @param type the type name like a.b.c.X or Y
+javaparser-core/src/main/java/com/github/javaparser/StaticJavaParser.java:366:     * @param type the type name like a.b.c.X, Y, or int
+javaparser-core/src/main/java/com/github/javaparser/JavaParser.java:383:     * @param type the type name like a.b.c.X or Y
+javaparser-core/src/main/java/com/github/javaparser/JavaParser.java:393:     * @param type the type name like a.b.c.X, Y, or int
+javaparser-core/src/main/java/com/github/javaparser/printer/ConcreteSyntaxModel.java:1221:                .filter(c -> !c.isAbstract()
+javaparser-core/src/main/java/com/github/javaparser/printer/ConcreteSyntaxModel.java:1222:                        && !Comment.class.isAssignableFrom(c.getType())
+javaparser-core/src/main/java/com/github/javaparser/printer/ConcreteSyntaxModel.java:1223:                        && !concreteSyntaxModelByClass.containsKey(c.getType()))
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeTest.java:59:        assertSame(decl, c.getParentNode().get());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeTest.java:62:        assertFalse(c.getParentNode().isPresent());
+javaparser-core-testing/src/test/java/com/github/javaparser/ast/NodeTest.java:76:        assertTrue(c.getParentNode().isPresent());
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:275:        comment.ifPresent(c -> c.accept(this, arg));
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:357:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:369:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:379:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:421:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:508:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:966:                Optional<Node> p = c.getParentNode();
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:974:                    p = c.getParentNode();
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:1447:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/DefaultPrettyPrinterVisitor.java:1666:            c.accept(this, arg);
+javaparser-symbol-solver-testing/src/test/resources/AnonymousClassDeclarations.java.txt:30:                return c.innerClassMethod();
+javaparser-symbol-solver-testing/src/test/resources/CompilationUnitContextResolutionTest/02_nested/main/Main.java:7:        c.method();
+javaparser-symbol-solver-testing/src/test/resources/CompilationUnitContextResolutionTest/01_parent/main/Main.java:7:        c.method();
+javaparser-symbol-solver-testing/src/test/resources/CompilationUnitContextResolutionTest/00_receiver/main/Main.java:7:        c.method();
+javaparser-symbol-solver-testing/src/test/resources/CompilationUnitContextResolutionTest/04_reviewComment/main/Main.java:11:        c.baz();
+javaparser-core/src/main/java/com/github/javaparser/metamodel/PropertyMetaModel.java:254:            for (Class<?> c = node.getClass(); c != null; c = c.getSuperclass()) {
+javaparser-core/src/main/java/com/github/javaparser/metamodel/PropertyMetaModel.java:255:                Field[] fields = c.getDeclaredFields();
+javaparser-symbol-solver-testing/src/test/resources/issue1526/errors/d/e/f/DataObjectFactory.java:3:import a.b.c.DataObject;
+javaparser-core/src/main/java/com/github/javaparser/metamodel/JavaParserMetaModel.java:2986:            if (nodeMetaModel.getTypeName().equals(c.getSimpleName())) {
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:212:        comment.ifPresent(c -> c.accept(this, arg));
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:295:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:307:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:317:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:359:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:444:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:877:                Optional<Node> p = c.getParentNode();
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:885:                    p = c.getParentNode();
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:1352:                c.accept(this, arg);
+javaparser-core/src/main/java/com/github/javaparser/printer/PrettyPrintVisitor.java:1569:            c.accept(this, arg);
+javaparser-symbol-solver-testing/src/test/resources/issue1526/compiles/d/e/f/DataObjectFactory.java:3:import a.b.c.DataObject;
+
+codex
+The packaged class itself is trivial, so the smell decision will hinge on how often it is referenced and what it depends on. I’m narrowing to the quick-setup fixture set now.
+exec
+/bin/bash -lc "rg -n \"package_c\\.c|package_c/|package_c\" javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup -g '*.java' -g '*.txt'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'find javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup -maxdepth 3 -type f | sort' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 297ms:
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/package_c/c.java:1:package package_c;
+
+ succeeded in 278ms:
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/a/src/a.java
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/b/src/b.java
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/c.java
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/src/Main.java
+
+exec
+/bin/bash -lc "sed -n '1,200p' javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/src/Main.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,200p' javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/c.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'find javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup -type f | sort' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 112ms:
+public class Main {
+
+    public static void main(String[] args) {
+        System.out.println("Hello World!");
+    }
+}
+
+ succeeded in 198ms:
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/a/src/a.java
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/a/src/package_a/a.java
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/b/src/b.java
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/b/src/package_b/b.java
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/c.java
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/package_c/c.java
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/src/Main.java
+
+ succeeded in 230ms:
+public class c {
+}
+
+codex
+I confirmed the target file is a zero-member fixture. Next I’m checking whether any test code actually imports or instantiates `package_c.c`; if not, there’s no fan-in/fan-out basis for the smell.
+exec
+/bin/bash -lc "rg -n \"package_c\\.c\\b|import\\s+package_c\\.c\\b|new\\s+c\\s*\\(\" javaparser-symbol-solver-testing/src/test java javaparser-core/src/main java javaparser-core-testing/src/test/java javaparser-symbol-solver-testing/src/test/java javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"package package_c;|class c\" javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 272ms:
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/c.java:1:public class c {
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/package_c/c.java:1:package package_c;
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/package_c/c.java:3:public class c {
+
+ exited 2 in 447ms:
+rg: java: No such file or directory (os error 2)
+rg: java: No such file or directory (os error 2)
+
+exec
+/bin/bash -lc "rg -n \"package_c\\.c\\b|import\\s+package_c\\.c\\b|new\\s+c\\s*\\(\" javaparser-core/src/main/java javaparser-core-testing/src/test/java javaparser-symbol-solver-testing/src/test/java javaparser-symbol-solver-testing/src/test/resources" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "symbolsolver_quicksetup/c/src/package_c/c.java|package_c/c.java" javaparser-symbol-solver-testing/src/test/java javaparser-symbol-solver-testing/src/test/resources' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ exited 1 in 274ms:
+ exited 1 in 373ms:
+codex
+There are no direct textual references to `package_c.c` anywhere I searched. I’m checking whether the fixture is referenced indirectly by path-based test setup, because that would still count as dependents even without a Java import.
+exec
+/bin/bash -lc 'rg -n "c/src/package_c/c.java|c/src/c.java|package_a/a.java|package_b/b.java" javaparser-symbol-solver-testing/src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "quicksetup|package_c|src/package_c|symbolsolver_quicksetup" javaparser-symbol-solver-testing/src/test/java javaparser-symbol-solver-testing/src/test/resources' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ exited 1 in 271ms:
+ succeeded in 297ms:
+javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/package_c/c.java:1:package package_c;
+
+exec
+/bin/bash -lc "sed -n '1,120p' javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/b/src/package_b/b.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,120p' javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/a/src/package_a/a.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 271ms:
+package package_b;
+
+public class b {
+}
+
+ succeeded in 328ms:
+package package_a;
+
+public class a {
+}
+
+codex
+{"target":"package.c.c","detection":false,"justification":"Inspected `javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/package_c/c.java`, which contains only `package package_c;` and an empty `public class c {}`. I also checked the sibling fixture `javaparser-symbol-solver-testing/src/test/resources/symbolsolver_quicksetup/c/src/c.java` and searched `javaparser-core/src/main/java`, `javaparser-core-testing/src/test/java`, and `javaparser-symbol-solver-testing/src/test/java` / `src/test/resources` for `package_c.c` or imports/usages, and found no dependents or dependencies. With no observed fan-in or fan-out, HM is not present."}
+tokens used
+18,073

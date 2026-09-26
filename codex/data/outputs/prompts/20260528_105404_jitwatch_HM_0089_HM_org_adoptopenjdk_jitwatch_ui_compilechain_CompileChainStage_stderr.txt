@@ -1,0 +1,810 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6edd-1cd0-73b2-bca3-b1b5e271c89b
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.ui.compilechain.CompileChainStage` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.ui.compilechain.CompileChainStage",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.ui.compilechain.CompileChainStage`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and the files that reference it, then I’ll inspect the class body and nearby call sites to judge fan-in and fan-out from source evidence only.
+exec
+/bin/bash -lc 'rg -n "CompileChainStage" .' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "rg --files | rg 'CompileChainStage\\.java|CompileChainStage'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java:46:public class CompileChainStage extends Stage implements ICompilationChangeListener, IRedrawable
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java:77:	public CompileChainStage(IMemberSelectedListener selectionListener, final IStageAccessProxy stageAccess,
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:48:import org.adoptopenjdk.jitwatch.ui.compilechain.CompileChainStage;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java:1287:			CompileChainStage compileChainStage = new CompileChainStage(this, this, logParser.getModel());
+
+ succeeded in 0ms:
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java
+
+codex
+I found one direct construction site and the target file. Next I’m reading the class and the interfaces it implements so I can separate real dependency hub behavior from ordinary UI wiring.
+exec
+/bin/bash -lc "sed -n '1,260p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.compilechain;
+
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.fix;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import org.adoptopenjdk.jitwatch.chain.CompileChainWalker;
+import org.adoptopenjdk.jitwatch.chain.CompileNode;
+import org.adoptopenjdk.jitwatch.model.Compilation;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser;
+import org.adoptopenjdk.jitwatch.ui.main.ICompilationChangeListener;
+import org.adoptopenjdk.jitwatch.ui.main.IMemberSelectedListener;
+import org.adoptopenjdk.jitwatch.ui.main.IStageAccessProxy;
+import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+import org.adoptopenjdk.jitwatch.ui.resize.IRedrawable;
+import org.adoptopenjdk.jitwatch.ui.resize.RateLimitedResizeListener;
+import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
+import javafx.scene.text.Text;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+
+public class CompileChainStage extends Stage implements ICompilationChangeListener, IRedrawable
+{
+	private ScrollPane scrollPane;
+	private Pane pane;
+	private IStageAccessProxy stageAccess;
+	
+	private Label labelRootNodeMember;
+
+	private CompilationChooser compilationChooser;
+
+	private CompileNode rootNode;
+
+	private static final double X_OFFSET = 16;
+	private static final double Y_OFFSET = 16;
+
+	private double y;
+
+	private static final double X_GAP = 25;
+
+	private static final int STROKE_WIDTH = 3;
+	private static final double RECT_HEIGHT = 25;
+	private static final double RECT_Y_GAP = 16;
+
+	class PlotNode
+	{
+		public Rectangle rect;
+		public Text text;
+	}
+
+	private IReadOnlyJITDataModel model;
+
+	public CompileChainStage(IMemberSelectedListener selectionListener, final IStageAccessProxy stageAccess,
+			IReadOnlyJITDataModel model)
+	{
+		initStyle(StageStyle.DECORATED);
+
+		this.stageAccess = stageAccess;
+
+		this.model = model;
+
+		scrollPane = new ScrollPane();
+
+		pane = new Pane();
+
+		scrollPane.setContent(pane);
+
+		compilationChooser = new CompilationChooser(selectionListener);
+		
+		VBox verticalLayout = new VBox();
+		
+		Scene scene = UserInterfaceUtil.getScene(verticalLayout, JITWatchUI.WINDOW_WIDTH, JITWatchUI.WINDOW_HEIGHT);
+		
+		Region spacer = new Region();
+		HBox.setHgrow(spacer, Priority.ALWAYS);
+				
+		Button buttonSnapShot = UserInterfaceUtil.getSnapshotButton(scene, "CompileChain");
+		
+		HBox hBox = new HBox();
+		
+		labelRootNodeMember = new Label();
+		
+		hBox.getChildren().add(labelRootNodeMember);
+		hBox.getChildren().add(compilationChooser.getCombo());
+		hBox.getChildren().add(spacer);
+		hBox.getChildren().add(buttonSnapShot);
+		
+		hBox.setSpacing(16.0);
+		hBox.setPadding(new Insets(4, 4, 4, 4));
+		
+		verticalLayout.getChildren().addAll(hBox, scrollPane);
+
+		RateLimitedResizeListener resizeListener = new RateLimitedResizeListener(this, 200);
+
+		pane.widthProperty().addListener(resizeListener);
+		pane.heightProperty().addListener(resizeListener);
+
+		setScene(scene);
+	}
+
+	@Override
+	public void compilationChanged(IMetaMember member)
+	{
+		compilationChooser.compilationChanged(member);
+
+		if (member != null)
+		{
+			buildTree(member);
+		}
+		else
+		{
+			rootNode = null;
+			redraw();
+		}
+	}
+
+	private void clear()
+	{
+		y = Y_OFFSET;
+
+		pane.getChildren().clear();
+
+		showKey();
+	}
+
+	@Override
+	public void redraw()
+	{
+		if (rootNode != null)
+		{
+			clear();			
+			
+			show(rootNode, X_OFFSET, Y_OFFSET, 0);
+
+			if (rootNode.getChildren().isEmpty())
+			{
+				Text text = new Text("No method calls made by " + rootNode.getMemberName() + " were inlined or JIT compiled");
+				text.setX(fix(X_OFFSET));
+				text.setY(fix(y));
+				text.setStrokeWidth(1.0);
+
+				pane.getChildren().add(text);
+			}
+		}
+	}
+
+	private void showKey()
+	{
+		double keyX = scrollPane.getWidth() - 220;
+		double keyY = 10;
+
+		Rectangle roundedRect = new Rectangle(keyX - 20, keyY, 210, 180);
+
+		roundedRect.setArcHeight(30);
+		roundedRect.setArcWidth(30);
+
+		roundedRect.setStroke(Color.BLACK);
+		roundedRect.setFill(Color.TRANSPARENT);
+
+		pane.getChildren().add(roundedRect);
+
+		keyY += 20;
+
+		Text text = new Text("Key");
+		text.setX(fix(keyX + 75));
+		text.setY(fix(keyY));
+
+		pane.getChildren().add(text);
+
+		keyY += 15;
+
+		buildNode("Inlined", keyX, keyY, true, false, false);
+		keyY += 35;
+
+		buildNode("Compiled", keyX, keyY, false, true, false);
+		keyY += 35;
+
+		buildNode("Virtual Call", keyX, keyY, false, false, true);
+		keyY += 35;
+
+		buildNode("Not Compiled", keyX, keyY, false, false, false);
+		keyY += 35;
+	}
+
+	private void show(CompileNode node, double x, double parentY, int depth)
+	{
+		double lastX = x;
+
+		lastX = plotNode(node, x, parentY, depth);
+
+		y += RECT_HEIGHT + STROKE_WIDTH + RECT_Y_GAP;
+
+		parentY = y - RECT_Y_GAP;
+
+		for (CompileNode child : node.getChildren())
+		{
+			show(child, lastX, parentY, depth + 1);
+		}
+	}
+
+	private String getLabelText(CompileNode node)
+	{
+		String result = null;
+
+		IMetaMember member = null;
+
+		if (node == null)
+		{
+			result = "Unknown";
+		}
+		else
+		{
+			member = node.getMember();
+
+			if (member == null)
+			{
+				result = "Unknown";
+			}
+			else if (member.isConstructor())
+			{
+				result = member.getMetaClass().getAbbreviatedFullyQualifiedName() + "()";
+			}
+			else
+			{
+				result = member.getAbbreviatedFullyQualifiedMemberName() + "()";
+			}
+		}
+
+		return result;
+	}
+
+	private double plotNode(final CompileNode node, final double x, final double parentY, final int depth)
+	{
+		String labelText = getLabelText(node);
+
+		PlotNode plotNode = buildNode(labelText, x, y, node.isInlined(), node.isCompiled(), node.isVirtualCall());
+
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2022 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.main;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.DEFAULT_PACKAGE_NAME;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_CLOSE_PARENTHESES;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_OPEN_PARENTHESES;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_SLASH;
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.FONT_MONOSPACE_FAMILY;
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.FONT_MONOSPACE_SIZE;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
+import org.adoptopenjdk.jitwatch.compilation.codecache.CodeCacheEventWalker;
+import org.adoptopenjdk.jitwatch.compilation.codecache.CodeCacheWalkerResult;
+import org.adoptopenjdk.jitwatch.core.ErrorLog;
+import org.adoptopenjdk.jitwatch.core.IJITListener;
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.core.JITWatchConstants;
+import org.adoptopenjdk.jitwatch.model.*;
+import org.adoptopenjdk.jitwatch.parser.ILogParseErrorListener;
+import org.adoptopenjdk.jitwatch.parser.ILogParser;
+import org.adoptopenjdk.jitwatch.parser.ParserFactory;
+import org.adoptopenjdk.jitwatch.parser.ParserType;
+import org.adoptopenjdk.jitwatch.parser.hotspot.HotSpotLogParser;
+import org.adoptopenjdk.jitwatch.report.Report;
+import org.adoptopenjdk.jitwatch.report.comparator.ScoreComparator;
+import org.adoptopenjdk.jitwatch.report.escapeanalysis.eliminatedallocation.EliminatedAllocationWalker;
+import org.adoptopenjdk.jitwatch.report.inlining.InliningWalker;
+import org.adoptopenjdk.jitwatch.report.locks.OptimisedLocksWalker;
+import org.adoptopenjdk.jitwatch.report.suggestion.SuggestionWalker;
+import org.adoptopenjdk.jitwatch.ui.Dialogs;
+import org.adoptopenjdk.jitwatch.ui.browser.BrowserStage;
+import org.adoptopenjdk.jitwatch.ui.compilechain.CompileChainStage;
+import org.adoptopenjdk.jitwatch.ui.graphing.CodeCacheStage;
+import org.adoptopenjdk.jitwatch.ui.graphing.HistoStage;
+import org.adoptopenjdk.jitwatch.ui.graphing.TimeLineStage;
+import org.adoptopenjdk.jitwatch.ui.nmethod.codecache.CodeCacheLayoutStage;
+import org.adoptopenjdk.jitwatch.ui.nmethod.compilerthread.CompilerThreadStage;
+import org.adoptopenjdk.jitwatch.ui.parserchooser.IParserSelectedListener;
+import org.adoptopenjdk.jitwatch.ui.parserchooser.ParserChooser;
+import org.adoptopenjdk.jitwatch.ui.report.ReportStage;
+import org.adoptopenjdk.jitwatch.ui.report.ReportStageType;
+import org.adoptopenjdk.jitwatch.ui.sandbox.SandboxStage;
+import org.adoptopenjdk.jitwatch.ui.stage.IStageClosedListener;
+import org.adoptopenjdk.jitwatch.ui.stage.StageManager;
+import org.adoptopenjdk.jitwatch.ui.stats.StatsStage;
+import org.adoptopenjdk.jitwatch.ui.toplist.TopListStage;
+import org.adoptopenjdk.jitwatch.ui.triview.TriView;
+import org.adoptopenjdk.jitwatch.ui.viewer.JournalViewerStage;
+import org.adoptopenjdk.jitwatch.ui.viewer.TextViewerStage;
+import org.adoptopenjdk.jitwatch.util.LocaleCell;
+import org.adoptopenjdk.jitwatch.util.OSUtil;
+import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TreeItem;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
+import javafx.util.Duration;
+
+public class JITWatchUI extends Application
+		implements IJITListener, ILogParseErrorListener, IStageClosedListener, IStageAccessProxy, IMemberSelectedListener,
+		IParserSelectedListener
+{
+	private static final Logger logger = LoggerFactory.getLogger(JITWatchUI.class);
+
+	public static final int WINDOW_WIDTH = 1024;
+	public static final int WINDOW_HEIGHT = 550;
+
+	private static final String JAVA_VERSION_7 = "1.7";
+	public static final boolean IS_JAVA_FX2;
+
+	private boolean selectedProgrammatically = false;
+
+	static
+	{
+		String version = System.getProperty("java.version", JAVA_VERSION_7);
+
+		if (version.contains(JAVA_VERSION_7))
+		{
+			IS_JAVA_FX2 = true;
+
+			if (OSUtil.getOperatingSystem() == OSUtil.OperatingSystem.MAC)
+			{
+				UserInterfaceUtil.initMacFonts();
+			}
+		}
+		else
+		{
+			IS_JAVA_FX2 = false;
+		}
+	}
+
+	private Stage stage;
+
+	private ILogParser logParser;
+
+	private ClassTree classTree;
+	private ClassMemberList classMemberList;
+
+	private TableView<CompilationTableRow> compilationTable;
+	private ObservableList<CompilationTableRow> compilationRowList;
+
+	private TextArea textAreaLog;
+
+	private File jitLogFile = null;
+
+	private String lastVmCommand = null;
+	private IMetaMember lastSelectedMember = null;
+	private MetaClass lastSelectedClass = null;
+
+	private String focusMemberFromProperty = null;
+
+	private static final String PROPERTY_LOGFILE = "jitwatch.logfile";
+	private static final String PROPERTY_SOURCES = "jitwatch.sourcepath";
+	private static final String PROPERTY_CLASSPATH = "jitwatch.classpath";
+
+	private static final String PROPERTY_FOCUS_MEMBER = "jitwatch.focus.member";
+
+	private boolean isReadingLogFile = false;
+
+	private Label lblVmVersion;
+	private Label lblTweakLog;
+
+	private Button btnStart;
+	private Button btnStop;
+	private Button btnConfigure;
+	private Button btnTimeLine;
+	private Button btnStats;
+	private Button btnReset;
+	private Button btnHisto;
+	private Button btnTopList;
+	private Button btnErrorLog;
+	private Button btnCodeCacheTimeline;
+	private Button btnNMethods;
+	private Button btnCompilerThreads;
+	private Button btnTriView;
+	private Button btnReportSuggestions;
+	private Button btnReportEliminatedAllocations;
+	private Button btnReportOptimisedLocks;
+	private Button btnSandbox;
+
+	private Label lblHeap;
+
+	private MainConfigStage configStage;
+	private TimeLineStage timeLineStage;
+	private StatsStage statsStage;
+	private HistoStage histoStage;
+	private TopListStage topListStage;
+	private CodeCacheStage codeCacheTimelineStage;
+	private CodeCacheLayoutStage codeCacheBlocksStage;
+	private CompilerThreadStage compilerThreadStage;
+	private TriView triViewStage;
+	private BrowserStage browserStage;
+
+	private ReportStage reportStageSuggestions;
+	private ReportStage reportStageElminatedAllocations;
+	private ReportStage reportStageOptimisedLocks;
+
+	private SandboxStage sandBoxStage;
+
+	private NothingMountedStage nothingMountedStage;
+
+	private IMetaMember selectedMember;
+	private MetaClass selectedMetaClass;
+
+	private List<Report> reportListSuggestions = new ArrayList<>();
+	private List<Report> reportListEliminatedAllocations = new ArrayList<>();
+	private List<Report> reportListOptimisedLocks = new ArrayList<>();
+
+	private CodeCacheWalkerResult codeCacheWalkerResult;
+
+	private Runtime runtime = Runtime.getRuntime();
+
+	// synchronized as buffer is drained async on GUI thread
+	private StringBuffer logBuffer = new StringBuffer();
+
+	private ErrorLog errorLog = new ErrorLog();
+
+exec
+/bin/bash -lc 'rg -n "interface ICompilationChangeListener|interface IRedrawable|interface IMemberSelectedListener|interface IStageAccessProxy" ui/src/main/java' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/resize/IRedrawable.java:8:public interface IRedrawable
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/IMemberSelectedListener.java:10:public interface IMemberSelectedListener
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/ICompilationChangeListener.java:5:public interface ICompilationChangeListener
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/IStageAccessProxy.java:13:public interface IStageAccessProxy
+
+exec
+/bin/bash -lc "sed -n '260,520p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+		PlotNode plotNode = buildNode(labelText, x, y, node.isInlined(), node.isCompiled(), node.isVirtualCall());
+
+		if (depth > 0)
+		{
+			double connectX = x - X_GAP;
+			double connectY = y + RECT_HEIGHT / 2;
+			double upLineY = y + RECT_HEIGHT / 2;
+
+			Line lineUp = new Line(connectX, upLineY, connectX, parentY);
+			lineUp.setStrokeWidth(STROKE_WIDTH);
+			pane.getChildren().add(lineUp);
+
+			Line lineLeft = new Line(connectX, connectY, x, connectY);
+			lineLeft.setStrokeWidth(STROKE_WIDTH);
+			pane.getChildren().add(lineLeft);
+		}
+
+		double nextX = x + plotNode.rect.getWidth() / 2;
+
+		nextX += X_GAP;
+
+		initialiseRectWithOnMouseClickedEventHandler(node, plotNode.rect);
+		initialiseRectWithOnMouseClickedEventHandler(node, plotNode.text);
+
+		Tooltip tip = new Tooltip(node == this.rootNode ? "Root node" : node.getTooltipText());
+		Tooltip.install(plotNode.rect, tip);
+		Tooltip.install(plotNode.text, tip);
+
+		return nextX;
+	}
+
+	private PlotNode buildNode(String labelText, double x, double y, boolean inlined, boolean compiled, boolean virtualCall)
+	{
+		Text text = new Text(labelText);
+
+		text.snapshot(null, null);
+
+		double textWidth = text.getLayoutBounds().getWidth();
+		double textHeight = text.getLayoutBounds().getHeight();
+
+		double rectWidth = textWidth + 20;
+
+		Rectangle rect = new Rectangle(x, y, rectWidth, RECT_HEIGHT);
+		rect.setArcWidth(16);
+		rect.setArcHeight(16);
+
+		text.setX(fix(x + (rectWidth / 2 - textWidth / 2)));
+		text.setY(fix(y + RECT_HEIGHT - STROKE_WIDTH - (RECT_HEIGHT - textHeight) / 2));
+
+		text.setStrokeWidth(0.5);
+		text.setFill(Color.WHITE);
+		text.setStroke(Color.WHITE);
+
+		rect.setStroke(Color.BLACK);
+		rect.setStrokeWidth(STROKE_WIDTH);
+		rect.setFill(getColourForCompilation(compiled, inlined, virtualCall));
+
+		pane.getChildren().add(rect);
+		pane.getChildren().add(text);
+
+		PlotNode result = new PlotNode();
+		result.rect = rect;
+		result.text = text;
+
+		return result;
+	}
+
+	private Color getColourForCompilation(boolean isCompiled, boolean isInlined, boolean isVirtual)
+	{
+		if (isInlined)
+		{
+			return Color.GREEN;
+		}
+		else if (isVirtual)
+		{
+			return Color.PURPLE;
+		}
+		else if (isCompiled)
+		{
+			return Color.RED;
+		}
+		else
+		{
+			return Color.GRAY;
+		}
+	}
+
+	private void initialiseRectWithOnMouseClickedEventHandler(final CompileNode node, Shape shape)
+	{
+		shape.setOnMouseClicked(new EventHandler<MouseEvent>()
+		{
+			@Override
+			public void handle(MouseEvent arg0)
+			{
+				stageAccess.openTriView(node.getMember());
+			}
+		});
+	}
+
+	private void buildTree(IMetaMember member)
+	{
+		Compilation selectedCompilation = member.getSelectedCompilation();
+		
+		String title = "Compile Chain: ";
+
+		if (selectedCompilation != null)
+		{
+			CompileChainWalker walker = new CompileChainWalker(model);
+
+			CompileNode root = walker.buildCallTree(selectedCompilation);
+
+			this.rootNode = root;
+
+			String rootMemberName = getLabelText(root);
+			
+			title += rootMemberName;
+
+			if (root != null)
+			{
+				title += " " + root.getCompilation().getSignature();
+			}
+
+			setTitle(title);
+			
+			labelRootNodeMember.setText(rootMemberName);
+		}
+		else
+		{
+			rootNode = null;
+			
+			labelRootNodeMember.setText(S_EMPTY);
+			
+			clear();
+			
+			Text text = new Text(member.toString() + " was not JIT compiled");
+			text.setX(fix(X_OFFSET));
+			text.setY(fix(y));
+			text.setStrokeWidth(1.0);
+
+			pane.getChildren().add(text);
+		}
+
+		redraw();
+	}
+}
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/ICompilationChangeListener.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+package org.adoptopenjdk.jitwatch.ui.main;
+
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+
+public interface ICompilationChangeListener
+{
+	void compilationChanged(IMetaMember member);
+}
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/IMemberSelectedListener.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.main;
+
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+
+public interface IMemberSelectedListener
+{
+	void selectMember(IMetaMember member, boolean updateTree, boolean updateTriView);
+	
+	void selectCompilation(IMetaMember member, int compilationIndex);
+}
+exec
+/bin/bash -lc "sed -n '1,200p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/resize/IRedrawable.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.resize;
+
+public interface IRedrawable
+{
+	void redraw();
+}
+exec
+/bin/bash -lc "sed -n '1,220p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/IStageAccessProxy.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.main;
+
+import javafx.stage.Stage;
+
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+
+public interface IStageAccessProxy
+{
+	void openTriView(IMetaMember member);
+	
+	void openTriView(IMetaMember member, int highlightBCI);
+		
+	void openBrowser(String title, String html, String stylesheet);
+	
+	void openTextViewer(String title, String contents, boolean lineNumbers, boolean highlighting);
+	
+	void openCompileChain(IMetaMember member);
+		
+	void openInlinedIntoReport(IMetaMember member);
+
+	Stage getStageForDialog();
+	
+	JITWatchConfig getConfig();
+}
+codex
+{"target":"org.adoptopenjdk.jitwatch.ui.compilechain.CompileChainStage","detection":false,"justification":"Inspected ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java and ui/src/main/java/org/adoptopenjdk/jitwatch/ui/main/JITWatchUI.java. The class has limited fan-out: it mainly wires JavaFX UI pieces and a small set of project types (CompileChainWalker, CompileNode, CompilationChooser, IReadOnlyJITDataModel, IStageAccessProxy, IMemberSelectedListener, ICompilationChangeListener, IRedrawable). Fan-in is weak: rg found only one direct construction site, in JITWatchUI.java (`new CompileChainStage(...)`), and no other repository references to the class. That is not enough evidence of hub-like modularization."}
+tokens used
+9,077

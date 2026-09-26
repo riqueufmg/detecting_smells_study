@@ -1,0 +1,533 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f68-4e15-7e03-a5c5-2f4bacb224f7
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.build.RenamingPlugin.Renaming` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.build.RenamingPlugin.Renaming",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.build.RenamingPlugin.Renaming`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct references so I can judge fan-in and fan-out from the source itself, not from any external analysis.
+exec
+/bin/bash -lc "rg -n \"class Renaming|interface Renaming|enum Renaming|RenamingPlugin\\.Renaming|Renaming\\b\" byte-buddy-* byte-buddy*/src/main/java byte-buddy*/src/test/java ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files | rg 'RenamingPlugin\\.java|RenamingPlugin\\b'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 168ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java
+
+ succeeded in 347ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:49:public class RenamingPlugin extends AsmVisitorWrapper.AbstractBase implements Plugin, Plugin.Factory {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:54:    private final Renaming renaming;
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:68:        this(new Renaming.ForPattern(Pattern.compile(pattern), replacement));
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:79:        this(new Renaming.ForPattern(Pattern.compile(pattern), replacement), nameStartsWith(prefix));
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:87:    public RenamingPlugin(Renaming renaming) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:97:    public RenamingPlugin(Renaming renaming, ElementMatcher<? super TypeDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:147:    public interface Renaming {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:160:        enum NoOp implements Renaming {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:179:        class ForPattern implements Renaming {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:223:        class Compound implements Renaming {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:228:            private final List<Renaming> renamings;
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:235:            public Compound(Renaming... renaming) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:244:            public Compound(List<? extends Renaming> renamings) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:245:                this.renamings = new ArrayList<Renaming>(renamings.size());
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:246:                for (Renaming remapping : renamings) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:259:                for (Renaming remapping : renamings) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:270:    protected static class RenamingRemapper extends Remapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:275:        private final Renaming renaming;
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:286:        protected RenamingRemapper(Renaming renaming) {
+byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:15:public class RenamingPluginTest {
+byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:32:        Class<?> type = new RenamingPlugin(new UniqueApplicationRenaming())
+byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:53:    private static class UniqueApplicationRenaming implements RenamingPlugin.Renaming {
+byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:15:public class RenamingPluginTest {
+byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:32:        Class<?> type = new RenamingPlugin(new UniqueApplicationRenaming())
+byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:53:    private static class UniqueApplicationRenaming implements RenamingPlugin.Renaming {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoaderChildFirstTest.java:212:    private static class RenamingWrapper implements AsmVisitorWrapper {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoaderChildFirstTest.java:212:    private static class RenamingWrapper implements AsmVisitorWrapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:49:public class RenamingPlugin extends AsmVisitorWrapper.AbstractBase implements Plugin, Plugin.Factory {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:54:    private final Renaming renaming;
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:68:        this(new Renaming.ForPattern(Pattern.compile(pattern), replacement));
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:79:        this(new Renaming.ForPattern(Pattern.compile(pattern), replacement), nameStartsWith(prefix));
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:87:    public RenamingPlugin(Renaming renaming) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:97:    public RenamingPlugin(Renaming renaming, ElementMatcher<? super TypeDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:147:    public interface Renaming {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:160:        enum NoOp implements Renaming {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:179:        class ForPattern implements Renaming {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:223:        class Compound implements Renaming {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:228:            private final List<Renaming> renamings;
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:235:            public Compound(Renaming... renaming) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:244:            public Compound(List<? extends Renaming> renamings) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:245:                this.renamings = new ArrayList<Renaming>(renamings.size());
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:246:                for (Renaming remapping : renamings) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:259:                for (Renaming remapping : renamings) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:270:    protected static class RenamingRemapper extends Remapper {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:275:        private final Renaming renaming;
+byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:286:        protected RenamingRemapper(Renaming renaming) {
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:15:public class RenamingPluginTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:32:        Class<?> type = new RenamingPlugin(new UniqueApplicationRenaming())
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:53:    private static class UniqueApplicationRenaming implements RenamingPlugin.Renaming {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:49:public class RenamingPlugin extends AsmVisitorWrapper.AbstractBase implements Plugin, Plugin.Factory {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:54:    private final Renaming renaming;
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:68:        this(new Renaming.ForPattern(Pattern.compile(pattern), replacement));
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:79:        this(new Renaming.ForPattern(Pattern.compile(pattern), replacement), nameStartsWith(prefix));
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:87:    public RenamingPlugin(Renaming renaming) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:97:    public RenamingPlugin(Renaming renaming, ElementMatcher<? super TypeDescription> matcher) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:147:    public interface Renaming {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:160:        enum NoOp implements Renaming {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:179:        class ForPattern implements Renaming {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:223:        class Compound implements Renaming {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:228:            private final List<Renaming> renamings;
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:235:            public Compound(Renaming... renaming) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:244:            public Compound(List<? extends Renaming> renamings) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:245:                this.renamings = new ArrayList<Renaming>(renamings.size());
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:246:                for (Renaming remapping : renamings) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:259:                for (Renaming remapping : renamings) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:270:    protected static class RenamingRemapper extends Remapper {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:275:        private final Renaming renaming;
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java:286:        protected RenamingRemapper(Renaming renaming) {
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoaderChildFirstTest.java:212:    private static class RenamingWrapper implements AsmVisitorWrapper {
+
+codex
+I found the target nested type inside `RenamingPlugin.java`. Next I’m reading the class body and its direct call sites to see whether it’s actually acting as a dependency hub or just a small strategy interface with a few local implementations.
+exec
+/bin/bash -lc "rg -n \"RenamingPlugin\\.Renaming|implements RenamingPlugin\\.Renaming|new RenamingPlugin\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,340p' byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 182ms:
+package net.bytebuddy.build;
+
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
+import org.junit.Test;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+public class RenamingPluginTest {
+
+    private static final String FOO = "foo", BAR = "bar";
+
+    @Test
+    public void testPluginEnhance() throws Exception {
+        Class<?> type = new RenamingPlugin(RenamingPluginTest.class.getSimpleName() + "\\$" + Foo.class.getSimpleName(), RenamingPluginTest.class.getSimpleName() + "\\$" + Bar.class.getSimpleName())
+                .apply(new ByteBuddy().redefine(Wrapper.class), TypeDescription.ForLoadedType.of(Wrapper.class), ClassFileLocator.ForClassLoader.of(Wrapper.class.getClassLoader()))
+                .make()
+                .load(Wrapper.class.getClassLoader(), ClassLoadingStrategy.Default.CHILD_FIRST)
+                .getLoaded();
+        assertThat(type.getField(FOO).getType().getName(), is(Bar.class.getName()));
+        assertThat(type.getField(BAR).getType().getName(), is(Void.class.getName()));
+    }
+
+    @Test
+    public void testPluginNoDuplicates() throws Exception {
+        Class<?> type = new RenamingPlugin(new UniqueApplicationRenaming())
+                .apply(new ByteBuddy().redefine(Wrapper.class), TypeDescription.ForLoadedType.of(Wrapper.class), ClassFileLocator.ForClassLoader.of(Wrapper.class.getClassLoader()))
+                .make()
+                .load(Wrapper.class.getClassLoader(), ClassLoadingStrategy.Default.CHILD_FIRST)
+                .getLoaded();
+        assertThat(type.getField(FOO).getType().getName(), is(Foo.class.getName()));
+        assertThat(type.getField(BAR).getType().getName(), is(Void.class.getName()));
+    }
+
+    @SuppressWarnings("unused")
+    public static class Wrapper {
+
+        public Foo foo;
+
+        public Void bar;
+    }
+
+    public static class Foo { }
+
+    public static class Bar { }
+
+    private static class UniqueApplicationRenaming implements RenamingPlugin.Renaming {
+
+        private final Set<String> names = new HashSet<String>();
+
+        public String apply(String name) {
+            assertThat(names.add(name), is(true));
+            return name;
+        }
+    }
+}
+ succeeded in 214ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.build;
+
+import net.bytebuddy.asm.AsmVisitorWrapper;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.field.FieldList;
+import net.bytebuddy.description.method.MethodList;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.pool.TypePool;
+import net.bytebuddy.utility.OpenedClassReader;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.commons.ClassRemapper;
+import org.objectweb.asm.commons.Remapper;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static net.bytebuddy.matcher.ElementMatchers.any;
+import static net.bytebuddy.matcher.ElementMatchers.nameStartsWith;
+
+/**
+ * A plugin that replaces names that are discovered in class files.
+ */
+@HashCodeAndEqualsPlugin.Enhance
+public class RenamingPlugin extends AsmVisitorWrapper.AbstractBase implements Plugin, Plugin.Factory {
+
+    /**
+     * The renaming to apply.
+     */
+    private final Renaming renaming;
+
+    /**
+     * A matcher that determines what types to consider for renaming.
+     */
+    private final ElementMatcher<? super TypeDescription> matcher;
+
+    /**
+     * Creates a renaming plugin for a given regular expression and replacement that applies to all types.
+     *
+     * @param pattern     The pattern to consider.
+     * @param replacement The replacement to apply if the supplied pattern is matched.
+     */
+    public RenamingPlugin(String pattern, String replacement) {
+        this(new Renaming.ForPattern(Pattern.compile(pattern), replacement));
+    }
+
+    /**
+     * Creates a renaming plugin for a given regular expression and replacement that applies to all types that start with a given prefix.
+     *
+     * @param pattern     The pattern to consider.
+     * @param replacement The replacement to apply if the supplied pattern is matched.
+     * @param prefix      The prefix for types to consider for renaming.
+     */
+    public RenamingPlugin(String pattern, String replacement, String prefix) {
+        this(new Renaming.ForPattern(Pattern.compile(pattern), replacement), nameStartsWith(prefix));
+    }
+
+    /**
+     * Creates a renaming plugin for the given renaming that applies to all types.
+     *
+     * @param renaming The renaming to apply.
+     */
+    public RenamingPlugin(Renaming renaming) {
+        this(renaming, any());
+    }
+
+    /**
+     * Creates a renaming plugin for the given renaming and type matcher.
+     *
+     * @param renaming The renaming to apply.
+     * @param matcher  A matcher that determines what types to consider for renaming.
+     */
+    public RenamingPlugin(Renaming renaming, ElementMatcher<? super TypeDescription> matcher) {
+        this.renaming = renaming;
+        this.matcher = matcher;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Plugin make() {
+        return this;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public DynamicType.Builder<?> apply(DynamicType.Builder<?> builder, TypeDescription typeDescription, ClassFileLocator classFileLocator) {
+        return builder.visit(this);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean matches(@MaybeNull TypeDescription target) {
+        return matcher.matches(target);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void close() {
+        /* do nothing */
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public ClassVisitor wrap(TypeDescription instrumentedType,
+                             ClassVisitor classVisitor,
+                             Implementation.Context implementationContext,
+                             TypePool typePool,
+                             FieldList<FieldDescription.InDefinedShape> fields,
+                             MethodList<?> methods,
+                             int writerFlags,
+                             int readerFlags) {
+        return new ClassRemapper(classVisitor, new RenamingRemapper(renaming));
+    }
+
+    /**
+     * A renaming function tho transform a type's binary name.
+     */
+    public interface Renaming {
+
+        /**
+         * Applies a renaming.
+         *
+         * @param name The previous name.
+         * @return The former name.
+         */
+        String apply(String name);
+
+        /**
+         * A non-operational renaming.
+         */
+        enum NoOp implements Renaming {
+
+            /**
+             * The singleton instance.
+             */
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public String apply(String name) {
+                return name;
+            }
+        }
+
+        /**
+         * A renaming that renames types by a given regular expression.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForPattern implements Renaming {
+
+            /**
+             * The regular expression to use.
+             */
+            private final Pattern pattern;
+
+            /**
+             * The replacement to apply.
+             */
+            private final String replacement;
+
+            /**
+             * Creates a new renaming for a regular expression.
+             *
+             * @param pattern     The regular expression to use.
+             * @param replacement The replacement to apply.
+             */
+            public ForPattern(Pattern pattern, String replacement) {
+                this.pattern = pattern;
+                this.replacement = replacement;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public String apply(String name) {
+                Matcher matcher = pattern.matcher(name);
+                if (matcher.find()) {
+                    StringBuffer buffer = new StringBuffer();
+                    do {
+                        matcher.appendReplacement(buffer, replacement);
+                    } while (matcher.find());
+                    return matcher.appendTail(buffer).toString();
+                } else {
+                    return name;
+                }
+            }
+        }
+
+        /**
+         * A compound renaming.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class Compound implements Renaming {
+
+            /**
+             * The renamings to apply.
+             */
+            private final List<Renaming> renamings;
+
+            /**
+             * Creates a new compound renaming.
+             *
+             * @param renaming The renaming to apply.
+             */
+            public Compound(Renaming... renaming) {
+                this(Arrays.asList(renaming));
+            }
+
+            /**
+             * Creates a new compound renaming.
+             *
+             * @param renamings The renamings to apply.
+             */
+            public Compound(List<? extends Renaming> renamings) {
+                this.renamings = new ArrayList<Renaming>(renamings.size());
+                for (Renaming remapping : renamings) {
+                    if (remapping instanceof Compound) {
+                        this.renamings.addAll(((Compound) remapping).renamings);
+                    } else if (!(remapping instanceof NoOp)) {
+                        this.renamings.add(remapping);
+                    }
+                }
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public String apply(String name) {
+                for (Renaming remapping : renamings) {
+                    name = remapping.apply(name);
+                }
+                return name;
+            }
+        }
+    }
+
+    /**
+     * An ASM {@link Remapper} to apply renamings.
+     */
+    protected static class RenamingRemapper extends Remapper {
+
+        /**
+         * The renaming to apply.
+         */
+        private final Renaming renaming;
+
+        /**
+         * A cache of previously applied renamings.
+         */
+        private final Map<String, String> cache = new HashMap<String, String>();
+
+        /**
+         * Creates a new renaming remapper.
+         * @param renaming The renaming to apply.
+         */
+        protected RenamingRemapper(Renaming renaming) {
+            super(OpenedClassReader.ASM_API);
+            this.renaming = renaming;
+        }
+
+        @Override
+        public String map(String internalName) {
+            String renamed = cache.get(internalName);
+            if (renamed != null) {
+                return renamed;
+            }
+            renamed = renaming.apply(internalName.replace('/', '.')).replace('.', '/');
+            cache.put(internalName, renamed);
+            return renamed;
+        }
+    }
+}
+
+ succeeded in 307ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:21:        Class<?> type = new RenamingPlugin(RenamingPluginTest.class.getSimpleName() + "\\$" + Foo.class.getSimpleName(), RenamingPluginTest.class.getSimpleName() + "\\$" + Bar.class.getSimpleName())
+byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:32:        Class<?> type = new RenamingPlugin(new UniqueApplicationRenaming())
+byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java:53:    private static class UniqueApplicationRenaming implements RenamingPlugin.Renaming {
+
+codex
+{"target":"net.bytebuddy.build.RenamingPlugin.Renaming","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/build/RenamingPlugin.java and byte-buddy-dep/src/test/java/net/bytebuddy/build/RenamingPluginTest.java. The target is a small nested strategy interface with a single method (apply) and only three local implementations in the same file (NoOp, ForPattern, Compound). Its incoming use is also narrow: the enclosing RenamingPlugin stores one Renaming field, accepts it in two constructors, and RenamingRemapper consumes it. Repo-wide search found only one external implementer/reference in RenamingPluginTest.java (UniqueApplicationRenaming implements RenamingPlugin.Renaming). That is low fan-in and low fan-out, so Hub-like Modularization is not present."}
+tokens used
+8,078

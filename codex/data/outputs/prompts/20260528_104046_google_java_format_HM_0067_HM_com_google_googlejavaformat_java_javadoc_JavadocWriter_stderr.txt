@@ -1,0 +1,1775 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ed0-f0c3-7733-82ca-55dc0c11062b
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.googlejavaformat.java.javadoc.JavadocWriter` in the repository located at:
+
+`data/repositories/google/google-java-format`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.googlejavaformat.java.javadoc.JavadocWriter",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.googlejavaformat.java.javadoc.JavadocWriter`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `JavadocWriter` and tracing its direct dependencies and callers so I can judge fan-in and fan-out from the repository evidence.
+exec
+/bin/bash -lc "rg --files | rg 'JavadocWriter\\.java|javadoc'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+core/src/test/resources/com/google/googlejavaformat/java/testjavadoc/B28750242.input
+core/src/test/resources/com/google/googlejavaformat/java/testjavadoc/B28750242.output
+core/src/test/resources/com/google/googlejavaformat/java/testjavadoc/B31404367.input
+core/src/test/resources/com/google/googlejavaformat/java/testjavadoc/B31404367.output
+core/src/main/java/com/google/googlejavaformat/java/javadoc/CharStream.java
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java
+core/src/main/java/com/google/googlejavaformat/java/javadoc/Token.java
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocLexer.java
+core/src/main/java/com/google/googlejavaformat/java/javadoc/NestingCounter.java
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java
+
+exec
+/bin/bash -lc "rg -n \"class JavadocWriter|JavadocWriter\" -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:20:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.AutoIndent.AUTO_INDENT;
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:21:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.AutoIndent.NO_AUTO_INDENT;
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:22:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.BLANK_LINE;
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:23:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NEWLINE;
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:24:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NONE;
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:25:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.WHITESPACE;
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:40:final class JavadocWriter {
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:62:  JavadocWriter(int blockIndent) {
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java:57:    JavadocWriter output = new JavadocWriter(blockIndent);
+core/src/main/java/com/google/googlejavaformat/java/javadoc/Token.java:27:   * indentation, forcing or forbidding whitespace) from {@link JavadocWriter} gets its own type.
+core/src/main/java/com/google/googlejavaformat/java/javadoc/Token.java:85:     * somewhat indirect: As far as {@link JavadocWriter} is concerned, this token is meaningless.
+
+codex
+I found the class and its package. Next I’m checking the writer’s imports, collaborators, and how many places construct or reference it to see whether it really acts as a dependency hub or is just an internal helper.
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+/*
+ * Copyright 2016 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java.javadoc;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.collect.Comparators.max;
+import static com.google.common.collect.Sets.immutableEnumSet;
+import static com.google.googlejavaformat.java.javadoc.JavadocWriter.AutoIndent.AUTO_INDENT;
+import static com.google.googlejavaformat.java.javadoc.JavadocWriter.AutoIndent.NO_AUTO_INDENT;
+import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.BLANK_LINE;
+import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NEWLINE;
+import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NONE;
+import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.WHITESPACE;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.HEADER_OPEN_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.LIST_ITEM_OPEN_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.PARAGRAPH_OPEN_TAG;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.googlejavaformat.java.javadoc.Token.Type;
+
+/**
+ * Stateful object that accepts "requests" and "writes," producing formatted Javadoc.
+ *
+ * <p>Our Javadoc formatter doesn't ever generate a parse tree, only a stream of tokens, so the
+ * writer must compute and store the answer to questions like "How many levels of nested HTML list
+ * are we inside?"
+ */
+final class JavadocWriter {
+  private final int blockIndent;
+  private final StringBuilder output = new StringBuilder();
+
+  /**
+   * Whether we are inside an {@code <li>} element, excluding the case in which the {@code <li>}
+   * contains a {@code <ul>} or {@code <ol>} that we are also inside -- unless of course we're
+   * inside an {@code <li>} element in that inner list :)
+   */
+  private boolean continuingListItemOfInnermostList;
+
+  private boolean continuingFooterTag;
+  private final NestingCounter continuingListItemCount = new NestingCounter();
+  private final NestingCounter continuingListCount = new NestingCounter();
+  private final NestingCounter postWriteModifiedContinuingListCount = new NestingCounter();
+  private int remainingOnLine;
+  private boolean atStartOfLine;
+  private RequestedWhitespace requestedWhitespace = NONE;
+  private Token requestedMoeBeginStripComment;
+  private int indentForMoeEndStripComment;
+  private boolean wroteAnythingSignificant;
+
+  JavadocWriter(int blockIndent) {
+    this.blockIndent = blockIndent;
+  }
+
+  /**
+   * Requests whitespace between the previously written token and the next written token. The
+   * request may be honored, or it may be overridden by a request for "more significant" whitespace,
+   * like a newline.
+   */
+  void requestWhitespace() {
+    requestWhitespace(WHITESPACE);
+  }
+
+  void requestMoeBeginStripComment(Token token) {
+    // We queue this up so that we can put it after any requested whitespace.
+    requestedMoeBeginStripComment = checkNotNull(token);
+  }
+
+  void writeBeginJavadoc() {
+    /*
+     * JavaCommentsHelper will make sure this is indented right. But it seems sensible enough that,
+     * if our input starts with ∕✱✱, so too does our output.
+     */
+    output.append("/**");
+    writeNewline();
+  }
+
+  void writeEndJavadoc() {
+    output.append("\n");
+    appendSpaces(blockIndent + 1);
+    output.append("*/");
+  }
+
+  void writeFooterJavadocTagStart(Token token) {
+    // Close any unclosed lists (e.g., <li> without <ul>).
+    // TODO(cpovirk): Actually generate </ul>, etc.?
+    /*
+     * TODO(cpovirk): Also generate </pre> and </table> if appropriate. This is necessary for
+     * idempotency in broken Javadoc. (We don't necessarily need that, but full idempotency may be a
+     * nice goal, especially if it helps us use a fuzzer to test.) Unfortunately, the writer doesn't
+     * currently know which of those tags are open.
+     */
+    continuingListItemOfInnermostList = false;
+    continuingListItemCount.reset();
+    continuingListCount.reset();
+    /*
+     * There's probably no need for this, since its only effect is to disable blank lines in some
+     * cases -- and we're doing that already in the footer.
+     */
+    postWriteModifiedContinuingListCount.reset();
+
+    if (!wroteAnythingSignificant) {
+      // Javadoc consists solely of tags. This is frowned upon in general but OK for @Overrides.
+    } else if (!continuingFooterTag) {
+      // First footer tag after a body tag.
+      requestBlankLine();
+    } else {
+      // Subsequent footer tag.
+      continuingFooterTag = false;
+      requestNewline();
+    }
+    writeToken(token);
+    continuingFooterTag = true;
+  }
+
+  void writeSnippetBegin(Token token) {
+    requestBlankLine();
+    writeToken(token);
+    /*
+     * We don't request a newline here because we should have at least a colon following on this
+     * line, and we may have attributes after that.
+     *
+     * (If we find it convenient, we could instead consume the entire rest of the line as part of
+     * the same token as `{@snippet` itself. But we already would never split the rest of the line
+     * across lines (because we preserve whitespace), so that might not accomplish anything. Plus,
+     * we'd probably want to be careful not to swallow an expectedly early closing `}`.)
+     */
+  }
+
+  void writeSnippetEnd(Token token) {
+    /*
+     * We don't request a newline here because we have preserved all newlines that existed in the
+     * input. TODO: b/323389829 - Improve upon that. Specifically:
+     *
+     * - If there is not yet a newline, we should add one.
+     *
+     * - If there are multiple newlines, we should probably collapse them.
+     *
+     * - If the closing brace isn't indented as we'd want (as in the link below, in which the whole
+     *   @apiNote isn't indented), we should indent it.
+     *
+     * https://github.com/openjdk/jdk/blob/1ebf2cf639300728ffc024784f5dc1704317b0b3/src/java.base/share/classes/java/util/Collections.java#L5993-L6006
+     */
+    writeToken(token);
+    requestBlankLine();
+  }
+
+  void writeListOpen(Token token) {
+    requestBlankLine();
+
+    writeToken(token);
+    continuingListItemOfInnermostList = false;
+    continuingListCount.increment();
+    postWriteModifiedContinuingListCount.increment();
+
+    requestNewline();
+  }
+
+  void writeListClose(Token token) {
+    requestNewline();
+
+    continuingListItemCount.decrementIfPositive();
+    continuingListCount.decrementIfPositive();
+    writeToken(token);
+    postWriteModifiedContinuingListCount.decrementIfPositive();
+
+    requestBlankLine();
+  }
+
+  void writeListItemOpen(Token token) {
+    requestNewline();
+
+    if (continuingListItemOfInnermostList) {
+      continuingListItemOfInnermostList = false;
+      continuingListItemCount.decrementIfPositive();
+    }
+    writeToken(token);
+    continuingListItemOfInnermostList = true;
+    continuingListItemCount.increment();
+  }
+
+  void writeHeaderOpen(Token token) {
+    requestBlankLine();
+
+    writeToken(token);
+  }
+
+  void writeHeaderClose(Token token) {
+    writeToken(token);
+
+    requestBlankLine();
+  }
+
+  void writeParagraphOpen(Token token) {
+    if (!wroteAnythingSignificant) {
+      /*
+       * The user included an initial <p> tag. Ignore it, and don't request a blank line before the
+       * next token.
+       */
+      return;
+    }
+
+    requestBlankLine();
+
+    writeToken(token);
+  }
+
+  void writeBlockquoteOpenOrClose(Token token) {
+    requestBlankLine();
+
+    writeToken(token);
+
+    requestBlankLine();
+  }
+
+  void writePreOpen(Token token) {
+    requestBlankLine();
+
+    writeToken(token);
+  }
+
+  void writePreClose(Token token) {
+    writeToken(token);
+
+    requestBlankLine();
+  }
+
+  void writeCodeOpen(Token token) {
+    writeToken(token);
+  }
+
+  void writeCodeClose(Token token) {
+    writeToken(token);
+  }
+
+  void writeTableOpen(Token token) {
+    requestBlankLine();
+
+    writeToken(token);
+  }
+
+  void writeTableClose(Token token) {
+    writeToken(token);
+
+    requestBlankLine();
+  }
+
+  void writeMoeEndStripComment(Token token) {
+    writeLineBreakNoAutoIndent();
+
+exec
+/bin/bash -lc "sed -n '1,240p' core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+/*
+ * Copyright 2016 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java.javadoc;
+
+import static com.google.googlejavaformat.java.javadoc.JavadocLexer.lex;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.BR_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.PARAGRAPH_OPEN_TAG;
+import static java.util.regex.Pattern.CASE_INSENSITIVE;
+import static java.util.regex.Pattern.compile;
+
+import com.google.common.collect.ImmutableList;
+import com.google.googlejavaformat.java.javadoc.JavadocLexer.LexException;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Entry point for formatting Javadoc.
+ *
+ * <p>This stateless class reads tokens from the stateful lexer and translates them to "requests"
+ * and "writes" to the stateful writer. It also munges tokens into "standardized" forms. Finally, it
+ * performs postprocessing to convert the written Javadoc to a one-liner if possible or to leave a
+ * single blank line if it's empty.
+ */
+public final class JavadocFormatter {
+
+  static final int MAX_LINE_LENGTH = 100;
+
+  /**
+   * Formats the given Javadoc comment, which must start with ∕✱✱ and end with ✱∕. The output will
+   * start and end with the same characters.
+   */
+  public static String formatJavadoc(String input, int blockIndent) {
+    ImmutableList<Token> tokens;
+    try {
+      tokens = lex(input);
+    } catch (LexException e) {
+      return input;
+    }
+    String result = render(tokens, blockIndent);
+    return makeSingleLineIfPossible(blockIndent, result);
+  }
+
+  private static String render(List<Token> input, int blockIndent) {
+    JavadocWriter output = new JavadocWriter(blockIndent);
+    for (Token token : input) {
+      switch (token.getType()) {
+        case BEGIN_JAVADOC -> output.writeBeginJavadoc();
+        case END_JAVADOC -> {
+          output.writeEndJavadoc();
+          return output.toString();
+        }
+        case FOOTER_JAVADOC_TAG_START -> output.writeFooterJavadocTagStart(token);
+        case SNIPPET_BEGIN -> output.writeSnippetBegin(token);
+        case SNIPPET_END -> output.writeSnippetEnd(token);
+        case LIST_OPEN_TAG -> output.writeListOpen(token);
+        case LIST_CLOSE_TAG -> output.writeListClose(token);
+        case LIST_ITEM_OPEN_TAG -> output.writeListItemOpen(token);
+        case HEADER_OPEN_TAG -> output.writeHeaderOpen(token);
+        case HEADER_CLOSE_TAG -> output.writeHeaderClose(token);
+        case PARAGRAPH_OPEN_TAG -> output.writeParagraphOpen(standardizePToken(token));
+        case BLOCKQUOTE_OPEN_TAG, BLOCKQUOTE_CLOSE_TAG -> output.writeBlockquoteOpenOrClose(token);
+        case PRE_OPEN_TAG -> output.writePreOpen(token);
+        case PRE_CLOSE_TAG -> output.writePreClose(token);
+        case CODE_OPEN_TAG -> output.writeCodeOpen(token);
+        case CODE_CLOSE_TAG -> output.writeCodeClose(token);
+        case TABLE_OPEN_TAG -> output.writeTableOpen(token);
+        case TABLE_CLOSE_TAG -> output.writeTableClose(token);
+        case MOE_BEGIN_STRIP_COMMENT -> output.requestMoeBeginStripComment(token);
+        case MOE_END_STRIP_COMMENT -> output.writeMoeEndStripComment(token);
+        case HTML_COMMENT -> output.writeHtmlComment(token);
+        case BR_TAG -> output.writeBr(standardizeBrToken(token));
+        case WHITESPACE -> output.requestWhitespace();
+        case FORCED_NEWLINE -> output.writeLineBreakNoAutoIndent();
+        case LITERAL -> output.writeLiteral(token);
+        case PARAGRAPH_CLOSE_TAG, LIST_ITEM_CLOSE_TAG, OPTIONAL_LINE_BREAK -> {}
+      }
+    }
+    throw new AssertionError();
+  }
+
+  /*
+   * TODO(cpovirk): Is this really the right location for the standardize* methods? Maybe the lexer
+   * should include them as part of its own postprocessing? Or even the writer could make sense.
+   */
+
+  private static Token standardizeBrToken(Token token) {
+    return standardize(token, STANDARD_BR_TOKEN);
+  }
+
+  private static Token standardizePToken(Token token) {
+    return standardize(token, STANDARD_P_TOKEN);
+  }
+
+  private static Token standardize(Token token, Token standardToken) {
+    return SIMPLE_TAG_PATTERN.matcher(token.getValue()).matches() ? standardToken : token;
+  }
+
+  private static final Token STANDARD_BR_TOKEN = new Token(BR_TAG, "<br>");
+  private static final Token STANDARD_P_TOKEN = new Token(PARAGRAPH_OPEN_TAG, "<p>");
+  private static final Pattern SIMPLE_TAG_PATTERN = compile("^<\\w+\\s*/?\\s*>", CASE_INSENSITIVE);
+
+  private static final Pattern ONE_CONTENT_LINE_PATTERN = compile(" */[*][*]\n *[*] (.*)\n *[*]/");
+
+  /**
+   * Returns the given string or a one-line version of it (e.g., "∕✱✱ Tests for foos. ✱∕") if it
+   * fits on one line.
+   */
+  private static String makeSingleLineIfPossible(int blockIndent, String input) {
+    Matcher matcher = ONE_CONTENT_LINE_PATTERN.matcher(input);
+    if (matcher.matches()) {
+      String line = matcher.group(1);
+      if (line.isEmpty()) {
+        return "/** */";
+      } else if (oneLineJavadoc(line, blockIndent)) {
+        return "/** " + line + " */";
+      }
+    }
+    return input;
+  }
+
+  private static boolean oneLineJavadoc(String line, int blockIndent) {
+    int oneLinerContentLength = MAX_LINE_LENGTH - "/**  */".length() - blockIndent;
+    if (line.length() > oneLinerContentLength) {
+      return false;
+    }
+    // If the javadoc contains only a tag, use multiple lines to encourage writing a summary
+    // fragment, unless it's /* @hide */.
+    if (line.startsWith("@") && !line.equals("@hide")) {
+      return false;
+    }
+    return true;
+  }
+
+  private JavadocFormatter() {}
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/java/javadoc/Token.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+/*
+ * Copyright 2016 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java.javadoc;
+
+/**
+ * Javadoc token. Our idea of what constitutes a token is often larger or smaller than what you'd
+ * naturally expect. The decision is usually pragmatic rather than theoretical. Most of the details
+ * are in {@link JavadocLexer}.
+ */
+final class Token {
+  /**
+   * Javadoc token type.
+   *
+   * <p>The general idea is that every token that requires special handling (extra line breaks,
+   * indentation, forcing or forbidding whitespace) from {@link JavadocWriter} gets its own type.
+   * But I haven't been super careful about it, so I'd imagine that we could merge or remove some of
+   * these if we wanted. (For example, PARAGRAPH_CLOSE_TAG and LIST_ITEM_CLOSE_TAG could share a
+   * common IGNORABLE token type. But their corresponding OPEN tags exist, so I've kept the CLOSE
+   * tags.)
+   *
+   * <p>Note, though, that tokens of the same type may still have been handled differently by {@link
+   * JavadocLexer} when it created them. For example, LITERAL is used for both plain text and inline
+   * tags, even though the two affect the lexer's state differently.
+   */
+  enum Type {
+    /** ∕✱✱ */
+    BEGIN_JAVADOC,
+    /** ✱∕ */
+    END_JAVADOC,
+    /** The {@code @foo} that begins a block Javadoc tag like {@code @throws}. */
+    FOOTER_JAVADOC_TAG_START,
+    /** The opening {@code ｛@snippet} of a code snippet. */
+    SNIPPET_BEGIN,
+    /** The closing {@code ｝} of a code snippet. */
+    SNIPPET_END,
+    LIST_OPEN_TAG,
+    LIST_CLOSE_TAG,
+    LIST_ITEM_OPEN_TAG,
+    LIST_ITEM_CLOSE_TAG,
+    HEADER_OPEN_TAG,
+    HEADER_CLOSE_TAG,
+    PARAGRAPH_OPEN_TAG,
+    PARAGRAPH_CLOSE_TAG,
+    // TODO(cpovirk): Support <div> (probably identically to <blockquote>).
+    BLOCKQUOTE_OPEN_TAG,
+    BLOCKQUOTE_CLOSE_TAG,
+    PRE_OPEN_TAG,
+    PRE_CLOSE_TAG,
+    CODE_OPEN_TAG,
+    CODE_CLOSE_TAG,
+    TABLE_OPEN_TAG,
+    TABLE_CLOSE_TAG,
+    /** {@code <!-- MOE：begin_intracomment_strip -->} */
+    MOE_BEGIN_STRIP_COMMENT,
+    /** {@code <!-- MOE：end_intracomment_strip -->} */
+    MOE_END_STRIP_COMMENT,
+    HTML_COMMENT,
+    // TODO(cpovirk): Support <hr> (probably a blank line before and after).
+    BR_TAG,
+    /**
+     * Whitespace that is not in a {@code <pre>} or {@code <table>} section. Whitespace includes
+     * leading newlines, asterisks, and tabs and spaces. In the output, it is translated to newlines
+     * (with leading spaces and asterisks) or spaces.
+     */
+    WHITESPACE,
+    /**
+     * A newline in a {@code <pre>} or {@code <table>} section. We preserve user formatting in these
+     * sections, including newlines.
+     */
+    FORCED_NEWLINE,
+    /**
+     * Token that permits but does not force a line break. The way that we accomplish this is
+     * somewhat indirect: As far as {@link JavadocWriter} is concerned, this token is meaningless.
+     * But its mere existence prevents {@link JavadocLexer} from joining two {@link #LITERAL} tokens
+     * that would otherwise be adjacent. Since this token is not real whitespace, the writer may end
+     * up writing the literals together with no space between, just as if they'd been joined.
+     * However, if they don't fit together on the line, the writer will write the first one, start a
+     * new line, and write the second. Hence, the token acts as an optional line break.
+     */
+    OPTIONAL_LINE_BREAK,
+    /**
+     * Anything else: {@code foo}, {@code <b>}, {@code {@code foo}} etc. {@link JavadocLexer}
+     * sometimes creates adjacent literal tokens, which it then merges into a single, larger literal
+     * token before returning its output.
+     *
+     * <p>This also includes whitespace in a {@code <pre>} or {@code <table>} section. We preserve
+     * user formatting in these sections, including arbitrary numbers of spaces. By treating such
+     * whitespace as a literal, we can merge it with adjacent literals, preventing us from
+     * autowrapping inside these sections -- and doing so naively, to boot. The wrapped line would
+     * have no indentation after "* " or, possibly worse, it might begin with an arbitrary amount of
+     * whitespace that didn't fit on the previous line. Of course, by doing this, we're potentially
+     * creating lines of more than 100 characters. But it seems fair to call in the humans to
+     * resolve such problems.
+     */
+    LITERAL,
+    ;
+  }
+
+  private final Type type;
+  private final String value;
+
+  Token(Type type, String value) {
+    this.type = type;
+    this.value = value;
+  }
+
+  Type getType() {
+    return type;
+  }
+
+  String getValue() {
+    return value;
+  }
+
+  int length() {
+    return value.length();
+  }
+
+  @Override
+  public String toString() {
+    return "\n" + getType() + ": " + getValue();
+  }
+}
+
+codex
+I have the top half of `JavadocWriter`; I’m reading the rest plus the package’s other classes to see whether the writer sits at the center of many package relationships or mainly serves one formatter.
+exec
+/bin/bash -lc "sed -n '261,520p' core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+    appendSpaces(indentForMoeEndStripComment);
+
+    // Or maybe just "output.append(token.getValue())?" I'm kind of surprised this is so easy.
+    writeToken(token);
+
+    requestNewline();
+  }
+
+  void writeHtmlComment(Token token) {
+    requestNewline();
+
+    writeToken(token);
+
+    requestNewline();
+  }
+
+  void writeBr(Token token) {
+    writeToken(token);
+
+    requestNewline();
+  }
+
+  void writeLineBreakNoAutoIndent() {
+    writeNewline(NO_AUTO_INDENT);
+  }
+
+  void writeLiteral(Token token) {
+    writeToken(token);
+  }
+
+  @Override
+  public String toString() {
+    return output.toString();
+  }
+
+  private void requestBlankLine() {
+    requestWhitespace(BLANK_LINE);
+  }
+
+  private void requestNewline() {
+    requestWhitespace(NEWLINE);
+  }
+
+  private void requestWhitespace(RequestedWhitespace requestedWhitespace) {
+    this.requestedWhitespace = max(requestedWhitespace, this.requestedWhitespace);
+  }
+
+  /**
+   * The kind of whitespace that has been requested between the previous and next tokens. The order
+   * of the values is significant: It goes from lowest priority to highest. For example, if the
+   * previous token requests {@link #BLANK_LINE} after it but the next token requests only {@link
+   * #NEWLINE} before it, we insert {@link #BLANK_LINE}.
+   */
+  enum RequestedWhitespace {
+    NONE,
+    WHITESPACE,
+    NEWLINE,
+    BLANK_LINE,
+    ;
+  }
+
+  private void writeToken(Token token) {
+    if (requestedMoeBeginStripComment != null) {
+      requestNewline();
+    }
+
+    if (requestedWhitespace == BLANK_LINE
+        && (postWriteModifiedContinuingListCount.isPositive() || continuingFooterTag)) {
+      /*
+       * We don't write blank lines inside lists or footer tags, even in cases where we otherwise
+       * would (e.g., before a <p> tag). Justification: We don't write blank lines _between_ list
+       * items or footer tags, so it would be strange to write blank lines _within_ one. Of course,
+       * an alternative approach would be to go ahead and write blank lines between items/tags,
+       * either always or only in the case that an item contains a blank line.
+       */
+      requestedWhitespace = NEWLINE;
+    }
+
+    if (requestedWhitespace == BLANK_LINE) {
+      writeBlankLine();
+      requestedWhitespace = NONE;
+    } else if (requestedWhitespace == NEWLINE) {
+      writeNewline();
+      requestedWhitespace = NONE;
+    }
+    boolean needWhitespace = (requestedWhitespace == WHITESPACE);
+
+    /*
+     * Write a newline if necessary to respect the line limit. (But if we're at the beginning of the
+     * line, a newline won't help. Or it might help but only by separating "<p>veryverylongword,"
+     * which goes against our style.)
+     */
+    if (!atStartOfLine && token.length() + (needWhitespace ? 1 : 0) > remainingOnLine) {
+      writeNewline();
+    }
+    if (!atStartOfLine && needWhitespace) {
+      output.append(" ");
+      remainingOnLine--;
+    }
+
+    if (requestedMoeBeginStripComment != null) {
+      output.append(requestedMoeBeginStripComment.getValue());
+      requestedMoeBeginStripComment = null;
+      indentForMoeEndStripComment = innerIndent();
+      requestNewline();
+      writeToken(token);
+      return;
+    }
+
+    output.append(token.getValue());
+
+    if (!START_OF_LINE_TOKENS.contains(token.getType())) {
+      atStartOfLine = false;
+    }
+
+    /*
+     * TODO(cpovirk): We really want the number of "characters," not chars. Figure out what the
+     * right way of measuring that is (grapheme count (with BreakIterator?)? sum of widths of all
+     * graphemes? I don't think that our style guide is specific about this.). Moreover, I am
+     * probably brushing other problems with surrogates, etc. under the table. Hopefully I mostly
+     * get away with it by joining all non-space, non-tab characters together.
+     *
+     * Possibly the "width" question has no right answer:
+     * http://denisbider.blogspot.com/2015/09/when-monospace-fonts-arent-unicode.html
+     */
+    remainingOnLine -= token.length();
+    requestedWhitespace = NONE;
+    wroteAnythingSignificant = true;
+  }
+
+  private void writeBlankLine() {
+    output.append("\n");
+    appendSpaces(blockIndent + 1);
+    output.append("*");
+    writeNewline();
+  }
+
+  private void writeNewline() {
+    writeNewline(AUTO_INDENT);
+  }
+
+  private void writeNewline(AutoIndent autoIndent) {
+    output.append("\n");
+    appendSpaces(blockIndent + 1);
+    output.append("*");
+    appendSpaces(1);
+    remainingOnLine = JavadocFormatter.MAX_LINE_LENGTH - blockIndent - 3;
+    if (autoIndent == AUTO_INDENT) {
+      appendSpaces(innerIndent());
+      remainingOnLine -= innerIndent();
+    }
+    atStartOfLine = true;
+  }
+
+  enum AutoIndent {
+    AUTO_INDENT,
+    NO_AUTO_INDENT
+  }
+
+  private int innerIndent() {
+    int innerIndent = continuingListItemCount.value() * 4 + continuingListCount.value() * 2;
+    if (continuingFooterTag) {
+      innerIndent += 4;
+    }
+    return innerIndent;
+  }
+
+  // If this is a hotspot, keep a String of many spaces around, and call append(string, start, end).
+  private void appendSpaces(int count) {
+    output.append(" ".repeat(count));
+  }
+
+  /**
+   * Tokens that are always pinned to the following token. For example, {@code <p>} in {@code <p>Foo
+   * bar} (never {@code <p> Foo bar} or {@code <p>\nFoo bar}).
+   *
+   * <p>This is not the only kind of "pinning" that we do: See also the joining of LITERAL tokens
+   * done by the lexer. The special pinning here is necessary because these tokens are not of type
+   * LITERAL (because they require other special handling).
+   */
+  private static final ImmutableSet<Type> START_OF_LINE_TOKENS =
+      immutableEnumSet(LIST_ITEM_OPEN_TAG, PARAGRAPH_OPEN_TAG, HEADER_OPEN_TAG);
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/java/javadoc/CharStream.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+/*
+ * Copyright 2016 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java.javadoc;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * String reader designed for use from the lexer. Callers invoke the {@link #tryConsume tryConsume*}
+ * methods to specify what characters they expect and then {@link #readAndResetRecorded} to retrieve
+ * and consume the matched characters. This is a slightly odd API -- why not just return the matched
+ * characters from tryConsume? -- but it is convenient for the lexer.
+ */
+final class CharStream {
+  String remaining;
+  int toConsume;
+
+  CharStream(String input) {
+    this.remaining = checkNotNull(input);
+  }
+
+  boolean tryConsume(String expected) {
+    if (!remaining.startsWith(expected)) {
+      return false;
+    }
+    toConsume = expected.length();
+    return true;
+  }
+
+  /*
+   * @param pattern the pattern to search for, which must be anchored to match only at position 0
+   */
+  boolean tryConsumeRegex(Pattern pattern) {
+    Matcher matcher = pattern.matcher(remaining);
+    if (!matcher.find()) {
+      return false;
+    }
+    checkArgument(matcher.start() == 0);
+    toConsume = matcher.end();
+    return true;
+  }
+
+  String readAndResetRecorded() {
+    String result = remaining.substring(0, toConsume);
+    remaining = remaining.substring(toConsume);
+    toConsume = 0; // TODO(cpovirk): Set this to a bogus value here and in the constructor.
+    return result;
+  }
+
+  boolean isExhausted() {
+    return remaining.isEmpty();
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocLexer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+/*
+ * Copyright 2016 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java.javadoc;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Verify.verify;
+import static com.google.common.collect.Iterators.peekingIterator;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.BEGIN_JAVADOC;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.BLOCKQUOTE_CLOSE_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.BLOCKQUOTE_OPEN_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.BR_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.CODE_CLOSE_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.CODE_OPEN_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.END_JAVADOC;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.FOOTER_JAVADOC_TAG_START;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.FORCED_NEWLINE;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.HEADER_CLOSE_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.HEADER_OPEN_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.HTML_COMMENT;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.LIST_CLOSE_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.LIST_ITEM_CLOSE_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.LIST_ITEM_OPEN_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.LIST_OPEN_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.LITERAL;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.MOE_BEGIN_STRIP_COMMENT;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.MOE_END_STRIP_COMMENT;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.OPTIONAL_LINE_BREAK;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.PARAGRAPH_CLOSE_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.PARAGRAPH_OPEN_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.PRE_CLOSE_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.PRE_OPEN_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.SNIPPET_BEGIN;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.SNIPPET_END;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.TABLE_CLOSE_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.TABLE_OPEN_TAG;
+import static com.google.googlejavaformat.java.javadoc.Token.Type.WHITESPACE;
+import static java.lang.String.format;
+import static java.util.regex.Pattern.CASE_INSENSITIVE;
+import static java.util.regex.Pattern.DOTALL;
+import static java.util.regex.Pattern.compile;
+
+import com.google.common.base.CharMatcher;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.PeekingIterator;
+import com.google.googlejavaformat.java.javadoc.Token.Type;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+import java.util.regex.Pattern;
+
+/** Lexer for the Javadoc formatter. */
+final class JavadocLexer {
+  /** Takes a Javadoc comment, including ∕✱✱ and ✱∕, and returns tokens, including ∕✱✱ and ✱∕. */
+  static ImmutableList<Token> lex(String input) throws LexException {
+    /*
+     * TODO(cpovirk): In theory, we should interpret Unicode escapes (yet output them in their
+     * original form). This would mean mean everything from an encoded ∕✱✱ to an encoded <pre> tag,
+     * so we'll probably never bother.
+     */
+    input = stripJavadocBeginAndEnd(input);
+    input = normalizeLineEndings(input);
+    return new JavadocLexer(new CharStream(input)).generateTokens();
+  }
+
+  /** The lexer crashes on windows line endings, so for now just normalize to `\n`. */
+  // TODO(cushon): use the platform line separator for output
+  private static String normalizeLineEndings(String input) {
+    return NON_UNIX_LINE_ENDING.matcher(input).replaceAll("\n");
+  }
+
+  private static final Pattern NON_UNIX_LINE_ENDING = Pattern.compile("\r\n?");
+
+  private static String stripJavadocBeginAndEnd(String input) {
+    /*
+     * We do this ahead of time so that the main part of the lexer need not say things like
+     * "(?![*]/)" to avoid accidentally swallowing ✱∕ when consuming a newline.
+     */
+    checkArgument(input.startsWith("/**"), "Missing /**: %s", input);
+    checkArgument(input.endsWith("*/") && input.length() > 4, "Missing */: %s", input);
+    return input.substring("/**".length(), input.length() - "*/".length());
+  }
+
+  private final CharStream input;
+  private final NestingCounter braceDepth = new NestingCounter();
+  private final NestingCounter preDepth = new NestingCounter();
+  private final NestingCounter codeDepth = new NestingCounter();
+  private final NestingCounter tableDepth = new NestingCounter();
+  private boolean outerInlineTagIsSnippet;
+  private boolean somethingSinceNewline;
+
+  private JavadocLexer(CharStream input) {
+    this.input = checkNotNull(input);
+  }
+
+  private ImmutableList<Token> generateTokens() throws LexException {
+    ImmutableList.Builder<Token> tokens = ImmutableList.builder();
+
+    Token token = new Token(BEGIN_JAVADOC, "/**");
+    tokens.add(token);
+
+    while (!input.isExhausted()) {
+      token = readToken();
+      tokens.add(token);
+    }
+
+    checkMatchingTags();
+
+    token = new Token(END_JAVADOC, "*/");
+    tokens.add(token);
+
+    ImmutableList<Token> result = tokens.build();
+    result = joinAdjacentLiteralsAndAdjacentWhitespace(result);
+    result = inferParagraphTags(result);
+    result = optionalizeSpacesAfterLinks(result);
+    result = deindentPreCodeBlocks(result);
+    return result;
+  }
+
+  private Token readToken() throws LexException {
+    Type type = consumeToken();
+    String value = input.readAndResetRecorded();
+    return new Token(type, value);
+  }
+
+  private Type consumeToken() throws LexException {
+    boolean preserveExistingFormatting = preserveExistingFormatting();
+
+    if (input.tryConsumeRegex(NEWLINE_PATTERN)) {
+      somethingSinceNewline = false;
+      return preserveExistingFormatting ? FORCED_NEWLINE : WHITESPACE;
+    } else if (input.tryConsume(" ") || input.tryConsume("\t")) {
+      // TODO(cpovirk): How about weird whitespace chars? Ideally we'd distinguish breaking vs. not.
+      // Returning LITERAL here prevent us from breaking a <pre> line. For more info, see LITERAL.
+      return preserveExistingFormatting ? LITERAL : WHITESPACE;
+    }
+
+    /*
+     * TODO(cpovirk): Maybe try to detect things like "{@code\n@GwtCompatible}" that aren't intended
+     * as tags. But in the most likely case, in which that happens inside <pre>{@code, we have no
+     * great options for fixing it.
+     * https://github.com/google/google-java-format/issues/7#issuecomment-197383926
+     */
+    if (!somethingSinceNewline && input.tryConsumeRegex(FOOTER_TAG_PATTERN)) {
+      checkMatchingTags();
+      somethingSinceNewline = true;
+      return FOOTER_JAVADOC_TAG_START;
+    }
+    somethingSinceNewline = true;
+
+    if (input.tryConsumeRegex(SNIPPET_TAG_OPEN_PATTERN)) {
+      if (braceDepth.value() == 0) {
+        braceDepth.increment();
+        outerInlineTagIsSnippet = true;
+        return SNIPPET_BEGIN;
+      }
+      braceDepth.increment();
+      return LITERAL;
+    } else if (input.tryConsumeRegex(INLINE_TAG_OPEN_PATTERN)) {
+      braceDepth.increment();
+      return LITERAL;
+    } else if (input.tryConsume("{")) {
+      braceDepth.incrementIfPositive();
+      return LITERAL;
+    } else if (input.tryConsume("}")) {
+      if (outerInlineTagIsSnippet && braceDepth.value() == 1) {
+        braceDepth.decrementIfPositive();
+        outerInlineTagIsSnippet = false;
+        return SNIPPET_END;
+      }
+      braceDepth.decrementIfPositive();
+      return LITERAL;
+    }
+
+    // Inside an inline tag, don't do any HTML interpretation.
+    if (braceDepth.isPositive()) {
+      verify(input.tryConsumeRegex(LITERAL_PATTERN));
+      return LITERAL;
+    }
+
+    if (input.tryConsumeRegex(PRE_OPEN_PATTERN)) {
+      preDepth.increment();
+      return preserveExistingFormatting ? LITERAL : PRE_OPEN_TAG;
+    } else if (input.tryConsumeRegex(PRE_CLOSE_PATTERN)) {
+      preDepth.decrementIfPositive();
+      return preserveExistingFormatting() ? LITERAL : PRE_CLOSE_TAG;
+    }
+
+    if (input.tryConsumeRegex(CODE_OPEN_PATTERN)) {
+      codeDepth.increment();
+      return preserveExistingFormatting ? LITERAL : CODE_OPEN_TAG;
+    } else if (input.tryConsumeRegex(CODE_CLOSE_PATTERN)) {
+      codeDepth.decrementIfPositive();
+      return preserveExistingFormatting() ? LITERAL : CODE_CLOSE_TAG;
+    }
+
+    if (input.tryConsumeRegex(TABLE_OPEN_PATTERN)) {
+      tableDepth.increment();
+      return preserveExistingFormatting ? LITERAL : TABLE_OPEN_TAG;
+    } else if (input.tryConsumeRegex(TABLE_CLOSE_PATTERN)) {
+      tableDepth.decrementIfPositive();
+      return preserveExistingFormatting() ? LITERAL : TABLE_CLOSE_TAG;
+    }
+
+    if (preserveExistingFormatting) {
+      verify(input.tryConsumeRegex(LITERAL_PATTERN));
+      return LITERAL;
+    }
+
+    if (input.tryConsumeRegex(PARAGRAPH_OPEN_PATTERN)) {
+      return PARAGRAPH_OPEN_TAG;
+    } else if (input.tryConsumeRegex(PARAGRAPH_CLOSE_PATTERN)) {
+      return PARAGRAPH_CLOSE_TAG;
+    } else if (input.tryConsumeRegex(LIST_OPEN_PATTERN)) {
+      return LIST_OPEN_TAG;
+    } else if (input.tryConsumeRegex(LIST_CLOSE_PATTERN)) {
+      return LIST_CLOSE_TAG;
+    } else if (input.tryConsumeRegex(LIST_ITEM_OPEN_PATTERN)) {
+      return LIST_ITEM_OPEN_TAG;
+    } else if (input.tryConsumeRegex(LIST_ITEM_CLOSE_PATTERN)) {
+      return LIST_ITEM_CLOSE_TAG;
+    } else if (input.tryConsumeRegex(BLOCKQUOTE_OPEN_PATTERN)) {
+      return BLOCKQUOTE_OPEN_TAG;
+    } else if (input.tryConsumeRegex(BLOCKQUOTE_CLOSE_PATTERN)) {
+      return BLOCKQUOTE_CLOSE_TAG;
+    } else if (input.tryConsumeRegex(HEADER_OPEN_PATTERN)) {
+      return HEADER_OPEN_TAG;
+    } else if (input.tryConsumeRegex(HEADER_CLOSE_PATTERN)) {
+      return HEADER_CLOSE_TAG;
+    } else if (input.tryConsumeRegex(BR_PATTERN)) {
+      return BR_TAG;
+    } else if (input.tryConsumeRegex(MOE_BEGIN_STRIP_COMMENT_PATTERN)) {
+      return MOE_BEGIN_STRIP_COMMENT;
+    } else if (input.tryConsumeRegex(MOE_END_STRIP_COMMENT_PATTERN)) {
+      return MOE_END_STRIP_COMMENT;
+    } else if (input.tryConsumeRegex(HTML_COMMENT_PATTERN)) {
+      return HTML_COMMENT;
+    } else if (input.tryConsumeRegex(LITERAL_PATTERN)) {
+      return LITERAL;
+    }
+    throw new AssertionError();
+  }
+
+  private boolean preserveExistingFormatting() {
+    return preDepth.isPositive()
+        || tableDepth.isPositive()
+        || codeDepth.isPositive()
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/googlejavaformat/java/javadoc/NestingCounter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+/*
+ * Copyright 2016 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java.javadoc;
+
+/** Mutable integer for tracking the level of nesting. */
+final class NestingCounter {
+  private int value;
+
+  int value() {
+    return value;
+  }
+
+  void increment() {
+    value++;
+  }
+
+  void incrementIfPositive() {
+    if (value > 0) {
+      value++;
+    }
+  }
+
+  void decrementIfPositive() {
+    if (value > 0) {
+      value--;
+    }
+  }
+
+  boolean isPositive() {
+    return value > 0;
+  }
+
+  void reset() {
+    value = 0;
+  }
+}
+
+codex
+I’ve confirmed the writer’s collaborators. I’m now checking the whole repository for references to `JavadocWriter` so I can quantify fan-in rather than infer it from the package structure alone.
+exec
+/bin/bash -lc 'rg -n "JavadocWriter" .' in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:20:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.AutoIndent.AUTO_INDENT;
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:21:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.AutoIndent.NO_AUTO_INDENT;
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:22:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.BLANK_LINE;
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:23:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NEWLINE;
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:24:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NONE;
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:25:import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.WHITESPACE;
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:40:final class JavadocWriter {
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:62:  JavadocWriter(int blockIndent) {
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/Token.java:27:   * indentation, forcing or forbidding whitespace) from {@link JavadocWriter} gets its own type.
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/Token.java:85:     * somewhat indirect: As far as {@link JavadocWriter} is concerned, this token is meaningless.
+./core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java:57:    JavadocWriter output = new JavadocWriter(blockIndent);
+
+exec
+/bin/bash -lc "rg -n \"new JavadocWriter|writeBeginJavadoc|writeEndJavadoc|writeFooterJavadocTagStart|requestWhitespace\\(|requestMoeBeginStripComment\" core/src/main/java core/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java:57:    JavadocWriter output = new JavadocWriter(blockIndent);
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java:60:        case BEGIN_JAVADOC -> output.writeBeginJavadoc();
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java:62:          output.writeEndJavadoc();
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java:65:        case FOOTER_JAVADOC_TAG_START -> output.writeFooterJavadocTagStart(token);
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java:81:        case MOE_BEGIN_STRIP_COMMENT -> output.requestMoeBeginStripComment(token);
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java:85:        case WHITESPACE -> output.requestWhitespace();
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:71:  void requestWhitespace() {
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:72:    requestWhitespace(WHITESPACE);
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:75:  void requestMoeBeginStripComment(Token token) {
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:80:  void writeBeginJavadoc() {
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:89:  void writeEndJavadoc() {
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:95:  void writeFooterJavadocTagStart(Token token) {
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:297:    requestWhitespace(BLANK_LINE);
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:301:    requestWhitespace(NEWLINE);
+core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java:304:  private void requestWhitespace(RequestedWhitespace requestedWhitespace) {
+
+codex
+I have the dependency picture: one production caller and a small helper set. I’m grabbing exact line numbers now so the verdict can cite concrete evidence rather than a vague summary.
+exec
+/bin/bash -lc "nl -ba core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java | sed -n '45,90p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+    45	  public static String formatJavadoc(String input, int blockIndent) {
+    46	    ImmutableList<Token> tokens;
+    47	    try {
+    48	      tokens = lex(input);
+    49	    } catch (LexException e) {
+    50	      return input;
+    51	    }
+    52	    String result = render(tokens, blockIndent);
+    53	    return makeSingleLineIfPossible(blockIndent, result);
+    54	  }
+    55	
+    56	  private static String render(List<Token> input, int blockIndent) {
+    57	    JavadocWriter output = new JavadocWriter(blockIndent);
+    58	    for (Token token : input) {
+    59	      switch (token.getType()) {
+    60	        case BEGIN_JAVADOC -> output.writeBeginJavadoc();
+    61	        case END_JAVADOC -> {
+    62	          output.writeEndJavadoc();
+    63	          return output.toString();
+    64	        }
+    65	        case FOOTER_JAVADOC_TAG_START -> output.writeFooterJavadocTagStart(token);
+    66	        case SNIPPET_BEGIN -> output.writeSnippetBegin(token);
+    67	        case SNIPPET_END -> output.writeSnippetEnd(token);
+    68	        case LIST_OPEN_TAG -> output.writeListOpen(token);
+    69	        case LIST_CLOSE_TAG -> output.writeListClose(token);
+    70	        case LIST_ITEM_OPEN_TAG -> output.writeListItemOpen(token);
+    71	        case HEADER_OPEN_TAG -> output.writeHeaderOpen(token);
+    72	        case HEADER_CLOSE_TAG -> output.writeHeaderClose(token);
+    73	        case PARAGRAPH_OPEN_TAG -> output.writeParagraphOpen(standardizePToken(token));
+    74	        case BLOCKQUOTE_OPEN_TAG, BLOCKQUOTE_CLOSE_TAG -> output.writeBlockquoteOpenOrClose(token);
+    75	        case PRE_OPEN_TAG -> output.writePreOpen(token);
+    76	        case PRE_CLOSE_TAG -> output.writePreClose(token);
+    77	        case CODE_OPEN_TAG -> output.writeCodeOpen(token);
+    78	        case CODE_CLOSE_TAG -> output.writeCodeClose(token);
+    79	        case TABLE_OPEN_TAG -> output.writeTableOpen(token);
+    80	        case TABLE_CLOSE_TAG -> output.writeTableClose(token);
+    81	        case MOE_BEGIN_STRIP_COMMENT -> output.requestMoeBeginStripComment(token);
+    82	        case MOE_END_STRIP_COMMENT -> output.writeMoeEndStripComment(token);
+    83	        case HTML_COMMENT -> output.writeHtmlComment(token);
+    84	        case BR_TAG -> output.writeBr(standardizeBrToken(token));
+    85	        case WHITESPACE -> output.requestWhitespace();
+    86	        case FORCED_NEWLINE -> output.writeLineBreakNoAutoIndent();
+    87	        case LITERAL -> output.writeLiteral(token);
+    88	        case PARAGRAPH_CLOSE_TAG, LIST_ITEM_CLOSE_TAG, OPTIONAL_LINE_BREAK -> {}
+    89	      }
+    90	    }
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/com/google/googlejavaformat/java/javadoc/Token.java | sed -n '20,95p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+exec
+/bin/bash -lc "nl -ba core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java | sed -n '220,360p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+    20	 * are in {@link JavadocLexer}.
+    21	 */
+    22	final class Token {
+    23	  /**
+    24	   * Javadoc token type.
+    25	   *
+    26	   * <p>The general idea is that every token that requires special handling (extra line breaks,
+    27	   * indentation, forcing or forbidding whitespace) from {@link JavadocWriter} gets its own type.
+    28	   * But I haven't been super careful about it, so I'd imagine that we could merge or remove some of
+    29	   * these if we wanted. (For example, PARAGRAPH_CLOSE_TAG and LIST_ITEM_CLOSE_TAG could share a
+    30	   * common IGNORABLE token type. But their corresponding OPEN tags exist, so I've kept the CLOSE
+    31	   * tags.)
+    32	   *
+    33	   * <p>Note, though, that tokens of the same type may still have been handled differently by {@link
+    34	   * JavadocLexer} when it created them. For example, LITERAL is used for both plain text and inline
+    35	   * tags, even though the two affect the lexer's state differently.
+    36	   */
+    37	  enum Type {
+    38	    /** ∕✱✱ */
+    39	    BEGIN_JAVADOC,
+    40	    /** ✱∕ */
+    41	    END_JAVADOC,
+    42	    /** The {@code @foo} that begins a block Javadoc tag like {@code @throws}. */
+    43	    FOOTER_JAVADOC_TAG_START,
+    44	    /** The opening {@code ｛@snippet} of a code snippet. */
+    45	    SNIPPET_BEGIN,
+    46	    /** The closing {@code ｝} of a code snippet. */
+    47	    SNIPPET_END,
+    48	    LIST_OPEN_TAG,
+    49	    LIST_CLOSE_TAG,
+    50	    LIST_ITEM_OPEN_TAG,
+    51	    LIST_ITEM_CLOSE_TAG,
+    52	    HEADER_OPEN_TAG,
+    53	    HEADER_CLOSE_TAG,
+    54	    PARAGRAPH_OPEN_TAG,
+    55	    PARAGRAPH_CLOSE_TAG,
+    56	    // TODO(cpovirk): Support <div> (probably identically to <blockquote>).
+    57	    BLOCKQUOTE_OPEN_TAG,
+    58	    BLOCKQUOTE_CLOSE_TAG,
+    59	    PRE_OPEN_TAG,
+    60	    PRE_CLOSE_TAG,
+    61	    CODE_OPEN_TAG,
+    62	    CODE_CLOSE_TAG,
+    63	    TABLE_OPEN_TAG,
+    64	    TABLE_CLOSE_TAG,
+    65	    /** {@code <!-- MOE：begin_intracomment_strip -->} */
+    66	    MOE_BEGIN_STRIP_COMMENT,
+    67	    /** {@code <!-- MOE：end_intracomment_strip -->} */
+    68	    MOE_END_STRIP_COMMENT,
+    69	    HTML_COMMENT,
+    70	    // TODO(cpovirk): Support <hr> (probably a blank line before and after).
+    71	    BR_TAG,
+    72	    /**
+    73	     * Whitespace that is not in a {@code <pre>} or {@code <table>} section. Whitespace includes
+    74	     * leading newlines, asterisks, and tabs and spaces. In the output, it is translated to newlines
+    75	     * (with leading spaces and asterisks) or spaces.
+    76	     */
+    77	    WHITESPACE,
+    78	    /**
+    79	     * A newline in a {@code <pre>} or {@code <table>} section. We preserve user formatting in these
+    80	     * sections, including newlines.
+    81	     */
+    82	    FORCED_NEWLINE,
+    83	    /**
+    84	     * Token that permits but does not force a line break. The way that we accomplish this is
+    85	     * somewhat indirect: As far as {@link JavadocWriter} is concerned, this token is meaningless.
+    86	     * But its mere existence prevents {@link JavadocLexer} from joining two {@link #LITERAL} tokens
+    87	     * that would otherwise be adjacent. Since this token is not real whitespace, the writer may end
+    88	     * up writing the literals together with no space between, just as if they'd been joined.
+    89	     * However, if they don't fit together on the line, the writer will write the first one, start a
+    90	     * new line, and write the second. Hence, the token acts as an optional line break.
+    91	     */
+    92	    OPTIONAL_LINE_BREAK,
+    93	    /**
+    94	     * Anything else: {@code foo}, {@code <b>}, {@code {@code foo}} etc. {@link JavadocLexer}
+    95	     * sometimes creates adjacent literal tokens, which it then merges into a single, larger literal
+
+ succeeded in 0ms:
+   220	    requestBlankLine();
+   221	
+   222	    writeToken(token);
+   223	
+   224	    requestBlankLine();
+   225	  }
+   226	
+   227	  void writePreOpen(Token token) {
+   228	    requestBlankLine();
+   229	
+   230	    writeToken(token);
+   231	  }
+   232	
+   233	  void writePreClose(Token token) {
+   234	    writeToken(token);
+   235	
+   236	    requestBlankLine();
+   237	  }
+   238	
+   239	  void writeCodeOpen(Token token) {
+   240	    writeToken(token);
+   241	  }
+   242	
+   243	  void writeCodeClose(Token token) {
+   244	    writeToken(token);
+   245	  }
+   246	
+   247	  void writeTableOpen(Token token) {
+   248	    requestBlankLine();
+   249	
+   250	    writeToken(token);
+   251	  }
+   252	
+   253	  void writeTableClose(Token token) {
+   254	    writeToken(token);
+   255	
+   256	    requestBlankLine();
+   257	  }
+   258	
+   259	  void writeMoeEndStripComment(Token token) {
+   260	    writeLineBreakNoAutoIndent();
+   261	    appendSpaces(indentForMoeEndStripComment);
+   262	
+   263	    // Or maybe just "output.append(token.getValue())?" I'm kind of surprised this is so easy.
+   264	    writeToken(token);
+   265	
+   266	    requestNewline();
+   267	  }
+   268	
+   269	  void writeHtmlComment(Token token) {
+   270	    requestNewline();
+   271	
+   272	    writeToken(token);
+   273	
+   274	    requestNewline();
+   275	  }
+   276	
+   277	  void writeBr(Token token) {
+   278	    writeToken(token);
+   279	
+   280	    requestNewline();
+   281	  }
+   282	
+   283	  void writeLineBreakNoAutoIndent() {
+   284	    writeNewline(NO_AUTO_INDENT);
+   285	  }
+   286	
+   287	  void writeLiteral(Token token) {
+   288	    writeToken(token);
+   289	  }
+   290	
+   291	  @Override
+   292	  public String toString() {
+   293	    return output.toString();
+   294	  }
+   295	
+   296	  private void requestBlankLine() {
+   297	    requestWhitespace(BLANK_LINE);
+   298	  }
+   299	
+   300	  private void requestNewline() {
+   301	    requestWhitespace(NEWLINE);
+   302	  }
+   303	
+   304	  private void requestWhitespace(RequestedWhitespace requestedWhitespace) {
+   305	    this.requestedWhitespace = max(requestedWhitespace, this.requestedWhitespace);
+   306	  }
+   307	
+   308	  /**
+   309	   * The kind of whitespace that has been requested between the previous and next tokens. The order
+   310	   * of the values is significant: It goes from lowest priority to highest. For example, if the
+   311	   * previous token requests {@link #BLANK_LINE} after it but the next token requests only {@link
+   312	   * #NEWLINE} before it, we insert {@link #BLANK_LINE}.
+   313	   */
+   314	  enum RequestedWhitespace {
+   315	    NONE,
+   316	    WHITESPACE,
+   317	    NEWLINE,
+   318	    BLANK_LINE,
+   319	    ;
+   320	  }
+   321	
+   322	  private void writeToken(Token token) {
+   323	    if (requestedMoeBeginStripComment != null) {
+   324	      requestNewline();
+   325	    }
+   326	
+   327	    if (requestedWhitespace == BLANK_LINE
+   328	        && (postWriteModifiedContinuingListCount.isPositive() || continuingFooterTag)) {
+   329	      /*
+   330	       * We don't write blank lines inside lists or footer tags, even in cases where we otherwise
+   331	       * would (e.g., before a <p> tag). Justification: We don't write blank lines _between_ list
+   332	       * items or footer tags, so it would be strange to write blank lines _within_ one. Of course,
+   333	       * an alternative approach would be to go ahead and write blank lines between items/tags,
+   334	       * either always or only in the case that an item contains a blank line.
+   335	       */
+   336	      requestedWhitespace = NEWLINE;
+   337	    }
+   338	
+   339	    if (requestedWhitespace == BLANK_LINE) {
+   340	      writeBlankLine();
+   341	      requestedWhitespace = NONE;
+   342	    } else if (requestedWhitespace == NEWLINE) {
+   343	      writeNewline();
+   344	      requestedWhitespace = NONE;
+   345	    }
+   346	    boolean needWhitespace = (requestedWhitespace == WHITESPACE);
+   347	
+   348	    /*
+   349	     * Write a newline if necessary to respect the line limit. (But if we're at the beginning of the
+   350	     * line, a newline won't help. Or it might help but only by separating "<p>veryverylongword,"
+   351	     * which goes against our style.)
+   352	     */
+   353	    if (!atStartOfLine && token.length() + (needWhitespace ? 1 : 0) > remainingOnLine) {
+   354	      writeNewline();
+   355	    }
+   356	    if (!atStartOfLine && needWhitespace) {
+   357	      output.append(" ");
+   358	      remainingOnLine--;
+   359	    }
+   360	
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocWriter.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright 2016 Google Inc.
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+     5	 * in compliance with the License. You may obtain a copy of the License at
+     6	 *
+     7	 *     http://www.apache.org/licenses/LICENSE-2.0
+     8	 *
+     9	 * Unless required by applicable law or agreed to in writing, software distributed under the License
+    10	 * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+    11	 * or implied. See the License for the specific language governing permissions and limitations under
+    12	 * the License.
+    13	 */
+    14	
+    15	package com.google.googlejavaformat.java.javadoc;
+    16	
+    17	import static com.google.common.base.Preconditions.checkNotNull;
+    18	import static com.google.common.collect.Comparators.max;
+    19	import static com.google.common.collect.Sets.immutableEnumSet;
+    20	import static com.google.googlejavaformat.java.javadoc.JavadocWriter.AutoIndent.AUTO_INDENT;
+    21	import static com.google.googlejavaformat.java.javadoc.JavadocWriter.AutoIndent.NO_AUTO_INDENT;
+    22	import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.BLANK_LINE;
+    23	import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NEWLINE;
+    24	import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NONE;
+    25	import static com.google.googlejavaformat.java.javadoc.JavadocWriter.RequestedWhitespace.WHITESPACE;
+    26	import static com.google.googlejavaformat.java.javadoc.Token.Type.HEADER_OPEN_TAG;
+    27	import static com.google.googlejavaformat.java.javadoc.Token.Type.LIST_ITEM_OPEN_TAG;
+    28	import static com.google.googlejavaformat.java.javadoc.Token.Type.PARAGRAPH_OPEN_TAG;
+    29	
+    30	import com.google.common.collect.ImmutableSet;
+    31	import com.google.googlejavaformat.java.javadoc.Token.Type;
+    32	
+    33	/**
+    34	 * Stateful object that accepts "requests" and "writes," producing formatted Javadoc.
+    35	 *
+    36	 * <p>Our Javadoc formatter doesn't ever generate a parse tree, only a stream of tokens, so the
+    37	 * writer must compute and store the answer to questions like "How many levels of nested HTML list
+    38	 * are we inside?"
+    39	 */
+    40	final class JavadocWriter {
+    41	  private final int blockIndent;
+    42	  private final StringBuilder output = new StringBuilder();
+    43	
+    44	  /**
+    45	   * Whether we are inside an {@code <li>} element, excluding the case in which the {@code <li>}
+    46	   * contains a {@code <ul>} or {@code <ol>} that we are also inside -- unless of course we're
+    47	   * inside an {@code <li>} element in that inner list :)
+    48	   */
+    49	  private boolean continuingListItemOfInnermostList;
+    50	
+    51	  private boolean continuingFooterTag;
+    52	  private final NestingCounter continuingListItemCount = new NestingCounter();
+    53	  private final NestingCounter continuingListCount = new NestingCounter();
+    54	  private final NestingCounter postWriteModifiedContinuingListCount = new NestingCounter();
+    55	  private int remainingOnLine;
+    56	  private boolean atStartOfLine;
+    57	  private RequestedWhitespace requestedWhitespace = NONE;
+    58	  private Token requestedMoeBeginStripComment;
+    59	  private int indentForMoeEndStripComment;
+    60	  private boolean wroteAnythingSignificant;
+    61	
+    62	  JavadocWriter(int blockIndent) {
+    63	    this.blockIndent = blockIndent;
+    64	  }
+    65	
+    66	  /**
+    67	   * Requests whitespace between the previously written token and the next written token. The
+    68	   * request may be honored, or it may be overridden by a request for "more significant" whitespace,
+    69	   * like a newline.
+    70	   */
+    71	  void requestWhitespace() {
+    72	    requestWhitespace(WHITESPACE);
+    73	  }
+    74	
+    75	  void requestMoeBeginStripComment(Token token) {
+    76	    // We queue this up so that we can put it after any requested whitespace.
+    77	    requestedMoeBeginStripComment = checkNotNull(token);
+    78	  }
+    79	
+    80	  void writeBeginJavadoc() {
+    81	    /*
+    82	     * JavaCommentsHelper will make sure this is indented right. But it seems sensible enough that,
+    83	     * if our input starts with ∕✱✱, so too does our output.
+    84	     */
+    85	    output.append("/**");
+    86	    writeNewline();
+    87	  }
+    88	
+    89	  void writeEndJavadoc() {
+    90	    output.append("\n");
+    91	    appendSpaces(blockIndent + 1);
+    92	    output.append("*/");
+    93	  }
+    94	
+    95	  void writeFooterJavadocTagStart(Token token) {
+    96	    // Close any unclosed lists (e.g., <li> without <ul>).
+    97	    // TODO(cpovirk): Actually generate </ul>, etc.?
+    98	    /*
+    99	     * TODO(cpovirk): Also generate </pre> and </table> if appropriate. This is necessary for
+   100	     * idempotency in broken Javadoc. (We don't necessarily need that, but full idempotency may be a
+   101	     * nice goal, especially if it helps us use a fuzzer to test.) Unfortunately, the writer doesn't
+   102	     * currently know which of those tags are open.
+   103	     */
+   104	    continuingListItemOfInnermostList = false;
+   105	    continuingListItemCount.reset();
+   106	    continuingListCount.reset();
+   107	    /*
+   108	     * There's probably no need for this, since its only effect is to disable blank lines in some
+   109	     * cases -- and we're doing that already in the footer.
+   110	     */
+   111	    postWriteModifiedContinuingListCount.reset();
+   112	
+   113	    if (!wroteAnythingSignificant) {
+   114	      // Javadoc consists solely of tags. This is frowned upon in general but OK for @Overrides.
+   115	    } else if (!continuingFooterTag) {
+   116	      // First footer tag after a body tag.
+   117	      requestBlankLine();
+   118	    } else {
+   119	      // Subsequent footer tag.
+   120	      continuingFooterTag = false;
+   121	      requestNewline();
+   122	    }
+   123	    writeToken(token);
+   124	    continuingFooterTag = true;
+   125	  }
+   126	
+   127	  void writeSnippetBegin(Token token) {
+   128	    requestBlankLine();
+   129	    writeToken(token);
+   130	    /*
+   131	     * We don't request a newline here because we should have at least a colon following on this
+   132	     * line, and we may have attributes after that.
+   133	     *
+   134	     * (If we find it convenient, we could instead consume the entire rest of the line as part of
+   135	     * the same token as `{@snippet` itself. But we already would never split the rest of the line
+   136	     * across lines (because we preserve whitespace), so that might not accomplish anything. Plus,
+   137	     * we'd probably want to be careful not to swallow an expectedly early closing `}`.)
+   138	     */
+   139	  }
+   140	
+   141	  void writeSnippetEnd(Token token) {
+   142	    /*
+   143	     * We don't request a newline here because we have preserved all newlines that existed in the
+   144	     * input. TODO: b/323389829 - Improve upon that. Specifically:
+   145	     *
+   146	     * - If there is not yet a newline, we should add one.
+   147	     *
+   148	     * - If there are multiple newlines, we should probably collapse them.
+   149	     *
+   150	     * - If the closing brace isn't indented as we'd want (as in the link below, in which the whole
+   151	     *   @apiNote isn't indented), we should indent it.
+   152	     *
+   153	     * https://github.com/openjdk/jdk/blob/1ebf2cf639300728ffc024784f5dc1704317b0b3/src/java.base/share/classes/java/util/Collections.java#L5993-L6006
+   154	     */
+   155	    writeToken(token);
+   156	    requestBlankLine();
+   157	  }
+   158	
+   159	  void writeListOpen(Token token) {
+   160	    requestBlankLine();
+   161	
+   162	    writeToken(token);
+   163	    continuingListItemOfInnermostList = false;
+   164	    continuingListCount.increment();
+   165	    postWriteModifiedContinuingListCount.increment();
+   166	
+   167	    requestNewline();
+   168	  }
+   169	
+   170	  void writeListClose(Token token) {
+   171	    requestNewline();
+   172	
+   173	    continuingListItemCount.decrementIfPositive();
+   174	    continuingListCount.decrementIfPositive();
+   175	    writeToken(token);
+   176	    postWriteModifiedContinuingListCount.decrementIfPositive();
+   177	
+   178	    requestBlankLine();
+   179	  }
+   180	
+   181	  void writeListItemOpen(Token token) {
+   182	    requestNewline();
+   183	
+   184	    if (continuingListItemOfInnermostList) {
+   185	      continuingListItemOfInnermostList = false;
+   186	      continuingListItemCount.decrementIfPositive();
+   187	    }
+   188	    writeToken(token);
+   189	    continuingListItemOfInnermostList = true;
+   190	    continuingListItemCount.increment();
+   191	  }
+   192	
+   193	  void writeHeaderOpen(Token token) {
+   194	    requestBlankLine();
+   195	
+   196	    writeToken(token);
+   197	  }
+   198	
+   199	  void writeHeaderClose(Token token) {
+   200	    writeToken(token);
+   201	
+   202	    requestBlankLine();
+   203	  }
+   204	
+   205	  void writeParagraphOpen(Token token) {
+   206	    if (!wroteAnythingSignificant) {
+   207	      /*
+   208	       * The user included an initial <p> tag. Ignore it, and don't request a blank line before the
+   209	       * next token.
+   210	       */
+   211	      return;
+   212	    }
+   213	
+   214	    requestBlankLine();
+   215	
+   216	    writeToken(token);
+   217	  }
+   218	
+   219	  void writeBlockquoteOpenOrClose(Token token) {
+   220	    requestBlankLine();
+
+codex
+{"target":"com.google.googlejavaformat.java.javadoc.JavadocWriter","detection":false,"justification":"Repository-wide search found only one production caller of this class: `core/src/main/java/com/google/googlejavaformat/java/javadoc/JavadocFormatter.java:56-88`, where `JavadocFormatter` instantiates `JavadocWriter` and dispatches every token type to its write/request methods. `core/src/main/java/com/google/googlejavaformat/java/javadoc/Token.java:23-90` only mentions `JavadocWriter` in comments, not as a dependency. `JavadocWriter.java` itself depends on a small local set (`Token`, `NestingCounter`, `ImmutableSet`, and a few static helpers) and there is no evidence of broad fan-in from multiple classes, so it does not look like a dependency hub."}
+tokens used
+21,229

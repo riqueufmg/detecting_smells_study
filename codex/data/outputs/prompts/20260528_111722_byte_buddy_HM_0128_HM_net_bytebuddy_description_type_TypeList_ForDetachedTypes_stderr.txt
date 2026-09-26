@@ -1,0 +1,1169 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ef2-7214-76f0-b282-78312340f0f2
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.description.type.TypeList.ForDetachedTypes` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.description.type.TypeList.ForDetachedTypes",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.description.type.TypeList.ForDetachedTypes`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and checking both its own structure and where it is referenced so I can judge fan-in and fan-out evidence directly from the source tree.
+exec
+/bin/bash -lc 'rg -n "class ForDetachedTypes|ForDetachedTypes" src' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 0ms:
+rg: src: IO error for operation on src: No such file or directory (os error 2)
+
+exec
+/bin/bash -lc "rg --files src | rg \"TypeList\\.java|TypeDescription\\.java|TypePool\\.java|TypeList\\"'$ForDetachedTypes|TypeList"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 1 in 0ms:
+rg: src: IO error for operation on src: No such file or directory (os error 2)
+
+codex
+The repository layout isn’t the standard `src/` tree, so I’m first finding the actual source roots and then I’ll inspect the target class plus its inbound references.
+exec
+/bin/bash -lc "rg --files . | rg \"TypeList\\.java"'$|ForDetachedTypes|TypeDescription'"\\.java"'$|TypePool'"\\.java"'$"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java
+
+exec
+/bin/bash -lc 'pwd && ls -1' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+LICENSE
+NOTICE
+README.md
+SECURITY.md
+byte-buddy
+byte-buddy-agent
+byte-buddy-android
+byte-buddy-android-test
+byte-buddy-benchmark
+byte-buddy-dep
+byte-buddy-gradle-plugin
+byte-buddy-maven-plugin
+checkstyle.xml
+mvnw
+mvnw.cmd
+pom.xml
+release-notes.md
+spotbugs-exclude.xml
+version-rules.xml
+
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.description.type;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.build.CachedReturnPlugin;
+import net.bytebuddy.description.ByteCodeElement;
+import net.bytebuddy.description.TypeVariableSource;
+import net.bytebuddy.description.annotation.AnnotationList;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.ParameterDescription;
+import net.bytebuddy.implementation.bytecode.StackSize;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.matcher.FilterableList;
+import net.bytebuddy.utility.JavaConstant;
+import net.bytebuddy.utility.nullability.AlwaysNull;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.objectweb.asm.Type;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.GenericDeclaration;
+import java.lang.reflect.Method;
+import java.lang.reflect.TypeVariable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Implementations represent a list of type descriptions.
+ */
+public interface TypeList extends FilterableList<TypeDescription, TypeList> {
+
+    /**
+     * An {@code null} type list.
+     */
+    @AlwaysNull
+    TypeList UNDEFINED = null;
+
+    /**
+     * Represents that a type list does not contain any values for ASM interoperability which is represented by {@code null}.
+     */
+    @AlwaysNull
+    @SuppressFBWarnings(value = {"MS_MUTABLE_ARRAY", "MS_OOI_PKGPROTECT"}, justification = "Null reference cannot be mutated.")
+    String[] NO_INTERFACES = null;
+
+    /**
+     * Returns a list of internal names of all types represented by this list.
+     *
+     * @return An array of all internal names or {@code null} if the list is empty.
+     */
+    @MaybeNull
+    String[] toInternalNames();
+
+    /**
+     * Returns the sum of the size of all types contained in this list.
+     *
+     * @return The sum of the size of all types contained in this list.
+     */
+    int getStackSize();
+
+    /**
+     * Returns a generic list of types.
+     *
+     * @return A representation of these types in a generic format.
+     */
+    TypeList.Generic asGenericTypes();
+
+    /**
+     * An abstract base implementation of a type list.
+     */
+    abstract class AbstractBase extends FilterableList.AbstractBase<TypeDescription, TypeList> implements TypeList {
+
+        @Override
+        protected TypeList wrap(List<TypeDescription> values) {
+            return new Explicit(values);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int getStackSize() {
+            return StackSize.of(this);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @MaybeNull
+        public String[] toInternalNames() {
+            String[] internalNames = new String[size()];
+            int i = 0;
+            for (TypeDescription typeDescription : this) {
+                internalNames[i++] = typeDescription.getInternalName();
+            }
+            return internalNames.length == 0
+                    ? NO_INTERFACES
+                    : internalNames;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Generic asGenericTypes() {
+            return new Generic.Explicit(this);
+        }
+    }
+
+    /**
+     * Implementation of a type list for an array of loaded types.
+     */
+    class ForLoadedTypes extends AbstractBase {
+
+        /**
+         * The loaded types this type list represents.
+         */
+        private final List<? extends Class<?>> types;
+
+        /**
+         * Creates a new type list for an array of loaded types.
+         *
+         * @param type The types to be represented by this list.
+         */
+        public ForLoadedTypes(Class<?>... type) {
+            this(Arrays.asList(type));
+        }
+
+        /**
+         * Creates a new type list for an array of loaded types.
+         *
+         * @param types The types to be represented by this list.
+         */
+        public ForLoadedTypes(List<? extends Class<?>> types) {
+            this.types = types;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeDescription get(int index) {
+            return TypeDescription.ForLoadedType.of(types.get(index));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int size() {
+            return types.size();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @MaybeNull
+        public String[] toInternalNames() {
+            String[] internalNames = new String[types.size()];
+            int i = 0;
+            for (Class<?> type : types) {
+                internalNames[i++] = Type.getInternalName(type);
+            }
+            return internalNames.length == 0
+                    ? NO_INTERFACES
+                    : internalNames;
+        }
+    }
+
+    /**
+     * A wrapper implementation of an explicit list of types.
+     */
+    class Explicit extends AbstractBase {
+
+        /**
+         * The list of type descriptions this list represents.
+         */
+        private final List<? extends TypeDescription> typeDescriptions;
+
+        /**
+         * Creates an immutable wrapper.
+         *
+         * @param typeDescription The list of types to be represented by this wrapper.
+         */
+        public Explicit(TypeDescription... typeDescription) {
+            this(Arrays.asList(typeDescription));
+        }
+
+        /**
+         * Creates an immutable wrapper.
+         *
+         * @param typeDescriptions The list of types to be represented by this wrapper.
+         */
+        public Explicit(List<? extends TypeDescription> typeDescriptions) {
+            this.typeDescriptions = typeDescriptions;
+        }
+
+        /**
+         * Returns a list of types of the supplied Java constants.
+         *
+         * @param constants The Java constants to represent as type descriptions.
+         * @return A list of type descriptions for the supplied constants.
+         */
+        public static TypeList of(List<? extends JavaConstant> constants) {
+            List<TypeDescription> typeDescriptions = new ArrayList<TypeDescription>(constants.size());
+            for (JavaConstant constant : constants) {
+                typeDescriptions.add(constant.getTypeDescription());
+            }
+            return new Explicit(typeDescriptions);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeDescription get(int index) {
+            return typeDescriptions.get(index);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int size() {
+            return typeDescriptions.size();
+        }
+    }
+
+    /**
+     * An implementation of an empty type list.
+     */
+    class Empty extends FilterableList.Empty<TypeDescription, TypeList> implements TypeList {
+
+        /**
+         * {@inheritDoc}
+         */
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Value is null")
+        public String[] toInternalNames() {
+            return NO_INTERFACES;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int getStackSize() {
+            return 0;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Generic asGenericTypes() {
+
+exec
+/bin/bash -lc 'rg -n "ForDetachedTypes" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1488:            return TypeList.Generic.ForDetachedTypes.attachVariables(this, typeVariables);
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1509:            return TypeList.Generic.ForDetachedTypes.attach(this, exceptionTypes);
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1705:            return new TypeList.Generic.ForDetachedTypes(methodDescription.getExceptionTypes(), visitor);
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java:517:        class ForDetachedTypes extends AbstractBase {
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java:535:            public ForDetachedTypes(List<? extends TypeDescription.Generic> detachedTypes,
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java:560:                return new ForDetachedTypes(detachedTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(fieldDescription));
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java:571:                return new ForDetachedTypes(detachedTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(methodDescription));
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java:593:                return new ForDetachedTypes(detachedTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(parameterDescription));
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:3800:                return new TypeList.Generic.ForDetachedTypes.WithResolvedErasure(erasure.getInterfaces(), new Visitor.ForRawType(erasure));
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:4282:                    return new TypeList.Generic.ForDetachedTypes.WithResolvedErasure(typeDescription.getInterfaces(), Visitor.Reifying.INHERITING);
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5111:                return new TypeList.Generic.ForDetachedTypes.WithResolvedErasure(asErasure().getInterfaces(), new Visitor.Substitutor.ForTypeVariableBinding(this));
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5585:                    return new TypeList.Generic.ForDetachedTypes.WithResolvedErasure(super.getInterfaces(), Visitor.Reifying.INHERITING);
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5606:                    return new TypeList.Generic.ForDetachedTypes(parameterizedType.getTypeArguments(), Visitor.TypeErasing.INSTANCE);
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5677:                    return new TypeList.Generic.ForDetachedTypes(typeDescription.getTypeVariables(), Visitor.AnnotationStripper.INSTANCE);
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Transformer.java:391:                return new TypeList.Generic.ForDetachedTypes.OfTypeVariables(this, token.getTypeVariableTokens(), new AttachmentVisitor());
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Transformer.java:412:                return new TypeList.Generic.ForDetachedTypes(token.getExceptionTypes(), new AttachmentVisitor());
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:1557:            return new TypeList.Generic.ForDetachedTypes.WithResolvedErasure(interfaceTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(this));
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:1578:            return TypeList.Generic.ForDetachedTypes.attachVariables(this, typeVariables);
+
+exec
+/bin/bash -lc "sed -n '480,760p' byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+                 *
+                 * @param typeVariables The type variables this list represents.
+                 */
+                protected OfTypeVariables(List<TypeVariable<?>> typeVariables) {
+                    this.typeVariables = typeVariables;
+                }
+
+                /**
+                 * Creates a list of the type variables of the supplied generic declaration.
+                 *
+                 * @param genericDeclaration The generic declaration to represent.
+                 * @return A generic type list for the returned generic declaration.
+                 */
+                public static Generic of(GenericDeclaration genericDeclaration) {
+                    return new OfTypeVariables(genericDeclaration.getTypeParameters());
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public TypeDescription.Generic get(int index) {
+                    TypeVariable<?> typeVariable = typeVariables.get(index);
+                    return TypeDefinition.Sort.describe(typeVariable, new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedTypeVariable(typeVariable));
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public int size() {
+                    return typeVariables.size();
+                }
+            }
+        }
+
+        /**
+         * A list of detached types that are attached on reception.
+         */
+        class ForDetachedTypes extends AbstractBase {
+
+            /**
+             * The detached types this list represents.
+             */
+            private final List<? extends TypeDescription.Generic> detachedTypes;
+
+            /**
+             * The visitor to use for attaching the detached types.
+             */
+            private final TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor;
+
+            /**
+             * Creates a list of detached types that are attached on reception.
+             *
+             * @param detachedTypes The detached types this list represents.
+             * @param visitor       The visitor to use for attaching the detached types.
+             */
+            public ForDetachedTypes(List<? extends TypeDescription.Generic> detachedTypes,
+                                    TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor) {
+                this.detachedTypes = detachedTypes;
+                this.visitor = visitor;
+            }
+
+            /**
+             * Creates a list of type variables that are attached to the provided type.
+             *
+             * @param typeDescription       The type to which the type variables are to be attached to.
+             * @param detachedTypeVariables A mapping of type variable symbols to their detached type variable bounds.
+             * @return A type list representing the symbolic type variables in their attached state to the given type description.
+             */
+            public static Generic attachVariables(TypeDescription typeDescription, List<? extends TypeVariableToken> detachedTypeVariables) {
+                return new OfTypeVariables(typeDescription, detachedTypeVariables, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(typeDescription));
+            }
+
+            /**
+             * Creates a list of types that are attached to the provided field.
+             *
+             * @param fieldDescription The field to which the detached variables are attached to.
+             * @param detachedTypes    The detached types.
+             * @return A type list representing the detached types being attached to the provided field description.
+             */
+            public static Generic attach(FieldDescription fieldDescription, List<? extends TypeDescription.Generic> detachedTypes) {
+                return new ForDetachedTypes(detachedTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(fieldDescription));
+            }
+
+            /**
+             * Creates a list of types that are attached to the provided method.
+             *
+             * @param methodDescription The method to which the detached variables are attached to.
+             * @param detachedTypes     The detached types.
+             * @return A type list representing the detached types being attached to the provided method description.
+             */
+            public static Generic attach(MethodDescription methodDescription, List<? extends TypeDescription.Generic> detachedTypes) {
+                return new ForDetachedTypes(detachedTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(methodDescription));
+            }
+
+            /**
+             * Creates a list of type variables that are attached to the provided method.
+             *
+             * @param methodDescription     The method to which the type variables are to be attached to.
+             * @param detachedTypeVariables A mapping of type variable symbols to their detached type variable bounds.
+             * @return A type list representing the symbolic type variables in their attached state to the given method description.
+             */
+            public static Generic attachVariables(MethodDescription methodDescription, List<? extends TypeVariableToken> detachedTypeVariables) {
+                return new OfTypeVariables(methodDescription, detachedTypeVariables, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(methodDescription));
+            }
+
+            /**
+             * Creates a list of types that are attached to the provided parameter.
+             *
+             * @param parameterDescription The parameter to which the detached variables are attached to.
+             * @param detachedTypes        The detached types.
+             * @return A type list representing the detached types being attached to the provided parameter description.
+             */
+            public static Generic attach(ParameterDescription parameterDescription, List<? extends TypeDescription.Generic> detachedTypes) {
+                return new ForDetachedTypes(detachedTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(parameterDescription));
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeDescription.Generic get(int index) {
+                return detachedTypes.get(index).accept(visitor);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public int size() {
+                return detachedTypes.size();
+            }
+
+            /**
+             * A list of detached types that are attached on reception but not when computing an erasure.
+             */
+            public static class WithResolvedErasure extends Generic.AbstractBase {
+
+                /**
+                 * The detached types this list represents.
+                 */
+                private final List<? extends TypeDescription.Generic> detachedTypes;
+
+                /**
+                 * The visitor to use for attaching the detached types.
+                 */
+                private final TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor;
+
+                /**
+                 * Creates a list of generic type descriptions that are resolved lazily, i.e. type variables are not resolved
+                 * when computing an erasure.
+                 *
+                 * @param detachedTypes The detached types this list represents.
+                 * @param visitor       The visitor to use for attaching the detached types.
+                 */
+                public WithResolvedErasure(List<? extends TypeDescription.Generic> detachedTypes,
+                                           TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor) {
+                    this.detachedTypes = detachedTypes;
+                    this.visitor = visitor;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public TypeDescription.Generic get(int index) {
+                    return new TypeDescription.Generic.LazyProjection.WithResolvedErasure(detachedTypes.get(index), visitor);
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public int size() {
+                    return detachedTypes.size();
+                }
+            }
+
+            /**
+             * A list of attached type variables represented by a list of type variable tokens.
+             */
+            public static class OfTypeVariables extends Generic.AbstractBase {
+
+                /**
+                 * The type variable's source.
+                 */
+                private final TypeVariableSource typeVariableSource;
+
+                /**
+                 * A token representing the type variable in its detached state.
+                 */
+                private final List<? extends TypeVariableToken> detachedTypeVariables;
+
+                /**
+                 * A visitor for attaching the type variable's bounds.
+                 */
+                private final TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor;
+
+                /**
+                 * Creates a new list of attached type variables representing a list of type variable tokens.
+                 *
+                 * @param typeVariableSource    The type variable's source.
+                 * @param detachedTypeVariables A token representing the type variable in its detached state.
+                 * @param visitor               A visitor for attaching the type variable's bounds.
+                 */
+                public OfTypeVariables(TypeVariableSource typeVariableSource,
+                                       List<? extends TypeVariableToken> detachedTypeVariables,
+                                       TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor) {
+                    this.typeVariableSource = typeVariableSource;
+                    this.detachedTypeVariables = detachedTypeVariables;
+                    this.visitor = visitor;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public TypeDescription.Generic get(int index) {
+                    return new AttachedTypeVariable(typeVariableSource, detachedTypeVariables.get(index), visitor);
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public int size() {
+                    return detachedTypeVariables.size();
+                }
+
+                /**
+                 * A wrapper for representing a type variable in its attached state.
+                 */
+                protected static class AttachedTypeVariable extends TypeDescription.Generic.OfTypeVariable {
+
+                    /**
+                     * The type variable's source.
+                     */
+                    private final TypeVariableSource typeVariableSource;
+
+                    /**
+                     * A token representing the type variable in its detached state.
+                     */
+                    private final TypeVariableToken typeVariableToken;
+
+                    /**
+                     * A visitor for attaching the type variable's bounds.
+                     */
+                    private final TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor;
+
+                    /**
+                     * Creates a new attached type variable.
+                     *
+                     * @param typeVariableSource The type variable's source.
+                     * @param typeVariableToken  A token representing the type variable in its detached state.
+                     * @param visitor            A visitor for attaching the type variable's bounds.
+                     */
+                    protected AttachedTypeVariable(TypeVariableSource typeVariableSource,
+                                                   TypeVariableToken typeVariableToken,
+                                                   TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor) {
+                        this.typeVariableSource = typeVariableSource;
+                        this.typeVariableToken = typeVariableToken;
+                        this.visitor = visitor;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public Generic getUpperBounds() {
+                        return typeVariableToken.getBounds().accept(visitor);
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public TypeVariableSource getTypeVariableSource() {
+                        return typeVariableSource;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public String getSymbol() {
+                        return typeVariableToken.getSymbol();
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+
+exec
+/bin/bash -lc "sed -n '1460,1605p' byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+         * @param receiverType        The receiver type of this method or {@code null} if the receiver type is defined implicitly.
+         */
+        public Latent(TypeDescription declaringType,
+                      String internalName,
+                      int modifiers,
+                      List<? extends TypeVariableToken> typeVariables,
+                      TypeDescription.Generic returnType,
+                      List<? extends ParameterDescription.Token> parameterTokens,
+                      List<? extends TypeDescription.Generic> exceptionTypes,
+                      List<? extends AnnotationDescription> declaredAnnotations,
+                      @MaybeNull AnnotationValue<?, ?> defaultValue,
+                      @MaybeNull TypeDescription.Generic receiverType) {
+            this.declaringType = declaringType;
+            this.internalName = internalName;
+            this.modifiers = modifiers;
+            this.typeVariables = typeVariables;
+            this.returnType = returnType;
+            this.parameterTokens = parameterTokens;
+            this.exceptionTypes = exceptionTypes;
+            this.declaredAnnotations = declaredAnnotations;
+            this.defaultValue = defaultValue;
+            this.receiverType = receiverType;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeList.Generic getTypeVariables() {
+            return TypeList.Generic.ForDetachedTypes.attachVariables(this, typeVariables);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeDescription.Generic getReturnType() {
+            return returnType.accept(TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(this));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public ParameterList<ParameterDescription.InDefinedShape> getParameters() {
+            return new ParameterList.ForTokens(this, parameterTokens);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeList.Generic getExceptionTypes() {
+            return TypeList.Generic.ForDetachedTypes.attach(this, exceptionTypes);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public AnnotationList getDeclaredAnnotations() {
+            return new AnnotationList.Explicit(declaredAnnotations);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public String getInternalName() {
+            return internalName;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Nonnull
+        public TypeDescription getDeclaringType() {
+            return declaringType;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int getModifiers() {
+            return modifiers;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @MaybeNull
+        public AnnotationValue<?, ?> getDefaultValue() {
+            return defaultValue;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @MaybeNull
+        public TypeDescription.Generic getReceiverType() {
+            return receiverType == null
+                    ? super.getReceiverType()
+                    : receiverType.accept(TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(this));
+        }
+
+        /**
+         * A method description that represents the type initializer.
+         */
+        public static class TypeInitializer extends InDefinedShape.AbstractBase {
+
+            /**
+             * The type for which the type initializer should be represented.
+             */
+            private final TypeDescription typeDescription;
+
+            /**
+             * Creates a new method description representing the type initializer.
+             *
+             * @param typeDescription The type for which the type initializer should be represented.
+             */
+            public TypeInitializer(TypeDescription typeDescription) {
+                this.typeDescription = typeDescription;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeDescription.Generic getReturnType() {
+                return TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(void.class);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public ParameterList<ParameterDescription.InDefinedShape> getParameters() {
+                return new ParameterList.Empty<ParameterDescription.InDefinedShape>();
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeList.Generic getExceptionTypes() {
+                return new TypeList.Generic.Empty();
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            @AlwaysNull
+            public AnnotationValue<?, ?> getDefaultValue() {
+                return AnnotationValue.UNDEFINED;
+            }
+
+codex
+I’ve confirmed the class is a nested utility type in `TypeList.java`. Next I’m counting how broad its use is across the codebase and checking whether its own implementation depends on many other types, which is the key evidence for or against hub-like modularization.
+exec
+/bin/bash -lc 'rg -l "ForDetachedTypes" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Transformer.java
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java
+
+exec
+/bin/bash -lc "sed -n '1,120p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Transformer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.dynamic;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.build.SafeVarargsPlugin;
+import net.bytebuddy.description.annotation.AnnotationList;
+import net.bytebuddy.description.annotation.AnnotationValue;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.ParameterDescription;
+import net.bytebuddy.description.method.ParameterList;
+import net.bytebuddy.description.modifier.ModifierContributor;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.description.type.TypeList;
+import net.bytebuddy.utility.nullability.MaybeNull;
+
+import javax.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static net.bytebuddy.matcher.ElementMatchers.named;
+import static net.bytebuddy.matcher.ElementMatchers.none;
+
+/**
+ * A transformer is responsible for transforming an object into a compatible instance of the same type.
+ *
+ * @param <T> The type of the instance being transformed.
+ */
+public interface Transformer<T> {
+
+    /**
+     * Transforms the supplied target.
+     *
+     * @param instrumentedType The instrumented type that declares the target being transformed.
+     * @param target           The target entity that is being transformed.
+     * @return The transformed instance.
+     */
+    T transform(TypeDescription instrumentedType, T target);
+
+    /**
+     * A non-operational transformer that returns the received instance.
+     */
+    enum NoOp implements Transformer<Object> {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * Creates a transformer in a type-safe manner.
+         *
+         * @param <T> The type of the transformed object.
+         * @return A non-operational transformer.
+         */
+        @SuppressWarnings("unchecked")
+        public static <T> Transformer<T> make() {
+            return (Transformer<T>) INSTANCE;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Object transform(TypeDescription instrumentedType, Object target) {
+            return target;
+        }
+    }
+
+    /**
+     * A transformer for a field that delegates to another transformer that transforms a {@link net.bytebuddy.description.field.FieldDescription.Token}.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class ForField implements Transformer<FieldDescription> {
+
+        /**
+         * The token transformer to apply to a transformed field.
+         */
+        private final Transformer<FieldDescription.Token> transformer;
+
+        /**
+         * Creates a new simple field transformer.
+         *
+         * @param transformer The token transformer to apply to a transformed field.
+         */
+        public ForField(Transformer<FieldDescription.Token> transformer) {
+            this.transformer = transformer;
+        }
+
+        /**
+         * Creates a field transformer that patches the transformed field by the given modifier contributors.
+         *
+         * @param modifierContributor The modifier contributors to apply.
+         * @return A suitable field transformer.
+         */
+        public static Transformer<FieldDescription> withModifiers(ModifierContributor.ForField... modifierContributor) {
+            return withModifiers(Arrays.asList(modifierContributor));
+        }
+
+        /**
+         * Creates a field transformer that patches the transformed field by the given modifier contributors.
+         *
+         * @param modifierContributors The modifier contributors to apply.
+         * @return A suitable field transformer.
+
+exec
+/bin/bash -lc "rg -n \"class ForDetachedTypes|attachVariables\\(|attach\\(|WithResolvedErasure|OfTypeVariables|AttachedTypeVariable\" byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+462:            public static class OfTypeVariables extends Generic.AbstractBase {
+474:                protected OfTypeVariables(TypeVariable<?>... typeVariable) {
+483:                protected OfTypeVariables(List<TypeVariable<?>> typeVariables) {
+494:                    return new OfTypeVariables(genericDeclaration.getTypeParameters());
+517:        class ForDetachedTypes extends AbstractBase {
+548:            public static Generic attachVariables(TypeDescription typeDescription, List<? extends TypeVariableToken> detachedTypeVariables) {
+549:                return new OfTypeVariables(typeDescription, detachedTypeVariables, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(typeDescription));
+559:            public static Generic attach(FieldDescription fieldDescription, List<? extends TypeDescription.Generic> detachedTypes) {
+570:            public static Generic attach(MethodDescription methodDescription, List<? extends TypeDescription.Generic> detachedTypes) {
+581:            public static Generic attachVariables(MethodDescription methodDescription, List<? extends TypeVariableToken> detachedTypeVariables) {
+582:                return new OfTypeVariables(methodDescription, detachedTypeVariables, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(methodDescription));
+592:            public static Generic attach(ParameterDescription parameterDescription, List<? extends TypeDescription.Generic> detachedTypes) {
+613:            public static class WithResolvedErasure extends Generic.AbstractBase {
+632:                public WithResolvedErasure(List<? extends TypeDescription.Generic> detachedTypes,
+642:                    return new TypeDescription.Generic.LazyProjection.WithResolvedErasure(detachedTypes.get(index), visitor);
+656:            public static class OfTypeVariables extends Generic.AbstractBase {
+680:                public OfTypeVariables(TypeVariableSource typeVariableSource,
+692:                    return new AttachedTypeVariable(typeVariableSource, detachedTypeVariables.get(index), visitor);
+705:                protected static class AttachedTypeVariable extends TypeDescription.Generic.OfTypeVariable {
+729:                    protected AttachedTypeVariable(TypeVariableSource typeVariableSource,
+
+codex
+I have the dependency map; I’m now checking the exact call sites in the main consumers so the verdict rests on specific structural evidence rather than a coarse search hit count.
+exec
+/bin/bash -lc 'rg -n "ForDetachedTypes" byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Transformer.java byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:1557:            return new TypeList.Generic.ForDetachedTypes.WithResolvedErasure(interfaceTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(this));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:1578:            return TypeList.Generic.ForDetachedTypes.attachVariables(this, typeVariables);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Transformer.java:391:                return new TypeList.Generic.ForDetachedTypes.OfTypeVariables(this, token.getTypeVariableTokens(), new AttachmentVisitor());
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Transformer.java:412:                return new TypeList.Generic.ForDetachedTypes(token.getExceptionTypes(), new AttachmentVisitor());
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1488:            return TypeList.Generic.ForDetachedTypes.attachVariables(this, typeVariables);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1509:            return TypeList.Generic.ForDetachedTypes.attach(this, exceptionTypes);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1705:            return new TypeList.Generic.ForDetachedTypes(methodDescription.getExceptionTypes(), visitor);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:3800:                return new TypeList.Generic.ForDetachedTypes.WithResolvedErasure(erasure.getInterfaces(), new Visitor.ForRawType(erasure));
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:4282:                    return new TypeList.Generic.ForDetachedTypes.WithResolvedErasure(typeDescription.getInterfaces(), Visitor.Reifying.INHERITING);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5111:                return new TypeList.Generic.ForDetachedTypes.WithResolvedErasure(asErasure().getInterfaces(), new Visitor.Substitutor.ForTypeVariableBinding(this));
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5585:                    return new TypeList.Generic.ForDetachedTypes.WithResolvedErasure(super.getInterfaces(), Visitor.Reifying.INHERITING);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5606:                    return new TypeList.Generic.ForDetachedTypes(parameterizedType.getTypeArguments(), Visitor.TypeErasing.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5677:                    return new TypeList.Generic.ForDetachedTypes(typeDescription.getTypeVariables(), Visitor.AnnotationStripper.INSTANCE);
+
+exec
+/bin/bash -lc "sed -n '517,610p' byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+        class ForDetachedTypes extends AbstractBase {
+
+            /**
+             * The detached types this list represents.
+             */
+            private final List<? extends TypeDescription.Generic> detachedTypes;
+
+            /**
+             * The visitor to use for attaching the detached types.
+             */
+            private final TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor;
+
+            /**
+             * Creates a list of detached types that are attached on reception.
+             *
+             * @param detachedTypes The detached types this list represents.
+             * @param visitor       The visitor to use for attaching the detached types.
+             */
+            public ForDetachedTypes(List<? extends TypeDescription.Generic> detachedTypes,
+                                    TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor) {
+                this.detachedTypes = detachedTypes;
+                this.visitor = visitor;
+            }
+
+            /**
+             * Creates a list of type variables that are attached to the provided type.
+             *
+             * @param typeDescription       The type to which the type variables are to be attached to.
+             * @param detachedTypeVariables A mapping of type variable symbols to their detached type variable bounds.
+             * @return A type list representing the symbolic type variables in their attached state to the given type description.
+             */
+            public static Generic attachVariables(TypeDescription typeDescription, List<? extends TypeVariableToken> detachedTypeVariables) {
+                return new OfTypeVariables(typeDescription, detachedTypeVariables, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(typeDescription));
+            }
+
+            /**
+             * Creates a list of types that are attached to the provided field.
+             *
+             * @param fieldDescription The field to which the detached variables are attached to.
+             * @param detachedTypes    The detached types.
+             * @return A type list representing the detached types being attached to the provided field description.
+             */
+            public static Generic attach(FieldDescription fieldDescription, List<? extends TypeDescription.Generic> detachedTypes) {
+                return new ForDetachedTypes(detachedTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(fieldDescription));
+            }
+
+            /**
+             * Creates a list of types that are attached to the provided method.
+             *
+             * @param methodDescription The method to which the detached variables are attached to.
+             * @param detachedTypes     The detached types.
+             * @return A type list representing the detached types being attached to the provided method description.
+             */
+            public static Generic attach(MethodDescription methodDescription, List<? extends TypeDescription.Generic> detachedTypes) {
+                return new ForDetachedTypes(detachedTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(methodDescription));
+            }
+
+            /**
+             * Creates a list of type variables that are attached to the provided method.
+             *
+             * @param methodDescription     The method to which the type variables are to be attached to.
+             * @param detachedTypeVariables A mapping of type variable symbols to their detached type variable bounds.
+             * @return A type list representing the symbolic type variables in their attached state to the given method description.
+             */
+            public static Generic attachVariables(MethodDescription methodDescription, List<? extends TypeVariableToken> detachedTypeVariables) {
+                return new OfTypeVariables(methodDescription, detachedTypeVariables, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(methodDescription));
+            }
+
+            /**
+             * Creates a list of types that are attached to the provided parameter.
+             *
+             * @param parameterDescription The parameter to which the detached variables are attached to.
+             * @param detachedTypes        The detached types.
+             * @return A type list representing the detached types being attached to the provided parameter description.
+             */
+            public static Generic attach(ParameterDescription parameterDescription, List<? extends TypeDescription.Generic> detachedTypes) {
+                return new ForDetachedTypes(detachedTypes, TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(parameterDescription));
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeDescription.Generic get(int index) {
+                return detachedTypes.get(index).accept(visitor);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public int size() {
+                return detachedTypes.size();
+            }
+
+            /**
+
+exec
+/bin/bash -lc "sed -n '376,425p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Transformer.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+             */
+            protected TransformedMethod(TypeDescription instrumentedType,
+                                        TypeDefinition declaringType,
+                                        Token token,
+                                        InDefinedShape methodDescription) {
+                this.instrumentedType = instrumentedType;
+                this.declaringType = declaringType;
+                this.token = token;
+                this.methodDescription = methodDescription;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeList.Generic getTypeVariables() {
+                return new TypeList.Generic.ForDetachedTypes.OfTypeVariables(this, token.getTypeVariableTokens(), new AttachmentVisitor());
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeDescription.Generic getReturnType() {
+                return token.getReturnType().accept(new AttachmentVisitor());
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public ParameterList<?> getParameters() {
+                return new TransformedParameterList();
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public TypeList.Generic getExceptionTypes() {
+                return new TypeList.Generic.ForDetachedTypes(token.getExceptionTypes(), new AttachmentVisitor());
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public AnnotationList getDeclaredAnnotations() {
+                return token.getAnnotations();
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public String getInternalName() {
+
+codex
+{"target":"net.bytebuddy.description.type.TypeList.ForDetachedTypes","detection":true,"justification":"`byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeList.java` defines `ForDetachedTypes` as a central adapter with multiple outgoing dependencies: it stores detached `TypeDescription.Generic` values, uses `FieldDescription`, `MethodDescription`, `ParameterDescription`, `TypeDescription`, `TypeVariableSource`, `TypeVariableToken`, and attachment visitors, and exposes several static attachment factories (`attach`, `attachVariables`). Incoming use is also broad: `rg -l` shows references from four other production files, and `rg -n` shows multiple call sites in `TypeDescription.java` (6), `MethodDescription.java` (3), `Transformer.java` (2), and `InstrumentedType.java` (2). This combination of multi-way fan-out and repeated fan-in indicates hub-like modularization."}
+tokens used
+15,206

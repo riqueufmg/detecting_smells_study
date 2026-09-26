@@ -1,0 +1,1176 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f76-30e1-7960-80c6-523f061bb96c
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.gradle.api.file.DirectoryProperty` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.gradle.api.file.DirectoryProperty",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.gradle.api.file.DirectoryProperty`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and checking how widely it is used in this repository so I can make the smell verdict from concrete evidence only.
+exec
+/bin/bash -lc "rg --files . | rg \"DirectoryProperty\\.java"'$|DirectoryProperty'"\\.kt"'$|DirectoryProperty"' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"\\bDirectoryProperty\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 272ms:
+./byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java
+
+ succeeded in 351ms:
+./byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java:23: * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty} type.
+./byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java:25:public interface DirectoryProperty extends Provider<Directory> {
+./byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java:28:     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#getAsFile} method.
+./byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java:35:     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#getAsFileTree} method.
+./byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java:42:     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#dir} method.
+./byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java:50:     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#set} method.
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTask.java:21:import org.gradle.api.file.DirectoryProperty;
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTask.java:74:    public abstract DirectoryProperty getSource();
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTask.java:82:    public abstract DirectoryProperty getTarget();
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTaskConfiguration.java:19:import org.gradle.api.file.DirectoryProperty;
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTaskConfiguration.java:58:            DirectoryProperty directory = (DirectoryProperty) getDestinationDirectorySource.invoke(source);
+./byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTaskConfiguration.java:59:            ((DirectoryProperty) getDestinationDirectoryTarget.invoke(compileTask)).set(directory.dir("../"
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/LegacyByteBuddyLocalClassesEnhancerTask.java:33:import org.gradle.api.file.DirectoryProperty;
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/LegacyByteBuddyLocalClassesEnhancerTask.java:106:    public abstract DirectoryProperty getOutputDir();
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java:51:import org.gradle.api.file.DirectoryProperty;
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java:538:            protected enum GetOutputDirFunction implements Function1<LegacyByteBuddyLocalClassesEnhancerTask, DirectoryProperty> {
+./byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java:548:                public DirectoryProperty invoke(LegacyByteBuddyLocalClassesEnhancerTask task) {
+
+codex
+I found the target source in the Gradle API shim under `byte-buddy-gradle-plugin`; next I’m checking its actual dependencies and how many repository classes reference it.
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTask.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,200p' byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTaskConfiguration.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,180p' byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/LegacyByteBuddyLocalClassesEnhancerTask.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '500,590p' byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 185ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.gradle.api.file;
+
+import org.gradle.api.provider.Provider;
+
+import java.io.File;
+
+/**
+ * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty} type.
+ */
+public interface DirectoryProperty extends Provider<Directory> {
+
+    /**
+     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#getAsFile} method.
+     *
+     * @return The method's return value.
+     */
+    Provider<File> getAsFile();
+
+    /**
+     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#getAsFileTree} method.
+     *
+     * @return The method's return value.
+     */
+    FileTree getAsFileTree();
+
+    /**
+     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#dir} method.
+     *
+     * @param path The method's argument.
+     * @return The method's return value.
+     */
+    Provider<Directory> dir(String path);
+
+    /**
+     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#set} method.
+     *
+     * @param directory The method's argument.
+     */
+    void set(Provider<Directory> directory);
+}
+
+ succeeded in 211ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.build.gradle;
+
+import org.gradle.api.GradleException;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.SourceDirectorySet;
+import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.compile.AbstractCompile;
+
+import java.lang.reflect.Method;
+
+/**
+ * Implements a configuration of a Byte Buddy task.
+ */
+public class ByteBuddyTaskConfiguration extends AbstractByteBuddyTaskConfiguration<ByteBuddyTask, ByteBuddyTaskExtension> {
+
+    /**
+     * The {@code org.gradle.api.file.SourceSetDirectory#getDestinationDirectory} method.
+     */
+    private final Method getDestinationDirectorySource;
+
+    /**
+     * The {@code org.gradle.api.file.AbstractCompile#getDestinationDirectory} method.
+     */
+    private final Method getDestinationDirectoryTarget;
+
+    /**
+     * Creates a new Byte Buddy task configuration.
+     *
+     * @param name                          The name of the task.
+     * @param sourceSet                     The source set for which the task chain is being configured.
+     * @param getDestinationDirectorySource The {@code org.gradle.api.file.SourceSetDirectory#getDestinationDirectory} method.
+     * @param getDestinationDirectoryTarget The {@code org.gradle.api.file.AbstractCompile#getDestinationDirectory} method.
+     */
+    public ByteBuddyTaskConfiguration(String name, SourceSet sourceSet, Method getDestinationDirectorySource, Method getDestinationDirectoryTarget) {
+        super(name, sourceSet);
+        this.getDestinationDirectorySource = getDestinationDirectorySource;
+        this.getDestinationDirectoryTarget = getDestinationDirectoryTarget;
+    }
+
+    @Override
+    protected void configureDirectories(SourceDirectorySet source, AbstractCompile compileTask, ByteBuddyTask byteBuddyTask) {
+        try {
+            DirectoryProperty directory = (DirectoryProperty) getDestinationDirectorySource.invoke(source);
+            ((DirectoryProperty) getDestinationDirectoryTarget.invoke(compileTask)).set(directory.dir("../"
+                    + source.getName()
+                    + RAW_FOLDER_SUFFIX));
+            byteBuddyTask.getSource().set(directory.dir("../" + source.getName() + RAW_FOLDER_SUFFIX));
+            byteBuddyTask.getTarget().set(directory);
+            byteBuddyTask.getClassPath().from(compileTask.getClasspath());
+        } catch (Exception exception) {
+            throw new GradleException("Could not adjust directories for tasks", exception);
+        }
+    }
+}
+
+ succeeded in 220ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.build.gradle.android;
+
+import com.android.build.gradle.BaseExtension;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.build.AndroidDescriptor;
+import net.bytebuddy.build.BuildLogger;
+import net.bytebuddy.build.EntryPoint;
+import net.bytebuddy.build.Plugin;
+import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.scaffold.inline.MethodNameTransformer;
+import org.gradle.api.Action;
+import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
+import org.gradle.api.JavaVersion;
+import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.Directory;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.TaskAction;
+
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Transformation task for instrumenting the project's local classes using the legacy AGP api < 7.4.0.
+ */
+public abstract class LegacyByteBuddyLocalClassesEnhancerTask extends DefaultTask {
+
+    /**
+     * Returns the boot class path of Android.
+     *
+     * @return The boot class path of Android.
+     */
+    @InputFiles
+    public abstract ConfigurableFileCollection getAndroidBootClasspath();
+
+    /**
+     * Returns Byte Buddy's class path.
+     *
+     * @return Byte Buddy's class path.
+     */
+    @InputFiles
+    public abstract ConfigurableFileCollection getByteBuddyClasspath();
+
+    /**
+     * Returns the runtime class path.
+     *
+     * @return The runtime class path.
+     */
+    @InputFiles
+    public abstract ConfigurableFileCollection getRuntimeClasspath();
+
+    /**
+     * Returns the Java target compatibility version.
+     *
+     * @return The Java target compatibility version.
+     */
+    @Input
+    public abstract Property<JavaVersion> getJavaTargetCompatibilityVersion();
+
+    /**
+     * Target project's local classes dirs.
+     *
+     * @return The target project's local classes dirs.
+     */
+    @InputFiles
+    public abstract ListProperty<Directory> getLocalClassesDirs();
+
+    /**
+     * The instrumented classes destination dir.
+     *
+     * @return The instrumented classes destination dir.
+     */
+    @OutputDirectory
+    public abstract DirectoryProperty getOutputDir();
+
+    /**
+     * Translates a collection of files to {@link URL}s.
+     *
+     * @param files The list of files to translate.
+     * @return An array of URLs representing the provided files.
+     */
+    private static URL[] toUrls(Collection<File> files) {
+        URL[] url = new URL[files.size()];
+        int index = 0;
+        for (File file : files) {
+            try {
+                url[index++] = file.toURI().toURL();
+            } catch (MalformedURLException exception) {
+                throw new IllegalStateException("Failed to convert file " + file.getAbsolutePath(), exception);
+            }
+        }
+        return url;
+    }
+
+    /**
+     * Executes the plugin for transforming local classes.
+     */
+    @TaskAction
+    public void execute() {
+        try {
+            ClassFileVersion classFileVersion = ClassFileVersion.ofJavaVersionString(getJavaTargetCompatibilityVersion().get().toString());
+            List<ClassFileLocator> classFileLocators = new ArrayList<ClassFileLocator>();
+            for (File file : getRuntimeClasspath().plus(getAndroidBootClasspath()).plus(getByteBuddyClasspath()).getFiles()) {
+                classFileLocators.add(file.isFile()
+                        ? ClassFileLocator.ForJarFile.of(file, classFileVersion)
+                        : ClassFileLocator.ForFolder.of(file, classFileVersion));
+            }
+            classFileLocators.add(ClassFileLocator.ForClassLoader.of(ByteBuddy.class.getClassLoader()));
+            ClassFileLocator classFileLocator = new ClassFileLocator.Compound(classFileLocators);
+            try {
+                Set<Plugin.Engine.Source> sources = new LinkedHashSet<Plugin.Engine.Source>();
+                for (Directory directory : getLocalClassesDirs().get()) {
+                    sources.add(new Plugin.Engine.Source.ForFolder(directory.getAsFile()));
+                }
+                ClassLoader classLoader = new URLClassLoader(
+                        toUrls(getByteBuddyClasspath().getFiles()),
+                        new URLClassLoader(toUrls(getAndroidBootClasspath().getFiles()), ByteBuddy.class.getClassLoader()));
+                try {
+                    List<Plugin.Factory> factories = new ArrayList<Plugin.Factory>();
+                    BuildLogger buildLogger;
+                    try {
+                        buildLogger = (BuildLogger) Class.forName("net.bytebuddy.build.gradle.GradleBuildLogger")
+                                .getConstructor(Logger.class)
+                                .newInstance(getProject().getLogger());
+                    } catch (Exception exception) {
+                        throw new GradleException("Failed to resolve Gradle build logger", exception);
+                    }
+                    for (String name : Plugin.Engine.Default.scan(classLoader)) {
+                        try {
+                            @SuppressWarnings("unchecked")
+                            Class<? extends Plugin> type = (Class<? extends Plugin>) Class.forName(name, false, classLoader);
+                            if (!Plugin.class.isAssignableFrom(type)) {
+                                throw new GradleException(type.getName() + " does not implement " + Plugin.class.getName());
+                            }
+                            factories.add(new Plugin.Factory.UsingReflection(type)
+                                    .with(Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(AndroidDescriptor.class, AndroidDescriptor.Trivial.LOCAL))
+                                    .with(Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(Logger.class, getProject().getLogger()))
+                                    .with(Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(org.slf4j.Logger.class, getProject().getLogger()))
+                                    .with(Plugin.Factory.UsingReflection.ArgumentResolver.ForType.of(BuildLogger.class, buildLogger)));
+                        } catch (Throwable throwable) {
+                            throw new IllegalStateException("Cannot resolve plugin: " + name, throwable);
+                        }
+                    }
+                    Plugin.Engine.Summary summary = Plugin.Engine.Default.of(new EntryPoint.Unvalidated(EntryPoint.Default.DECORATE),
+                                    classFileVersion,
+                                    MethodNameTransformer.Suffixing.withRandomSuffix())
+                            .with(classFileLocator)
+                            .with(classFileVersion)
+
+ succeeded in 226ms:
+            INSTANCE;
+
+            /**
+             * {@inheritDoc}
+             */
+            public void accept(Project project, Variant variant, Configuration configuration, FileCollection classPath) {
+                TaskProvider<LegacyByteBuddyLocalClassesEnhancerTask> provider = project.getTasks().register(variant.getName() + "BytebuddyLocalTransform",
+                    LegacyByteBuddyLocalClassesEnhancerTask.class,
+                    new LegacyByteBuddyLocalClassesEnhancerTask.ConfigurationAction(ByteBuddyViewConfiguration.toClassPath(project, configuration),
+                        project.getExtensions().getByType(BaseExtension.class),
+                        classPath));
+                variant.getArtifacts()
+                    .use(provider)
+                    .wiredWith(GetLocalClassesFunction.INSTANCE, GetOutputDirFunction.INSTANCE)
+                    .toTransform(MultipleArtifact.ALL_CLASSES_DIRS.INSTANCE);
+            }
+
+            /**
+             * A function representation of getting the local classes.
+             */
+            protected enum GetLocalClassesFunction implements Function1<LegacyByteBuddyLocalClassesEnhancerTask, ListProperty<Directory>> {
+
+                /**
+                 * The singleton instance.
+                 */
+                INSTANCE;
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public ListProperty<Directory> invoke(LegacyByteBuddyLocalClassesEnhancerTask task) {
+                    return task.getLocalClassesDirs();
+                }
+            }
+
+            /**
+             * A function representation of getting the output directory.
+             */
+            protected enum GetOutputDirFunction implements Function1<LegacyByteBuddyLocalClassesEnhancerTask, DirectoryProperty> {
+
+                /**
+                 * The singleton instance.
+                 */
+                INSTANCE;
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public DirectoryProperty invoke(LegacyByteBuddyLocalClassesEnhancerTask task) {
+                    return task.getOutputDir();
+                }
+            }
+        }
+
+        /**
+         * A dispatcher that is used for Android versions that do support APK version 7.4 or newer.
+         */
+        class ForApk74CompatibleAndroid implements TransformationDispatcher {
+
+            /**
+             * The {@code com.android.build.api.variant.ScopedArtifacts$Scope#forScope} method.
+             */
+            private final Method forScope;
+
+            /**
+             * The {@code com.android.build.api.variant.ScopedArtifacts#use} method.
+             */
+            private final Method use;
+
+            /**
+             * The {@code com.android.build.api.variant.ScopedArtifactsOperation¤toTransform} method.
+             */
+            private final Method toTransform;
+
+            /**
+             * The {@code com.android.build.api.variant.ScopedArtifacts$Scope#PROJECT} value.
+             */
+            private final Object scope;
+
+            /**
+             * The {@code com.android.build.api.artifact.ScopedArtifact$CLASSES#INSTANCE} value.
+             */
+            private final Artifact<FileSystemLocation> artifact;
+
+            /**
+             * Creates a new dispatcher.
+             *
+             * @param forScope    The {@code com.android.build.api.variant.ScopedArtifacts$Scope#forScope} method.
+             * @param use         The {@code com.android.build.api.variant.ScopedArtifacts#use} method.
+             * @param toTransform The {@code com.android.build.api.variant.ScopedArtifactsOperation¤toTransform} method.
+             * @param scope       The {@code com.android.build.api.variant.ScopedArtifacts$Scope#PROJECT} value.
+
+ succeeded in 281ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.build.gradle;
+
+import net.bytebuddy.build.Plugin;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.tasks.CompileClasspath;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
+import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.Incremental;
+import org.gradle.work.InputChanges;
+
+import javax.inject.Inject;
+import java.io.File;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+
+/**
+ * A Byte Buddy task implementation that supports incremental compilation.
+ */
+public abstract class ByteBuddyTask extends AbstractByteBuddyTask {
+
+    /**
+     * The incremental builder to apply or {@code null} if no incremental build should be applied.
+     */
+    @MaybeNull
+    private IncrementalResolver incrementalResolver;
+
+    /**
+     * A set of classes that is used for discovery of plugins.
+     */
+    @MaybeNull
+    private FileCollection discoverySet;
+
+    /**
+     * Creates a new Byte Buddy task.
+     */
+    @Inject
+    @SuppressWarnings("this-escape")
+    public ByteBuddyTask() {
+        new ByteBuddyTaskExtension(null).configure(this);
+    }
+
+    /**
+     * Returns the source directory.
+     *
+     * @return The source directory.
+     */
+    @Incremental
+    @InputFiles
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public abstract DirectoryProperty getSource();
+
+    /**
+     * Returns the target directory.
+     *
+     * @return The target directory.
+     */
+    @OutputDirectory
+    public abstract DirectoryProperty getTarget();
+
+    /**
+     * Returns the class path to supply to the plugin engine.
+     *
+     * @return The class path to supply to the plugin engine.
+     */
+    @InputFiles
+    @CompileClasspath
+    public abstract ConfigurableFileCollection getClassPath();
+
+    /**
+     * Returns the incremental builder to apply or {@code null} if no incremental build should be applied.
+     *
+     * @return The incremental builder to apply or {@code null} if no incremental build should be applied.
+     */
+    @Internal
+    @MaybeNull
+    public IncrementalResolver getIncrementalResolver() {
+        return incrementalResolver;
+    }
+
+    /**
+     * Sets the incremental builder to apply or {@code null} if no incremental build should be applied.
+     *
+     * @param incrementalResolver The incremental builder to apply or {@code null} if no incremental build should be applied.
+     */
+    public void setIncrementalResolver(@MaybeNull IncrementalResolver incrementalResolver) {
+        this.incrementalResolver = incrementalResolver;
+    }
+
+    /**
+     * Returns the source set to resolve plugin names from or {@code null} if no such source set is used.
+     *
+     * @return The source set to resolve plugin names from or {@code null} if no such source set is used.
+     */
+    @MaybeNull
+    @InputFiles
+    @Optional
+    public FileCollection getDiscoverySet() {
+        return discoverySet;
+    }
+
+    /**
+     * Defines the source set to resolve plugin names from or {@code null} if no such source set is used.
+     *
+     * @param discoverySet The source set to resolve plugin names from or {@code null} if no such source set is used.
+     */
+    public void setDiscoverySet(@MaybeNull FileCollection discoverySet) {
+        this.discoverySet = discoverySet;
+    }
+
+    @Override
+    protected File source() {
+        return getSource().getAsFile().get();
+    }
+
+    @Override
+    protected File target() {
+        return getTarget().getAsFile().get();
+    }
+
+    @Override
+    protected Iterable<File> classPath() {
+        return getClassPath();
+    }
+
+    @Override
+    @MaybeNull
+    protected Iterable<File> discoverySet() {
+        return discoverySet;
+    }
+
+    /**
+     * Applies this task.
+     *
+     * @param inputChanges The input changes to consider.
+     * @throws IOException If an I/O exception occurs.
+     */
+    @TaskAction
+    public void apply(InputChanges inputChanges) throws IOException {
+        Plugin.Engine.Source source;
+        if (inputChanges.isIncremental() && getIncrementalResolver() != null) {
+            getLogger().debug("Applying incremental build");
+            List<File> files = getIncrementalResolver().apply(getLogger(),
+                    inputChanges.getFileChanges(getSource()),
+                    source(),
+                    target(),
+                    classPath());
+            source = files.isEmpty() || !source().exists()
+                    ? Plugin.Engine.Source.Empty.INSTANCE
+                    : new IncrementalSource(source(), files);
+        } else {
+            getLogger().debug("Applying non-incremental build");
+            if (deleteRecursively(getTarget().getAsFileTree().getFiles())) {
+                getLogger().debug("Deleted target {} to prepare new non-incremental build", getTarget());
+            }
+            source = source().exists()
+                    ? new Plugin.Engine.Source.ForFolder(source())
+                    : Plugin.Engine.Source.Empty.INSTANCE;
+        }
+        doApply(source, new Plugin.Engine.Target.ForFolder(target()));
+    }
+
+    /**
+     * A source for an incrementally changed source folder.
+     */
+    protected static class IncrementalSource extends Plugin.Engine.Source.ForFolder {
+
+        /**
+         * The root folder.
+         */
+        private final File root;
+
+        /**
+         * A list of files that requires retransformation.
+         */
+        private final List<File> files;
+
+        /**
+         * Creates a new incremental source.
+         *
+         * @param root  The root folder.
+         * @param files A list of files that requires retransformation.
+         */
+        protected IncrementalSource(File root, List<File> files) {
+            super(root);
+            this.root = root;
+            this.files = files;
+        }
+
+        @Override
+        public Iterator<Element> iterator() {
+            return new DelegationIterator(root, files.iterator());
+        }
+
+        /**
+         * An iterator that delegates to an iterator of files.
+         */
+
+codex
+I’ve got the relevant dependency graph: the class is a thin Gradle API stub, and the repository uses it in only a handful of Gradle-plugin classes. I’m pulling exact line numbers so the verdict is grounded in the code, not just a search hit count.
+exec
+/bin/bash -lc "nl -ba byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTaskConfiguration.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/LegacyByteBuddyLocalClassesEnhancerTask.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTask.java | sed -n '1,130p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java | sed -n '530,555p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 150ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy.build.gradle.android;
+    17	
+    18	import com.android.build.gradle.BaseExtension;
+    19	import net.bytebuddy.ByteBuddy;
+    20	import net.bytebuddy.ClassFileVersion;
+    21	import net.bytebuddy.build.AndroidDescriptor;
+    22	import net.bytebuddy.build.BuildLogger;
+    23	import net.bytebuddy.build.EntryPoint;
+    24	import net.bytebuddy.build.Plugin;
+    25	import net.bytebuddy.dynamic.ClassFileLocator;
+    26	import net.bytebuddy.dynamic.scaffold.inline.MethodNameTransformer;
+    27	import org.gradle.api.Action;
+    28	import org.gradle.api.DefaultTask;
+    29	import org.gradle.api.GradleException;
+    30	import org.gradle.api.JavaVersion;
+    31	import org.gradle.api.file.ConfigurableFileCollection;
+    32	import org.gradle.api.file.Directory;
+    33	import org.gradle.api.file.DirectoryProperty;
+    34	import org.gradle.api.file.FileCollection;
+    35	import org.gradle.api.logging.Logger;
+    36	import org.gradle.api.provider.ListProperty;
+    37	import org.gradle.api.provider.Property;
+    38	import org.gradle.api.tasks.Input;
+    39	import org.gradle.api.tasks.InputFiles;
+    40	import org.gradle.api.tasks.OutputDirectory;
+    41	import org.gradle.api.tasks.TaskAction;
+    42	
+    43	import java.io.Closeable;
+    44	import java.io.File;
+    45	import java.io.IOException;
+    46	import java.net.MalformedURLException;
+    47	import java.net.URL;
+    48	import java.net.URLClassLoader;
+    49	import java.util.ArrayList;
+    50	import java.util.Collection;
+    51	import java.util.LinkedHashSet;
+    52	import java.util.List;
+    53	import java.util.Set;
+    54	
+    55	/**
+    56	 * Transformation task for instrumenting the project's local classes using the legacy AGP api < 7.4.0.
+    57	 */
+    58	public abstract class LegacyByteBuddyLocalClassesEnhancerTask extends DefaultTask {
+    59	
+    60	    /**
+    61	     * Returns the boot class path of Android.
+    62	     *
+    63	     * @return The boot class path of Android.
+    64	     */
+    65	    @InputFiles
+    66	    public abstract ConfigurableFileCollection getAndroidBootClasspath();
+    67	
+    68	    /**
+    69	     * Returns Byte Buddy's class path.
+    70	     *
+    71	     * @return Byte Buddy's class path.
+    72	     */
+    73	    @InputFiles
+    74	    public abstract ConfigurableFileCollection getByteBuddyClasspath();
+    75	
+    76	    /**
+    77	     * Returns the runtime class path.
+    78	     *
+    79	     * @return The runtime class path.
+    80	     */
+    81	    @InputFiles
+    82	    public abstract ConfigurableFileCollection getRuntimeClasspath();
+    83	
+    84	    /**
+    85	     * Returns the Java target compatibility version.
+    86	     *
+    87	     * @return The Java target compatibility version.
+    88	     */
+    89	    @Input
+    90	    public abstract Property<JavaVersion> getJavaTargetCompatibilityVersion();
+    91	
+    92	    /**
+    93	     * Target project's local classes dirs.
+    94	     *
+    95	     * @return The target project's local classes dirs.
+    96	     */
+    97	    @InputFiles
+    98	    public abstract ListProperty<Directory> getLocalClassesDirs();
+    99	
+   100	    /**
+   101	     * The instrumented classes destination dir.
+   102	     *
+   103	     * @return The instrumented classes destination dir.
+   104	     */
+   105	    @OutputDirectory
+   106	    public abstract DirectoryProperty getOutputDir();
+   107	
+   108	    /**
+   109	     * Translates a collection of files to {@link URL}s.
+   110	     *
+   111	     * @param files The list of files to translate.
+   112	     * @return An array of URLs representing the provided files.
+   113	     */
+   114	    private static URL[] toUrls(Collection<File> files) {
+   115	        URL[] url = new URL[files.size()];
+   116	        int index = 0;
+   117	        for (File file : files) {
+   118	            try {
+   119	                url[index++] = file.toURI().toURL();
+   120	            } catch (MalformedURLException exception) {
+
+ succeeded in 198ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy.build.gradle;
+    17	
+    18	import net.bytebuddy.build.Plugin;
+    19	import net.bytebuddy.utility.nullability.MaybeNull;
+    20	import org.gradle.api.file.ConfigurableFileCollection;
+    21	import org.gradle.api.file.DirectoryProperty;
+    22	import org.gradle.api.file.FileCollection;
+    23	import org.gradle.api.tasks.CompileClasspath;
+    24	import org.gradle.api.tasks.InputFiles;
+    25	import org.gradle.api.tasks.Internal;
+    26	import org.gradle.api.tasks.Optional;
+    27	import org.gradle.api.tasks.OutputDirectory;
+    28	import org.gradle.api.tasks.PathSensitive;
+    29	import org.gradle.api.tasks.PathSensitivity;
+    30	import org.gradle.api.tasks.TaskAction;
+    31	import org.gradle.work.Incremental;
+    32	import org.gradle.work.InputChanges;
+    33	
+    34	import javax.inject.Inject;
+    35	import java.io.File;
+    36	import java.io.IOException;
+    37	import java.util.Iterator;
+    38	import java.util.List;
+    39	
+    40	/**
+    41	 * A Byte Buddy task implementation that supports incremental compilation.
+    42	 */
+    43	public abstract class ByteBuddyTask extends AbstractByteBuddyTask {
+    44	
+    45	    /**
+    46	     * The incremental builder to apply or {@code null} if no incremental build should be applied.
+    47	     */
+    48	    @MaybeNull
+    49	    private IncrementalResolver incrementalResolver;
+    50	
+    51	    /**
+    52	     * A set of classes that is used for discovery of plugins.
+    53	     */
+    54	    @MaybeNull
+    55	    private FileCollection discoverySet;
+    56	
+    57	    /**
+    58	     * Creates a new Byte Buddy task.
+    59	     */
+    60	    @Inject
+    61	    @SuppressWarnings("this-escape")
+    62	    public ByteBuddyTask() {
+    63	        new ByteBuddyTaskExtension(null).configure(this);
+    64	    }
+    65	
+    66	    /**
+    67	     * Returns the source directory.
+    68	     *
+    69	     * @return The source directory.
+    70	     */
+    71	    @Incremental
+    72	    @InputFiles
+    73	    @PathSensitive(PathSensitivity.RELATIVE)
+    74	    public abstract DirectoryProperty getSource();
+    75	
+    76	    /**
+    77	     * Returns the target directory.
+    78	     *
+    79	     * @return The target directory.
+    80	     */
+    81	    @OutputDirectory
+    82	    public abstract DirectoryProperty getTarget();
+    83	
+    84	    /**
+    85	     * Returns the class path to supply to the plugin engine.
+    86	     *
+    87	     * @return The class path to supply to the plugin engine.
+    88	     */
+    89	    @InputFiles
+    90	    @CompileClasspath
+    91	    public abstract ConfigurableFileCollection getClassPath();
+    92	
+    93	    /**
+    94	     * Returns the incremental builder to apply or {@code null} if no incremental build should be applied.
+    95	     *
+    96	     * @return The incremental builder to apply or {@code null} if no incremental build should be applied.
+    97	     */
+    98	    @Internal
+    99	    @MaybeNull
+   100	    public IncrementalResolver getIncrementalResolver() {
+   101	        return incrementalResolver;
+   102	    }
+   103	
+   104	    /**
+   105	     * Sets the incremental builder to apply or {@code null} if no incremental build should be applied.
+   106	     *
+   107	     * @param incrementalResolver The incremental builder to apply or {@code null} if no incremental build should be applied.
+   108	     */
+   109	    public void setIncrementalResolver(@MaybeNull IncrementalResolver incrementalResolver) {
+   110	        this.incrementalResolver = incrementalResolver;
+   111	    }
+   112	
+   113	    /**
+   114	     * Returns the source set to resolve plugin names from or {@code null} if no such source set is used.
+   115	     *
+   116	     * @return The source set to resolve plugin names from or {@code null} if no such source set is used.
+   117	     */
+   118	    @MaybeNull
+   119	    @InputFiles
+   120	    @Optional
+   121	    public FileCollection getDiscoverySet() {
+   122	        return discoverySet;
+   123	    }
+   124	
+   125	    /**
+   126	     * Defines the source set to resolve plugin names from or {@code null} if no such source set is used.
+   127	     *
+   128	     * @param discoverySet The source set to resolve plugin names from or {@code null} if no such source set is used.
+   129	     */
+   130	    public void setDiscoverySet(@MaybeNull FileCollection discoverySet) {
+
+ succeeded in 245ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package org.gradle.api.file;
+    17	
+    18	import org.gradle.api.provider.Provider;
+    19	
+    20	import java.io.File;
+    21	
+    22	/**
+    23	 * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty} type.
+    24	 */
+    25	public interface DirectoryProperty extends Provider<Directory> {
+    26	
+    27	    /**
+    28	     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#getAsFile} method.
+    29	     *
+    30	     * @return The method's return value.
+    31	     */
+    32	    Provider<File> getAsFile();
+    33	
+    34	    /**
+    35	     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#getAsFileTree} method.
+    36	     *
+    37	     * @return The method's return value.
+    38	     */
+    39	    FileTree getAsFileTree();
+    40	
+    41	    /**
+    42	     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#dir} method.
+    43	     *
+    44	     * @param path The method's argument.
+    45	     * @return The method's return value.
+    46	     */
+    47	    Provider<Directory> dir(String path);
+    48	
+    49	    /**
+    50	     * A placeholder representation of Gradle's {@code org.gradle.api.file.DirectoryProperty#set} method.
+    51	     *
+    52	     * @param directory The method's argument.
+    53	     */
+    54	    void set(Provider<Directory> directory);
+    55	}
+
+ succeeded in 285ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy.build.gradle;
+    17	
+    18	import org.gradle.api.GradleException;
+    19	import org.gradle.api.file.DirectoryProperty;
+    20	import org.gradle.api.file.SourceDirectorySet;
+    21	import org.gradle.api.tasks.SourceSet;
+    22	import org.gradle.api.tasks.compile.AbstractCompile;
+    23	
+    24	import java.lang.reflect.Method;
+    25	
+    26	/**
+    27	 * Implements a configuration of a Byte Buddy task.
+    28	 */
+    29	public class ByteBuddyTaskConfiguration extends AbstractByteBuddyTaskConfiguration<ByteBuddyTask, ByteBuddyTaskExtension> {
+    30	
+    31	    /**
+    32	     * The {@code org.gradle.api.file.SourceSetDirectory#getDestinationDirectory} method.
+    33	     */
+    34	    private final Method getDestinationDirectorySource;
+    35	
+    36	    /**
+    37	     * The {@code org.gradle.api.file.AbstractCompile#getDestinationDirectory} method.
+    38	     */
+    39	    private final Method getDestinationDirectoryTarget;
+    40	
+    41	    /**
+    42	     * Creates a new Byte Buddy task configuration.
+    43	     *
+    44	     * @param name                          The name of the task.
+    45	     * @param sourceSet                     The source set for which the task chain is being configured.
+    46	     * @param getDestinationDirectorySource The {@code org.gradle.api.file.SourceSetDirectory#getDestinationDirectory} method.
+    47	     * @param getDestinationDirectoryTarget The {@code org.gradle.api.file.AbstractCompile#getDestinationDirectory} method.
+    48	     */
+    49	    public ByteBuddyTaskConfiguration(String name, SourceSet sourceSet, Method getDestinationDirectorySource, Method getDestinationDirectoryTarget) {
+    50	        super(name, sourceSet);
+    51	        this.getDestinationDirectorySource = getDestinationDirectorySource;
+    52	        this.getDestinationDirectoryTarget = getDestinationDirectoryTarget;
+    53	    }
+    54	
+    55	    @Override
+    56	    protected void configureDirectories(SourceDirectorySet source, AbstractCompile compileTask, ByteBuddyTask byteBuddyTask) {
+    57	        try {
+    58	            DirectoryProperty directory = (DirectoryProperty) getDestinationDirectorySource.invoke(source);
+    59	            ((DirectoryProperty) getDestinationDirectoryTarget.invoke(compileTask)).set(directory.dir("../"
+    60	                    + source.getName()
+    61	                    + RAW_FOLDER_SUFFIX));
+    62	            byteBuddyTask.getSource().set(directory.dir("../" + source.getName() + RAW_FOLDER_SUFFIX));
+    63	            byteBuddyTask.getTarget().set(directory);
+    64	            byteBuddyTask.getClassPath().from(compileTask.getClasspath());
+    65	        } catch (Exception exception) {
+    66	            throw new GradleException("Could not adjust directories for tasks", exception);
+    67	        }
+    68	    }
+    69	}
+
+ succeeded in 281ms:
+   530	                public ListProperty<Directory> invoke(LegacyByteBuddyLocalClassesEnhancerTask task) {
+   531	                    return task.getLocalClassesDirs();
+   532	                }
+   533	            }
+   534	
+   535	            /**
+   536	             * A function representation of getting the output directory.
+   537	             */
+   538	            protected enum GetOutputDirFunction implements Function1<LegacyByteBuddyLocalClassesEnhancerTask, DirectoryProperty> {
+   539	
+   540	                /**
+   541	                 * The singleton instance.
+   542	                 */
+   543	                INSTANCE;
+   544	
+   545	                /**
+   546	                 * {@inheritDoc}
+   547	                 */
+   548	                public DirectoryProperty invoke(LegacyByteBuddyLocalClassesEnhancerTask task) {
+   549	                    return task.getOutputDir();
+   550	                }
+   551	            }
+   552	        }
+   553	
+   554	        /**
+   555	         * A dispatcher that is used for Android versions that do support APK version 7.4 or newer.
+
+codex
+I’ve confirmed the source shape and the fan-in footprint. I’m checking the repository-wide reference count one last time to avoid overstating the coupling.
+exec
+/bin/bash -lc "rg -l \"\\bDirectoryProperty\\b\" byte-buddy-gradle-plugin | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"\\bDirectoryProperty\\b\" byte-buddy-gradle-plugin | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 231ms:
+17
+
+ succeeded in 292ms:
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java
+byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/LegacyByteBuddyLocalClassesEnhancerTask.java
+byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java
+byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTask.java
+byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTaskConfiguration.java
+
+codex
+{"target":"org.gradle.api.file.DirectoryProperty","detection":false,"justification":"Inspected [byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java](/data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy/byte-buddy-gradle-plugin/src/main/java-gradle-api/org/gradle/api/file/DirectoryProperty.java), which is only a small Gradle API placeholder interface: it extends one type (`Provider<Directory>`) and declares four methods using a few Gradle file types. Repository-wide references are limited to four implementation files: [ByteBuddyTask.java](/data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy/byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTask.java), [ByteBuddyTaskConfiguration.java](/data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy/byte-buddy-gradle-plugin/src/main/java/net/bytebuddy/build/gradle/ByteBuddyTaskConfiguration.java), [LegacyByteBuddyLocalClassesEnhancerTask.java](/data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy/byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/LegacyByteBuddyLocalClassesEnhancerTask.java), and [ByteBuddyAndroidPlugin.java](/data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy/byte-buddy-gradle-plugin/android-plugin/src/main/java/net/bytebuddy/build/gradle/android/ByteBuddyAndroidPlugin.java); this is not high fan-in/fan-out enough to qualify as a hub."}
+tokens used
+14,373

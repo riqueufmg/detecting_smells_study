@@ -1,0 +1,528 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ee1-1f9c-79c1-9252-6b5bf24229d2
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.common.jimfs.AbstractWatchService.Event` in the repository located at:
+
+`data/repositories/google/jimfs`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.common.jimfs.AbstractWatchService.Event",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.common.jimfs.AbstractWatchService.Event`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and checking who depends on it, then I’ll verify its own outgoing dependencies to decide whether it behaves like a dependency hub.
+exec
+/bin/bash -lc "rg -n \"AbstractWatchService\\.Event|Event<|new Event\\(|extends AbstractWatchService\\.Event|implements AbstractWatchService\\.Event\" -S ." in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+exec
+/bin/bash -lc 'rg -n "class AbstractWatchService|class Event|interface Event" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:51:public class AbstractWatchServiceTest {
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:55:abstract class AbstractWatchService implements WatchService {
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:138:  static final class Event<T> implements WatchEvent<T> {
+
+ succeeded in 0ms:
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:86:    AbstractWatchService.Event<Path> event =
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:87:        new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null);
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:96:    List<WatchEvent<?>> events = retrievedKey.pollEvents();
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:109:    AbstractWatchService.Event<Path> event =
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:110:        new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null);
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:116:    AbstractWatchService.Event<Path> event2 =
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:117:        new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null);
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:147:    key.post(new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null));
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:155:    key.post(new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null));
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:168:      key.post(new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null));
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:172:    List<WatchEvent<?>> events = key.pollEvents();
+./jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:179:    WatchEvent<?> lastEvent = events.get(AbstractWatchService.Key.MAX_QUEUE_SIZE);
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:27:import com.google.common.jimfs.AbstractWatchService.Event;
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:152:    assertWatcherHasEvents(new Event<>(ENTRY_CREATE, 1, fs.getPath("foo")));
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:158:        new Event<>(ENTRY_CREATE, 1, fs.getPath("bar")),
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:159:        new Event<>(ENTRY_CREATE, 1, fs.getPath("baz")));
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:171:        new Event<>(ENTRY_CREATE, 1, fs.getPath("bar")),
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:172:        new Event<>(ENTRY_CREATE, 1, fs.getPath("foo")));
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:179:        new Event<>(ENTRY_CREATE, 1, fs.getPath("baz")),
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:180:        new Event<>(ENTRY_DELETE, 1, fs.getPath("bar")),
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:181:        new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo")));
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:188:        new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo")),
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:189:        new Event<>(ENTRY_DELETE, 1, fs.getPath("foo")));
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:196:        ImmutableList.<WatchEvent<?>>of(new Event<>(ENTRY_CREATE, 1, fs.getPath("foo"))),
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:198:        ImmutableList.<WatchEvent<?>>of(
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:199:            new Event<>(ENTRY_CREATE, 1, fs.getPath("foo")),
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:200:            new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo"))));
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:208:        ImmutableList.<WatchEvent<?>>of(new Event<>(ENTRY_DELETE, 1, fs.getPath("foo"))),
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:210:        ImmutableList.<WatchEvent<?>>of(
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:211:            new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo")),
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:212:            new Event<>(ENTRY_DELETE, 1, fs.getPath("foo"))));
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:215:  private void assertWatcherHasEvents(WatchEvent<?>... events) throws InterruptedException {
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:216:    assertWatcherHasEvents(Arrays.asList(events), ImmutableList.<WatchEvent<?>>of());
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:219:  private void assertWatcherHasEvents(List<WatchEvent<?>> expected, List<WatchEvent<?>> alternate)
+./jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:223:    List<WatchEvent<?>> keyEvents = key.pollEvents();
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:138:  static final class Event<T> implements WatchEvent<T> {
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:170:        Event<?> other = (Event<?>) obj;
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:198:    private static WatchEvent<Object> overflowEvent(int count) {
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:199:      return new Event<>(OVERFLOW, count, null);
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:210:    private final BlockingQueue<WatchEvent<?>> events = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:236:    public void post(WatchEvent<?> event) {
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:258:    public List<WatchEvent<?>> pollEvents() {
+./jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:262:      List<WatchEvent<?>> result = new ArrayList<>(events.size());
+./jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java:222:          key.post(new Event<>(ENTRY_CREATE, 1, pathService.createFileName(name)));
+./jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java:232:          key.post(new Event<>(ENTRY_DELETE, 1, pathService.createFileName(name)));
+./jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java:244:            key.post(new Event<>(ENTRY_MODIFY, 1, pathService.createFileName(name)));
+
+codex
+I found the target as a nested class in `AbstractWatchService.java` and a small set of call sites. Next I’m checking the class body and the exact references so I can judge whether the fan-in/fan-out is actually high or just localized.
+exec
+/bin/bash -lc "nl -ba jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java | sed -n '120,210p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+   120	  }
+   121	
+   122	  /** Checks that the watch service is open, throwing {@link ClosedWatchServiceException} if not. */
+   123	  protected final void checkOpen() {
+   124	    if (!open.get()) {
+   125	      throw new ClosedWatchServiceException();
+   126	    }
+   127	  }
+   128	
+   129	  @Override
+   130	  public void close() {
+   131	    if (open.compareAndSet(true, false)) {
+   132	      queue.clear();
+   133	      queue.offer(poison);
+   134	    }
+   135	  }
+   136	
+   137	  /** A basic implementation of {@link WatchEvent}. */
+   138	  static final class Event<T> implements WatchEvent<T> {
+   139	
+   140	    private final Kind<T> kind;
+   141	    private final int count;
+   142	
+   143	    private final @Nullable T context;
+   144	
+   145	    public Event(Kind<T> kind, int count, @Nullable T context) {
+   146	      this.kind = checkNotNull(kind);
+   147	      checkArgument(count >= 0, "count (%s) must be non-negative", count);
+   148	      this.count = count;
+   149	      this.context = context;
+   150	    }
+   151	
+   152	    @Override
+   153	    public Kind<T> kind() {
+   154	      return kind;
+   155	    }
+   156	
+   157	    @Override
+   158	    public int count() {
+   159	      return count;
+   160	    }
+   161	
+   162	    @Override
+   163	    public @Nullable T context() {
+   164	      return context;
+   165	    }
+   166	
+   167	    @Override
+   168	    public boolean equals(Object obj) {
+   169	      if (obj instanceof Event) {
+   170	        Event<?> other = (Event<?>) obj;
+   171	        return kind().equals(other.kind())
+   172	            && count() == other.count()
+   173	            && Objects.equals(context(), other.context());
+   174	      }
+   175	      return false;
+   176	    }
+   177	
+   178	    @Override
+   179	    public int hashCode() {
+   180	      return Objects.hash(kind(), count(), context());
+   181	    }
+   182	
+   183	    @Override
+   184	    public String toString() {
+   185	      return MoreObjects.toStringHelper(this)
+   186	          .add("kind", kind())
+   187	          .add("count", count())
+   188	          .add("context", context())
+   189	          .toString();
+   190	    }
+   191	  }
+   192	
+   193	  /** Implementation of {@link WatchKey} for an {@link AbstractWatchService}. */
+   194	  static final class Key implements WatchKey {
+   195	
+   196	    @VisibleForTesting static final int MAX_QUEUE_SIZE = 256;
+   197	
+   198	    private static WatchEvent<Object> overflowEvent(int count) {
+   199	      return new Event<>(OVERFLOW, count, null);
+   200	    }
+   201	
+   202	    private final AbstractWatchService watcher;
+   203	    private final Watchable watchable;
+   204	    private final ImmutableSet<WatchEvent.Kind<?>> subscribedTypes;
+   205	
+   206	    private final AtomicReference<State> state = new AtomicReference<>(State.READY);
+   207	    private final AtomicBoolean valid = new AtomicBoolean(true);
+   208	    private final AtomicInteger overflow = new AtomicInteger();
+   209	
+   210	    private final BlockingQueue<WatchEvent<?>> events = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
+
+exec
+/bin/bash -lc "nl -ba jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java | sed -n '210,255p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+   210	    /**
+   211	     * Posts events to the given key based on the kinds of events it subscribes to and what events
+   212	     * have occurred between this state and the given new state.
+   213	     */
+   214	    boolean postChanges(Snapshot newState, Key key) {
+   215	      boolean changesPosted = false;
+   216	
+   217	      if (key.subscribesTo(ENTRY_CREATE)) {
+   218	        Set<Name> created =
+   219	            Sets.difference(newState.modifiedTimes.keySet(), modifiedTimes.keySet());
+   220	
+   221	        for (Name name : created) {
+   222	          key.post(new Event<>(ENTRY_CREATE, 1, pathService.createFileName(name)));
+   223	          changesPosted = true;
+   224	        }
+   225	      }
+   226	
+   227	      if (key.subscribesTo(ENTRY_DELETE)) {
+   228	        Set<Name> deleted =
+   229	            Sets.difference(modifiedTimes.keySet(), newState.modifiedTimes.keySet());
+   230	
+   231	        for (Name name : deleted) {
+   232	          key.post(new Event<>(ENTRY_DELETE, 1, pathService.createFileName(name)));
+   233	          changesPosted = true;
+   234	        }
+   235	      }
+   236	
+   237	      if (key.subscribesTo(ENTRY_MODIFY)) {
+   238	        for (Map.Entry<Name, FileTime> entry : modifiedTimes.entrySet()) {
+   239	          Name name = entry.getKey();
+   240	          FileTime modifiedTime = entry.getValue();
+   241	
+   242	          FileTime newModifiedTime = newState.modifiedTimes.get(name);
+   243	          if (newModifiedTime != null && !modifiedTime.equals(newModifiedTime)) {
+   244	            key.post(new Event<>(ENTRY_MODIFY, 1, pathService.createFileName(name)));
+   245	            changesPosted = true;
+   246	          }
+   247	        }
+   248	      }
+   249	
+   250	      return changesPosted;
+   251	    }
+   252	  }
+   253	}
+
+exec
+/bin/bash -lc "nl -ba jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java | sed -n '80,190p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+exec
+/bin/bash -lc "nl -ba jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java | sed -n '140,230p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+   140	    assertThat(key1.isValid()).isFalse();
+   141	    assertThat(key2.isValid()).isFalse();
+   142	    assertThat(watcher.isPolling()).isFalse();
+   143	  }
+   144	
+   145	  @Test(timeout = 2000)
+   146	  public void testWatchForOneEventType() throws IOException, InterruptedException {
+   147	    JimfsPath path = createDirectory();
+   148	    watcher.register(path, ImmutableList.of(ENTRY_CREATE));
+   149	
+   150	    Files.createFile(path.resolve("foo"));
+   151	
+   152	    assertWatcherHasEvents(new Event<>(ENTRY_CREATE, 1, fs.getPath("foo")));
+   153	
+   154	    Files.createFile(path.resolve("bar"));
+   155	    Files.createFile(path.resolve("baz"));
+   156	
+   157	    assertWatcherHasEvents(
+   158	        new Event<>(ENTRY_CREATE, 1, fs.getPath("bar")),
+   159	        new Event<>(ENTRY_CREATE, 1, fs.getPath("baz")));
+   160	  }
+   161	
+   162	  @Test(timeout = 2000)
+   163	  public void testWatchForMultipleEventTypes() throws IOException, InterruptedException {
+   164	    JimfsPath path = createDirectory();
+   165	    watcher.register(path, ImmutableList.of(ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY));
+   166	
+   167	    Files.createDirectory(path.resolve("foo"));
+   168	    Files.createFile(path.resolve("bar"));
+   169	
+   170	    assertWatcherHasEvents(
+   171	        new Event<>(ENTRY_CREATE, 1, fs.getPath("bar")),
+   172	        new Event<>(ENTRY_CREATE, 1, fs.getPath("foo")));
+   173	
+   174	    Files.createFile(path.resolve("baz"));
+   175	    Files.delete(path.resolve("bar"));
+   176	    Files.createFile(path.resolve("foo/bar"));
+   177	
+   178	    assertWatcherHasEvents(
+   179	        new Event<>(ENTRY_CREATE, 1, fs.getPath("baz")),
+   180	        new Event<>(ENTRY_DELETE, 1, fs.getPath("bar")),
+   181	        new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo")));
+   182	
+   183	    Files.delete(path.resolve("foo/bar"));
+   184	    ensureTimeToPoll(); // watcher polls, seeing modification, then polls again, seeing delete
+   185	    Files.delete(path.resolve("foo"));
+   186	
+   187	    assertWatcherHasEvents(
+   188	        new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo")),
+   189	        new Event<>(ENTRY_DELETE, 1, fs.getPath("foo")));
+   190	
+   191	    Files.createDirectories(path.resolve("foo/bar"));
+   192	
+   193	    // polling here may either see just the creation of foo, or may first see the creation of foo
+   194	    // and then the creation of foo/bar (modification of foo) since those don't happen atomically
+   195	    assertWatcherHasEvents(
+   196	        ImmutableList.<WatchEvent<?>>of(new Event<>(ENTRY_CREATE, 1, fs.getPath("foo"))),
+   197	        // or
+   198	        ImmutableList.<WatchEvent<?>>of(
+   199	            new Event<>(ENTRY_CREATE, 1, fs.getPath("foo")),
+   200	            new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo"))));
+   201	
+   202	    Files.delete(path.resolve("foo/bar"));
+   203	    Files.delete(path.resolve("foo"));
+   204	
+   205	    // polling here may either just see the deletion of foo, or may first see the deletion of bar
+   206	    // (modification of foo) and then the deletion of foo
+   207	    assertWatcherHasEvents(
+   208	        ImmutableList.<WatchEvent<?>>of(new Event<>(ENTRY_DELETE, 1, fs.getPath("foo"))),
+   209	        // or
+   210	        ImmutableList.<WatchEvent<?>>of(
+   211	            new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo")),
+   212	            new Event<>(ENTRY_DELETE, 1, fs.getPath("foo"))));
+   213	  }
+   214	
+   215	  private void assertWatcherHasEvents(WatchEvent<?>... events) throws InterruptedException {
+   216	    assertWatcherHasEvents(Arrays.asList(events), ImmutableList.<WatchEvent<?>>of());
+   217	  }
+   218	
+   219	  private void assertWatcherHasEvents(List<WatchEvent<?>> expected, List<WatchEvent<?>> alternate)
+   220	      throws InterruptedException {
+   221	    ensureTimeToPoll(); // otherwise we could read 1 event but not all the events we're expecting
+   222	    WatchKey key = watcher.take();
+   223	    List<WatchEvent<?>> keyEvents = key.pollEvents();
+   224	
+   225	    if (keyEvents.size() == expected.size() || alternate.isEmpty()) {
+   226	      assertThat(keyEvents).containsExactlyElementsIn(expected);
+   227	    } else {
+   228	      assertThat(keyEvents).containsExactlyElementsIn(alternate);
+   229	    }
+   230	    key.reset();
+
+ succeeded in 0ms:
+    80	
+    81	  @Test
+    82	  public void testPostEvent() throws IOException {
+    83	    AbstractWatchService.Key key =
+    84	        watcher.register(new StubWatchable(), ImmutableSet.of(ENTRY_CREATE));
+    85	
+    86	    AbstractWatchService.Event<Path> event =
+    87	        new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null);
+    88	    key.post(event);
+    89	    key.signal();
+    90	
+    91	    assertThat(watcher.queuedKeys()).containsExactly(key);
+    92	
+    93	    WatchKey retrievedKey = watcher.poll();
+    94	    assertThat(retrievedKey).isEqualTo(key);
+    95	
+    96	    List<WatchEvent<?>> events = retrievedKey.pollEvents();
+    97	    assertThat(events).hasSize(1);
+    98	    assertThat(events.get(0)).isEqualTo(event);
+    99	
+   100	    // polling should have removed all events
+   101	    assertThat(retrievedKey.pollEvents()).isEmpty();
+   102	  }
+   103	
+   104	  @Test
+   105	  public void testKeyStates() throws IOException {
+   106	    AbstractWatchService.Key key =
+   107	        watcher.register(new StubWatchable(), ImmutableSet.of(ENTRY_CREATE));
+   108	
+   109	    AbstractWatchService.Event<Path> event =
+   110	        new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null);
+   111	    assertThat(key.state()).isEqualTo(READY);
+   112	    key.post(event);
+   113	    key.signal();
+   114	    assertThat(key.state()).isEqualTo(SIGNALLED);
+   115	
+   116	    AbstractWatchService.Event<Path> event2 =
+   117	        new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null);
+   118	    key.post(event2);
+   119	    assertThat(key.state()).isEqualTo(SIGNALLED);
+   120	
+   121	    // key was not queued twice
+   122	    assertThat(watcher.queuedKeys()).containsExactly(key);
+   123	    assertThat(watcher.poll().pollEvents()).containsExactly(event, event2);
+   124	
+   125	    assertThat(watcher.poll()).isNull();
+   126	
+   127	    key.post(event);
+   128	
+   129	    // still not added to queue; already signalled
+   130	    assertThat(watcher.poll()).isNull();
+   131	    assertThat(key.pollEvents()).containsExactly(event);
+   132	
+   133	    key.reset();
+   134	    assertThat(key.state()).isEqualTo(READY);
+   135	
+   136	    key.post(event2);
+   137	    key.signal();
+   138	
+   139	    // now that it's reset it can be requeued
+   140	    assertThat(watcher.poll()).isEqualTo(key);
+   141	  }
+   142	
+   143	  @Test
+   144	  public void testKeyRequeuedOnResetIfEventsArePending() throws IOException {
+   145	    AbstractWatchService.Key key =
+   146	        watcher.register(new StubWatchable(), ImmutableSet.of(ENTRY_CREATE));
+   147	    key.post(new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null));
+   148	    key.signal();
+   149	
+   150	    key = (AbstractWatchService.Key) watcher.poll();
+   151	    assertThat(watcher.queuedKeys()).isEmpty();
+   152	
+   153	    assertThat(key.pollEvents()).hasSize(1);
+   154	
+   155	    key.post(new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null));
+   156	    assertThat(watcher.queuedKeys()).isEmpty();
+   157	
+   158	    key.reset();
+   159	    assertThat(key.state()).isEqualTo(SIGNALLED);
+   160	    assertThat(watcher.queuedKeys()).hasSize(1);
+   161	  }
+   162	
+   163	  @Test
+   164	  public void testOverflow() throws IOException {
+   165	    AbstractWatchService.Key key =
+   166	        watcher.register(new StubWatchable(), ImmutableSet.of(ENTRY_CREATE));
+   167	    for (int i = 0; i < AbstractWatchService.Key.MAX_QUEUE_SIZE + 10; i++) {
+   168	      key.post(new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null));
+   169	    }
+   170	    key.signal();
+   171	
+   172	    List<WatchEvent<?>> events = key.pollEvents();
+   173	
+   174	    assertThat(events).hasSize(AbstractWatchService.Key.MAX_QUEUE_SIZE + 1);
+   175	    for (int i = 0; i < AbstractWatchService.Key.MAX_QUEUE_SIZE; i++) {
+   176	      assertThat(events.get(i).kind()).isEqualTo(ENTRY_CREATE);
+   177	    }
+   178	
+   179	    WatchEvent<?> lastEvent = events.get(AbstractWatchService.Key.MAX_QUEUE_SIZE);
+   180	    assertThat(lastEvent.kind()).isEqualTo(OVERFLOW);
+   181	    assertThat(lastEvent.count()).isEqualTo(10);
+   182	  }
+   183	
+   184	  @Test
+   185	  public void testResetAfterCancelReturnsFalse() throws IOException {
+   186	    AbstractWatchService.Key key =
+   187	        watcher.register(new StubWatchable(), ImmutableSet.of(ENTRY_CREATE));
+   188	    key.signal();
+   189	    key.cancel();
+   190	    assertThat(key.reset()).isFalse();
+
+codex
+I’ve got enough to judge the structure, but I’m doing one last pass for all file-level references so the verdict is grounded in actual fan-in/fan-out rather than just the obvious call sites.
+exec
+/bin/bash -lc "rg -n \"new Event<|new AbstractWatchService\\.Event<|overflowEvent\\(|class Event<T>\" jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java:222:          key.post(new Event<>(ENTRY_CREATE, 1, pathService.createFileName(name)));
+jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java:232:          key.post(new Event<>(ENTRY_DELETE, 1, pathService.createFileName(name)));
+jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java:244:            key.post(new Event<>(ENTRY_MODIFY, 1, pathService.createFileName(name)));
+jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:138:  static final class Event<T> implements WatchEvent<T> {
+jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:198:    private static WatchEvent<Object> overflowEvent(int count) {
+jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:199:      return new Event<>(OVERFLOW, count, null);
+jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java:266:        result.add(overflowEvent(overflowCount));
+jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:87:        new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null);
+jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:110:        new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null);
+jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:117:        new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null);
+jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:147:    key.post(new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null));
+jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:155:    key.post(new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null));
+jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java:168:      key.post(new AbstractWatchService.Event<>(ENTRY_CREATE, 1, null));
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:152:    assertWatcherHasEvents(new Event<>(ENTRY_CREATE, 1, fs.getPath("foo")));
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:158:        new Event<>(ENTRY_CREATE, 1, fs.getPath("bar")),
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:159:        new Event<>(ENTRY_CREATE, 1, fs.getPath("baz")));
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:171:        new Event<>(ENTRY_CREATE, 1, fs.getPath("bar")),
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:172:        new Event<>(ENTRY_CREATE, 1, fs.getPath("foo")));
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:179:        new Event<>(ENTRY_CREATE, 1, fs.getPath("baz")),
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:180:        new Event<>(ENTRY_DELETE, 1, fs.getPath("bar")),
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:181:        new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo")));
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:188:        new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo")),
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:189:        new Event<>(ENTRY_DELETE, 1, fs.getPath("foo")));
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:196:        ImmutableList.<WatchEvent<?>>of(new Event<>(ENTRY_CREATE, 1, fs.getPath("foo"))),
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:199:            new Event<>(ENTRY_CREATE, 1, fs.getPath("foo")),
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:200:            new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo"))));
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:208:        ImmutableList.<WatchEvent<?>>of(new Event<>(ENTRY_DELETE, 1, fs.getPath("foo"))),
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:211:            new Event<>(ENTRY_MODIFY, 1, fs.getPath("foo")),
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java:212:            new Event<>(ENTRY_DELETE, 1, fs.getPath("foo"))));
+
+exec
+/bin/bash -lc "rg -l \"AbstractWatchService\\.Event|import com\\.google\\.common\\.jimfs\\.AbstractWatchService\\.Event\" jimfs/src/main jimfs/src/test" in /data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs
+ succeeded in 0ms:
+jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java
+jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java
+
+codex
+{"target":"com.google.common.jimfs.AbstractWatchService.Event","detection":false,"justification":"Inspected [jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java](/data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs/jimfs/src/main/java/com/google/common/jimfs/AbstractWatchService.java), [jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java](/data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs/jimfs/src/main/java/com/google/common/jimfs/PollingWatchService.java), [jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java](/data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs/jimfs/src/test/java/com/google/common/jimfs/AbstractWatchServiceTest.java), and [jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java](/data/henrique/detecting_smells_study/codex/data/repositories/google/jimfs/jimfs/src/test/java/com/google/common/jimfs/PollingWatchServiceTest.java). `Event` is a small nested value class with one constructor and three accessors, depending only on `WatchEvent`, `checkNotNull`, `checkArgument`, `Objects`, and `MoreObjects`; it is referenced from one production class (`PollingWatchService`) and two test classes only, so there is no strong fan-in/fan-out evidence of a dependency hub."}
+tokens used
+10,376

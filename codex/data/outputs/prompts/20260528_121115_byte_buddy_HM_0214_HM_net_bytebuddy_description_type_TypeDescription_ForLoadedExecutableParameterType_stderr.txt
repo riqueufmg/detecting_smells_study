@@ -1,0 +1,466 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f23-e0d3-72a3-93e1-cba1add8ecb1
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.description.type.TypeDescription.ForLoadedExecutableParameterType` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.description.type.TypeDescription.ForLoadedExecutableParameterType",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.description.type.TypeDescription.ForLoadedExecutableParameterType`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and reading the surrounding type hierarchy first, then I’ll check who depends on it and what it depends on to decide whether it acts like a dependency hub.
+exec
+/bin/bash -lc 'rg -n "ForLoadedExecutableParameterType" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files | rg 'TypeDescription\\.java|ForLoadedExecutableParameterType|TypeDescription/ForLoadedExecutableParameterType|TypeDescription\\"'$ForLoadedExecutableParameterType'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 373ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java
+
+ succeeded in 421ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:3111:                public static class ForLoadedExecutableParameterType extends Delegator {
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:3134:                    public ForLoadedExecutableParameterType(AccessibleObject executable, int index) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:6897:                    return new AnnotationReader.Delegator.ForLoadedExecutableParameterType(constructor, index);
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:6953:                    return new AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, index);
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionGenericBuilderTest.java:40:        return describe(method.getGenericParameterTypes()[index], new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, index))
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:813:        assertThat(new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, 0).asList().size(), is(1));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:814:        assertThat(new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, 0).asList().ofType(typeAnnotationType)
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionArrayProjectionTest.java:37:                new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, index));
+
+codex
+I found the target as an inner class in [`TypeDescription.java`](file:///data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy/byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java). Next I’m checking the class body and all repository references to see whether it has unusually high fan-in/fan-out or just a small, local responsibility.
+exec
+/bin/bash -lc "sed -n '3090,3165p' byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '6875,6970p' byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"new TypeDescription\\.ForLoadedExecutableParameterType|ForLoadedExecutableParameterType\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java -S" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 244ms:
+                     * A dispatcher for interacting with {@link Method}.
+                     */
+                    @JavaDispatcher.Proxied("java.lang.reflect.Method")
+                    protected interface Dispatcher {
+
+                        /**
+                         * Resolves the supplied method's annotated return type.
+                         *
+                         * @param method The executable for which to resolve the annotated return type.
+                         * @return The return type annotations or {@code null} if this feature is not supported.
+                         */
+                        @MaybeNull
+                        @JavaDispatcher.Defaults
+                        AnnotatedElement getAnnotatedReturnType(Method method);
+                    }
+                }
+
+                /**
+                 * A delegating annotation reader for an annotated parameter variable.
+                 */
+                @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+                public static class ForLoadedExecutableParameterType extends Delegator {
+
+                    /**
+                     * A dispatcher for interacting with {@code java.lang.reflect.Executable}.
+                     */
+                    protected static final Dispatcher DISPATCHER = doPrivileged(JavaDispatcher.of(Dispatcher.class));
+
+                    /**
+                     * The represented executable.
+                     */
+                    private final AccessibleObject executable;
+
+                    /**
+                     * The type argument's index.
+                     */
+                    private final int index;
+
+                    /**
+                     * Creates a new annotation reader for an annotated type argument type.
+                     *
+                     * @param executable The represented executable.
+                     * @param index      The type argument's index.
+                     */
+                    public ForLoadedExecutableParameterType(AccessibleObject executable, int index) {
+                        this.executable = executable;
+                        this.index = index;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public AnnotatedElement resolve() {
+                        AnnotatedElement[] element = DISPATCHER.getAnnotatedParameterTypes(executable);
+                        return element.length == 0 ? NoOp.INSTANCE : element[index];
+                    }
+
+                    /**
+                     * A type for interacting with {@code java.lang.reflect.Executable}.
+                     */
+                    @JavaDispatcher.Proxied("java.lang.reflect.Executable")
+                    protected interface Dispatcher {
+
+                        /**
+                         * Resolves the supplied {@code java.lang.reflect.Executable}'s annotated parameter types.
+                         *
+                         * @param executable The executable for which to resolve its annotated parameter types.
+                         * @return An array of parameter type annotations or an empty array if this feature is not supported.
+                         */
+                        @JavaDispatcher.Defaults
+                        AnnotatedElement[] getAnnotatedParameterTypes(Object executable);
+                    }
+                }
+
+                /**
+                 * A delegating annotation reader for an annotated exception variable.
+
+ succeeded in 293ms:
+                    this.index = index;
+                    this.erasure = erasure;
+                }
+
+                @Override
+                @CachedReturnPlugin.Enhance("delegate")
+                protected Generic resolve() {
+                    java.lang.reflect.Type[] type = constructor.getGenericParameterTypes();
+                    return erasure.length == type.length
+                            ? Sort.describeOrNull(type[index], getAnnotationReader())
+                            : OfNonGenericType.ForLoadedType.of(erasure[index]);
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public TypeDescription asErasure() {
+                    return TypeDescription.ForLoadedType.of(erasure[index]);
+                }
+
+                @Override
+                protected AnnotationReader getAnnotationReader() {
+                    return new AnnotationReader.Delegator.ForLoadedExecutableParameterType(constructor, index);
+                }
+            }
+
+            /**
+             * A lazy projection of the parameter type of a {@link Method}.
+             */
+            public static class OfMethodParameter extends LazyProjection.WithEagerNavigation.OfAnnotatedElement {
+
+                /**
+                 * The method of which a parameter type is represented.
+                 */
+                private final Method method;
+
+                /**
+                 * The parameter's index.
+                 */
+                private final int index;
+
+                /**
+                 * The erasures of the method's parameter types.
+                 */
+                private final Class<?>[] erasure;
+
+                /**
+                 * Creates a lazy projection of a constructor's parameter.
+                 *
+                 * @param method  The method of which a parameter type is represented.
+                 * @param index   The parameter's index.
+                 * @param erasure The erasures of the method's parameter types.
+                 */
+                @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The array is not modified by class contract.")
+                public OfMethodParameter(Method method, int index, Class<?>[] erasure) {
+                    this.method = method;
+                    this.index = index;
+                    this.erasure = erasure;
+                }
+
+                @Override
+                @CachedReturnPlugin.Enhance("resolved")
+                protected Generic resolve() {
+                    java.lang.reflect.Type[] type = method.getGenericParameterTypes();
+                    return erasure.length == type.length
+                            ? Sort.describeOrNull(type[index], getAnnotationReader())
+                            : OfNonGenericType.ForLoadedType.of(erasure[index]);
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public TypeDescription asErasure() {
+                    return TypeDescription.ForLoadedType.of(erasure[index]);
+                }
+
+                @Override
+                protected AnnotationReader getAnnotationReader() {
+                    return new AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, index);
+                }
+            }
+
+            /**
+             * A lazy projection of a {@code java.lang.reflect.RecordComponent}'s type.
+             */
+            public static class OfRecordComponent extends LazyProjection.WithEagerNavigation.OfAnnotatedElement {
+
+                /**
+                 * The represented record component.
+                 */
+                private final Object recordComponent;
+
+                /**
+                 * Creates a lazy projection of a {@code java.lang.reflect.RecordComponent}'s type.
+                 *
+                 * @param recordComponent The represented record component.
+
+ succeeded in 302ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionGenericBuilderTest.java:40:        return describe(method.getGenericParameterTypes()[index], new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, index))
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionArrayProjectionTest.java:37:                new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, index));
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:3134:                    public ForLoadedExecutableParameterType(AccessibleObject executable, int index) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:6897:                    return new AnnotationReader.Delegator.ForLoadedExecutableParameterType(constructor, index);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:6953:                    return new AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, index);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:813:        assertThat(new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, 0).asList().size(), is(1));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:814:        assertThat(new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, 0).asList().ofType(typeAnnotationType)
+
+codex
+I’ve confirmed the class is self-contained and only appears in a handful of places. I’m pulling exact line numbers now so the verdict can cite concrete evidence instead of a generic summary.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java | sed -n '3110,3155p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java | sed -n '6888,6960p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionGenericBuilderTest.java | sed -n '30,50p'; nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/description/type/TypeDescriptionArrayProjectionTest.java | sed -n '30,45p'; nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java | sed -n '808,818p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 226ms:
+  3110	                @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+  3111	                public static class ForLoadedExecutableParameterType extends Delegator {
+  3112	
+  3113	                    /**
+  3114	                     * A dispatcher for interacting with {@code java.lang.reflect.Executable}.
+  3115	                     */
+  3116	                    protected static final Dispatcher DISPATCHER = doPrivileged(JavaDispatcher.of(Dispatcher.class));
+  3117	
+  3118	                    /**
+  3119	                     * The represented executable.
+  3120	                     */
+  3121	                    private final AccessibleObject executable;
+  3122	
+  3123	                    /**
+  3124	                     * The type argument's index.
+  3125	                     */
+  3126	                    private final int index;
+  3127	
+  3128	                    /**
+  3129	                     * Creates a new annotation reader for an annotated type argument type.
+  3130	                     *
+  3131	                     * @param executable The represented executable.
+  3132	                     * @param index      The type argument's index.
+  3133	                     */
+  3134	                    public ForLoadedExecutableParameterType(AccessibleObject executable, int index) {
+  3135	                        this.executable = executable;
+  3136	                        this.index = index;
+  3137	                    }
+  3138	
+  3139	                    /**
+  3140	                     * {@inheritDoc}
+  3141	                     */
+  3142	                    public AnnotatedElement resolve() {
+  3143	                        AnnotatedElement[] element = DISPATCHER.getAnnotatedParameterTypes(executable);
+  3144	                        return element.length == 0 ? NoOp.INSTANCE : element[index];
+  3145	                    }
+  3146	
+  3147	                    /**
+  3148	                     * A type for interacting with {@code java.lang.reflect.Executable}.
+  3149	                     */
+  3150	                    @JavaDispatcher.Proxied("java.lang.reflect.Executable")
+  3151	                    protected interface Dispatcher {
+  3152	
+  3153	                        /**
+  3154	                         * Resolves the supplied {@code java.lang.reflect.Executable}'s annotated parameter types.
+  3155	                         *
+
+ succeeded in 289ms:
+  6888	                /**
+  6889	                 * {@inheritDoc}
+  6890	                 */
+  6891	                public TypeDescription asErasure() {
+  6892	                    return TypeDescription.ForLoadedType.of(erasure[index]);
+  6893	                }
+  6894	
+  6895	                @Override
+  6896	                protected AnnotationReader getAnnotationReader() {
+  6897	                    return new AnnotationReader.Delegator.ForLoadedExecutableParameterType(constructor, index);
+  6898	                }
+  6899	            }
+  6900	
+  6901	            /**
+  6902	             * A lazy projection of the parameter type of a {@link Method}.
+  6903	             */
+  6904	            public static class OfMethodParameter extends LazyProjection.WithEagerNavigation.OfAnnotatedElement {
+  6905	
+  6906	                /**
+  6907	                 * The method of which a parameter type is represented.
+  6908	                 */
+  6909	                private final Method method;
+  6910	
+  6911	                /**
+  6912	                 * The parameter's index.
+  6913	                 */
+  6914	                private final int index;
+  6915	
+  6916	                /**
+  6917	                 * The erasures of the method's parameter types.
+  6918	                 */
+  6919	                private final Class<?>[] erasure;
+  6920	
+  6921	                /**
+  6922	                 * Creates a lazy projection of a constructor's parameter.
+  6923	                 *
+  6924	                 * @param method  The method of which a parameter type is represented.
+  6925	                 * @param index   The parameter's index.
+  6926	                 * @param erasure The erasures of the method's parameter types.
+  6927	                 */
+  6928	                @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The array is not modified by class contract.")
+  6929	                public OfMethodParameter(Method method, int index, Class<?>[] erasure) {
+  6930	                    this.method = method;
+  6931	                    this.index = index;
+  6932	                    this.erasure = erasure;
+  6933	                }
+  6934	
+  6935	                @Override
+  6936	                @CachedReturnPlugin.Enhance("resolved")
+  6937	                protected Generic resolve() {
+  6938	                    java.lang.reflect.Type[] type = method.getGenericParameterTypes();
+  6939	                    return erasure.length == type.length
+  6940	                            ? Sort.describeOrNull(type[index], getAnnotationReader())
+  6941	                            : OfNonGenericType.ForLoadedType.of(erasure[index]);
+  6942	                }
+  6943	
+  6944	                /**
+  6945	                 * {@inheritDoc}
+  6946	                 */
+  6947	                public TypeDescription asErasure() {
+  6948	                    return TypeDescription.ForLoadedType.of(erasure[index]);
+  6949	                }
+  6950	
+  6951	                @Override
+  6952	                protected AnnotationReader getAnnotationReader() {
+  6953	                    return new AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, index);
+  6954	                }
+  6955	            }
+  6956	
+  6957	            /**
+  6958	             * A lazy projection of a {@code java.lang.reflect.RecordComponent}'s type.
+  6959	             */
+  6960	            public static class OfRecordComponent extends LazyProjection.WithEagerNavigation.OfAnnotatedElement {
+
+ succeeded in 414ms:
+    30	        return describe(field.getGenericType(), new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedField(field))
+    31	                .accept(TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(new FieldDescription.ForLoadedField(field)));
+    32	    }
+    33	
+    34	    protected TypeDescription.Generic describeReturnType(Method method) {
+    35	        return describe(method.getGenericReturnType(), new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedMethodReturnType(method))
+    36	                .accept(TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(new MethodDescription.ForLoadedMethod(method)));
+    37	    }
+    38	
+    39	    protected TypeDescription.Generic describeParameterType(Method method, int index) {
+    40	        return describe(method.getGenericParameterTypes()[index], new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, index))
+    41	                .accept(TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(new MethodDescription.ForLoadedMethod(method)));
+    42	    }
+    43	
+    44	    protected TypeDescription.Generic describeExceptionType(Method method, int index) {
+    45	        Type[] type = method.getGenericExceptionTypes();
+    46	        Arrays.sort(type, new Comparator<Type>() {
+    47	            public int compare(Type left, Type right) {
+    48	                return left.toString().compareTo(right.toString());
+    49	            }
+    50	        });
+    30	    protected TypeDescription.Generic describeReturnType(Method method) {
+    31	        return TypeDefinition.Sort.describe(method.getGenericReturnType(),
+    32	                new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedMethodReturnType(method));
+    33	    }
+    34	
+    35	    protected TypeDescription.Generic describeParameterType(Method method, int index) {
+    36	        return TypeDefinition.Sort.describe(method.getGenericParameterTypes()[index],
+    37	                new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, index));
+    38	    }
+    39	
+    40	    protected TypeDescription.Generic describeExceptionType(Method method, int index) {
+    41	        Type[] type = method.getGenericExceptionTypes();
+    42	        Arrays.sort(type, new Comparator<Type>() {
+    43	            public int compare(Type left, Type right) {
+    44	                return left.toString().compareTo(right.toString());
+    45	            }
+   808	                .load(typeAnnotationType.getClassLoader(), ClassLoadingStrategy.Default.CHILD_FIRST)
+   809	                .getLoaded()
+   810	                .getDeclaredMethod(FOO, Object.class);
+   811	        assertThat(method.getParameterTypes().length, is(1));
+   812	        assertThat(method.getParameterTypes()[0], is((Object) Object.class));
+   813	        assertThat(new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, 0).asList().size(), is(1));
+   814	        assertThat(new TypeDescription.Generic.AnnotationReader.Delegator.ForLoadedExecutableParameterType(method, 0).asList().ofType(typeAnnotationType)
+   815	                .getValue(value).resolve(Integer.class), is(INTEGER_VALUE));
+   816	    }
+   817	
+   818	    @Test
+
+codex
+{"target":"net.bytebuddy.description.type.TypeDescription.ForLoadedExecutableParameterType","detection":false,"justification":"In `byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:3111-3155`, `ForLoadedExecutableParameterType` is a small nested annotation-reader with one dispatcher, two fields, one constructor, and one `resolve()` that only calls `getAnnotatedParameterTypes(...)`. Repository-wide search found only three production references in the same file (`TypeDescription.java:6897` and `TypeDescription.java:6953` for construction, plus the class definition) and three test references (`TypeDescriptionGenericBuilderTest.java:40`, `TypeDescriptionArrayProjectionTest.java:37`, `AbstractDynamicTypeBuilderTest.java:813-814`). This shows limited fan-in/fan-out, not a dependency hub."}
+tokens used
+7,047

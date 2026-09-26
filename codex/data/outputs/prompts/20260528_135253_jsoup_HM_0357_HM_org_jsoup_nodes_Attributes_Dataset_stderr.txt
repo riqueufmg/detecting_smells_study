@@ -1,0 +1,723 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f80-e515-7220-a569-9d3aa5230c2b
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.jsoup.nodes.Attributes.Dataset` in the repository located at:
+
+`data/repositories/jhy/jsoup`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.jsoup.nodes.Attributes.Dataset",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.jsoup.nodes.Attributes.Dataset`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `org.jsoup.nodes.Attributes.Dataset` and checking its incoming and outgoing dependencies in the source tree before deciding whether it behaves like a dependency hub.
+exec
+/bin/bash -lc "rg --files src | rg 'Attributes\\.java|Attributes|Dataset'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "rg -n \"class Dataset|Dataset\" src -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 271ms:
+src/test/java/org/jsoup/nodes/AttributesTest.java
+src/main/java/org/jsoup/nodes/Attributes.java
+
+ succeeded in 295ms:
+src/main/java/org/jsoup/nodes/Attributes.java:494:        return new Dataset(this);
+src/main/java/org/jsoup/nodes/Attributes.java:618:    private static class Dataset extends AbstractMap<String, String> {
+src/main/java/org/jsoup/nodes/Attributes.java:621:        private Dataset(Attributes attributes) {
+src/main/java/org/jsoup/nodes/Attributes.java:642:                return new DatasetIterator();
+src/main/java/org/jsoup/nodes/Attributes.java:648:                Iterator<Entry<String, String>> iter = new DatasetIterator();
+src/main/java/org/jsoup/nodes/Attributes.java:655:        private class DatasetIterator implements Iterator<Map.Entry<String, String>> {
+
+codex
+I found `Dataset` as a private static inner class inside `Attributes.java`. Next I’m checking how many collaborators it touches internally and whether anything outside `Attributes` depends on it directly or indirectly.
+exec
+/bin/bash -lc "rg -n \"dataset\\(|asDataset\\(|data\\-.*attr|dataAttr|DatasetIterator|Attributes\\.Dataset|Attributes\\.dataset\" src/main/java src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '450,760p' src/main/java/org/jsoup/nodes/Attributes.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 152ms:
+src/test/java/org/jsoup/nodes/AttributesTest.java:36:        Map<String, String> dataset = a.dataset();
+src/test/java/org/jsoup/nodes/ElementTest.java:908:    public void dataset() {
+src/test/java/org/jsoup/nodes/ElementTest.java:911:        Map<String, String> dataset = div.dataset();
+src/test/java/org/jsoup/nodes/ElementTest.java:935:        assertNull(dataset.get("")); // data- is not a data attribute
+src/test/java/org/jsoup/nodes/ElementTest.java:938:        assertEquals(0, p.dataset().size());
+src/main/java/org/jsoup/nodes/Attributes.java:48:    protected static final String dataPrefix = "data-"; // data attributes
+src/main/java/org/jsoup/nodes/Attributes.java:493:    public Map<String, String> dataset() {
+src/main/java/org/jsoup/nodes/Attributes.java:642:                return new DatasetIterator();
+src/main/java/org/jsoup/nodes/Attributes.java:648:                Iterator<Entry<String, String>> iter = new DatasetIterator();
+src/main/java/org/jsoup/nodes/Attributes.java:655:        private class DatasetIterator implements Iterator<Map.Entry<String, String>> {
+src/main/java/org/jsoup/nodes/Element.java:322:     * You can find elements that have data attributes using the {@code [^data-]} attribute key prefix selector.
+src/main/java/org/jsoup/nodes/Element.java:325:    public Map<String, String> dataset() {
+src/main/java/org/jsoup/nodes/Element.java:326:        return attributes().dataset();
+
+ succeeded in 154ms:
+                checkModified();
+                if (i >= size) throw new NoSuchElementException();
+                String key = keys[i];
+                assert key != null;
+                final Attribute attr = new Attribute(key, (String) vals[i], Attributes.this);
+                i++;
+                return attr;
+            }
+
+            private void checkModified() {
+                if (size != expectedSize) throw new ConcurrentModificationException("Use Iterator#remove() instead to remove attributes while iterating.");
+            }
+
+            @Override
+            public void remove() {
+                Attributes.this.remove(--i); // next() advanced, so rewind
+                expectedSize--;
+            }
+        };
+    }
+
+    /**
+     Get the attributes as a List, for iteration.
+     @return a view of the attributes as an unmodifiable List.
+     */
+    public List<Attribute> asList() {
+        ArrayList<Attribute> list = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            String key = keys[i];
+            assert key != null;
+            if (isInternalKey(key))
+                continue; // skip internal keys
+            Attribute attr = new Attribute(key, (String) vals[i], Attributes.this);
+            list.add(attr);
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    /**
+     * Retrieves a filtered view of attributes that are HTML5 custom data attributes; that is, attributes with keys
+     * starting with {@code data-}.
+     * @return map of custom data attributes.
+     */
+    public Map<String, String> dataset() {
+        return new Dataset(this);
+    }
+
+    /**
+     Get the HTML representation of these attributes.
+     @return HTML
+     */
+    public String html() {
+        StringBuilder sb = StringUtil.borrowBuilder();
+        html(QuietAppendable.wrap(sb), new Document.OutputSettings()); // output settings a bit funky, but this html() seldom used
+        return StringUtil.releaseBuilder(sb);
+    }
+
+    final void html(final QuietAppendable accum, final Document.OutputSettings out) {
+        final int sz = size;
+        for (int i = 0; i < sz; i++) {
+            String key = keys[i];
+            assert key != null;
+            if (isInternalKey(key))
+                continue;
+            final String validated = Attribute.getValidKey(key, out.syntax());
+            if (validated != null)
+                Attribute.htmlNoValidate(validated, (String) vals[i], accum.append(' '), out);
+        }
+    }
+
+    @Override
+    public String toString() {
+        return html();
+    }
+
+    /**
+     * Checks if these attributes are equal to another set of attributes, by comparing the two sets. Note that the order
+     * of the attributes does not impact this equality (as per the Map interface equals()).
+     * @param o attributes to compare with
+     * @return if both sets of attributes have the same content
+     */
+    @Override
+    public boolean equals(@Nullable Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Attributes that = (Attributes) o;
+        if (size != that.size) return false;
+        for (int i = 0; i < size; i++) {
+            String key = keys[i];
+            assert key != null;
+            int thatI = that.indexOfKey(key);
+            if (thatI == NotFound || !Objects.equals(vals[i], that.vals[thatI]))
+                return false;
+        }
+        return true;
+    }
+
+    /**
+     * Calculates the hashcode of these attributes, by iterating all attributes and summing their hashcodes.
+     * @return calculated hashcode
+     */
+    @Override
+    public int hashCode() {
+        int result = size;
+        result = 31 * result + Arrays.hashCode(keys);
+        result = 31 * result + Arrays.hashCode(vals);
+        return result;
+    }
+
+    @Override
+    public Attributes clone() {
+        Attributes clone;
+        try {
+            clone = (Attributes) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+        clone.size = size;
+        clone.keys = Arrays.copyOf(keys, size);
+        clone.vals = Arrays.copyOf(vals, size);
+
+        // make a copy of the user data map. (Contents are shallow).
+        int i = indexOfKey(SharedConstants.UserDataKey);
+        if (i != NotFound) {
+            //noinspection unchecked
+            vals[i] = new HashMap<>((Map<String, Object>) vals[i]);
+        }
+
+        return clone;
+    }
+
+    /**
+     * Internal method. Lowercases all (non-internal) keys.
+     */
+    public void normalize() {
+        for (int i = 0; i < size; i++) {
+            assert keys[i] != null;
+            String key = keys[i];
+            assert key != null;
+            if (!isInternalKey(key))
+                keys[i] = lowerCase(key);
+        }
+    }
+
+    /**
+     * Internal method. Removes duplicate attribute by name. Settings for case sensitivity of key names.
+     * @param settings case sensitivity
+     * @return number of removed dupes
+     */
+    public int deduplicate(ParseSettings settings) {
+        if (size == 0) return 0;
+        boolean preserve = settings.preserveAttributeCase();
+        int dupes = 0;
+        for (int i = 0; i < size; i++) {
+            String keyI = keys[i];
+            assert keyI != null;
+            for (int j = i + 1; j < size; j++) {
+                if ((preserve && keyI.equals(keys[j])) || (!preserve && keyI.equalsIgnoreCase(keys[j]))) {
+                    dupes++;
+                    remove(j);
+                    j--;
+                }
+            }
+        }
+        return dupes;
+    }
+
+    private static class Dataset extends AbstractMap<String, String> {
+        private final Attributes attributes;
+
+        private Dataset(Attributes attributes) {
+            this.attributes = attributes;
+        }
+
+        @Override
+        public Set<Entry<String, String>> entrySet() {
+            return new EntrySet();
+        }
+
+        @Override
+        public String put(String key, String value) {
+            String dataKey = dataKey(key);
+            String oldValue = attributes.hasKey(dataKey) ? attributes.get(dataKey) : null;
+            attributes.put(dataKey, value);
+            return oldValue;
+        }
+
+        private class EntrySet extends AbstractSet<Map.Entry<String, String>> {
+
+            @Override
+            public Iterator<Map.Entry<String, String>> iterator() {
+                return new DatasetIterator();
+            }
+
+            @Override
+            public int size() {
+                int count = 0;
+                Iterator<Entry<String, String>> iter = new DatasetIterator();
+                while (iter.hasNext())
+                    count++;
+                return count;
+            }
+        }
+
+        private class DatasetIterator implements Iterator<Map.Entry<String, String>> {
+            private final Iterator<Attribute> attrIter = attributes.iterator();
+            private Attribute attr;
+            @Override public boolean hasNext() {
+                while (attrIter.hasNext()) {
+                    attr = attrIter.next();
+                    if (attr.isDataAttribute()) return true;
+                }
+                return false;
+            }
+
+            @Override public Entry<String, String> next() {
+                return new Attribute(attr.getKey().substring(dataPrefix.length()), attr.getValue());
+            }
+
+            @Override public void remove() {
+                attributes.remove(attr.getKey());
+            }
+        }
+    }
+
+    private static String dataKey(String key) {
+        return dataPrefix + key;
+    }
+
+    static String internalKey(String key) {
+        return InternalPrefix + key;
+    }
+
+    static boolean isInternalKey(String key) {
+        return key.length() > 1 && key.charAt(0) == InternalPrefix;
+    }
+}
+
+codex
+I’ve confirmed the target is a small private adapter behind `Attributes.dataset()`. I’m now checking its exact call sites and the types it collaborates with so the verdict is based on concrete fan-in/fan-out evidence, not just the class name.
+exec
+/bin/bash -lc "nl -ba src/main/java/org/jsoup/nodes/Element.java | sed -n '318,330p'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 0ms:
+   318	     * <p>
+   319	     * This map is a filtered view of the element's attribute map. Changes to one map (add, remove, update) are reflected
+   320	     * in the other map.
+   321	     * <p>
+   322	     * You can find elements that have data attributes using the {@code [^data-]} attribute key prefix selector.
+   323	     * @return a map of {@code key=value} custom data attributes.
+   324	     */
+   325	    public Map<String, String> dataset() {
+   326	        return attributes().dataset();
+   327	    }
+   328	
+   329	    @Override @Nullable
+   330	    public final Element parent() {
+
+exec
+/bin/bash -lc "nl -ba src/main/java/org/jsoup/nodes/Attributes.java | sed -n '480,670p'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "nl -ba src/test/java/org/jsoup/nodes/ElementTest.java | sed -n '900,945p'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "nl -ba src/test/java/org/jsoup/nodes/AttributesTest.java | sed -n '1,80p'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 168ms:
+     1	package org.jsoup.nodes;
+     2	
+     3	import org.jsoup.Jsoup;
+     4	import org.junit.jupiter.api.Test;
+     5	
+     6	import java.util.ConcurrentModificationException;
+     7	import java.util.Iterator;
+     8	import java.util.List;
+     9	import java.util.Map;
+    10	import java.util.NoSuchElementException;
+    11	
+    12	import static org.junit.jupiter.api.Assertions.*;
+    13	
+    14	/**
+    15	 * Tests for Attributes.
+    16	 *
+    17	 * @author Jonathan Hedley
+    18	 */
+    19	public class AttributesTest {
+    20	
+    21	    @Test
+    22	    public void html() {
+    23	        Attributes a = new Attributes();
+    24	        a.put("Tot", "a&p");
+    25	        a.put("Hello", "There");
+    26	        a.put("data-name", "Jsoup");
+    27	
+    28	        assertEquals(3, a.size());
+    29	        assertTrue(a.hasKey("Tot"));
+    30	        assertTrue(a.hasKey("Hello"));
+    31	        assertTrue(a.hasKey("data-name"));
+    32	        assertFalse(a.hasKey("tot"));
+    33	        assertTrue(a.hasKeyIgnoreCase("tot"));
+    34	        assertEquals("There", a.getIgnoreCase("hEllo"));
+    35	
+    36	        Map<String, String> dataset = a.dataset();
+    37	        assertEquals(1, dataset.size());
+    38	        assertEquals("Jsoup", dataset.get("name"));
+    39	        assertEquals("", a.get("tot"));
+    40	        assertEquals("a&p", a.get("Tot"));
+    41	        assertEquals("a&p", a.getIgnoreCase("tot"));
+    42	
+    43	        assertEquals(" Tot=\"a&amp;p\" Hello=\"There\" data-name=\"Jsoup\"", a.html());
+    44	        assertEquals(a.html(), a.toString());
+    45	    }
+    46	
+    47	    @Test
+    48	    public void testIteratorRemovable() {
+    49	        Attributes a = new Attributes();
+    50	        a.put("Tot", "a&p");
+    51	        a.put("Hello", "There");
+    52	        a.put("data-name", "Jsoup");
+    53	        assertTrue(a.hasKey("Tot"));
+    54	
+    55	        Iterator<Attribute> iterator = a.iterator();
+    56	        Attribute attr = iterator.next();
+    57	        assertEquals("Tot", attr.getKey());
+    58	        iterator.remove();
+    59	        assertEquals(2, a.size());
+    60	        attr = iterator.next();
+    61	        assertEquals("Hello", attr.getKey());
+    62	        assertEquals("There", attr.getValue());
+    63	
+    64	        // make sure that's flowing to the underlying attributes object
+    65	        assertEquals(2, a.size());
+    66	        assertEquals("There", a.get("Hello"));
+    67	        assertFalse(a.hasKey("Tot"));
+    68	    }
+    69	
+    70	    @Test
+    71	    public void testIteratorUpdateable() {
+    72	        Attributes a = new Attributes();
+    73	        a.put("Tot", "a&p");
+    74	        a.put("Hello", "There");
+    75	
+    76	        assertFalse(a.hasKey("Foo"));
+    77	        Iterator<Attribute> iterator = a.iterator();
+    78	        Attribute attr = iterator.next();
+    79	        attr.setKey("Foo");
+    80	        attr = iterator.next();
+
+ succeeded in 202ms:
+   900	        Elements ps = doc.select("p");
+   901	
+   902	        assertTrue(div.hasText());
+   903	        assertTrue(ps.first().hasText());
+   904	        assertFalse(ps.last().hasText());
+   905	    }
+   906	
+   907	    @Test
+   908	    public void dataset() {
+   909	        Document doc = Jsoup.parse("<div id=1 data-name=jsoup class=new data-package=jar>Hello</div><p id=2>Hello</p>");
+   910	        Element div = doc.select("div").first();
+   911	        Map<String, String> dataset = div.dataset();
+   912	        Attributes attributes = div.attributes();
+   913	
+   914	        // size, get, set, add, remove
+   915	        assertEquals(2, dataset.size());
+   916	        assertEquals("jsoup", dataset.get("name"));
+   917	        assertEquals("jar", dataset.get("package"));
+   918	
+   919	        dataset.put("name", "jsoup updated");
+   920	        dataset.put("language", "java");
+   921	        dataset.remove("package");
+   922	
+   923	        assertEquals(2, dataset.size());
+   924	        assertEquals(4, attributes.size());
+   925	        assertEquals("jsoup updated", attributes.get("data-name"));
+   926	        assertEquals("jsoup updated", dataset.get("name"));
+   927	        assertEquals("java", attributes.get("data-language"));
+   928	        assertEquals("java", dataset.get("language"));
+   929	
+   930	        attributes.put("data-food", "bacon");
+   931	        assertEquals(3, dataset.size());
+   932	        assertEquals("bacon", dataset.get("food"));
+   933	
+   934	        attributes.put("data-", "empty");
+   935	        assertNull(dataset.get("")); // data- is not a data attribute
+   936	
+   937	        Element p = doc.select("p").first();
+   938	        assertEquals(0, p.dataset().size());
+   939	
+   940	    }
+   941	
+   942	    @Test
+   943	    public void parentlessToString() {
+   944	        Document doc = Jsoup.parse("<img src='foo'>");
+   945	        Element img = doc.select("img").first();
+
+ succeeded in 258ms:
+   480	            if (isInternalKey(key))
+   481	                continue; // skip internal keys
+   482	            Attribute attr = new Attribute(key, (String) vals[i], Attributes.this);
+   483	            list.add(attr);
+   484	        }
+   485	        return Collections.unmodifiableList(list);
+   486	    }
+   487	
+   488	    /**
+   489	     * Retrieves a filtered view of attributes that are HTML5 custom data attributes; that is, attributes with keys
+   490	     * starting with {@code data-}.
+   491	     * @return map of custom data attributes.
+   492	     */
+   493	    public Map<String, String> dataset() {
+   494	        return new Dataset(this);
+   495	    }
+   496	
+   497	    /**
+   498	     Get the HTML representation of these attributes.
+   499	     @return HTML
+   500	     */
+   501	    public String html() {
+   502	        StringBuilder sb = StringUtil.borrowBuilder();
+   503	        html(QuietAppendable.wrap(sb), new Document.OutputSettings()); // output settings a bit funky, but this html() seldom used
+   504	        return StringUtil.releaseBuilder(sb);
+   505	    }
+   506	
+   507	    final void html(final QuietAppendable accum, final Document.OutputSettings out) {
+   508	        final int sz = size;
+   509	        for (int i = 0; i < sz; i++) {
+   510	            String key = keys[i];
+   511	            assert key != null;
+   512	            if (isInternalKey(key))
+   513	                continue;
+   514	            final String validated = Attribute.getValidKey(key, out.syntax());
+   515	            if (validated != null)
+   516	                Attribute.htmlNoValidate(validated, (String) vals[i], accum.append(' '), out);
+   517	        }
+   518	    }
+   519	
+   520	    @Override
+   521	    public String toString() {
+   522	        return html();
+   523	    }
+   524	
+   525	    /**
+   526	     * Checks if these attributes are equal to another set of attributes, by comparing the two sets. Note that the order
+   527	     * of the attributes does not impact this equality (as per the Map interface equals()).
+   528	     * @param o attributes to compare with
+   529	     * @return if both sets of attributes have the same content
+   530	     */
+   531	    @Override
+   532	    public boolean equals(@Nullable Object o) {
+   533	        if (this == o) return true;
+   534	        if (o == null || getClass() != o.getClass()) return false;
+   535	
+   536	        Attributes that = (Attributes) o;
+   537	        if (size != that.size) return false;
+   538	        for (int i = 0; i < size; i++) {
+   539	            String key = keys[i];
+   540	            assert key != null;
+   541	            int thatI = that.indexOfKey(key);
+   542	            if (thatI == NotFound || !Objects.equals(vals[i], that.vals[thatI]))
+   543	                return false;
+   544	        }
+   545	        return true;
+   546	    }
+   547	
+   548	    /**
+   549	     * Calculates the hashcode of these attributes, by iterating all attributes and summing their hashcodes.
+   550	     * @return calculated hashcode
+   551	     */
+   552	    @Override
+   553	    public int hashCode() {
+   554	        int result = size;
+   555	        result = 31 * result + Arrays.hashCode(keys);
+   556	        result = 31 * result + Arrays.hashCode(vals);
+   557	        return result;
+   558	    }
+   559	
+   560	    @Override
+   561	    public Attributes clone() {
+   562	        Attributes clone;
+   563	        try {
+   564	            clone = (Attributes) super.clone();
+   565	        } catch (CloneNotSupportedException e) {
+   566	            throw new RuntimeException(e);
+   567	        }
+   568	        clone.size = size;
+   569	        clone.keys = Arrays.copyOf(keys, size);
+   570	        clone.vals = Arrays.copyOf(vals, size);
+   571	
+   572	        // make a copy of the user data map. (Contents are shallow).
+   573	        int i = indexOfKey(SharedConstants.UserDataKey);
+   574	        if (i != NotFound) {
+   575	            //noinspection unchecked
+   576	            vals[i] = new HashMap<>((Map<String, Object>) vals[i]);
+   577	        }
+   578	
+   579	        return clone;
+   580	    }
+   581	
+   582	    /**
+   583	     * Internal method. Lowercases all (non-internal) keys.
+   584	     */
+   585	    public void normalize() {
+   586	        for (int i = 0; i < size; i++) {
+   587	            assert keys[i] != null;
+   588	            String key = keys[i];
+   589	            assert key != null;
+   590	            if (!isInternalKey(key))
+   591	                keys[i] = lowerCase(key);
+   592	        }
+   593	    }
+   594	
+   595	    /**
+   596	     * Internal method. Removes duplicate attribute by name. Settings for case sensitivity of key names.
+   597	     * @param settings case sensitivity
+   598	     * @return number of removed dupes
+   599	     */
+   600	    public int deduplicate(ParseSettings settings) {
+   601	        if (size == 0) return 0;
+   602	        boolean preserve = settings.preserveAttributeCase();
+   603	        int dupes = 0;
+   604	        for (int i = 0; i < size; i++) {
+   605	            String keyI = keys[i];
+   606	            assert keyI != null;
+   607	            for (int j = i + 1; j < size; j++) {
+   608	                if ((preserve && keyI.equals(keys[j])) || (!preserve && keyI.equalsIgnoreCase(keys[j]))) {
+   609	                    dupes++;
+   610	                    remove(j);
+   611	                    j--;
+   612	                }
+   613	            }
+   614	        }
+   615	        return dupes;
+   616	    }
+   617	
+   618	    private static class Dataset extends AbstractMap<String, String> {
+   619	        private final Attributes attributes;
+   620	
+   621	        private Dataset(Attributes attributes) {
+   622	            this.attributes = attributes;
+   623	        }
+   624	
+   625	        @Override
+   626	        public Set<Entry<String, String>> entrySet() {
+   627	            return new EntrySet();
+   628	        }
+   629	
+   630	        @Override
+   631	        public String put(String key, String value) {
+   632	            String dataKey = dataKey(key);
+   633	            String oldValue = attributes.hasKey(dataKey) ? attributes.get(dataKey) : null;
+   634	            attributes.put(dataKey, value);
+   635	            return oldValue;
+   636	        }
+   637	
+   638	        private class EntrySet extends AbstractSet<Map.Entry<String, String>> {
+   639	
+   640	            @Override
+   641	            public Iterator<Map.Entry<String, String>> iterator() {
+   642	                return new DatasetIterator();
+   643	            }
+   644	
+   645	            @Override
+   646	            public int size() {
+   647	                int count = 0;
+   648	                Iterator<Entry<String, String>> iter = new DatasetIterator();
+   649	                while (iter.hasNext())
+   650	                    count++;
+   651	                return count;
+   652	            }
+   653	        }
+   654	
+   655	        private class DatasetIterator implements Iterator<Map.Entry<String, String>> {
+   656	            private final Iterator<Attribute> attrIter = attributes.iterator();
+   657	            private Attribute attr;
+   658	            @Override public boolean hasNext() {
+   659	                while (attrIter.hasNext()) {
+   660	                    attr = attrIter.next();
+   661	                    if (attr.isDataAttribute()) return true;
+   662	                }
+   663	                return false;
+   664	            }
+   665	
+   666	            @Override public Entry<String, String> next() {
+   667	                return new Attribute(attr.getKey().substring(dataPrefix.length()), attr.getValue());
+   668	            }
+   669	
+   670	            @Override public void remove() {
+
+codex
+I have enough to decide, but I’m verifying there isn’t any hidden direct coupling to `Dataset` elsewhere in the repo, since it is a private nested class and that matters for fan-in.
+exec
+/bin/bash -lc "rg -n \"dataset\\(\" src/main/java src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "rg -n \"new Dataset\\(|DatasetIterator|EntrySet|Attributes\\.Dataset\" src" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 246ms:
+src/main/java/org/jsoup/nodes/Attributes.java:494:        return new Dataset(this);
+src/main/java/org/jsoup/nodes/Attributes.java:627:            return new EntrySet();
+src/main/java/org/jsoup/nodes/Attributes.java:638:        private class EntrySet extends AbstractSet<Map.Entry<String, String>> {
+src/main/java/org/jsoup/nodes/Attributes.java:642:                return new DatasetIterator();
+src/main/java/org/jsoup/nodes/Attributes.java:648:                Iterator<Entry<String, String>> iter = new DatasetIterator();
+src/main/java/org/jsoup/nodes/Attributes.java:655:        private class DatasetIterator implements Iterator<Map.Entry<String, String>> {
+
+ succeeded in 291ms:
+src/test/java/org/jsoup/nodes/AttributesTest.java:36:        Map<String, String> dataset = a.dataset();
+src/test/java/org/jsoup/nodes/ElementTest.java:908:    public void dataset() {
+src/test/java/org/jsoup/nodes/ElementTest.java:911:        Map<String, String> dataset = div.dataset();
+src/test/java/org/jsoup/nodes/ElementTest.java:938:        assertEquals(0, p.dataset().size());
+src/main/java/org/jsoup/nodes/Attributes.java:493:    public Map<String, String> dataset() {
+src/main/java/org/jsoup/nodes/Element.java:325:    public Map<String, String> dataset() {
+src/main/java/org/jsoup/nodes/Element.java:326:        return attributes().dataset();
+
+codex
+{"target":"org.jsoup.nodes.Attributes.Dataset","detection":false,"justification":"Inspected src/main/java/org/jsoup/nodes/Attributes.java, src/main/java/org/jsoup/nodes/Element.java, src/test/java/org/jsoup/nodes/AttributesTest.java, and src/test/java/org/jsoup/nodes/ElementTest.java. Dataset is a private static inner class created only by Attributes.dataset() at Attributes.java:493-494; no other production class references it directly, so fan-in is essentially zero outside its enclosing class. Its fan-out is also limited: it only depends on Attributes, AbstractMap/AbstractSet, Iterator, Map.Entry, and Attribute inside the same file (Attributes.java:618-670). The public usage in Element.dataset() merely delegates to Attributes.dataset() (Element.java:325-326), and tests exercise the public API rather than depending on Dataset itself. This is not hub-like modularization."}
+tokens used
+9,648

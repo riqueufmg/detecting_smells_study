@@ -1,0 +1,1056 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ee3-cbc1-7d72-886a-4bc2e219d13e
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin` in the repository located at:
+
+`data/repositories/apache/commons-io`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and then I’ll inspect its imports, fields, methods, and direct usage sites to judge fan-in/fan-out evidence for hub-like modularization.
+exec
+/bin/bash -lc 'rg -n "class AbstractRandomAccessFileOrigin|interface AbstractRandomAccessFileOrigin|AbstractRandomAccessFileOrigin" .' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+./RELEASE-NOTES.txt:107:o          org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin.getReader(Charset) now maps a null Charset to the default Charset. Thanks to Gary Gregory. 
+./RELEASE-NOTES.txt:111:o          org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin.getWriter(Charset) now maps a null Charset to the default Charset. Thanks to Gary Gregory. 
+./src/changes/changes.xml:102:      <action dev="ggregory" type="fix"                due-to="Gary Gregory">org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin.getReader(Charset) now maps a null Charset to the default Charset.</action>
+./src/changes/changes.xml:106:      <action dev="ggregory" type="fix"                due-to="Gary Gregory">org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin.getWriter(Charset) now maps a null Charset to the default Charset.</action>
+./src/test/java/org/apache/commons/io/build/AbstractRandomAccessFileOriginTest.java:27:import org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin;
+./src/test/java/org/apache/commons/io/build/AbstractRandomAccessFileOriginTest.java:40:public abstract class AbstractRandomAccessFileOriginTest<T extends RandomAccessFile, B extends AbstractRandomAccessFileOrigin<T, B>>
+./src/test/java/org/apache/commons/io/build/RandomAccessFileOriginTest.java:35:class RandomAccessFileOriginTest extends AbstractRandomAccessFileOriginTest<RandomAccessFile, RandomAccessFileOrigin> {
+./src/main/java/org/apache/commons/io/build/AbstractOrigin.java:359:    public abstract static class AbstractRandomAccessFileOrigin<T extends RandomAccessFile, B extends AbstractRandomAccessFileOrigin<T, B>>
+./src/main/java/org/apache/commons/io/build/AbstractOrigin.java:371:        public AbstractRandomAccessFileOrigin(final T origin) {
+./src/main/java/org/apache/commons/io/build/AbstractOrigin.java:747:    public static class IORandomAccessFileOrigin extends AbstractRandomAccessFileOrigin<IORandomAccessFile, IORandomAccessFileOrigin> {
+./src/main/java/org/apache/commons/io/build/AbstractOrigin.java:875:    public static class RandomAccessFileOrigin extends AbstractRandomAccessFileOrigin<RandomAccessFile, RandomAccessFileOrigin> {
+
+exec
+/bin/bash -lc 'rg --files . | rg "AbstractOrigin|Origin|build"' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+./src/site/xdoc/building.xml
+./src/test/java/org/apache/commons/io/build/FileOriginTest.java
+./src/test/java/org/apache/commons/io/build/AbstractRandomAccessFileOriginTest.java
+./src/test/java/org/apache/commons/io/build/URIOriginTest.java
+./src/test/java/org/apache/commons/io/build/CharSequenceOriginTest.java
+./src/test/java/org/apache/commons/io/build/AbstractOriginTest.java
+./src/test/java/org/apache/commons/io/build/PathOriginTest.java
+./src/test/java/org/apache/commons/io/build/OutputStreamOriginTest.java
+./src/test/java/org/apache/commons/io/build/WriterStreamOriginTest.java
+./src/test/java/org/apache/commons/io/build/InputStreamOriginTest.java
+./src/test/java/org/apache/commons/io/build/AbstractSupplierTest.java
+./src/test/java/org/apache/commons/io/build/RandomAccessFileOriginTest.java
+./src/test/java/org/apache/commons/io/build/IORandomAccessFileOriginTest.java
+./src/test/java/org/apache/commons/io/build/ChannelOriginTest.java
+./src/test/java/org/apache/commons/io/build/ReaderOriginTest.java
+./src/test/java/org/apache/commons/io/build/AbstractStreamBuilderTest.java
+./src/test/java/org/apache/commons/io/build/ByteArrayOriginTest.java
+./src/main/java/org/apache/commons/io/build/AbstractOrigin.java
+./src/main/java/org/apache/commons/io/build/AbstractSupplier.java
+./src/main/java/org/apache/commons/io/build/AbstractStreamBuilder.java
+./src/main/java/org/apache/commons/io/build/AbstractOriginSupplier.java
+./src/main/java/org/apache/commons/io/build/package-info.java
+
+codex
+I found the target nested class in `src/main/java/org/apache/commons/io/build/AbstractOrigin.java` and the dedicated test in `src/test/java/org/apache/commons/io/build/AbstractRandomAccessFileOriginTest.java`. Next I’m checking how many dependencies the class itself has and whether it is broadly depended on or mostly internal.
+exec
+/bin/bash -lc "sed -n '330,470p' src/main/java/org/apache/commons/io/build/AbstractOrigin.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+ *   <li>✖ = Not supported (throws {@link UnsupportedOperationException})</li>
+ *   <li><sup>1</sup> = Characters are converted to bytes using the default {@link Charset}.</li>
+ *   <li><sup>2</sup> Minimum channel type provided by the origin:
+ *     <ul>
+ *         <li>RBC = {@linkplain ReadableByteChannel}</li>
+ *         <li>WBC = {@linkplain WritableByteChannel}</li>
+ *         <li>SBC = {@linkplain SeekableByteChannel}</li>
+ *         <li>FC = {@linkplain FileChannel}</li>
+ *     </ul>
+ *     The exact channel type may be a subtype of the minimum shown.
+ *   </li>
+ * </ul>
+ *
+ * @param <T> the type produced by the builder.
+ * @param <B> the concrete builder subclass type.
+ * @since 2.12.0
+ */
+public abstract class AbstractOrigin<T, B extends AbstractOrigin<T, B>> extends AbstractSupplier<T, B> {
+
+    /**
+     * A {@link RandomAccessFile} origin.
+     * <p>
+     * This origin cannot support File and Path since you cannot query a RandomAccessFile for those attributes; Use {@link IORandomAccessFileOrigin}
+     * instead.
+     * </p>
+     *
+     * @param <T> the type of instances to build.
+     * @param <B> the type of builder subclass.
+     */
+    public abstract static class AbstractRandomAccessFileOrigin<T extends RandomAccessFile, B extends AbstractRandomAccessFileOrigin<T, B>>
+            extends AbstractOrigin<T, B> {
+
+        /**
+         * A {@link RandomAccessFile} origin.
+         * <p>
+         * Starting from this origin, you can everything except a Path and a File.
+         * </p>
+         *
+         * @param origin The origin, not null.
+         * @throws NullPointerException if {@code origin} is {@code null}.
+         */
+        public AbstractRandomAccessFileOrigin(final T origin) {
+            super(origin);
+        }
+
+        @Override
+        public byte[] getByteArray() throws IOException {
+            final long longLen = origin.length();
+            if (longLen > Integer.MAX_VALUE) {
+                throw new IllegalStateException("Origin too large.");
+            }
+            return RandomAccessFiles.read(origin, 0, (int) longLen);
+        }
+
+        @Override
+        public byte[] getByteArray(final long position, final int length) throws IOException {
+            return RandomAccessFiles.read(origin, position, length);
+        }
+
+        @Override
+        protected Channel getChannel(final OpenOption... options) throws IOException {
+            return getRandomAccessFile(options).getChannel();
+        }
+
+        @Override
+        public CharSequence getCharSequence(final Charset charset) throws IOException {
+            return new String(getByteArray(), charset);
+        }
+
+        @SuppressWarnings("resource")
+        @Override
+        public InputStream getInputStream(final OpenOption... options) throws IOException {
+            return BufferedFileChannelInputStream.builder().setFileChannel(origin.getChannel()).get();
+        }
+
+        @Override
+        public OutputStream getOutputStream(final OpenOption... options) throws IOException {
+            return RandomAccessFileOutputStream.builder().setRandomAccessFile(origin).get();
+        }
+
+        @Override
+        public T getRandomAccessFile(final OpenOption... openOption) {
+            // No conversion
+            return get();
+        }
+
+        @Override
+        public Reader getReader(final Charset charset) throws IOException {
+            return new InputStreamReader(getInputStream(), Charsets.toCharset(charset));
+        }
+
+        @Override
+        public Writer getWriter(final Charset charset, final OpenOption... options) throws IOException {
+            return new OutputStreamWriter(getOutputStream(options), Charsets.toCharset(charset));
+        }
+
+        @Override
+        public long size() throws IOException {
+            return origin.length();
+        }
+    }
+
+    /**
+     * A {@code byte[]} origin.
+     */
+    public static class ByteArrayOrigin extends AbstractOrigin<byte[], ByteArrayOrigin> {
+
+        /**
+         * Constructs a new instance for the given origin.
+         *
+         * @param origin The origin, not null.
+         * @throws NullPointerException if {@code origin} is {@code null}.
+         */
+        public ByteArrayOrigin(final byte[] origin) {
+            super(origin);
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * <p>
+         * No conversion should occur when calling this method.
+         * </p>
+         */
+        @Override
+        public byte[] getByteArray() {
+            // No conversion
+            return get();
+        }
+
+        @Override
+        protected Channel getChannel(final OpenOption... options) throws IOException {
+            for (final OpenOption option : options) {
+                if (option == StandardOpenOption.WRITE) {
+                    throw new UnsupportedOperationException("Only READ is supported for byte[] origins: " + Arrays.toString(options));
+                }
+            }
+            return ByteArraySeekableByteChannel.wrap(getByteArray());
+        }
+
+        /**
+
+exec
+/bin/bash -lc "sed -n '1,220p' src/test/java/org/apache/commons/io/build/AbstractRandomAccessFileOriginTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.io.build;
+
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+
+import org.apache.commons.io.IORandomAccessFile;
+import org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin;
+import org.apache.commons.io.build.AbstractOrigin.IORandomAccessFileOrigin;
+import org.apache.commons.io.build.AbstractOrigin.RandomAccessFileOrigin;
+import org.apache.commons.lang3.ArrayUtils;
+
+/**
+ * Tests {@link RandomAccessFileOrigin} and {@link IORandomAccessFileOrigin}.
+ *
+ * @param <T> the type of instances to build.
+ * @param <B> the type of builder subclass.
+ * @see RandomAccessFile
+ * @see IORandomAccessFile
+ */
+public abstract class AbstractRandomAccessFileOriginTest<T extends RandomAccessFile, B extends AbstractRandomAccessFileOrigin<T, B>>
+        extends AbstractOriginTest<T, B> {
+
+    @Override
+    protected void resetOriginRw() throws IOException {
+        // Reset the file
+        final Path rwPath = tempPath.resolve(FILE_NAME_RW);
+        Files.write(rwPath, ArrayUtils.EMPTY_BYTE_ARRAY, StandardOpenOption.CREATE);
+    }
+}
+
+exec
+/bin/bash -lc "rg -n \"AbstractRandomAccessFileOrigin<|extends AbstractRandomAccessFileOrigin|new AbstractRandomAccessFileOrigin|AbstractRandomAccessFileOrigin\\b\" src/main src/test" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+src/test/java/org/apache/commons/io/build/AbstractRandomAccessFileOriginTest.java:27:import org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin;
+src/test/java/org/apache/commons/io/build/AbstractRandomAccessFileOriginTest.java:40:public abstract class AbstractRandomAccessFileOriginTest<T extends RandomAccessFile, B extends AbstractRandomAccessFileOrigin<T, B>>
+src/test/java/org/apache/commons/io/build/RandomAccessFileOriginTest.java:35:class RandomAccessFileOriginTest extends AbstractRandomAccessFileOriginTest<RandomAccessFile, RandomAccessFileOrigin> {
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java:359:    public abstract static class AbstractRandomAccessFileOrigin<T extends RandomAccessFile, B extends AbstractRandomAccessFileOrigin<T, B>>
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java:371:        public AbstractRandomAccessFileOrigin(final T origin) {
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java:747:    public static class IORandomAccessFileOrigin extends AbstractRandomAccessFileOrigin<IORandomAccessFile, IORandomAccessFileOrigin> {
+src/main/java/org/apache/commons/io/build/AbstractOrigin.java:875:    public static class RandomAccessFileOrigin extends AbstractRandomAccessFileOrigin<RandomAccessFile, RandomAccessFileOrigin> {
+
+codex
+I’ve confirmed the target is a nested abstract class with only two concrete subclasses in the main code and one generic test base in tests. I’m checking the surrounding hierarchy so I can distinguish “central base type” from an actual dependency hub.
+exec
+/bin/bash -lc "sed -n '1,220p' src/test/java/org/apache/commons/io/build/AbstractOriginTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.io.build;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.WritableByteChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Objects;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.build.AbstractOrigin.RandomAccessFileOrigin;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+
+/**
+ * Tests {@link AbstractOrigin} and subclasses.
+ *
+ * @param <T> the type of instances to build.
+ * @param <B> the type of builder subclass.
+ */
+public abstract class AbstractOriginTest<T, B extends AbstractOrigin<T, B>> {
+
+    protected static final String FILE_RES_RO = "/org/apache/commons/io/test-file-20byteslength.bin";
+    protected static final String FILE_NAME_RO = "src/test/resources" + FILE_RES_RO;
+    protected static final String FILE_NAME_RW = AbstractOriginTest.class.getSimpleName() + ".txt";
+    private static final int RO_LENGTH = 20;
+
+    protected AbstractOrigin<T, B> originRo;
+    protected AbstractOrigin<T, B> originRw;
+
+    @TempDir
+    protected Path tempPath;
+
+    @BeforeEach
+    void beforeEach() throws IOException {
+        setOriginRo(newOriginRo());
+        resetOriginRw();
+        setOriginRw(newOriginRw());
+    }
+
+    private void checkRead(final ReadableByteChannel channel) throws IOException {
+        final ByteBuffer buffer = ByteBuffer.allocate(RO_LENGTH);
+        int read = channel.read(buffer);
+        assertEquals(RO_LENGTH, read);
+        assertArrayEquals(getFixtureByteArray(), buffer.array());
+        // Channel is at EOF
+        buffer.clear();
+        read = channel.read(buffer);
+        assertEquals(-1, read);
+    }
+
+    private void checkWrite(final WritableByteChannel channel) throws IOException {
+        final ByteBuffer buffer = ByteBuffer.wrap(getFixtureByteArray());
+        final int written = channel.write(buffer);
+        assertEquals(RO_LENGTH, written);
+    }
+
+    @AfterEach
+    void cleanup() {
+        final T originRo = getOriginRo().get();
+        if (originRo instanceof Closeable) {
+            IOUtils.closeQuietly((Closeable) originRo);
+        }
+        final T originRw = getOriginRw().get();
+        if (originRw instanceof Closeable) {
+            IOUtils.closeQuietly((Closeable) originRw);
+        }
+    }
+
+    byte[] getFixtureByteArray() throws IOException {
+        return IOUtils.resourceToByteArray(FILE_RES_RO);
+    }
+
+    String getFixtureString() throws IOException {
+        return IOUtils.resourceToString(FILE_RES_RO, StandardCharsets.UTF_8);
+    }
+
+    protected AbstractOrigin<T, B> getOriginRo() {
+        return Objects.requireNonNull(originRo, "originRo");
+    }
+
+    protected AbstractOrigin<T, B> getOriginRw() {
+        return Objects.requireNonNull(originRw, "originRw");
+    }
+
+    @SuppressWarnings("resource")
+    private boolean isValid(final RandomAccessFile raf) throws IOException {
+        return Objects.requireNonNull(raf).getFD().valid();
+    }
+
+    protected abstract B newOriginRo() throws IOException;
+
+    protected abstract B newOriginRw() throws IOException;
+
+    protected void resetOriginRw() throws IOException {
+        // No-op
+    }
+
+    protected void setOriginRo(final AbstractOrigin<T, B> origin) {
+        this.originRo = origin;
+    }
+
+    protected void setOriginRw(final AbstractOrigin<T, B> origin) {
+        this.originRw = origin;
+    }
+
+    @Test
+    void testGetByteArray() throws IOException {
+        assertArrayEquals(getFixtureByteArray(), getOriginRo().getByteArray());
+    }
+
+    @Test
+    void testGetByteArrayAt_0_0() throws IOException {
+        assertArrayEquals(new byte[] {}, getOriginRo().getByteArray(0, 0));
+    }
+
+    @Test
+    void testGetByteArrayAt_0_1() throws IOException {
+        assertArrayEquals(new byte[] { '1' }, getOriginRo().getByteArray(0, 1));
+    }
+
+    @Test
+    void testGetByteArrayAt_1_1() throws IOException {
+        assertArrayEquals(new byte[] { '2' }, getOriginRo().getByteArray(1, 1));
+    }
+
+    @Test
+    void testGetCharSequence() throws IOException {
+        final CharSequence charSequence = getOriginRo().getCharSequence(StandardCharsets.UTF_8);
+        assertNotNull(charSequence);
+        assertEquals(getFixtureString(), charSequence.toString());
+    }
+
+    @Test
+    void testGetFile() throws IOException {
+        testGetFile(getOriginRo().getFile(), RO_LENGTH);
+        FileUtils.touch(getOriginRw().getFile());
+        testGetFile(getOriginRw().getFile(), 0);
+    }
+
+    private void testGetFile(final File file, final long expectedLen) throws IOException {
+        assertNotNull(file);
+        assertTrue(file.exists(), () -> "File does not exist: " + file);
+        final int length = FileUtils.readFileToByteArray(file).length;
+        assertEquals(length, expectedLen, () -> String.format("File %s, actual length=%,d", file, length));
+    }
+
+    @Test
+    void testGetInputStream() throws IOException {
+        try (InputStream inputStream = getOriginRo().getInputStream()) {
+            assertNotNull(inputStream);
+            assertArrayEquals(getFixtureByteArray(), IOUtils.toByteArray(inputStream));
+        }
+    }
+
+    @Test
+    void testGetOutputStream() throws IOException {
+        try (OutputStream output = getOriginRw().getOutputStream()) {
+            assertNotNull(output);
+        }
+    }
+
+    @Test
+    void testGetPath() throws IOException {
+        testGetPath(getOriginRo().getPath(), RO_LENGTH);
+        FileUtils.touch(getOriginRw().getPath().toFile());
+        testGetPath(getOriginRw().getPath(), 0);
+    }
+
+    private void testGetPath(final Path path, final long expectedLen) throws IOException {
+        assertNotNull(path);
+        assertTrue(Files.exists(path));
+        final int length = Files.readAllBytes(path).length;
+        assertEquals(length, expectedLen, () -> String.format("Path %s, actual length=%,d", path, length));
+    }
+
+    @Test
+    void testGetRandomAccessFile() throws IOException {
+        // Default
+
+exec
+/bin/bash -lc "sed -n '700,930p' src/main/java/org/apache/commons/io/build/AbstractOrigin.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+            super(origin);
+        }
+
+        @Override
+        public byte[] getByteArray() throws IOException {
+            return IOUtils.toByteArray(origin);
+        }
+
+        @Override
+        protected Channel getChannel(final OpenOption... options) throws IOException {
+            return Channels.newChannel(getInputStream(options));
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * The {@code options} parameter is ignored since a {@link InputStream} does not need an {@link OpenOption} to be read.
+         * </p>
+         * <p>
+         * No conversion should occur when calling this method.
+         * </p>
+         */
+        @Override
+        public InputStream getInputStream(final OpenOption... options) {
+            // No conversion
+            return get();
+        }
+
+        @Override
+        public Reader getReader(final Charset charset) throws IOException {
+            return new InputStreamReader(getInputStream(), Charsets.toCharset(charset));
+        }
+
+        @Override
+        public long size() throws IOException {
+            if (origin instanceof FileInputStream) {
+                return ((FileInputStream) origin).getChannel().size();
+            }
+            throw unsupportedOperation("size");
+        }
+    }
+
+    /**
+     * An {@link IORandomAccessFile} origin.
+     *
+     * @since 2.18.0
+     */
+    public static class IORandomAccessFileOrigin extends AbstractRandomAccessFileOrigin<IORandomAccessFile, IORandomAccessFileOrigin> {
+
+        /**
+         * A {@link RandomAccessFile} origin.
+         *
+         * @param origin The origin, not null.
+         */
+        public IORandomAccessFileOrigin(final IORandomAccessFile origin) {
+            super(origin);
+        }
+
+        @SuppressWarnings("resource")
+        @Override
+        public File getFile() {
+            return get().getFile();
+        }
+
+        @Override
+        public Path getPath() {
+            return getFile().toPath();
+        }
+
+    }
+
+    /**
+     * An {@link OutputStream} origin.
+     * <p>
+     * This origin cannot provide some of the other aspects.
+     * </p>
+     */
+    public static class OutputStreamOrigin extends AbstractOrigin<OutputStream, OutputStreamOrigin> {
+
+        /**
+         * Constructs a new instance for the given origin.
+         *
+         * @param origin The origin, not null.
+         * @throws NullPointerException if {@code origin} is {@code null}.
+         */
+        public OutputStreamOrigin(final OutputStream origin) {
+            super(origin);
+        }
+
+        @Override
+        protected Channel getChannel(final OpenOption... options) throws IOException {
+            return Channels.newChannel(getOutputStream(options));
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * The {@code options} parameter is ignored since a {@link OutputStream} does not need an {@link OpenOption} to be written.
+         * </p>
+         * <p>
+         * No conversion should occur when calling this method.
+         * </p>
+         */
+        @Override
+        public OutputStream getOutputStream(final OpenOption... options) {
+            // No conversion
+            return get();
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * The {@code options} parameter is ignored since a {@link OutputStream} does not need an {@link OpenOption} to be written.
+         * </p>
+         */
+        @Override
+        public Writer getWriter(final Charset charset, final OpenOption... options) throws IOException {
+            return new OutputStreamWriter(origin, Charsets.toCharset(charset));
+        }
+    }
+
+    /**
+     * A {@link Path} origin.
+     * <p>
+     * Starting from this origin, you can get a byte array, a file, an input stream, an output stream, a path, a reader, and a writer.
+     * </p>
+     */
+    public static class PathOrigin extends AbstractOrigin<Path, PathOrigin> {
+
+        /**
+         * Constructs a new instance for the given origin.
+         *
+         * @param origin The origin, not null.
+         * @throws NullPointerException if {@code origin} is {@code null}.
+         */
+        public PathOrigin(final Path origin) {
+            super(origin);
+        }
+
+        @Override
+        public byte[] getByteArray(final long position, final int length) throws IOException {
+            return RandomAccessFileMode.READ_ONLY.apply(origin, raf -> RandomAccessFiles.read(raf, position, length));
+        }
+
+        @Override
+        protected Channel getChannel(final OpenOption... options) throws IOException {
+            return Files.newByteChannel(getPath(), options);
+        }
+
+        @Override
+        public File getFile() {
+            return get().toFile();
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * <p>
+         * No conversion should occur when calling this method.
+         * </p>
+         */
+        @Override
+        public Path getPath() {
+            // No conversion
+            return get();
+        }
+    }
+
+    /**
+     * A {@link RandomAccessFile} origin.
+     * <p>
+     * This origin cannot support File and Path since you cannot query a RandomAccessFile for those attributes; Use {@link IORandomAccessFileOrigin}
+     * instead.
+     * </p>
+     */
+    public static class RandomAccessFileOrigin extends AbstractRandomAccessFileOrigin<RandomAccessFile, RandomAccessFileOrigin> {
+
+        /**
+         * A {@link RandomAccessFile} origin.
+         * <p>
+         * Starting from this origin, you can everything except a Path and a File.
+         * </p>
+         *
+         * @param origin The origin, not null.
+         */
+        public RandomAccessFileOrigin(final RandomAccessFile origin) {
+            super(origin);
+        }
+
+    }
+
+    /**
+     * A {@link Reader} origin.
+     * <p>
+     * This origin cannot provide conversions to other aspects.
+     * </p>
+     */
+    public static class ReaderOrigin extends AbstractOrigin<Reader, ReaderOrigin> {
+
+        /**
+         * Constructs a new instance for the given origin.
+         *
+         * @param origin The origin, not null.
+         * @throws NullPointerException if {@code origin} is {@code null}.
+         */
+        public ReaderOrigin(final Reader origin) {
+            super(origin);
+        }
+
+        @Override
+        public byte[] getByteArray() throws IOException {
+            // TODO Pass in a Charset? Consider if call sites actually need this.
+            return IOUtils.toByteArray(origin, Charset.defaultCharset());
+        }
+
+        @Override
+        protected Channel getChannel(final OpenOption... options) throws IOException {
+            return Channels.newChannel(getInputStream());
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * The {@code charset} parameter is ignored since a {@link Reader} does not need a {@link Charset} to be read.
+         * </p>
+         */
+        @Override
+        public CharSequence getCharSequence(final Charset charset) throws IOException {
+            return IOUtils.toString(origin);
+        }
+
+
+exec
+/bin/bash -lc "sed -n '1,140p' src/main/java/org/apache/commons/io/build/AbstractSupplier.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.io.build;
+
+import org.apache.commons.io.function.IOSupplier;
+
+/**
+ * Abstracts <em>supplying</em> an instance of type {@code T} where {@code T} is unbounded. This class carries no state.
+ * <p>
+ * Extend this class to implement the builder pattern.
+ * </p>
+ * <p>
+ * For example, here is a builder, a domain class, and a test.
+ * </p>
+ * <p>
+ * The builder:
+ * </p>
+ * <pre>
+    &#47;**
+     &#42; Builds Foo instances.
+     &#42;&#47;
+    public static class Builder extends AbstractSupplier&#60;Foo, Builder&#62; {
+
+        private String bar1;
+        private String bar2;
+        private String bar3;
+
+        &#47;**
+         &#42; Builds a new Foo.
+         &#42;&#47;
+        &#64;Override
+        public Foo get() {
+            return new Foo(bar1, bar2, bar3);
+        }
+
+        public Builder setBar1(final String bar1) {
+            this.bar1 = bar1;
+            return this;
+        }
+
+        public Builder setBar2(final String bar2) {
+            this.bar2 = bar2;
+            return this;
+        }
+
+        public Builder setBar3(final String bar3) {
+            this.bar3 = bar3;
+            return this;
+        }
+    }
+ * </pre>
+ * <p>
+ * The domain class:
+ * </p>
+ * <pre>
+    &#47;**
+     &#42; Domain class.
+     &#42;&#47;
+    public class Foo {
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        private final String bar1;
+        private final String bar2;
+        private final String bar3;
+
+        private Foo(final String bar1, final String bar2, final String bar3) {
+            this.bar1 = bar1;
+            this.bar2 = bar2;
+            this.bar3 = bar3;
+        }
+
+        public String getBar1() {
+            return bar1;
+        }
+
+        public String getBar2() {
+            return bar2;
+        }
+
+        public String getBar3() {
+            return bar3;
+        }
+
+    }
+ * </pre>
+ * <p>
+ * The test:
+ * </p>
+ * <pre>
+    &#64;Test
+    public void test() {
+        final Foo foo = Foo.builder()
+            .setBar1("value1")
+            .setBar2("value2")
+            .setBar3("value3")
+            .get();
+        assertEquals("value1", foo.getBar1());
+        assertEquals("value2", foo.getBar2());
+        assertEquals("value3", foo.getBar3());
+    }
+ * </pre>
+ *
+ * @param <T> the type of instances to build.
+ * @param <B> the type of builder subclass.
+ * @see IOSupplier
+ * @since 2.12.0
+ */
+public abstract class AbstractSupplier<T, B extends AbstractSupplier<T, B>> implements IOSupplier<T> {
+
+    /**
+     * Constructs a new instance for subclasses.
+     */
+    public AbstractSupplier() {
+        // empty
+    }
+
+    /**
+     * Returns this instance typed as the subclass type {@code B}.
+     * <p>
+     * This is the same as the expression:
+     * </p>
+     * <pre>
+
+codex
+I’ve got enough to make the decision, but I’m confirming the concrete test subclasses so I can quantify the fan-in precisely instead of guessing.
+exec
+/bin/bash -lc "sed -n '1,120p' src/test/java/org/apache/commons/io/build/RandomAccessFileOriginTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.io.build;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+
+import org.apache.commons.io.RandomAccessFileMode;
+import org.apache.commons.io.build.AbstractOrigin.RandomAccessFileOrigin;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Tests {@link RandomAccessFileOrigin}.
+ *
+ * @see RandomAccessFile
+ */
+class RandomAccessFileOriginTest extends AbstractRandomAccessFileOriginTest<RandomAccessFile, RandomAccessFileOrigin> {
+
+    @SuppressWarnings("resource")
+    @Override
+    protected RandomAccessFileOrigin newOriginRo() throws FileNotFoundException {
+        return new RandomAccessFileOrigin(RandomAccessFileMode.READ_ONLY.create(FILE_NAME_RO));
+    }
+
+    @SuppressWarnings("resource")
+    @Override
+    protected RandomAccessFileOrigin newOriginRw() throws IOException {
+        return new RandomAccessFileOrigin(RandomAccessFileMode.READ_WRITE.create(tempPath.resolve(FILE_NAME_RW)));
+    }
+
+    @Override
+    @Test
+    void testGetFile() {
+        // Cannot convert a Writer to a File.
+        assertThrows(UnsupportedOperationException.class, super::testGetFile);
+    }
+
+    @Override
+    @Test
+    void testGetPath() {
+        // Cannot convert a Writer to a Path.
+        assertThrows(UnsupportedOperationException.class, super::testGetPath);
+    }
+
+}
+
+exec
+/bin/bash -lc "sed -n '1,120p' src/test/java/org/apache/commons/io/build/IORandomAccessFileOriginTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.io.build;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+
+import org.apache.commons.io.IORandomAccessFile;
+import org.apache.commons.io.RandomAccessFileMode;
+import org.apache.commons.io.build.AbstractOrigin.IORandomAccessFileOrigin;
+
+/**
+ * Tests {@link IORandomAccessFileOrigin}.
+ *
+ * @see RandomAccessFile
+ */
+class IORandomAccessFileOriginTest extends AbstractOriginTest<IORandomAccessFile, IORandomAccessFileOrigin> {
+
+    @SuppressWarnings("resource")
+    @Override
+    protected IORandomAccessFileOrigin newOriginRo() throws FileNotFoundException {
+        return new IORandomAccessFileOrigin(RandomAccessFileMode.READ_ONLY.io(FILE_NAME_RO));
+    }
+
+    @SuppressWarnings("resource")
+    @Override
+    protected IORandomAccessFileOrigin newOriginRw() throws IOException {
+        return new IORandomAccessFileOrigin(RandomAccessFileMode.READ_WRITE.io(tempPath.resolve(FILE_NAME_RW).toFile().getPath()));
+    }
+}
+
+exec
+/bin/bash -lc 'rg -n "extends AbstractRandomAccessFileOriginTest|implements .*AbstractRandomAccessFileOrigin|AbstractRandomAccessFileOrigin<" src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/apache/commons-io
+ succeeded in 0ms:
+src/test/java/org/apache/commons/io/build/AbstractRandomAccessFileOriginTest.java:40:public abstract class AbstractRandomAccessFileOriginTest<T extends RandomAccessFile, B extends AbstractRandomAccessFileOrigin<T, B>>
+src/test/java/org/apache/commons/io/build/RandomAccessFileOriginTest.java:35:class RandomAccessFileOriginTest extends AbstractRandomAccessFileOriginTest<RandomAccessFile, RandomAccessFileOrigin> {
+
+codex
+{"target":"org.apache.commons.io.build.AbstractOrigin.AbstractRandomAccessFileOrigin","detection":false,"justification":"Inspected src/main/java/org/apache/commons/io/build/AbstractOrigin.java and the related tests src/test/java/org/apache/commons/io/build/AbstractRandomAccessFileOriginTest.java, RandomAccessFileOriginTest.java, and IORandomAccessFileOriginTest.java. The target is an internal nested abstract base with only two concrete production subclasses in the same file (IORandomAccessFileOrigin and RandomAccessFileOrigin) and one abstract test base plus one concrete test subclass; a repo search found no broader use outside this small hierarchy. Its methods depend on several I/O helpers, but the incoming dependency count is low, so it does not show hub-like high fan-in/high fan-out behavior."}
+tokens used
+16,383

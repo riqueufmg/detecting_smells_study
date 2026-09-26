@@ -1,0 +1,728 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f3a-9200-77f3-8d19-e1c84ec9f7f7
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.bytecode.constant.LongConstant` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.bytecode.constant.LongConstant",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.bytecode.constant.LongConstant`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and checking who depends on it, then I’ll verify its own dependency footprint from the source and related usages before deciding.
+exec
+/bin/bash -lc 'rg -n "LongConstant" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg --files | rg 'LongConstant\\.java"'$|LongConstant'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 278ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantOpcodeTest.java:25:public class LongConstantOpcodeTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantOpcodeTest.java:40:    public LongConstantOpcodeTest(long value, int opcode) {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantOpcodeTest.java:60:        StackManipulation.Size size = LongConstant.forValue(value).apply(methodVisitor, implementationContext);
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantTest.java:23:public class LongConstantTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantTest.java:36:    public LongConstantTest(long value) {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantTest.java:57:        StackManipulation longConstant = LongConstant.forValue(value);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:43:import net.bytebuddy.implementation.bytecode.constant.LongConstant;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:452:            argumentProviders.add(new InvocationProvider.ArgumentProvider.ForLongConstant(aValue));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1224:                        return new WrappingArgumentProvider(LongConstant.forValue((Long) value));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1910:            class ForLongConstant implements ArgumentProvider {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1922:                protected ForLongConstant(long value) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1930:                    return new Resolved.Simple(LongConstant.forValue(value), TypeDescription.ForLoadedType.of(long.class));
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java:33:import net.bytebuddy.implementation.bytecode.constant.LongConstant;
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java:566:                    return LongConstant.forValue(value);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/LongConstant.java:28:public enum LongConstant implements StackManipulation {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/LongConstant.java:55:    LongConstant(int opcode) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/DefaultValue.java:37:    LONG(LongConstant.ZERO),
+
+ succeeded in 313ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/LongConstant.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantOpcodeTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantTest.java
+
+codex
+I found the target file and the direct references. Next I’m checking the source to measure its outgoing dependencies and the surrounding call sites to see whether it is actually a dependency hub or just a small utility constant holder.
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/LongConstant.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/DefaultValue.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1900,1945p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1180,1255p' byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+            return stringBuilder.append(')').append(returnType.getDescriptor()).toString();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Object toDescription() {
+            Object[] parameterType = JavaConstant.Simple.CLASS_DESC.toArray(parameterTypes.size());
+            for (int index = 0; index < parameterTypes.size(); index++) {
+                parameterType[index] = JavaConstant.Simple.CLASS_DESC.ofDescriptor(parameterTypes.get(index).getDescriptor());
+            }
+            return JavaConstant.Simple.METHOD_TYPE_DESC.of(JavaConstant.Simple.CLASS_DESC.ofDescriptor(returnType.getDescriptor()), parameterType);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public <T> T accept(Visitor<T> visitor) {
+            return visitor.onMethodType(this);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeDescription getTypeDescription() {
+            return JavaType.METHOD_TYPE.getTypeStub();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation toStackManipulation() {
+            return new JavaConstantValue(this);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = returnType.hashCode();
+            result = 31 * result + parameterTypes.hashCode();
+            return result;
+        }
+
+        @Override
+        public boolean equals(@MaybeNull Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof MethodType)) {
+                return false;
+            }
+            MethodType methodType = (MethodType) other;
+            return parameterTypes.equals(methodType.parameterTypes) && returnType.equals(methodType.returnType);
+
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder stringBuilder = new StringBuilder().append('(');
+            boolean first = true;
+            for (TypeDescription typeDescription : parameterTypes) {
+                if (first) {
+                    first = false;
+                } else {
+                    stringBuilder.append(',');
+                }
+                stringBuilder.append(typeDescription.getSimpleName());
+            }
+            return stringBuilder.append(')').append(returnType.getSimpleName()).toString();
+        }
+
+        /**
+         * A dispatcher for extracting information from a {@code java.lang.invoke.MethodType} instance.
+         */
+        @JavaDispatcher.Proxied("java.lang.invoke.MethodType")
+        protected interface Dispatcher {
+
+
+ succeeded in 144ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation.bytecode.constant;
+
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import org.objectweb.asm.MethodVisitor;
+
+/**
+ * Represents a stack assignment that loads the default value of a given type onto the stack.
+ */
+public enum DefaultValue implements StackManipulation {
+
+    /**
+     * The default value of a JVM integer which covers Java's {@code int}, {@code boolean}, {@code byte},
+     * {@code short} and {@code char} values.
+     */
+    INTEGER(IntegerConstant.ZERO),
+
+    /**
+     * The default value of a {@code long}.
+     */
+    LONG(LongConstant.ZERO),
+
+    /**
+     * The default value of a {@code float}.
+     */
+    FLOAT(FloatConstant.ZERO),
+
+    /**
+     * The default value of a {@code double}.
+     */
+    DOUBLE(DoubleConstant.ZERO),
+
+    /**
+     * The default value of a {@code void} which resembles a no-op manipulation.
+     */
+    VOID(Trivial.INSTANCE),
+
+    /**
+     * The default value of a reference type which resembles the {@code null} reference.
+     */
+    REFERENCE(NullConstant.INSTANCE);
+
+    /**
+     * The stack manipulation that represents the loading of a given default value onto the operand stack.
+     */
+    private final StackManipulation stackManipulation;
+
+    /**
+     * Creates a new default value load operation.
+     *
+     * @param stackManipulation The stack manipulation that represents the loading of a given default value onto the
+     *                          operand stack.
+     */
+    DefaultValue(StackManipulation stackManipulation) {
+        this.stackManipulation = stackManipulation;
+    }
+
+    /**
+     * Creates a stack assignment that loads the default value for a given type.
+     *
+     * @param typeDefinition The type for which a default value should be loaded onto the operand stack.
+     * @return A stack manipulation loading the default value for the given type.
+     */
+    public static StackManipulation of(TypeDefinition typeDefinition) {
+        if (typeDefinition.isPrimitive()) {
+            if (typeDefinition.represents(long.class)) {
+                return LONG;
+            } else if (typeDefinition.represents(double.class)) {
+                return DOUBLE;
+            } else if (typeDefinition.represents(float.class)) {
+                return FLOAT;
+            } else if (typeDefinition.represents(void.class)) {
+                return VOID;
+            } else {
+                return INTEGER;
+            }
+        } else {
+            return REFERENCE;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isValid() {
+        return stackManipulation.isValid();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+        return stackManipulation.apply(methodVisitor, implementationContext);
+    }
+}
+
+ succeeded in 235ms:
+                 */
+                public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                    return instrumentedType;
+                }
+            }
+
+            /**
+             * An argument provider for a {@code long} value.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            class ForLongConstant implements ArgumentProvider {
+
+                /**
+                 * The represented {@code long} value.
+                 */
+                private final long value;
+
+                /**
+                 * Creates a new argument provider for a {@code long} value.
+                 *
+                 * @param value The represented {@code long} value.
+                 */
+                protected ForLongConstant(long value) {
+                    this.value = value;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public Resolved resolve(TypeDescription instrumentedType, MethodDescription instrumentedMethod, Assigner assigner, Assigner.Typing typing) {
+                    return new Resolved.Simple(LongConstant.forValue(value), TypeDescription.ForLoadedType.of(long.class));
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                public InstrumentedType prepare(InstrumentedType instrumentedType) {
+                    return instrumentedType;
+                }
+            }
+
+            /**
+             * An argument provider for a {@code float} value.
+             */
+            @HashCodeAndEqualsPlugin.Enhance
+            class ForFloatConstant implements ArgumentProvider {
+
+ succeeded in 269ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation.bytecode.constant;
+
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.StackSize;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+/**
+ * This class is responsible for loading any {@code long} constant onto the operand stack.
+ */
+public enum LongConstant implements StackManipulation {
+
+    /**
+     * A {@code long} constant of value {@code 0L}.
+     */
+    ZERO(Opcodes.LCONST_0),
+
+    /**
+     * A {@code long} constant of value {@code 1L}.
+     */
+    ONE(Opcodes.LCONST_1);
+
+    /**
+     * The size impact of loading a {@code double} constant onto the operand stack.
+     */
+    private static final Size SIZE = StackSize.DOUBLE.toIncreasingSize();
+
+    /**
+     * The shortcut opcode for loading a {@code long} constant.
+     */
+    private final int opcode;
+
+    /**
+     * Creates a new shortcut operation for loading a common {@code long} onto the operand stack.
+     *
+     * @param opcode The shortcut opcode for loading a {@code long} constant.
+     */
+    LongConstant(int opcode) {
+        this.opcode = opcode;
+    }
+
+    /**
+     * Creates a stack manipulation for loading a {@code long} value onto the operand stack.
+     * <p>&nbsp;</p>
+     * This is achieved either by invoking a specific opcode, if any, or by creating a constant pool entry.
+     *
+     * @param value The {@code long} value to load onto the stack.
+     * @return A stack manipulation for loading the given {@code long} value.
+     */
+    public static StackManipulation forValue(long value) {
+        if (value == 0L) {
+            return ZERO;
+        } else if (value == 1L) {
+            return ONE;
+        } else {
+            return new ConstantPool(value);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public boolean isValid() {
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+        methodVisitor.visitInsn(opcode);
+        return SIZE;
+    }
+
+    /**
+     * A stack manipulation for loading a {@code long} value from a class's constant pool onto the operand stack.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    protected static class ConstantPool extends StackManipulation.AbstractBase {
+
+        /**
+         * The {@code long} value to be loaded onto the operand stack.
+         */
+        private final long value;
+
+        /**
+         * Creates a new constant pool load operation.
+         *
+         * @param value The {@code long} value to be loaded onto the operand stack.
+         */
+        protected ConstantPool(long value) {
+            this.value = value;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            methodVisitor.visitLdcInsn(value);
+            return SIZE;
+        }
+    }
+}
+
+codex
+I’ve confirmed the class is tiny and self-contained. I’m now counting its actual callers/usages in the codebase to see whether the incoming dependency side is large enough to support a hub-like classification.
+exec
+/bin/bash -lc "rg -n \"new LongConstant|LongConstant\\.ConstantPool\" byte-buddy-dep/src/main byte-buddy-dep/src/test" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc 'rg -l "LongConstant" byte-buddy-dep/src/main byte-buddy-dep/src/test' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"LongConstant\\.(ZERO|ONE|forValue)\" byte-buddy-dep/src/main byte-buddy-dep/src/test" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 256ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/LongConstant.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/DefaultValue.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantTest.java
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantOpcodeTest.java
+
+ exited 1 in 342ms:
+ succeeded in 334ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantOpcodeTest.java:60:        StackManipulation.Size size = LongConstant.forValue(value).apply(methodVisitor, implementationContext);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantTest.java:57:        StackManipulation longConstant = LongConstant.forValue(value);
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java:566:                    return LongConstant.forValue(value);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/DefaultValue.java:37:    LONG(LongConstant.ZERO),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1224:                        return new WrappingArgumentProvider(LongConstant.forValue((Long) value));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1930:                    return new Resolved.Simple(LongConstant.forValue(value), TypeDescription.ForLoadedType.of(long.class));
+
+codex
+I have the fan-in set now: four production call sites plus two tests. I’m grabbing line numbers so the justification can point to concrete evidence rather than a generic summary.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/utility/JavaConstant.java | sed -n '560,570p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/LongConstant.java | sed -n '1,180p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/DefaultValue.java | sed -n '25,45p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantOpcodeTest.java | sed -n '54,62p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java | sed -n '1216,1232p;1922,1933p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/LongConstantTest.java | sed -n '50,62p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 317ms:
+   560	                }
+   561	
+   562	                /**
+   563	                 * {@inheritDoc}
+   564	                 */
+   565	                public StackManipulation toStackManipulation() {
+   566	                    return LongConstant.forValue(value);
+   567	                }
+   568	            }
+   569	
+   570	            protected static class ForFloat extends OfTrivialValue<Float> {
+
+ succeeded in 307ms:
+    25	 */
+    26	public enum DefaultValue implements StackManipulation {
+    27	
+    28	    /**
+    29	     * The default value of a JVM integer which covers Java's {@code int}, {@code boolean}, {@code byte},
+    30	     * {@code short} and {@code char} values.
+    31	     */
+    32	    INTEGER(IntegerConstant.ZERO),
+    33	
+    34	    /**
+    35	     * The default value of a {@code long}.
+    36	     */
+    37	    LONG(LongConstant.ZERO),
+    38	
+    39	    /**
+    40	     * The default value of a {@code float}.
+    41	     */
+    42	    FLOAT(FloatConstant.ZERO),
+    43	
+    44	    /**
+    45	     * The default value of a {@code double}.
+
+ succeeded in 322ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy.implementation.bytecode.constant;
+    17	
+    18	import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+    19	import net.bytebuddy.implementation.Implementation;
+    20	import net.bytebuddy.implementation.bytecode.StackManipulation;
+    21	import net.bytebuddy.implementation.bytecode.StackSize;
+    22	import org.objectweb.asm.MethodVisitor;
+    23	import org.objectweb.asm.Opcodes;
+    24	
+    25	/**
+    26	 * This class is responsible for loading any {@code long} constant onto the operand stack.
+    27	 */
+    28	public enum LongConstant implements StackManipulation {
+    29	
+    30	    /**
+    31	     * A {@code long} constant of value {@code 0L}.
+    32	     */
+    33	    ZERO(Opcodes.LCONST_0),
+    34	
+    35	    /**
+    36	     * A {@code long} constant of value {@code 1L}.
+    37	     */
+    38	    ONE(Opcodes.LCONST_1);
+    39	
+    40	    /**
+    41	     * The size impact of loading a {@code double} constant onto the operand stack.
+    42	     */
+    43	    private static final Size SIZE = StackSize.DOUBLE.toIncreasingSize();
+    44	
+    45	    /**
+    46	     * The shortcut opcode for loading a {@code long} constant.
+    47	     */
+    48	    private final int opcode;
+    49	
+    50	    /**
+    51	     * Creates a new shortcut operation for loading a common {@code long} onto the operand stack.
+    52	     *
+    53	     * @param opcode The shortcut opcode for loading a {@code long} constant.
+    54	     */
+    55	    LongConstant(int opcode) {
+    56	        this.opcode = opcode;
+    57	    }
+    58	
+    59	    /**
+    60	     * Creates a stack manipulation for loading a {@code long} value onto the operand stack.
+    61	     * <p>&nbsp;</p>
+    62	     * This is achieved either by invoking a specific opcode, if any, or by creating a constant pool entry.
+    63	     *
+    64	     * @param value The {@code long} value to load onto the stack.
+    65	     * @return A stack manipulation for loading the given {@code long} value.
+    66	     */
+    67	    public static StackManipulation forValue(long value) {
+    68	        if (value == 0L) {
+    69	            return ZERO;
+    70	        } else if (value == 1L) {
+    71	            return ONE;
+    72	        } else {
+    73	            return new ConstantPool(value);
+    74	        }
+    75	    }
+    76	
+    77	    /**
+    78	     * {@inheritDoc}
+    79	     */
+    80	    public boolean isValid() {
+    81	        return true;
+    82	    }
+    83	
+    84	    /**
+    85	     * {@inheritDoc}
+    86	     */
+    87	    public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+    88	        methodVisitor.visitInsn(opcode);
+    89	        return SIZE;
+    90	    }
+    91	
+    92	    /**
+    93	     * A stack manipulation for loading a {@code long} value from a class's constant pool onto the operand stack.
+    94	     */
+    95	    @HashCodeAndEqualsPlugin.Enhance
+    96	    protected static class ConstantPool extends StackManipulation.AbstractBase {
+    97	
+    98	        /**
+    99	         * The {@code long} value to be loaded onto the operand stack.
+   100	         */
+   101	        private final long value;
+   102	
+   103	        /**
+   104	         * Creates a new constant pool load operation.
+   105	         *
+   106	         * @param value The {@code long} value to be loaded onto the operand stack.
+   107	         */
+   108	        protected ConstantPool(long value) {
+   109	            this.value = value;
+   110	        }
+   111	
+   112	        /**
+   113	         * {@inheritDoc}
+   114	         */
+   115	        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+   116	            methodVisitor.visitLdcInsn(value);
+   117	            return SIZE;
+   118	        }
+   119	    }
+   120	}
+
+ succeeded in 328ms:
+    54	    public void tearDown() throws Exception {
+    55	        verifyNoMoreInteractions(implementationContext);
+    56	    }
+    57	
+    58	    @Test
+    59	    public void testConstant() throws Exception {
+    60	        StackManipulation.Size size = LongConstant.forValue(value).apply(methodVisitor, implementationContext);
+    61	        assertThat(size.getSizeImpact(), is(2));
+    62	        assertThat(size.getMaximalSize(), is(2));
+
+ succeeded in 232ms:
+    50	                {Integer.MAX_VALUE},
+    51	                {Long.MAX_VALUE},
+    52	        });
+    53	    }
+    54	
+    55	    @Test
+    56	    public void testBiPush() throws Exception {
+    57	        StackManipulation longConstant = LongConstant.forValue(value);
+    58	        assertThat(longConstant.isValid(), is(true));
+    59	        StackManipulation.Size size = longConstant.apply(methodVisitor, implementationContext);
+    60	        assertThat(size.getSizeImpact(), is(2));
+    61	        assertThat(size.getMaximalSize(), is(2));
+    62	        verify(methodVisitor).visitLdcInsn(value);
+
+ succeeded in 289ms:
+  1216	                },
+  1217	
+  1218	                /**
+  1219	                 * Stores a {@link java.lang.Long} as a {@code long} and wraps it on load.
+  1220	                 */
+  1221	                LONG(long.class, Long.class) {
+  1222	                    @Override
+  1223	                    protected ArgumentProvider make(Object value) {
+  1224	                        return new WrappingArgumentProvider(LongConstant.forValue((Long) value));
+  1225	                    }
+  1226	                },
+  1227	
+  1228	                /**
+  1229	                 * Stores a {@link java.lang.Float} as a {@code float} and wraps it on load.
+  1230	                 */
+  1231	                FLOAT(float.class, Float.class) {
+  1232	                    @Override
+  1922	                protected ForLongConstant(long value) {
+  1923	                    this.value = value;
+  1924	                }
+  1925	
+  1926	                /**
+  1927	                 * {@inheritDoc}
+  1928	                 */
+  1929	                public Resolved resolve(TypeDescription instrumentedType, MethodDescription instrumentedMethod, Assigner assigner, Assigner.Typing typing) {
+  1930	                    return new Resolved.Simple(LongConstant.forValue(value), TypeDescription.ForLoadedType.of(long.class));
+  1931	                }
+  1932	
+  1933	                /**
+
+codex
+{"target":"net.bytebuddy.implementation.bytecode.constant.LongConstant","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/LongConstant.java, DefaultValue.java, InvokeDynamic.java, and JavaConstant.java plus the two LongConstant test classes. LongConstant is a small enum with only two constants (ZERO/ONE), a single helper nested class, and a narrow outgoing dependency set (StackManipulation, StackSize, MethodVisitor, Opcodes, Implementation.Context, and the HashCodeAndEqualsPlugin annotation). Its incoming use is also limited: I found 4 production call sites (DefaultValue.java:37, JavaConstant.java:566, InvokeDynamic.java:1224 and 1930) and 2 tests, which is not strong fan-in/fan-out evidence for a dependency hub."}
+tokens used
+10,138

@@ -1,0 +1,712 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f81-f413-7730-b79c-5552a316d309
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.zxing.client.android.result.supplement.BookResultInfoRetriever` in the repository located at:
+
+`data/repositories/zxing/zxing`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.zxing.client.android.result.supplement.BookResultInfoRetriever",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.zxing.client.android.result.supplement.BookResultInfoRetriever`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and checking its incoming and outgoing dependencies, then I’ll decide whether the dependency-hub pattern is actually present from the source evidence.
+exec
+/bin/bash -lc "rg --files | rg 'BookResultInfoRetriever|result/supplement|BookResultInfo|supplement'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 402ms:
+android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java
+android/src/com/google/zxing/client/android/result/supplement/TitleRetriever.java
+android/src/com/google/zxing/client/android/result/supplement/ProductResultInfoRetriever.java
+android/src/com/google/zxing/client/android/result/supplement/BookResultInfoRetriever.java
+android/src/com/google/zxing/client/android/result/supplement/URIResultInfoRetriever.java
+
+codex
+I found the target under `android/src/.../supplement`. Next I’m reading the class itself and the surrounding retrievers to see whether it is central wiring or just one small implementation.
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/result/supplement/TitleRetriever.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/result/supplement/BookResultInfoRetriever.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/result/supplement/ProductResultInfoRetriever.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "sed -n '1,220p' android/src/com/google/zxing/client/android/result/supplement/URIResultInfoRetriever.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 226ms:
+/*
+ * Copyright (C) 2010 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.result.supplement;
+
+import android.content.Context;
+import android.os.AsyncTask;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.method.LinkMovementMethod;
+import android.text.style.URLSpan;
+import android.util.Log;
+import android.widget.TextView;
+
+import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.concurrent.RejectedExecutionException;
+
+import com.google.zxing.client.android.history.HistoryManager;
+import com.google.zxing.client.result.ISBNParsedResult;
+import com.google.zxing.client.result.ParsedResult;
+import com.google.zxing.client.result.ProductParsedResult;
+import com.google.zxing.client.result.URIParsedResult;
+
+/**
+ * Superclass of implementations which can asynchronously retrieve more information
+ * about a barcode scan.
+ */
+public abstract class SupplementalInfoRetriever extends AsyncTask<Object,Object,Object> {
+
+  private static final String TAG = "SupplementalInfo";
+
+  static final String[] EMPTY_STR_ARRAY = new String[0];
+
+  private final WeakReference<TextView> textViewRef;
+  private final WeakReference<HistoryManager> historyManagerRef;
+  private final Collection<Spannable> newContents;
+  private final Collection<String[]> newHistories;
+
+  public static void maybeInvokeRetrieval(TextView textView,
+                                          ParsedResult result,
+                                          HistoryManager historyManager,
+                                          Context context) {
+    try {
+      if (result instanceof URIParsedResult) {
+        SupplementalInfoRetriever uriRetriever =
+            new URIResultInfoRetriever(textView, (URIParsedResult) result, historyManager, context);
+        uriRetriever.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        SupplementalInfoRetriever titleRetriever =
+            new TitleRetriever(textView, (URIParsedResult) result, historyManager);
+        titleRetriever.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+      } else if (result instanceof ProductParsedResult) {
+        ProductParsedResult productParsedResult = (ProductParsedResult) result;
+        String productID = productParsedResult.getProductID();
+        SupplementalInfoRetriever productRetriever =
+            new ProductResultInfoRetriever(textView, productID, historyManager, context);
+        productRetriever.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+      } else if (result instanceof ISBNParsedResult) {
+        String isbn = ((ISBNParsedResult) result).getISBN();
+        SupplementalInfoRetriever productInfoRetriever =
+            new ProductResultInfoRetriever(textView, isbn, historyManager, context);
+        productInfoRetriever.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        SupplementalInfoRetriever bookInfoRetriever =
+            new BookResultInfoRetriever(textView, isbn, historyManager, context);
+        bookInfoRetriever.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+      }
+    } catch (RejectedExecutionException ree) {
+      // do nothing
+    }
+  }
+
+  SupplementalInfoRetriever(TextView textView, HistoryManager historyManager) {
+    textViewRef = new WeakReference<>(textView);
+    historyManagerRef = new WeakReference<>(historyManager);
+    newContents = new ArrayList<>();
+    newHistories = new ArrayList<>();
+  }
+
+  @Override
+  public final Object doInBackground(Object... args) {
+    try {
+      retrieveSupplementalInfo();
+    } catch (IOException e) {
+      Log.w(TAG, e);
+    }
+    return null;
+  }
+
+  @Override
+  protected final void onPostExecute(Object arg) {
+    TextView textView = textViewRef.get();
+    if (textView != null) {
+      for (CharSequence content : newContents) {
+        textView.append(content);
+      }
+      textView.setMovementMethod(LinkMovementMethod.getInstance());
+    }
+    HistoryManager historyManager = historyManagerRef.get();
+    if (historyManager != null) {
+      for (String[] text : newHistories) {
+        historyManager.addHistoryItemDetails(text[0], text[1]);
+      }
+    }
+  }
+
+  abstract void retrieveSupplementalInfo() throws IOException;
+
+  final void append(String itemID, String source, String[] newTexts, String linkURL) {
+
+    StringBuilder newTextCombined = new StringBuilder();
+
+    if (source != null) {
+      newTextCombined.append(source).append(' ');
+    }
+
+    int linkStart = newTextCombined.length();
+
+    boolean first = true;
+    for (String newText : newTexts) {
+      if (first) {
+        newTextCombined.append(newText);
+        first = false;
+      } else {
+        newTextCombined.append(" [");
+        newTextCombined.append(newText);
+        newTextCombined.append(']');
+      }
+    }
+
+    int linkEnd = newTextCombined.length();
+
+    String newText = newTextCombined.toString();
+    Spannable content = new SpannableString(newText + "\n\n");
+    if (linkURL != null) {
+      // Strangely, some Android browsers don't seem to register to handle HTTP:// or HTTPS://.
+      // Lower-case these as it should always be OK to lower-case these schemes.
+      if (linkURL.startsWith("HTTP://")) {
+        linkURL = "http" + linkURL.substring(4);
+      } else if (linkURL.startsWith("HTTPS://")) {
+        linkURL = "https" + linkURL.substring(5);
+      }
+      content.setSpan(new URLSpan(linkURL), linkStart, linkEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    newContents.add(content);
+    newHistories.add(new String[] {itemID, newText});
+  }
+  
+  static void maybeAddText(String text, Collection<String> texts) {
+    if (text != null && !text.isEmpty()) {
+      texts.add(text);
+    }
+  }
+  
+  static void maybeAddTextSeries(Collection<String> textSeries, Collection<String> texts) {
+    if (textSeries != null && !textSeries.isEmpty()) {
+      boolean first = true;
+      StringBuilder authorsText = new StringBuilder();
+      for (String author : textSeries) {
+        if (first) {
+          first = false;
+        } else {
+          authorsText.append(", ");
+        }
+        authorsText.append(author);
+      }
+      texts.add(authorsText.toString());
+    }
+  }
+
+}
+
+ succeeded in 251ms:
+/*
+ * Copyright (C) 2010 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.result.supplement;
+
+import android.content.Context;
+import android.text.Html;
+import android.widget.TextView;
+import com.google.zxing.client.android.HttpHelper;
+import com.google.zxing.client.android.R;
+import com.google.zxing.client.android.history.HistoryManager;
+import com.google.zxing.client.android.LocaleManager;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * <p>Retrieves product information from Google Product search.</p>
+ *
+ * <p><strong>Please do not reuse this code.</strong> Using results in this way requires permission
+ * from Google, and that is not granted to users via this project.</p>
+ *
+ * @author Sean Owen
+ */
+final class ProductResultInfoRetriever extends SupplementalInfoRetriever {
+
+  private static final Pattern[] PRODUCT_NAME_PRICE_PATTERNS = {
+    Pattern.compile(",event\\)\">([^<]+)</a></h3>.+<span class=psrp>([^<]+)</span>"),
+    Pattern.compile("owb63p\">([^<]+).+zdi3pb\">([^<]+)"),
+  };
+
+  private final String productID;
+  private final String source;
+  private final Context context;
+
+  ProductResultInfoRetriever(TextView textView, String productID, HistoryManager historyManager, Context context) {
+    super(textView, historyManager);
+    this.productID = productID;
+    this.source = context.getString(R.string.msg_google_product);
+    this.context = context;
+  }
+
+  @Override
+  void retrieveSupplementalInfo() throws IOException {
+
+    String encodedProductID = URLEncoder.encode(productID, "UTF-8");
+    String uri = "https://www.google." + LocaleManager.getProductSearchCountryTLD(context)
+            + "/m/products?ie=utf8&oe=utf8&scoring=p&source=zxing&q=" + encodedProductID;
+    CharSequence content = HttpHelper.downloadViaHttp(uri, HttpHelper.ContentType.HTML);
+
+    for (Pattern p : PRODUCT_NAME_PRICE_PATTERNS) {
+      Matcher matcher = p.matcher(content);
+      if (matcher.find()) {
+        append(productID,
+               source,
+               new String[] { unescapeHTML(matcher.group(1)), unescapeHTML(matcher.group(2)) },
+               uri);
+        break;
+      }
+    }
+  }
+
+  private static String unescapeHTML(String raw) {
+    return Html.fromHtml(raw).toString();
+  }
+
+}
+
+ succeeded in 285ms:
+/*
+ * Copyright 2012 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.result.supplement;
+
+import android.text.Html;
+import android.widget.TextView;
+import com.google.zxing.client.android.HttpHelper;
+import com.google.zxing.client.android.history.HistoryManager;
+import com.google.zxing.client.result.URIParsedResult;
+
+import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Retrieves the title of a web page as supplemental info.
+ *
+ * @author Sean Owen
+ */
+final class TitleRetriever extends SupplementalInfoRetriever {
+
+  private static final Pattern TITLE_PATTERN = Pattern.compile("<title>([^<]+)");
+  private static final int MAX_TITLE_LEN = 100;
+
+  private final String httpUrl;
+
+  TitleRetriever(TextView textView, URIParsedResult result, HistoryManager historyManager) {
+    super(textView, historyManager);
+    this.httpUrl = result.getURI();
+  }
+
+  @Override
+  void retrieveSupplementalInfo() {
+    CharSequence contents;
+    try {
+      contents = HttpHelper.downloadViaHttp(httpUrl, HttpHelper.ContentType.HTML, 4096);
+    } catch (IOException ioe) {
+      // ignore this
+      return;
+    }
+    if (contents != null && contents.length() > 0) {
+      Matcher m = TITLE_PATTERN.matcher(contents);
+      if (m.find()) {
+        String title = m.group(1);
+        if (title != null && !title.isEmpty()) {
+          title = Html.fromHtml(title).toString();
+          if (title.length() > MAX_TITLE_LEN) {
+            title = title.substring(0, MAX_TITLE_LEN) + "...";
+          }
+          append(httpUrl, null, new String[] {title}, httpUrl);
+        }
+      }
+    }
+  }
+
+}
+
+ succeeded in 307ms:
+/*
+ * Copyright 2011 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.result.supplement;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+
+import android.content.Context;
+import android.widget.TextView;
+import com.google.zxing.client.android.HttpHelper;
+import com.google.zxing.client.android.LocaleManager;
+import com.google.zxing.client.android.R;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
+import com.google.zxing.client.android.history.HistoryManager;
+
+/**
+ * @author Kamil Kaczmarczyk
+ * @author Sean Owen
+ */
+final class BookResultInfoRetriever extends SupplementalInfoRetriever {
+
+  private final String isbn;
+  private final String source;
+  private final Context context;
+  
+  BookResultInfoRetriever(TextView textView, String isbn, HistoryManager historyManager, Context context) {
+    super(textView, historyManager);
+    this.isbn = isbn;
+    this.source = context.getString(R.string.msg_google_books);
+    this.context = context;
+  }
+
+  @Override
+  void retrieveSupplementalInfo() throws IOException {
+
+    CharSequence contents = HttpHelper.downloadViaHttp("https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn,
+                                                       HttpHelper.ContentType.JSON);
+
+    if (contents.length() == 0) {
+      return;
+    }
+
+    String title;
+    String pages;
+    Collection<String> authors = null;
+
+    try {
+
+      JSONObject topLevel = (JSONObject) new JSONTokener(contents.toString()).nextValue();
+      JSONArray items = topLevel.optJSONArray("items");
+      if (items == null || items.isNull(0)) {
+        return;
+      }
+
+      JSONObject volumeInfo = ((JSONObject) items.get(0)).getJSONObject("volumeInfo");
+      if (volumeInfo == null) {
+        return;
+      }
+
+      title = volumeInfo.optString("title");
+      pages = volumeInfo.optString("pageCount");
+
+      JSONArray authorsArray = volumeInfo.optJSONArray("authors");
+      if (authorsArray != null && !authorsArray.isNull(0)) {
+        authors = new ArrayList<>(authorsArray.length());
+        for (int i = 0; i < authorsArray.length(); i++) {
+          authors.add(authorsArray.getString(i));
+        }
+      }
+
+    } catch (JSONException e) {
+      throw new IOException(e);
+    }
+
+    Collection<String> newTexts = new ArrayList<>();
+    maybeAddText(title, newTexts);
+    maybeAddTextSeries(authors, newTexts);
+    maybeAddText(pages == null || pages.isEmpty() ? null : pages + "pp.", newTexts);
+    
+    String baseBookUri = "http://www.google." + LocaleManager.getBookSearchCountryTLD(context)
+        + "/search?tbm=bks&source=zxing&q=";
+
+    append(isbn, source, newTexts.toArray(EMPTY_STR_ARRAY), baseBookUri + isbn);
+  }
+
+}
+
+ succeeded in 282ms:
+/*
+ * Copyright (C) 2010 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.client.android.result.supplement;
+
+import android.content.Context;
+import android.widget.TextView;
+import com.google.zxing.client.android.HttpHelper;
+import com.google.zxing.client.android.history.HistoryManager;
+import com.google.zxing.client.android.R;
+import com.google.zxing.client.result.URIParsedResult;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+
+final class URIResultInfoRetriever extends SupplementalInfoRetriever {
+
+  private static final int MAX_REDIRECTS = 5;
+
+  private final URIParsedResult result;
+  private final String redirectString;
+
+  URIResultInfoRetriever(TextView textView, URIParsedResult result, HistoryManager historyManager, Context context) {
+    super(textView, historyManager);
+    redirectString = context.getString(R.string.msg_redirect);
+    this.result = result;
+  }
+
+  @Override
+  void retrieveSupplementalInfo() throws IOException {
+    URI oldURI;
+    try {
+      oldURI = new URI(result.getURI());
+    } catch (URISyntaxException ignored) {
+      return;
+    }
+    URI newURI = HttpHelper.unredirect(oldURI);
+    int count = 0;
+    while (count++ < MAX_REDIRECTS && !oldURI.equals(newURI)) {
+      append(result.getDisplayResult(), 
+             null, 
+             new String[] { redirectString + " : " + newURI }, 
+             newURI.toString());
+      oldURI = newURI;
+      newURI = HttpHelper.unredirect(newURI);
+    }
+  }
+
+}
+
+codex
+I have the class body and the factory method that instantiates it. I’m now counting references and direct dependencies so the verdict reflects actual coupling, not just the package name or async base class.
+exec
+/bin/bash -lc 'rg -n "BookResultInfoRetriever" android/src' in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "rg -n \"com\\.google\\.zxing\\.client\\.android\\.result\\.supplement\" android/src" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc "rg -n \"maybeInvokeRetrieval\\(\" android/src" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+exec
+/bin/bash -lc 'rg -n "new (BookResultInfoRetriever|ProductResultInfoRetriever|URIResultInfoRetriever|TitleRetriever)" android/src' in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 226ms:
+android/src/com/google/zxing/client/android/CaptureActivity.java:593:      SupplementalInfoRetriever.maybeInvokeRetrieval(supplementTextView,
+android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java:56:  public static void maybeInvokeRetrieval(TextView textView,
+
+ succeeded in 206ms:
+android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java:63:            new URIResultInfoRetriever(textView, (URIParsedResult) result, historyManager, context);
+android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java:66:            new TitleRetriever(textView, (URIParsedResult) result, historyManager);
+android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java:72:            new ProductResultInfoRetriever(textView, productID, historyManager, context);
+android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java:77:            new ProductResultInfoRetriever(textView, isbn, historyManager, context);
+android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java:80:            new BookResultInfoRetriever(textView, isbn, historyManager, context);
+
+ succeeded in 297ms:
+android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java:17:package com.google.zxing.client.android.result.supplement;
+android/src/com/google/zxing/client/android/result/supplement/TitleRetriever.java:17:package com.google.zxing.client.android.result.supplement;
+android/src/com/google/zxing/client/android/result/supplement/ProductResultInfoRetriever.java:17:package com.google.zxing.client.android.result.supplement;
+android/src/com/google/zxing/client/android/result/supplement/BookResultInfoRetriever.java:17:package com.google.zxing.client.android.result.supplement;
+android/src/com/google/zxing/client/android/result/supplement/URIResultInfoRetriever.java:17:package com.google.zxing.client.android.result.supplement;
+android/src/com/google/zxing/client/android/CaptureActivity.java:32:import com.google.zxing.client.android.result.supplement.SupplementalInfoRetriever;
+
+ succeeded in 326ms:
+android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java:80:            new BookResultInfoRetriever(textView, isbn, historyManager, context);
+android/src/com/google/zxing/client/android/result/supplement/BookResultInfoRetriever.java:39:final class BookResultInfoRetriever extends SupplementalInfoRetriever {
+android/src/com/google/zxing/client/android/result/supplement/BookResultInfoRetriever.java:45:  BookResultInfoRetriever(TextView textView, String isbn, HistoryManager historyManager, Context context) {
+
+exec
+/bin/bash -lc "sed -n '560,620p' android/src/com/google/zxing/client/android/CaptureActivity.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 236ms:
+
+
+    TextView metaTextView = (TextView) findViewById(R.id.meta_text_view);
+    View metaTextViewLabel = findViewById(R.id.meta_text_view_label);
+    metaTextView.setVisibility(View.GONE);
+    metaTextViewLabel.setVisibility(View.GONE);
+    Map<ResultMetadataType,Object> metadata = rawResult.getResultMetadata();
+    if (metadata != null) {
+      StringBuilder metadataText = new StringBuilder(20);
+      for (Map.Entry<ResultMetadataType,Object> entry : metadata.entrySet()) {
+        if (DISPLAYABLE_METADATA_TYPES.contains(entry.getKey())) {
+          metadataText.append(entry.getValue()).append('\n');
+        }
+      }
+      if (metadataText.length() > 0) {
+        metadataText.setLength(metadataText.length() - 1);
+        metaTextView.setText(metadataText);
+        metaTextView.setVisibility(View.VISIBLE);
+        metaTextViewLabel.setVisibility(View.VISIBLE);
+      }
+    }
+
+    CharSequence displayContents = resultHandler.getDisplayContents();
+    TextView contentsTextView = (TextView) findViewById(R.id.contents_text_view);
+    contentsTextView.setText(displayContents);
+    int scaledSize = Math.max(22, 32 - displayContents.length() / 4);
+    contentsTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSize);
+
+    TextView supplementTextView = (TextView) findViewById(R.id.contents_supplement_text_view);
+    supplementTextView.setText("");
+    supplementTextView.setOnClickListener(null);
+    if (PreferenceManager.getDefaultSharedPreferences(this).getBoolean(
+        PreferencesActivity.KEY_SUPPLEMENTAL, true)) {
+      SupplementalInfoRetriever.maybeInvokeRetrieval(supplementTextView,
+                                                     resultHandler.getResult(),
+                                                     historyManager,
+                                                     this);
+    }
+
+    int buttonCount = resultHandler.getButtonCount();
+    ViewGroup buttonView = (ViewGroup) findViewById(R.id.result_button_view);
+    buttonView.requestFocus();
+    for (int x = 0; x < ResultHandler.MAX_BUTTON_COUNT; x++) {
+      TextView button = (TextView) buttonView.getChildAt(x);
+      if (x < buttonCount) {
+        button.setVisibility(View.VISIBLE);
+        button.setText(resultHandler.getButtonText(x));
+        button.setOnClickListener(new ResultButtonListener(resultHandler, x));
+      } else {
+        button.setVisibility(View.GONE);
+      }
+    }
+
+  }
+
+  // Briefly show the contents of the barcode, then handle the result outside Barcode Scanner.
+  private void handleDecodeExternally(Result rawResult, ResultHandler resultHandler, Bitmap barcode) {
+
+    if (barcode != null) {
+      viewfinderView.drawResultBitmap(barcode);
+    }
+
+codex
+{"target":"com.google.zxing.client.android.result.supplement.BookResultInfoRetriever","detection":false,"justification":"Inspected `android/src/com/google/zxing/client/android/result/supplement/BookResultInfoRetriever.java`, `android/src/com/google/zxing/client/android/result/supplement/SupplementalInfoRetriever.java`, and `android/src/com/google/zxing/client/android/CaptureActivity.java`. `rg -n \"BookResultInfoRetriever\" android/src` found only the class definition and a single instantiation site in `SupplementalInfoRetriever.maybeInvokeRetrieval(...)`, so fan-in is very low. The class itself has one constructor and one override, and its fan-out is limited to a small, normal set of collaborators (`HttpHelper`, `LocaleManager`, `HistoryManager`, `Context`, `TextView`, JSON classes, and `R`), which is not strong hub-like coupling."}
+tokens used
+8,525

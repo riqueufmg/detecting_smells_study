@@ -1,0 +1,803 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f10-ddeb-7302-9598-7513a479aad7
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.zxing.oned.ITFWriter` in the repository located at:
+
+`data/repositories/zxing/zxing`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.zxing.oned.ITFWriter",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.zxing.oned.ITFWriter`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and its call sites first, then I’ll inspect the class body and surrounding package to judge fan-in and fan-out from the source itself.
+exec
+/bin/bash -lc "rg -n \"\\bITFWriter\\b\" -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+core/src/test/java/com/google/zxing/oned/ITFWriterTestCase.java:26: * Tests {@link ITFWriter}.
+core/src/test/java/com/google/zxing/oned/ITFWriterTestCase.java:38:    BitMatrix result = new ITFWriter().encode(input, BarcodeFormat.ITF, 0, 0);
+core/src/test/java/com/google/zxing/oned/ITFWriterTestCase.java:44:    new ITFWriter().encode("00123456789abc", BarcodeFormat.ITF, 0, 0);
+core/src/main/java/com/google/zxing/MultiFormatWriter.java:28:import com.google.zxing.oned.ITFWriter;
+core/src/main/java/com/google/zxing/MultiFormatWriter.java:85:        writer = new ITFWriter();
+core/src/main/java/com/google/zxing/oned/ITFReader.java:74:  // See ITFWriter.PATTERNS
+core/src/main/java/com/google/zxing/oned/ITFWriter.java:30:public final class ITFWriter extends OneDimensionalCodeWriter {
+
+exec
+/bin/bash -lc "rg --files | rg 'ITFWriter\\.java"'$|ITF.*'"\\.java"'$|Writer'"\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+core/src/test/java/com/google/zxing/oned/ITFBlackBox2TestCase.java
+core/src/test/java/com/google/zxing/oned/ITFBlackBox1TestCase.java
+core/src/test/java/com/google/zxing/oned/ITFWriterTestCase.java
+core/src/main/java/com/google/zxing/aztec/AztecWriter.java
+core/src/main/java/com/google/zxing/MultiFormatWriter.java
+core/src/main/java/com/google/zxing/datamatrix/DataMatrixWriter.java
+core/src/main/java/com/google/zxing/qrcode/QRCodeWriter.java
+core/src/main/java/com/google/zxing/pdf417/PDF417Writer.java
+core/src/main/java/com/google/zxing/oned/UPCAWriter.java
+core/src/main/java/com/google/zxing/oned/EAN8Writer.java
+core/src/main/java/com/google/zxing/oned/OneDimensionalCodeWriter.java
+core/src/main/java/com/google/zxing/oned/CodaBarWriter.java
+core/src/main/java/com/google/zxing/oned/UPCEWriter.java
+core/src/main/java/com/google/zxing/oned/Code93Writer.java
+core/src/main/java/com/google/zxing/oned/ITFReader.java
+core/src/main/java/com/google/zxing/oned/ITFWriter.java
+core/src/main/java/com/google/zxing/oned/Code128Writer.java
+core/src/main/java/com/google/zxing/oned/Code39Writer.java
+core/src/main/java/com/google/zxing/oned/UPCEANWriter.java
+core/src/main/java/com/google/zxing/oned/EAN13Writer.java
+core/src/main/java/com/google/zxing/Writer.java
+javase/src/main/java/com/google/zxing/client/j2se/MatrixToImageWriter.java
+
+codex
+I found the target file and the main references. Next I’m checking the class internals and the surrounding writer dispatch code to see whether this class is actually a dependency hub or just one leaf implementation.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/zxing/oned/ITFWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright 2010 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.oned;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.common.BitMatrix;
+
+import java.util.Collection;
+import java.util.Collections;
+
+/**
+ * This object renders a ITF code as a {@link BitMatrix}.
+ *
+ * @author erik.barbara@gmail.com (Erik Barbara)
+ */
+public final class ITFWriter extends OneDimensionalCodeWriter {
+
+  private static final int[] START_PATTERN = {1, 1, 1, 1};
+  private static final int[] END_PATTERN = {3, 1, 1};
+
+  private static final int W = 3; // Pixel width of a 3x wide line
+  private static final int N = 1; // Pixed width of a narrow line
+
+  // See ITFReader.PATTERNS
+
+  private static final int[][] PATTERNS = {
+      {N, N, W, W, N}, // 0
+      {W, N, N, N, W}, // 1
+      {N, W, N, N, W}, // 2
+      {W, W, N, N, N}, // 3
+      {N, N, W, N, W}, // 4
+      {W, N, W, N, N}, // 5
+      {N, W, W, N, N}, // 6
+      {N, N, N, W, W}, // 7
+      {W, N, N, W, N}, // 8
+      {N, W, N, W, N}  // 9
+  };
+
+  @Override
+  protected Collection<BarcodeFormat> getSupportedWriteFormats() {
+    return Collections.singleton(BarcodeFormat.ITF);
+  }
+
+  @Override
+  public boolean[] encode(String contents) {
+    int length = contents.length();
+    if (length % 2 != 0) {
+      throw new IllegalArgumentException("The length of the input should be even");
+    }
+    if (length > 80) {
+      throw new IllegalArgumentException(
+          "Requested contents should be less than 80 digits long, but got " + length);
+    }
+
+    checkNumeric(contents);
+
+    boolean[] result = new boolean[9 + 9 * length];
+    int pos = appendPattern(result, 0, START_PATTERN, true);
+    for (int i = 0; i < length; i += 2) {
+      int one = Character.digit(contents.charAt(i), 10);
+      int two = Character.digit(contents.charAt(i + 1), 10);
+      int[] encoding = new int[10];
+      for (int j = 0; j < 5; j++) {
+        encoding[2 * j] = PATTERNS[one][j];
+        encoding[2 * j + 1] = PATTERNS[two][j];
+      }
+      pos += appendPattern(result, pos, encoding, true);
+    }
+    appendPattern(result, pos, END_PATTERN, true);
+
+    return result;
+  }
+
+}
+
+exec
+/bin/bash -lc "sed -n '1,180p' core/src/main/java/com/google/zxing/MultiFormatWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright 2008 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing;
+
+import com.google.zxing.aztec.AztecWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.datamatrix.DataMatrixWriter;
+import com.google.zxing.oned.CodaBarWriter;
+import com.google.zxing.oned.Code128Writer;
+import com.google.zxing.oned.Code39Writer;
+import com.google.zxing.oned.Code93Writer;
+import com.google.zxing.oned.EAN13Writer;
+import com.google.zxing.oned.EAN8Writer;
+import com.google.zxing.oned.ITFWriter;
+import com.google.zxing.oned.UPCAWriter;
+import com.google.zxing.oned.UPCEWriter;
+import com.google.zxing.pdf417.PDF417Writer;
+import com.google.zxing.qrcode.QRCodeWriter;
+
+import java.util.Map;
+
+/**
+ * This is a factory class which finds the appropriate Writer subclass for the BarcodeFormat
+ * requested and encodes the barcode with the supplied contents.
+ *
+ * @author dswitkin@google.com (Daniel Switkin)
+ */
+public final class MultiFormatWriter implements Writer {
+
+  @Override
+  public BitMatrix encode(String contents,
+                          BarcodeFormat format,
+                          int width,
+                          int height) throws WriterException {
+    return encode(contents, format, width, height, null);
+  }
+
+  @Override
+  public BitMatrix encode(String contents,
+                          BarcodeFormat format,
+                          int width, int height,
+                          Map<EncodeHintType,?> hints) throws WriterException {
+
+    Writer writer;
+    switch (format) {
+      case EAN_8:
+        writer = new EAN8Writer();
+        break;
+      case UPC_E:
+        writer = new UPCEWriter();
+        break;
+      case EAN_13:
+        writer = new EAN13Writer();
+        break;
+      case UPC_A:
+        writer = new UPCAWriter();
+        break;
+      case QR_CODE:
+        writer = new QRCodeWriter();
+        break;
+      case CODE_39:
+        writer = new Code39Writer();
+        break;
+      case CODE_93:
+        writer = new Code93Writer();
+        break;
+      case CODE_128:
+        writer = new Code128Writer();
+        break;
+      case ITF:
+        writer = new ITFWriter();
+        break;
+      case PDF_417:
+        writer = new PDF417Writer();
+        break;
+      case CODABAR:
+        writer = new CodaBarWriter();
+        break;
+      case DATA_MATRIX:
+        writer = new DataMatrixWriter();
+        break;
+      case AZTEC:
+        writer = new AztecWriter();
+        break;
+      default:
+        throw new IllegalArgumentException("No encoder available for format " + format);
+    }
+    return writer.encode(contents, format, width, height, hints);
+  }
+
+}
+
+exec
+/bin/bash -lc "sed -n '1,200p' core/src/test/java/com/google/zxing/oned/ITFWriterTestCase.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright 2017 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.oned;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.common.BitMatrixTestCase;
+import org.junit.Assert;
+import org.junit.Test;
+
+/**
+ * Tests {@link ITFWriter}.
+ */
+public final class ITFWriterTestCase extends Assert {
+
+  @Test
+  public void testEncode() {
+    doTest("00123456789012",
+           "0000010101010111000111000101110100010101110001110111010001010001110100011" +
+           "100010101000101011100011101011101000111000101110100010101110001110100000");
+  }
+
+  private static void doTest(String input, CharSequence expected) {
+    BitMatrix result = new ITFWriter().encode(input, BarcodeFormat.ITF, 0, 0);
+    assertEquals(expected, BitMatrixTestCase.matrixToString(result));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testEncodeIllegalCharacters() {
+    new ITFWriter().encode("00123456789abc", BarcodeFormat.ITF, 0, 0);
+  }
+
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/zxing/oned/ITFReader.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright 2008 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.oned;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.FormatException;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.Result;
+import com.google.zxing.ResultMetadataType;
+import com.google.zxing.ResultPoint;
+import com.google.zxing.common.BitArray;
+
+import java.util.Map;
+
+/**
+ * <p>Implements decoding of the ITF format, or Interleaved Two of Five.</p>
+ *
+ * <p>This Reader will scan ITF barcodes of certain lengths only.
+ * At the moment it reads length 6, 8, 10, 12, 14, 16, 18, 20, 24, and 44 as these have appeared "in the wild". Not all
+ * lengths are scanned, especially shorter ones, to avoid false positives. This in turn is due to a lack of
+ * required checksum function.</p>
+ *
+ * <p>The checksum is optional and is not applied by this Reader. The consumer of the decoded
+ * value will have to apply a checksum if required.</p>
+ *
+ * <p><a href="http://en.wikipedia.org/wiki/Interleaved_2_of_5">http://en.wikipedia.org/wiki/Interleaved_2_of_5</a>
+ * is a great reference for Interleaved 2 of 5 information.</p>
+ *
+ * @author kevin.osullivan@sita.aero, SITA Lab.
+ */
+public final class ITFReader extends OneDReader {
+
+  private static final float MAX_AVG_VARIANCE = 0.38f;
+  private static final float MAX_INDIVIDUAL_VARIANCE_2X = 0.5f; // 2x wide lines -> stricter
+  private static final float MAX_INDIVIDUAL_VARIANCE_3X = 0.75f; // 3x wide lines -> less strict
+
+  private static final int W = 3; // Pixel width of a 3x wide line
+  private static final int w = 2; // Pixel width of a 2x wide line
+  private static final int N = 1; // Pixel width of a narrow line
+
+  /** Valid ITF lengths. Anything longer than the largest value is also allowed. */
+  private static final int[] DEFAULT_ALLOWED_LENGTHS = {6, 8, 10, 12, 14};
+
+  // Stores the actual narrow line width of the image being decoded.
+  private int narrowLineWidth = -1;
+
+  /**
+   * Start/end guard pattern.
+   *
+   * Note: The end pattern is reversed because the row is reversed before
+   * searching for the END_PATTERN
+   */
+  private static final int[] START_PATTERN = {N, N, N, N};
+  private static final int[][] END_PATTERN_REVERSED = {
+      {N, N, w}, // 2x
+      {N, N, W}  // 3x
+  };
+
+  // See ITFWriter.PATTERNS
+
+  /**
+   * Patterns of Wide / Narrow lines to indicate each digit
+   */
+  private static final int[][] PATTERNS = {
+      {N, N, w, w, N}, // 0
+      {w, N, N, N, w}, // 1
+      {N, w, N, N, w}, // 2
+      {w, w, N, N, N}, // 3
+      {N, N, w, N, w}, // 4
+      {w, N, w, N, N}, // 5
+      {N, w, w, N, N}, // 6
+      {N, N, N, w, w}, // 7
+      {w, N, N, w, N}, // 8
+      {N, w, N, w, N}, // 9
+      {N, N, W, W, N}, // 0
+      {W, N, N, N, W}, // 1
+      {N, W, N, N, W}, // 2
+      {W, W, N, N, N}, // 3
+      {N, N, W, N, W}, // 4
+      {W, N, W, N, N}, // 5
+      {N, W, W, N, N}, // 6
+      {N, N, N, W, W}, // 7
+      {W, N, N, W, N}, // 8
+      {N, W, N, W, N}  // 9
+  };
+
+  @Override
+  public Result decodeRow(int rowNumber, BitArray row, Map<DecodeHintType,?> hints)
+      throws FormatException, NotFoundException {
+
+    // Find out where the Middle section (payload) starts & ends
+    int[] startRange = decodeStart(row);
+    int[] endRange = decodeEnd(row);
+
+    StringBuilder result = new StringBuilder(20);
+    decodeMiddle(row, startRange[1], endRange[0], result);
+    String resultString = result.toString();
+
+    int[] allowedLengths = null;
+    if (hints != null) {
+      allowedLengths = (int[]) hints.get(DecodeHintType.ALLOWED_LENGTHS);
+
+    }
+    if (allowedLengths == null) {
+      allowedLengths = DEFAULT_ALLOWED_LENGTHS;
+    }
+
+    // To avoid false positives with 2D barcodes (and other patterns), make
+    // an assumption that the decoded string must be a 'standard' length if it's short
+    int length = resultString.length();
+    boolean lengthOK = false;
+    int maxAllowedLength = 0;
+    for (int allowedLength : allowedLengths) {
+      if (length == allowedLength) {
+        lengthOK = true;
+        break;
+      }
+      if (allowedLength > maxAllowedLength) {
+        maxAllowedLength = allowedLength;
+      }
+    }
+    if (!lengthOK && length > maxAllowedLength) {
+      lengthOK = true;
+    }
+    if (!lengthOK) {
+      throw FormatException.getFormatInstance();
+    }
+
+    Result resultObject = new Result(
+        resultString,
+        null, // no natural byte representation for these barcodes
+        new ResultPoint[] {new ResultPoint(startRange[1], rowNumber),
+                           new ResultPoint(endRange[0], rowNumber)},
+        BarcodeFormat.ITF);
+    resultObject.putMetadata(ResultMetadataType.SYMBOLOGY_IDENTIFIER, "]I0");
+    return resultObject;
+  }
+
+  /**
+   * @param row          row of black/white values to search
+   * @param payloadStart offset of start pattern
+   * @param resultString {@link StringBuilder} to append decoded chars to
+   * @throws NotFoundException if decoding could not complete successfully
+   */
+  private static void decodeMiddle(BitArray row,
+                                   int payloadStart,
+                                   int payloadEnd,
+                                   StringBuilder resultString) throws NotFoundException {
+
+    // Digits are interleaved in pairs - 5 black lines for one digit, and the
+    // 5
+    // interleaved white lines for the second digit.
+    // Therefore, need to scan 10 lines and then
+    // split these into two arrays
+    int[] counterDigitPair = new int[10];
+    int[] counterBlack = new int[5];
+    int[] counterWhite = new int[5];
+
+    while (payloadStart < payloadEnd) {
+
+      // Get 10 runs of black/white.
+      recordPattern(row, payloadStart, counterDigitPair);
+      // Split them into each array
+      for (int k = 0; k < 5; k++) {
+        int twoK = 2 * k;
+        counterBlack[k] = counterDigitPair[twoK];
+        counterWhite[k] = counterDigitPair[twoK + 1];
+      }
+
+      int bestMatch = decodeDigit(counterBlack);
+      resultString.append((char) ('0' + bestMatch));
+      bestMatch = decodeDigit(counterWhite);
+      resultString.append((char) ('0' + bestMatch));
+
+      for (int counterDigit : counterDigitPair) {
+        payloadStart += counterDigit;
+      }
+    }
+  }
+
+  /**
+   * Identify where the start of the middle / payload section starts.
+   *
+   * @param row row of black/white values to search
+   * @return Array, containing index of start of 'start block' and end of
+   *         'start block'
+   */
+  private int[] decodeStart(BitArray row) throws NotFoundException {
+    int endStart = skipWhiteSpace(row);
+    int[] startPattern = findGuardPattern(row, endStart, START_PATTERN);
+
+    // Determine the width of a narrow line in pixels. We can do this by
+    // getting the width of the start pattern and dividing by 4 because its
+    // made up of 4 narrow lines.
+    this.narrowLineWidth = (startPattern[1] - startPattern[0]) / 4;
+
+    validateQuietZone(row, startPattern[0]);
+
+    return startPattern;
+  }
+
+  /**
+   * The start & end patterns must be pre/post fixed by a quiet zone. This
+   * zone must be at least 10 times the width of a narrow line.  Scan back until
+   * we either get to the start of the barcode or match the necessary number of
+
+codex
+I’ve confirmed the direct references so far look sparse. I’m checking the base writer abstraction and the broader one-dimensional package to verify whether ITFWriter has substantial outgoing dependencies or significant incoming usage beyond a factory and its own tests.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/zxing/oned/OneDimensionalCodeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright 2011 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.oned;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.Writer;
+import com.google.zxing.common.BitMatrix;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+/**
+ * <p>Encapsulates functionality and implementation that is common to one-dimensional barcodes.</p>
+ *
+ * @author dsbnatut@gmail.com (Kazuki Nishiura)
+ */
+public abstract class OneDimensionalCodeWriter implements Writer {
+  private static final Pattern NUMERIC = Pattern.compile("[0-9]+");
+
+  /**
+   * Encode the contents to boolean array expression of one-dimensional barcode.
+   * Start code and end code should be included in result, and side margins should not be included.
+   *
+   * @param contents barcode contents to encode
+   * @return a {@code boolean[]} of horizontal pixels (false = white, true = black)
+   */
+  public abstract boolean[] encode(String contents);
+
+  /**
+   * Can be overwritten if the encode requires to read the hints map. Otherwise it defaults to {@code encode}.
+   * @param contents barcode contents to encode
+   * @param hints encoding hints
+   * @return a {@code boolean[]} of horizontal pixels (false = white, true = black)
+   */
+  public boolean[] encode(String contents, Map<EncodeHintType,?> hints) {
+    return encode(contents);
+  }
+
+  @Override
+  public final BitMatrix encode(String contents, BarcodeFormat format, int width, int height) {
+    return encode(contents, format, width, height, null);
+  }
+
+  /**
+   * Encode the contents following specified format.
+   * {@code width} and {@code height} are required size. This method may return bigger size
+   * {@code BitMatrix} when specified size is too small. The user can set both {@code width} and
+   * {@code height} to zero to get minimum size barcode. If negative value is set to {@code width}
+   * or {@code height}, {@code IllegalArgumentException} is thrown.
+   */
+  @Override
+  public BitMatrix encode(String contents,
+                          BarcodeFormat format,
+                          int width,
+                          int height,
+                          Map<EncodeHintType,?> hints) {
+    if (contents.isEmpty()) {
+      throw new IllegalArgumentException("Found empty contents");
+    }
+
+    if (width < 0 || height < 0) {
+      throw new IllegalArgumentException("Negative size is not allowed. Input: "
+                                             + width + 'x' + height);
+    }
+    Collection<BarcodeFormat> supportedFormats = getSupportedWriteFormats();
+    if (supportedFormats != null && !supportedFormats.contains(format)) {
+      throw new IllegalArgumentException("Can only encode " + supportedFormats +
+        ", but got " + format);
+    }
+
+    int sidesMargin = getDefaultMargin();
+    if (hints != null && hints.containsKey(EncodeHintType.MARGIN)) {
+      sidesMargin = Integer.parseInt(hints.get(EncodeHintType.MARGIN).toString());
+    }
+
+    boolean[] code = encode(contents, hints);
+    return renderResult(code, width, height, sidesMargin);
+  }
+
+  protected Collection<BarcodeFormat> getSupportedWriteFormats() {
+    return null;
+  }
+
+  /**
+   * @return a byte array of horizontal pixels (0 = white, 1 = black)
+   */
+  private static BitMatrix renderResult(boolean[] code, int width, int height, int sidesMargin) {
+    int inputWidth = code.length;
+    // Add quiet zone on both sides.
+    int fullWidth = inputWidth + sidesMargin;
+    int outputWidth = Math.max(width, fullWidth);
+    int outputHeight = Math.max(1, height);
+
+    int multiple = outputWidth / fullWidth;
+    int leftPadding = (outputWidth - (inputWidth * multiple)) / 2;
+
+    BitMatrix output = new BitMatrix(outputWidth, outputHeight);
+    for (int inputX = 0, outputX = leftPadding; inputX < inputWidth; inputX++, outputX += multiple) {
+      if (code[inputX]) {
+        output.setRegion(outputX, 0, multiple, outputHeight);
+      }
+    }
+    return output;
+  }
+
+  /**
+   * @param contents string to check for numeric characters
+   * @throws IllegalArgumentException if input contains characters other than digits 0-9.
+   */
+  protected static void checkNumeric(String contents) {
+    if (!NUMERIC.matcher(contents).matches()) {
+      throw new IllegalArgumentException("Input should only contain digits 0-9");
+    }
+  }
+
+  /**
+   * @param target encode black/white pattern into this array
+   * @param pos position to start encoding at in {@code target}
+   * @param pattern lengths of black/white runs to encode
+   * @param startColor starting color - false for white, true for black
+   * @return the number of elements added to target.
+   */
+  protected static int appendPattern(boolean[] target, int pos, int[] pattern, boolean startColor) {
+    boolean color = startColor;
+    int numAdded = 0;
+    for (int len : pattern) {
+      for (int j = 0; j < len; j++) {
+        target[pos++] = color;
+      }
+      numAdded += len;
+      color = !color; // flip color after each segment
+    }
+    return numAdded;
+  }
+
+  public int getDefaultMargin() {
+    // CodaBar spec requires a side margin to be more than ten times wider than narrow space.
+    // This seems like a decent idea for a default for all formats.
+    return 10;
+  }
+}
+
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/com/google/zxing/oned/UPCEANWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+/*
+ * Copyright 2009 ZXing authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.zxing.oned;
+
+/**
+ * <p>Encapsulates functionality and implementation that is common to UPC and EAN families
+ * of one-dimensional barcodes.</p>
+ *
+ * @author aripollak@gmail.com (Ari Pollak)
+ * @author dsbnatut@gmail.com (Kazuki Nishiura)
+ */
+public abstract class UPCEANWriter extends OneDimensionalCodeWriter {
+
+  @Override
+  public int getDefaultMargin() {
+    // Use a different default more appropriate for UPC/EAN
+    return 9;
+  }
+
+}
+
+exec
+/bin/bash -lc "rg -n \"new ITFWriter\\(|ITFWriter\\b\" core/src/main/java core/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/zxing/zxing
+ succeeded in 0ms:
+core/src/main/java/com/google/zxing/MultiFormatWriter.java:28:import com.google.zxing.oned.ITFWriter;
+core/src/main/java/com/google/zxing/MultiFormatWriter.java:85:        writer = new ITFWriter();
+core/src/main/java/com/google/zxing/oned/ITFReader.java:74:  // See ITFWriter.PATTERNS
+core/src/main/java/com/google/zxing/oned/ITFWriter.java:30:public final class ITFWriter extends OneDimensionalCodeWriter {
+core/src/test/java/com/google/zxing/oned/ITFWriterTestCase.java:26: * Tests {@link ITFWriter}.
+core/src/test/java/com/google/zxing/oned/ITFWriterTestCase.java:38:    BitMatrix result = new ITFWriter().encode(input, BarcodeFormat.ITF, 0, 0);
+core/src/test/java/com/google/zxing/oned/ITFWriterTestCase.java:44:    new ITFWriter().encode("00123456789abc", BarcodeFormat.ITF, 0, 0);
+
+codex
+{"target":"com.google.zxing.oned.ITFWriter","detection":false,"justification":"Inspected core/src/main/java/com/google/zxing/oned/ITFWriter.java, core/src/main/java/com/google/zxing/MultiFormatWriter.java, core/src/main/java/com/google/zxing/oned/ITFReader.java, and core/src/test/java/com/google/zxing/oned/ITFWriterTestCase.java. ITFWriter has low fan-out: it only depends on OneDimensionalCodeWriter, BarcodeFormat, BitMatrix, and java.util Collection/Collections, plus internal pattern arrays. Incoming references are also sparse: one production use in MultiFormatWriter (the ITF case), the ITFReader comment reference, and its own test class. That is not enough evidence of a dependency hub or high fan-in/fan-out."}
+tokens used
+9,419

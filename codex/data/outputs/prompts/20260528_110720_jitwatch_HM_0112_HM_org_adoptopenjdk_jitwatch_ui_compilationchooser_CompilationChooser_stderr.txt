@@ -1,0 +1,1678 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ee9-452f-70d0-9d92-63c34786ec8b
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and its immediate references first, then I’ll check whether it has both high fan-in and high fan-out evidence before deciding the verdict.
+exec
+/bin/bash -lc "rg --files . | rg 'CompilationChooser\\.java|CompilationChooser'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilationchooser/CompilationChooser.java
+
+exec
+/bin/bash -lc 'rg -n "class CompilationChooser|CompilationChooser" .' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java:16:import org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java:54:	private CompilationChooser compilationChooser;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java:92:		compilationChooser = new CompilationChooser(selectionListener);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/triview/TriView.java:35:import org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/triview/TriView.java:105:	private CompilationChooser compilationChooser;
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/triview/TriView.java:413:		compilationChooser = new CompilationChooser(memberSelectionListener);
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilationchooser/CompilationChooser.java:21:public class CompilationChooser
+./ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilationchooser/CompilationChooser.java:31:	public CompilationChooser(final IMemberSelectedListener selectionListener)
+
+codex
+I found the target and two direct callers. Next I’m checking the class body and nearby UI components to see whether the dependency pattern is broad enough to qualify as a hub, or whether it’s just a small reusable widget.
+exec
+/bin/bash -lc "sed -n '1,240p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilationchooser/CompilationChooser.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+
+package org.adoptopenjdk.jitwatch.ui.compilationchooser;
+
+import java.util.List;
+
+import org.adoptopenjdk.jitwatch.model.Compilation;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.ui.main.IMemberSelectedListener;
+
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.scene.control.ComboBox;
+
+public class CompilationChooser
+{
+	private ObservableList<String> comboCompilationList = FXCollections.observableArrayList();
+
+	private ComboBox<String> comboSelectedCompilation;
+
+	private IMetaMember member;
+
+	private boolean ignoreChange = false;
+
+	public CompilationChooser(final IMemberSelectedListener selectionListener)
+	{
+		comboSelectedCompilation = new ComboBox<>(comboCompilationList);
+
+		comboSelectedCompilation.setStyle("-fx-font-size: 10px");
+
+		comboSelectedCompilation.valueProperty().addListener(new ChangeListener<String>()
+		{
+			@Override
+			public void changed(ObservableValue<? extends String> ov, String oldVal, String newVal)
+			{
+				int index = comboSelectedCompilation.getSelectionModel().getSelectedIndex();
+
+				if (!ignoreChange)
+				{
+					selectionListener.selectCompilation(member, index);
+				}
+			}
+		});
+	}
+
+	public synchronized void clear()
+	{
+		ignoreChange = true;
+		
+		comboCompilationList.clear();
+		comboSelectedCompilation.getSelectionModel().clearSelection();
+		
+		ignoreChange = false;
+	}
+
+	public void setVisible(boolean visible)
+	{
+		comboSelectedCompilation.setVisible(visible);
+	}
+
+	public synchronized void compilationChanged(IMetaMember member)
+	{
+		ignoreChange = true;
+
+		comboSelectedCompilation.getSelectionModel().clearSelection();
+		comboCompilationList.clear();
+
+		if (member != null)
+		{
+			this.member = member;
+
+			List<Compilation> compilations = member.getCompilations();
+
+			for (Compilation compilation : compilations)
+			{
+				comboCompilationList.add(compilation.getSignature());
+			}
+
+			Compilation selectedCompilation = member.getSelectedCompilation();
+
+			if (selectedCompilation != null)
+			{
+				comboSelectedCompilation.getSelectionModel().select(selectedCompilation.getIndex());
+			}
+		}
+
+		ignoreChange = false;
+	}
+
+	public ComboBox<String> getCombo()
+	{
+		return comboSelectedCompilation;
+	}
+}
+exec
+/bin/bash -lc "sed -n '1,180p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2017 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.compilechain;
+
+import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.fix;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import org.adoptopenjdk.jitwatch.chain.CompileChainWalker;
+import org.adoptopenjdk.jitwatch.chain.CompileNode;
+import org.adoptopenjdk.jitwatch.model.Compilation;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser;
+import org.adoptopenjdk.jitwatch.ui.main.ICompilationChangeListener;
+import org.adoptopenjdk.jitwatch.ui.main.IMemberSelectedListener;
+import org.adoptopenjdk.jitwatch.ui.main.IStageAccessProxy;
+import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+import org.adoptopenjdk.jitwatch.ui.resize.IRedrawable;
+import org.adoptopenjdk.jitwatch.ui.resize.RateLimitedResizeListener;
+import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
+import javafx.scene.text.Text;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+
+public class CompileChainStage extends Stage implements ICompilationChangeListener, IRedrawable
+{
+	private ScrollPane scrollPane;
+	private Pane pane;
+	private IStageAccessProxy stageAccess;
+	
+	private Label labelRootNodeMember;
+
+	private CompilationChooser compilationChooser;
+
+	private CompileNode rootNode;
+
+	private static final double X_OFFSET = 16;
+	private static final double Y_OFFSET = 16;
+
+	private double y;
+
+	private static final double X_GAP = 25;
+
+	private static final int STROKE_WIDTH = 3;
+	private static final double RECT_HEIGHT = 25;
+	private static final double RECT_Y_GAP = 16;
+
+	class PlotNode
+	{
+		public Rectangle rect;
+		public Text text;
+	}
+
+	private IReadOnlyJITDataModel model;
+
+	public CompileChainStage(IMemberSelectedListener selectionListener, final IStageAccessProxy stageAccess,
+			IReadOnlyJITDataModel model)
+	{
+		initStyle(StageStyle.DECORATED);
+
+		this.stageAccess = stageAccess;
+
+		this.model = model;
+
+		scrollPane = new ScrollPane();
+
+		pane = new Pane();
+
+		scrollPane.setContent(pane);
+
+		compilationChooser = new CompilationChooser(selectionListener);
+		
+		VBox verticalLayout = new VBox();
+		
+		Scene scene = UserInterfaceUtil.getScene(verticalLayout, JITWatchUI.WINDOW_WIDTH, JITWatchUI.WINDOW_HEIGHT);
+		
+		Region spacer = new Region();
+		HBox.setHgrow(spacer, Priority.ALWAYS);
+				
+		Button buttonSnapShot = UserInterfaceUtil.getSnapshotButton(scene, "CompileChain");
+		
+		HBox hBox = new HBox();
+		
+		labelRootNodeMember = new Label();
+		
+		hBox.getChildren().add(labelRootNodeMember);
+		hBox.getChildren().add(compilationChooser.getCombo());
+		hBox.getChildren().add(spacer);
+		hBox.getChildren().add(buttonSnapShot);
+		
+		hBox.setSpacing(16.0);
+		hBox.setPadding(new Insets(4, 4, 4, 4));
+		
+		verticalLayout.getChildren().addAll(hBox, scrollPane);
+
+		RateLimitedResizeListener resizeListener = new RateLimitedResizeListener(this, 200);
+
+		pane.widthProperty().addListener(resizeListener);
+		pane.heightProperty().addListener(resizeListener);
+
+		setScene(scene);
+	}
+
+	@Override
+	public void compilationChanged(IMetaMember member)
+	{
+		compilationChooser.compilationChanged(member);
+
+		if (member != null)
+		{
+			buildTree(member);
+		}
+		else
+		{
+			rootNode = null;
+			redraw();
+		}
+	}
+
+	private void clear()
+	{
+		y = Y_OFFSET;
+
+		pane.getChildren().clear();
+
+		showKey();
+	}
+
+	@Override
+	public void redraw()
+	{
+		if (rootNode != null)
+		{
+			clear();			
+			
+			show(rootNode, X_OFFSET, Y_OFFSET, 0);
+
+			if (rootNode.getChildren().isEmpty())
+			{
+				Text text = new Text("No method calls made by " + rootNode.getMemberName() + " were inlined or JIT compiled");
+				text.setX(fix(X_OFFSET));
+				text.setY(fix(y));
+				text.setStrokeWidth(1.0);
+
+				pane.getChildren().add(text);
+			}
+		}
+	}
+
+	private void showKey()
+	{
+		double keyX = scrollPane.getWidth() - 220;
+		double keyY = 10;
+
+		Rectangle roundedRect = new Rectangle(keyX - 20, keyY, 210, 180);
+
+		roundedRect.setArcHeight(30);
+		roundedRect.setArcWidth(30);
+
+
+exec
+/bin/bash -lc "sed -n '1,520p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/triview/TriView.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2021 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.ui.triview;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_CLOSE_PARENTHESES;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOLLAR;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_OPEN_PARENTHESES;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_SPACE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.DEBUG_LOGGING_TRIVIEW;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_STATIC_INIT;
+
+import java.util.List;
+
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.loader.ResourceLoader;
+import org.adoptopenjdk.jitwatch.model.Compilation;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.model.MemberSignatureParts;
+import org.adoptopenjdk.jitwatch.model.MetaClass;
+import org.adoptopenjdk.jitwatch.model.assembly.AssemblyMethod;
+import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeInstruction;
+import org.adoptopenjdk.jitwatch.model.bytecode.ClassBC;
+import org.adoptopenjdk.jitwatch.model.bytecode.LineTable;
+import org.adoptopenjdk.jitwatch.model.bytecode.LineTableEntry;
+import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode;
+import org.adoptopenjdk.jitwatch.model.bytecode.SourceMapper;
+import org.adoptopenjdk.jitwatch.ui.Dialogs;
+import org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser;
+import org.adoptopenjdk.jitwatch.ui.main.ICompilationChangeListener;
+import org.adoptopenjdk.jitwatch.ui.main.IMemberSelectedListener;
+import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+import org.adoptopenjdk.jitwatch.ui.triview.assembly.AssemblyLabel;
+import org.adoptopenjdk.jitwatch.ui.triview.assembly.ViewerAssembly;
+import org.adoptopenjdk.jitwatch.ui.triview.bytecode.BytecodeLabel;
+import org.adoptopenjdk.jitwatch.ui.triview.bytecode.ViewerBytecode;
+import org.adoptopenjdk.jitwatch.ui.triview.source.ViewerSource;
+import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.Tooltip;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+import javafx.util.Callback;
+import javafx.util.StringConverter;
+
+public class TriView extends Stage implements ILineListener, ICompilationChangeListener
+{
+	private IMetaMember currentMember;
+	private JITWatchConfig config;
+
+	private ViewerSource viewerSource;
+	private ViewerBytecode viewerBytecode;
+	private ViewerAssembly viewerAssembly;
+
+	private SplitPane splitViewer;
+
+	private TriViewPane paneSource;
+	private TriViewPane paneBytecode;
+	private TriViewPane paneAssembly;
+
+	private CheckBox checkSource;
+	private CheckBox checkBytecode;
+	private CheckBox checkAssembly;
+	private CheckBox checkMouseover;
+	private CheckBox checkLocalLabels;
+
+	private Button btnCompileChain;
+	private Button btnJITJournal;
+	private Button btnLineTable;
+	private Button btnInlinedInto;
+
+	private ObservableList<IMetaMember> comboMemberList = FXCollections.observableArrayList();
+	private ComboBox<IMetaMember> comboMember;
+
+	private CompilationChooser compilationChooser;
+
+	private IMemberSelectedListener memberSelectionListener;
+
+	private ClassSearch classSearch;
+
+	private CompilationInfo compilationInfo;
+
+	private Label lblStatusBar;
+
+	private boolean ignoreComboChanged = false;
+
+	private boolean classBytecodeMismatch = false;
+
+	private static final Logger logger = LoggerFactory.getLogger(TriView.class);
+
+	private LineType focussedViewer = LineType.SOURCE;
+
+	private TriViewNavigationStack navigationStack;
+
+	private IReadOnlyJITDataModel model;
+
+	private boolean selectedProgrammatically = false;
+
+	private int nextHightlightBCI = 0;
+
+	public TriView(final JITWatchUI parent, final JITWatchConfig config)
+	{
+		this.config = config;
+
+		this.model = parent.getJITDataModel();
+
+		memberSelectionListener = parent;
+
+		setTitle("TriView - Source, Bytecode, Assembly Viewer - JITWatch");
+
+		VBox vBox = new VBox();
+
+		HBox hBoxToolBarClass = new HBox();
+		hBoxToolBarClass.setSpacing(10);
+		hBoxToolBarClass.setPadding(new Insets(10));
+
+		HBox hBoxToolBarButtons = new HBox();
+		hBoxToolBarButtons.setSpacing(10);
+		hBoxToolBarButtons.setPadding(new Insets(0, 10, 10, 10));
+
+		setupCheckBoxes();
+
+		btnCompileChain = UserInterfaceUtil.createButton("COMPILE_CHAIN");
+		btnCompileChain.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+				if (currentMember != null)
+				{
+					parent.openCompileChain(currentMember);
+				}
+			}
+		});
+
+		btnJITJournal =  UserInterfaceUtil.createButton("JIT_JOURNAL");
+		btnJITJournal.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+				if (currentMember != null)
+				{
+					String windowTitle = "JIT Journal for " + currentMember.toString();
+
+					Compilation selectedCompilation = currentMember.getSelectedCompilation();
+
+					if (selectedCompilation != null)
+					{
+						windowTitle += " - Compilation " + selectedCompilation.getSignature();
+					}
+
+					parent.openJournalViewer(windowTitle, currentMember);
+				}
+			}
+		});
+
+		btnLineTable = UserInterfaceUtil.createButton("LINE_NUMBER_TABLE");
+		btnLineTable.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+				if (currentMember != null)
+				{
+					String lineNumberTable = currentMember.getMemberBytecode().getLineTable().toString();
+
+					parent.openTextViewer("LineNumberTable for " + currentMember.toString(), lineNumberTable, false, false);
+				}
+			}
+		});
+
+		btnInlinedInto = UserInterfaceUtil.createButton("INLINED_INTO");
+		btnInlinedInto.setOnAction(new EventHandler<ActionEvent>()
+		{
+			@Override
+			public void handle(ActionEvent e)
+			{
+				if (currentMember != null)
+				{
+					parent.openInlinedIntoReport(currentMember);
+				}
+			}
+		});
+
+		compilationInfo = new CompilationInfo();
+
+		Region spacerTop = new Region();
+		HBox.setHgrow(spacerTop, Priority.ALWAYS);
+
+		Region spacerBottom = new Region();
+		HBox.setHgrow(spacerBottom, Priority.ALWAYS);
+
+		hBoxToolBarButtons.getChildren().add(checkSource);
+		hBoxToolBarButtons.getChildren().add(checkBytecode);
+		hBoxToolBarButtons.getChildren().add(checkAssembly);
+		hBoxToolBarButtons.getChildren().add(btnCompileChain);
+		hBoxToolBarButtons.getChildren().add(btnJITJournal);
+		hBoxToolBarButtons.getChildren().add(btnLineTable);
+		hBoxToolBarButtons.getChildren().add(btnInlinedInto);
+		hBoxToolBarButtons.getChildren().add(checkMouseover);
+		hBoxToolBarButtons.getChildren().add(spacerBottom);
+		hBoxToolBarButtons.getChildren().add(compilationInfo);
+
+		Label lblClass = UserInterfaceUtil.createLabel("CLASS");
+		classSearch = new ClassSearch(this, parent.getPackageManager());
+		classSearch.prefWidthProperty().bind(widthProperty().multiply(0.42));
+
+		Label lblMember = UserInterfaceUtil.createLabel("MEMBER");
+
+		// ================ Set up Member combo box ====================
+
+		comboMember = new ComboBox<>(comboMemberList);
+		comboMember.prefWidthProperty().bind(widthProperty().multiply(0.4));
+
+		comboMember.valueProperty().addListener(new ChangeListener<IMetaMember>()
+		{
+			@Override
+			public void changed(ObservableValue<? extends IMetaMember> ov, IMetaMember oldMember, IMetaMember newMember)
+			{
+				if (!ignoreComboChanged)
+				{
+					if (newMember != null)
+					{
+						if (!selectedProgrammatically)
+						{
+							memberSelectionListener.selectMember(newMember, true, true);
+						}
+					}
+				}
+			}
+		});
+
+		comboMember.setCellFactory(getCallbackForMemberListCellFactory());
+
+		comboMember.setConverter(new StringConverter<IMetaMember>()
+		{
+			@Override
+			public String toString(IMetaMember metaMember)
+			{
+				return metaMember != null ? metaMember.toStringUnqualifiedMethodName(false, false) : "null";
+			}
+
+			@Override
+			public IMetaMember fromString(String arg0)
+			{
+				return null;
+			}
+		});
+
+		hBoxToolBarClass.getChildren().add(lblClass);
+		hBoxToolBarClass.getChildren().add(classSearch);
+
+		hBoxToolBarClass.getChildren().add(spacerTop);
+
+		hBoxToolBarClass.getChildren().add(lblMember);
+		hBoxToolBarClass.getChildren().add(comboMember);
+
+		splitViewer = new SplitPane();
+		splitViewer.setOrientation(Orientation.HORIZONTAL);
+
+		Scene scene = UserInterfaceUtil.getScene(vBox, JITWatchUI.WINDOW_WIDTH, JITWatchUI.WINDOW_HEIGHT);
+		navigationStack = new TriViewNavigationStack(this, scene);
+
+		viewerSource = new ViewerSource(parent, this, LineType.SOURCE);
+		viewerBytecode = new ViewerBytecode(parent, navigationStack, model, this, LineType.BYTECODE);
+		viewerAssembly = new ViewerAssembly(parent, this, LineType.ASSEMBLY);
+
+		paneSource = new TriViewPane(this, "SOURCE", viewerSource);
+		paneBytecode = new TriViewPane(this, "BYTECODE_DOUBLE_CLICK_FOR_JVM_SPEC", viewerBytecode);
+		paneAssembly = new TriViewPane(this, "ASSEMBLY", viewerAssembly, getAssemblyTitleComponents());
+
+		splitViewer.prefHeightProperty().bind(vBox.heightProperty());
+
+		lblStatusBar = new Label();
+
+		Button buttonSnapShot = UserInterfaceUtil.getSnapshotButton(scene, "TriView");
+
+		Region spacerStatus = new Region();
+		HBox.setHgrow(spacerStatus, Priority.ALWAYS);
+
+		HBox hBoxStatusBar = new HBox();
+		hBoxStatusBar.setSpacing(16.0);
+		hBoxStatusBar.getChildren().addAll(lblStatusBar, spacerStatus, buttonSnapShot);
+
+		hBoxStatusBar.setPadding(new Insets(4, 4, 4, 4));
+
+		vBox.getChildren().add(hBoxToolBarClass);
+		vBox.getChildren().add(hBoxToolBarButtons);
+		vBox.getChildren().add(splitViewer);
+		vBox.getChildren().add(hBoxStatusBar);
+
+		setScene(scene);
+
+		checkColumns();
+
+		updateButtons();
+	}
+
+	private void setupCheckBoxes()
+	{
+		checkSource = UserInterfaceUtil.createCheckBox("CHECKBOX_SOURCE");
+		checkBytecode = UserInterfaceUtil.createCheckBox("CHECKBOX_BYTECODE");
+		checkAssembly = UserInterfaceUtil.createCheckBox("CHECKBOX_ASSEMBLY");
+
+		createCheckBoxMouseFollow();
+
+		checkSource.setSelected(true);
+		checkBytecode.setSelected(true);
+		checkAssembly.setSelected(true);
+
+		addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, new EventHandler<javafx.scene.input.KeyEvent>()
+		{
+			@Override
+			public void handle(javafx.scene.input.KeyEvent event)
+			{
+				if (event.isAltDown())
+				{
+					switch (event.getCode())
+					{
+					case S:
+						checkSource.setSelected(!checkSource.isSelected());
+						break;
+					case B:
+						checkBytecode.setSelected(!checkBytecode.isSelected());
+						break;
+					case A:
+						checkAssembly.setSelected(!checkAssembly.isSelected());
+						break;
+					case M:
+						checkMouseover.setSelected(!checkMouseover.isSelected());
+						break;
+					case L:
+						checkLocalLabels.setSelected(!checkLocalLabels.isSelected());
+						break;
+					default:
+						break;
+					}
+				}
+			}
+		});
+
+		ChangeListener<Boolean> checkListener = new ChangeListener<Boolean>()
+		{
+			@Override
+			public void changed(ObservableValue<? extends Boolean> ov, Boolean oldVal, Boolean newVal)
+			{
+				checkColumns();
+			}
+		};
+
+		checkSource.selectedProperty().addListener(checkListener);
+		checkBytecode.selectedProperty().addListener(checkListener);
+		checkAssembly.selectedProperty().addListener(checkListener);
+	}
+
+	private HBox getAssemblyTitleComponents()
+	{
+		HBox hbox = new HBox();
+		hbox.setSpacing(16);
+
+		checkLocalLabels = UserInterfaceUtil.createCheckBox("CHECKBOX_LABELS");
+
+		checkLocalLabels.setSelected(config.isLocalAsmLabels());
+
+		checkLocalLabels.selectedProperty().addListener(new ChangeListener<Boolean>()
+		{
+			@Override
+			public void changed(ObservableValue<? extends Boolean> ov, Boolean oldVal, Boolean newVal)
+			{
+				config.setLocalAsmLabels(newVal);
+				config.saveConfig();
+
+				if (currentMember != null)
+				{
+					updateBytecodeAndAssembly(false, 0);
+				}
+			}
+		});
+
+		hbox.getChildren().add(checkLocalLabels);
+
+		compilationChooser = new CompilationChooser(memberSelectionListener);
+
+		hbox.getChildren().add(compilationChooser.getCombo());
+
+		return hbox;
+	}
+
+	private void createCheckBoxMouseFollow()
+	{
+		checkMouseover = UserInterfaceUtil.createCheckBox("CHECKBOX_MOUSEOVER");
+
+		checkMouseover.setSelected(config.isTriViewMouseFollow());
+
+		checkMouseover.selectedProperty().addListener(new ChangeListener<Boolean>()
+		{
+			@Override
+			public void changed(ObservableValue<? extends Boolean> ov, Boolean oldVal, Boolean newVal)
+			{
+				config.setTriViewMouseFollow(newVal);
+				config.saveConfig();
+			}
+		});
+	}
+
+	private Callback<ListView<IMetaMember>, ListCell<IMetaMember>> getCallbackForMemberListCellFactory()
+	{
+		return new Callback<ListView<IMetaMember>, ListCell<IMetaMember>>()
+		{
+			@Override
+			public ListCell<IMetaMember> call(ListView<IMetaMember> arg0)
+			{
+				return new ListCell<IMetaMember>()
+				{
+					@Override
+					protected void updateItem(IMetaMember item, boolean empty)
+					{
+						super.updateItem(item, empty);
+
+						if (item == null || empty)
+						{
+							setText(S_EMPTY);
+							setGraphic(null);
+						}
+						else
+						{
+							performUpdateOfItem(this, item);
+						}
+					}
+
+					private void performUpdateOfItem(ListCell<IMetaMember> listCell, IMetaMember item)
+					{
+						listCell.setText(item.toStringUnqualifiedMethodName(false, false));
+
+						if (item.isCompiled() && UserInterfaceUtil.IMAGE_TICK != null)
+						{
+							listCell.setGraphic(new ImageView(UserInterfaceUtil.IMAGE_TICK));
+						}
+						else
+						{
+							listCell.setGraphic(null);
+						}
+					}
+				};
+			}
+		};
+	}
+
+	private void checkColumns()
+	{
+		splitViewer.getItems().clear();
+
+		int colCount = 0;
+
+		if (checkSource.isSelected())
+		{
+			splitViewer.getItems().add(paneSource);
+			colCount++;
+		}
+		if (checkBytecode.isSelected())
+		{
+			splitViewer.getItems().add(paneBytecode);
+			colCount++;
+		}
+		if (checkAssembly.isSelected())
+		{
+			splitViewer.getItems().add(paneAssembly);
+			colCount++;
+		}
+
+		switch (colCount)
+		{
+		case 0:
+			splitViewer.setDividerPositions(0);
+			break;
+		case 1:
+			splitViewer.setDividerPositions(1);
+			break;
+		case 2:
+			splitViewer.setDividerPositions(0.5);
+			break;
+		case 3:
+			splitViewer.setDividerPositions(0.333, 0.666);
+			break;
+		default:
+			break;
+		}
+	}
+
+
+codex
+I have the class body and the two usages. I’m doing one more pass for any other references so the fan-in count is grounded, then I’ll decide whether the dependency profile is actually hub-like or just a small shared UI helper.
+exec
+/bin/bash -lc "sed -n '240,520p' ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+			{
+				result = "Unknown";
+			}
+			else if (member.isConstructor())
+			{
+				result = member.getMetaClass().getAbbreviatedFullyQualifiedName() + "()";
+			}
+			else
+			{
+				result = member.getAbbreviatedFullyQualifiedMemberName() + "()";
+			}
+		}
+
+		return result;
+	}
+
+	private double plotNode(final CompileNode node, final double x, final double parentY, final int depth)
+	{
+		String labelText = getLabelText(node);
+
+		PlotNode plotNode = buildNode(labelText, x, y, node.isInlined(), node.isCompiled(), node.isVirtualCall());
+
+		if (depth > 0)
+		{
+			double connectX = x - X_GAP;
+			double connectY = y + RECT_HEIGHT / 2;
+			double upLineY = y + RECT_HEIGHT / 2;
+
+			Line lineUp = new Line(connectX, upLineY, connectX, parentY);
+			lineUp.setStrokeWidth(STROKE_WIDTH);
+			pane.getChildren().add(lineUp);
+
+			Line lineLeft = new Line(connectX, connectY, x, connectY);
+			lineLeft.setStrokeWidth(STROKE_WIDTH);
+			pane.getChildren().add(lineLeft);
+		}
+
+		double nextX = x + plotNode.rect.getWidth() / 2;
+
+		nextX += X_GAP;
+
+		initialiseRectWithOnMouseClickedEventHandler(node, plotNode.rect);
+		initialiseRectWithOnMouseClickedEventHandler(node, plotNode.text);
+
+		Tooltip tip = new Tooltip(node == this.rootNode ? "Root node" : node.getTooltipText());
+		Tooltip.install(plotNode.rect, tip);
+		Tooltip.install(plotNode.text, tip);
+
+		return nextX;
+	}
+
+	private PlotNode buildNode(String labelText, double x, double y, boolean inlined, boolean compiled, boolean virtualCall)
+	{
+		Text text = new Text(labelText);
+
+		text.snapshot(null, null);
+
+		double textWidth = text.getLayoutBounds().getWidth();
+		double textHeight = text.getLayoutBounds().getHeight();
+
+		double rectWidth = textWidth + 20;
+
+		Rectangle rect = new Rectangle(x, y, rectWidth, RECT_HEIGHT);
+		rect.setArcWidth(16);
+		rect.setArcHeight(16);
+
+		text.setX(fix(x + (rectWidth / 2 - textWidth / 2)));
+		text.setY(fix(y + RECT_HEIGHT - STROKE_WIDTH - (RECT_HEIGHT - textHeight) / 2));
+
+		text.setStrokeWidth(0.5);
+		text.setFill(Color.WHITE);
+		text.setStroke(Color.WHITE);
+
+		rect.setStroke(Color.BLACK);
+		rect.setStrokeWidth(STROKE_WIDTH);
+		rect.setFill(getColourForCompilation(compiled, inlined, virtualCall));
+
+		pane.getChildren().add(rect);
+		pane.getChildren().add(text);
+
+		PlotNode result = new PlotNode();
+		result.rect = rect;
+		result.text = text;
+
+		return result;
+	}
+
+	private Color getColourForCompilation(boolean isCompiled, boolean isInlined, boolean isVirtual)
+	{
+		if (isInlined)
+		{
+			return Color.GREEN;
+		}
+		else if (isVirtual)
+		{
+			return Color.PURPLE;
+		}
+		else if (isCompiled)
+		{
+			return Color.RED;
+		}
+		else
+		{
+			return Color.GRAY;
+		}
+	}
+
+	private void initialiseRectWithOnMouseClickedEventHandler(final CompileNode node, Shape shape)
+	{
+		shape.setOnMouseClicked(new EventHandler<MouseEvent>()
+		{
+			@Override
+			public void handle(MouseEvent arg0)
+			{
+				stageAccess.openTriView(node.getMember());
+			}
+		});
+	}
+
+	private void buildTree(IMetaMember member)
+	{
+		Compilation selectedCompilation = member.getSelectedCompilation();
+		
+		String title = "Compile Chain: ";
+
+		if (selectedCompilation != null)
+		{
+			CompileChainWalker walker = new CompileChainWalker(model);
+
+			CompileNode root = walker.buildCallTree(selectedCompilation);
+
+			this.rootNode = root;
+
+			String rootMemberName = getLabelText(root);
+			
+			title += rootMemberName;
+
+			if (root != null)
+			{
+				title += " " + root.getCompilation().getSignature();
+			}
+
+			setTitle(title);
+			
+			labelRootNodeMember.setText(rootMemberName);
+		}
+		else
+		{
+			rootNode = null;
+			
+			labelRootNodeMember.setText(S_EMPTY);
+			
+			clear();
+			
+			Text text = new Text(member.toString() + " was not JIT compiled");
+			text.setX(fix(X_OFFSET));
+			text.setY(fix(y));
+			text.setStrokeWidth(1.0);
+
+			pane.getChildren().add(text);
+		}
+
+		redraw();
+	}
+}
+exec
+/bin/bash -lc "rg -n \"new CompilationChooser\\(|CompilationChooser\\b\" ui/src/main/java org.adoptopenjdk.jitwatch -g'*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ exited 2 in 0ms:
+rg: org.adoptopenjdk.jitwatch: No such file or directory (os error 2)
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java:16:import org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser;
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java:54:	private CompilationChooser compilationChooser;
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java:92:		compilationChooser = new CompilationChooser(selectionListener);
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilationchooser/CompilationChooser.java:21:public class CompilationChooser
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilationchooser/CompilationChooser.java:31:	public CompilationChooser(final IMemberSelectedListener selectionListener)
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/triview/TriView.java:35:import org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser;
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/triview/TriView.java:105:	private CompilationChooser compilationChooser;
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/triview/TriView.java:413:		compilationChooser = new CompilationChooser(memberSelectionListener);
+
+codex
+The reference count is small and bounded. I’m grabbing line numbers so the final justification can be precise about both the two callers and the class’s limited set of collaborators.
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilationchooser/CompilationChooser.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2017 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	
+     7	package org.adoptopenjdk.jitwatch.ui.compilationchooser;
+     8	
+     9	import java.util.List;
+    10	
+    11	import org.adoptopenjdk.jitwatch.model.Compilation;
+    12	import org.adoptopenjdk.jitwatch.model.IMetaMember;
+    13	import org.adoptopenjdk.jitwatch.ui.main.IMemberSelectedListener;
+    14	
+    15	import javafx.beans.value.ChangeListener;
+    16	import javafx.beans.value.ObservableValue;
+    17	import javafx.collections.FXCollections;
+    18	import javafx.collections.ObservableList;
+    19	import javafx.scene.control.ComboBox;
+    20	
+    21	public class CompilationChooser
+    22	{
+    23		private ObservableList<String> comboCompilationList = FXCollections.observableArrayList();
+    24	
+    25		private ComboBox<String> comboSelectedCompilation;
+    26	
+    27		private IMetaMember member;
+    28	
+    29		private boolean ignoreChange = false;
+    30	
+    31		public CompilationChooser(final IMemberSelectedListener selectionListener)
+    32		{
+    33			comboSelectedCompilation = new ComboBox<>(comboCompilationList);
+    34	
+    35			comboSelectedCompilation.setStyle("-fx-font-size: 10px");
+    36	
+    37			comboSelectedCompilation.valueProperty().addListener(new ChangeListener<String>()
+    38			{
+    39				@Override
+    40				public void changed(ObservableValue<? extends String> ov, String oldVal, String newVal)
+    41				{
+    42					int index = comboSelectedCompilation.getSelectionModel().getSelectedIndex();
+    43	
+    44					if (!ignoreChange)
+    45					{
+    46						selectionListener.selectCompilation(member, index);
+    47					}
+    48				}
+    49			});
+    50		}
+    51	
+    52		public synchronized void clear()
+    53		{
+    54			ignoreChange = true;
+    55			
+    56			comboCompilationList.clear();
+    57			comboSelectedCompilation.getSelectionModel().clearSelection();
+    58			
+    59			ignoreChange = false;
+    60		}
+    61	
+    62		public void setVisible(boolean visible)
+    63		{
+    64			comboSelectedCompilation.setVisible(visible);
+    65		}
+    66	
+    67		public synchronized void compilationChanged(IMetaMember member)
+    68		{
+    69			ignoreChange = true;
+    70	
+    71			comboSelectedCompilation.getSelectionModel().clearSelection();
+    72			comboCompilationList.clear();
+    73	
+    74			if (member != null)
+    75			{
+    76				this.member = member;
+    77	
+    78				List<Compilation> compilations = member.getCompilations();
+    79	
+    80				for (Compilation compilation : compilations)
+    81				{
+    82					comboCompilationList.add(compilation.getSignature());
+    83				}
+    84	
+    85				Compilation selectedCompilation = member.getSelectedCompilation();
+    86	
+    87				if (selectedCompilation != null)
+    88				{
+    89					comboSelectedCompilation.getSelectionModel().select(selectedCompilation.getIndex());
+    90				}
+    91			}
+    92	
+    93			ignoreChange = false;
+    94		}
+    95	
+    96		public ComboBox<String> getCombo()
+    97		{
+    98			return comboSelectedCompilation;
+    99		}
+   100	}
+
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/triview/TriView.java | sed -n '95,440p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+    95		private CheckBox checkLocalLabels;
+    96	
+    97		private Button btnCompileChain;
+    98		private Button btnJITJournal;
+    99		private Button btnLineTable;
+   100		private Button btnInlinedInto;
+   101	
+   102		private ObservableList<IMetaMember> comboMemberList = FXCollections.observableArrayList();
+   103		private ComboBox<IMetaMember> comboMember;
+   104	
+   105		private CompilationChooser compilationChooser;
+   106	
+   107		private IMemberSelectedListener memberSelectionListener;
+   108	
+   109		private ClassSearch classSearch;
+   110	
+   111		private CompilationInfo compilationInfo;
+   112	
+   113		private Label lblStatusBar;
+   114	
+   115		private boolean ignoreComboChanged = false;
+   116	
+   117		private boolean classBytecodeMismatch = false;
+   118	
+   119		private static final Logger logger = LoggerFactory.getLogger(TriView.class);
+   120	
+   121		private LineType focussedViewer = LineType.SOURCE;
+   122	
+   123		private TriViewNavigationStack navigationStack;
+   124	
+   125		private IReadOnlyJITDataModel model;
+   126	
+   127		private boolean selectedProgrammatically = false;
+   128	
+   129		private int nextHightlightBCI = 0;
+   130	
+   131		public TriView(final JITWatchUI parent, final JITWatchConfig config)
+   132		{
+   133			this.config = config;
+   134	
+   135			this.model = parent.getJITDataModel();
+   136	
+   137			memberSelectionListener = parent;
+   138	
+   139			setTitle("TriView - Source, Bytecode, Assembly Viewer - JITWatch");
+   140	
+   141			VBox vBox = new VBox();
+   142	
+   143			HBox hBoxToolBarClass = new HBox();
+   144			hBoxToolBarClass.setSpacing(10);
+   145			hBoxToolBarClass.setPadding(new Insets(10));
+   146	
+   147			HBox hBoxToolBarButtons = new HBox();
+   148			hBoxToolBarButtons.setSpacing(10);
+   149			hBoxToolBarButtons.setPadding(new Insets(0, 10, 10, 10));
+   150	
+   151			setupCheckBoxes();
+   152	
+   153			btnCompileChain = UserInterfaceUtil.createButton("COMPILE_CHAIN");
+   154			btnCompileChain.setOnAction(new EventHandler<ActionEvent>()
+   155			{
+   156				@Override
+   157				public void handle(ActionEvent e)
+   158				{
+   159					if (currentMember != null)
+   160					{
+   161						parent.openCompileChain(currentMember);
+   162					}
+   163				}
+   164			});
+   165	
+   166			btnJITJournal =  UserInterfaceUtil.createButton("JIT_JOURNAL");
+   167			btnJITJournal.setOnAction(new EventHandler<ActionEvent>()
+   168			{
+   169				@Override
+   170				public void handle(ActionEvent e)
+   171				{
+   172					if (currentMember != null)
+   173					{
+   174						String windowTitle = "JIT Journal for " + currentMember.toString();
+   175	
+   176						Compilation selectedCompilation = currentMember.getSelectedCompilation();
+   177	
+   178						if (selectedCompilation != null)
+   179						{
+   180							windowTitle += " - Compilation " + selectedCompilation.getSignature();
+   181						}
+   182	
+   183						parent.openJournalViewer(windowTitle, currentMember);
+   184					}
+   185				}
+   186			});
+   187	
+   188			btnLineTable = UserInterfaceUtil.createButton("LINE_NUMBER_TABLE");
+   189			btnLineTable.setOnAction(new EventHandler<ActionEvent>()
+   190			{
+   191				@Override
+   192				public void handle(ActionEvent e)
+   193				{
+   194					if (currentMember != null)
+   195					{
+   196						String lineNumberTable = currentMember.getMemberBytecode().getLineTable().toString();
+   197	
+   198						parent.openTextViewer("LineNumberTable for " + currentMember.toString(), lineNumberTable, false, false);
+   199					}
+   200				}
+   201			});
+   202	
+   203			btnInlinedInto = UserInterfaceUtil.createButton("INLINED_INTO");
+   204			btnInlinedInto.setOnAction(new EventHandler<ActionEvent>()
+   205			{
+   206				@Override
+   207				public void handle(ActionEvent e)
+   208				{
+   209					if (currentMember != null)
+   210					{
+   211						parent.openInlinedIntoReport(currentMember);
+   212					}
+   213				}
+   214			});
+   215	
+   216			compilationInfo = new CompilationInfo();
+   217	
+   218			Region spacerTop = new Region();
+   219			HBox.setHgrow(spacerTop, Priority.ALWAYS);
+   220	
+   221			Region spacerBottom = new Region();
+   222			HBox.setHgrow(spacerBottom, Priority.ALWAYS);
+   223	
+   224			hBoxToolBarButtons.getChildren().add(checkSource);
+   225			hBoxToolBarButtons.getChildren().add(checkBytecode);
+   226			hBoxToolBarButtons.getChildren().add(checkAssembly);
+   227			hBoxToolBarButtons.getChildren().add(btnCompileChain);
+   228			hBoxToolBarButtons.getChildren().add(btnJITJournal);
+   229			hBoxToolBarButtons.getChildren().add(btnLineTable);
+   230			hBoxToolBarButtons.getChildren().add(btnInlinedInto);
+   231			hBoxToolBarButtons.getChildren().add(checkMouseover);
+   232			hBoxToolBarButtons.getChildren().add(spacerBottom);
+   233			hBoxToolBarButtons.getChildren().add(compilationInfo);
+   234	
+   235			Label lblClass = UserInterfaceUtil.createLabel("CLASS");
+   236			classSearch = new ClassSearch(this, parent.getPackageManager());
+   237			classSearch.prefWidthProperty().bind(widthProperty().multiply(0.42));
+   238	
+   239			Label lblMember = UserInterfaceUtil.createLabel("MEMBER");
+   240	
+   241			// ================ Set up Member combo box ====================
+   242	
+   243			comboMember = new ComboBox<>(comboMemberList);
+   244			comboMember.prefWidthProperty().bind(widthProperty().multiply(0.4));
+   245	
+   246			comboMember.valueProperty().addListener(new ChangeListener<IMetaMember>()
+   247			{
+   248				@Override
+   249				public void changed(ObservableValue<? extends IMetaMember> ov, IMetaMember oldMember, IMetaMember newMember)
+   250				{
+   251					if (!ignoreComboChanged)
+   252					{
+   253						if (newMember != null)
+   254						{
+   255							if (!selectedProgrammatically)
+   256							{
+   257								memberSelectionListener.selectMember(newMember, true, true);
+   258							}
+   259						}
+   260					}
+   261				}
+   262			});
+   263	
+   264			comboMember.setCellFactory(getCallbackForMemberListCellFactory());
+   265	
+   266			comboMember.setConverter(new StringConverter<IMetaMember>()
+   267			{
+   268				@Override
+   269				public String toString(IMetaMember metaMember)
+   270				{
+   271					return metaMember != null ? metaMember.toStringUnqualifiedMethodName(false, false) : "null";
+   272				}
+   273	
+   274				@Override
+   275				public IMetaMember fromString(String arg0)
+   276				{
+   277					return null;
+   278				}
+   279			});
+   280	
+   281			hBoxToolBarClass.getChildren().add(lblClass);
+   282			hBoxToolBarClass.getChildren().add(classSearch);
+   283	
+   284			hBoxToolBarClass.getChildren().add(spacerTop);
+   285	
+   286			hBoxToolBarClass.getChildren().add(lblMember);
+   287			hBoxToolBarClass.getChildren().add(comboMember);
+   288	
+   289			splitViewer = new SplitPane();
+   290			splitViewer.setOrientation(Orientation.HORIZONTAL);
+   291	
+   292			Scene scene = UserInterfaceUtil.getScene(vBox, JITWatchUI.WINDOW_WIDTH, JITWatchUI.WINDOW_HEIGHT);
+   293			navigationStack = new TriViewNavigationStack(this, scene);
+   294	
+   295			viewerSource = new ViewerSource(parent, this, LineType.SOURCE);
+   296			viewerBytecode = new ViewerBytecode(parent, navigationStack, model, this, LineType.BYTECODE);
+   297			viewerAssembly = new ViewerAssembly(parent, this, LineType.ASSEMBLY);
+   298	
+   299			paneSource = new TriViewPane(this, "SOURCE", viewerSource);
+   300			paneBytecode = new TriViewPane(this, "BYTECODE_DOUBLE_CLICK_FOR_JVM_SPEC", viewerBytecode);
+   301			paneAssembly = new TriViewPane(this, "ASSEMBLY", viewerAssembly, getAssemblyTitleComponents());
+   302	
+   303			splitViewer.prefHeightProperty().bind(vBox.heightProperty());
+   304	
+   305			lblStatusBar = new Label();
+   306	
+   307			Button buttonSnapShot = UserInterfaceUtil.getSnapshotButton(scene, "TriView");
+   308	
+   309			Region spacerStatus = new Region();
+   310			HBox.setHgrow(spacerStatus, Priority.ALWAYS);
+   311	
+   312			HBox hBoxStatusBar = new HBox();
+   313			hBoxStatusBar.setSpacing(16.0);
+   314			hBoxStatusBar.getChildren().addAll(lblStatusBar, spacerStatus, buttonSnapShot);
+   315	
+   316			hBoxStatusBar.setPadding(new Insets(4, 4, 4, 4));
+   317	
+   318			vBox.getChildren().add(hBoxToolBarClass);
+   319			vBox.getChildren().add(hBoxToolBarButtons);
+   320			vBox.getChildren().add(splitViewer);
+   321			vBox.getChildren().add(hBoxStatusBar);
+   322	
+   323			setScene(scene);
+   324	
+   325			checkColumns();
+   326	
+   327			updateButtons();
+   328		}
+   329	
+   330		private void setupCheckBoxes()
+   331		{
+   332			checkSource = UserInterfaceUtil.createCheckBox("CHECKBOX_SOURCE");
+   333			checkBytecode = UserInterfaceUtil.createCheckBox("CHECKBOX_BYTECODE");
+   334			checkAssembly = UserInterfaceUtil.createCheckBox("CHECKBOX_ASSEMBLY");
+   335	
+   336			createCheckBoxMouseFollow();
+   337	
+   338			checkSource.setSelected(true);
+   339			checkBytecode.setSelected(true);
+   340			checkAssembly.setSelected(true);
+   341	
+   342			addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, new EventHandler<javafx.scene.input.KeyEvent>()
+   343			{
+   344				@Override
+   345				public void handle(javafx.scene.input.KeyEvent event)
+   346				{
+   347					if (event.isAltDown())
+   348					{
+   349						switch (event.getCode())
+   350						{
+   351						case S:
+   352							checkSource.setSelected(!checkSource.isSelected());
+   353							break;
+   354						case B:
+   355							checkBytecode.setSelected(!checkBytecode.isSelected());
+   356							break;
+   357						case A:
+   358							checkAssembly.setSelected(!checkAssembly.isSelected());
+   359							break;
+   360						case M:
+   361							checkMouseover.setSelected(!checkMouseover.isSelected());
+   362							break;
+   363						case L:
+   364							checkLocalLabels.setSelected(!checkLocalLabels.isSelected());
+   365							break;
+   366						default:
+   367							break;
+   368						}
+   369					}
+   370				}
+   371			});
+   372	
+   373			ChangeListener<Boolean> checkListener = new ChangeListener<Boolean>()
+   374			{
+   375				@Override
+   376				public void changed(ObservableValue<? extends Boolean> ov, Boolean oldVal, Boolean newVal)
+   377				{
+   378					checkColumns();
+   379				}
+   380			};
+   381	
+   382			checkSource.selectedProperty().addListener(checkListener);
+   383			checkBytecode.selectedProperty().addListener(checkListener);
+   384			checkAssembly.selectedProperty().addListener(checkListener);
+   385		}
+   386	
+   387		private HBox getAssemblyTitleComponents()
+   388		{
+   389			HBox hbox = new HBox();
+   390			hbox.setSpacing(16);
+   391	
+   392			checkLocalLabels = UserInterfaceUtil.createCheckBox("CHECKBOX_LABELS");
+   393	
+   394			checkLocalLabels.setSelected(config.isLocalAsmLabels());
+   395	
+   396			checkLocalLabels.selectedProperty().addListener(new ChangeListener<Boolean>()
+   397			{
+   398				@Override
+   399				public void changed(ObservableValue<? extends Boolean> ov, Boolean oldVal, Boolean newVal)
+   400				{
+   401					config.setLocalAsmLabels(newVal);
+   402					config.saveConfig();
+   403	
+   404					if (currentMember != null)
+   405					{
+   406						updateBytecodeAndAssembly(false, 0);
+   407					}
+   408				}
+   409			});
+   410	
+   411			hbox.getChildren().add(checkLocalLabels);
+   412	
+   413			compilationChooser = new CompilationChooser(memberSelectionListener);
+   414	
+   415			hbox.getChildren().add(compilationChooser.getCombo());
+   416	
+   417			return hbox;
+   418		}
+   419	
+   420		private void createCheckBoxMouseFollow()
+   421		{
+   422			checkMouseover = UserInterfaceUtil.createCheckBox("CHECKBOX_MOUSEOVER");
+   423	
+   424			checkMouseover.setSelected(config.isTriViewMouseFollow());
+   425	
+   426			checkMouseover.selectedProperty().addListener(new ChangeListener<Boolean>()
+   427			{
+   428				@Override
+   429				public void changed(ObservableValue<? extends Boolean> ov, Boolean oldVal, Boolean newVal)
+   430				{
+   431					config.setTriViewMouseFollow(newVal);
+   432					config.saveConfig();
+   433				}
+   434			});
+   435		}
+   436	
+   437		private Callback<ListView<IMetaMember>, ListCell<IMetaMember>> getCallbackForMemberListCellFactory()
+   438		{
+   439			return new Callback<ListView<IMetaMember>, ListCell<IMetaMember>>()
+   440			{
+
+exec
+/bin/bash -lc "nl -ba ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilechain/CompileChainStage.java | sed -n '1,130p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2017 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.ui.compilechain;
+     7	
+     8	import static org.adoptopenjdk.jitwatch.util.UserInterfaceUtil.fix;
+     9	
+    10	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+    11	import org.adoptopenjdk.jitwatch.chain.CompileChainWalker;
+    12	import org.adoptopenjdk.jitwatch.chain.CompileNode;
+    13	import org.adoptopenjdk.jitwatch.model.Compilation;
+    14	import org.adoptopenjdk.jitwatch.model.IMetaMember;
+    15	import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+    16	import org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser;
+    17	import org.adoptopenjdk.jitwatch.ui.main.ICompilationChangeListener;
+    18	import org.adoptopenjdk.jitwatch.ui.main.IMemberSelectedListener;
+    19	import org.adoptopenjdk.jitwatch.ui.main.IStageAccessProxy;
+    20	import org.adoptopenjdk.jitwatch.ui.main.JITWatchUI;
+    21	import org.adoptopenjdk.jitwatch.ui.resize.IRedrawable;
+    22	import org.adoptopenjdk.jitwatch.ui.resize.RateLimitedResizeListener;
+    23	import org.adoptopenjdk.jitwatch.util.UserInterfaceUtil;
+    24	
+    25	import javafx.event.EventHandler;
+    26	import javafx.geometry.Insets;
+    27	import javafx.scene.Scene;
+    28	import javafx.scene.control.Button;
+    29	import javafx.scene.control.Label;
+    30	import javafx.scene.control.ScrollPane;
+    31	import javafx.scene.control.Tooltip;
+    32	import javafx.scene.input.MouseEvent;
+    33	import javafx.scene.layout.HBox;
+    34	import javafx.scene.layout.Pane;
+    35	import javafx.scene.layout.Priority;
+    36	import javafx.scene.layout.Region;
+    37	import javafx.scene.layout.VBox;
+    38	import javafx.scene.paint.Color;
+    39	import javafx.scene.shape.Line;
+    40	import javafx.scene.shape.Rectangle;
+    41	import javafx.scene.shape.Shape;
+    42	import javafx.scene.text.Text;
+    43	import javafx.stage.Stage;
+    44	import javafx.stage.StageStyle;
+    45	
+    46	public class CompileChainStage extends Stage implements ICompilationChangeListener, IRedrawable
+    47	{
+    48		private ScrollPane scrollPane;
+    49		private Pane pane;
+    50		private IStageAccessProxy stageAccess;
+    51		
+    52		private Label labelRootNodeMember;
+    53	
+    54		private CompilationChooser compilationChooser;
+    55	
+    56		private CompileNode rootNode;
+    57	
+    58		private static final double X_OFFSET = 16;
+    59		private static final double Y_OFFSET = 16;
+    60	
+    61		private double y;
+    62	
+    63		private static final double X_GAP = 25;
+    64	
+    65		private static final int STROKE_WIDTH = 3;
+    66		private static final double RECT_HEIGHT = 25;
+    67		private static final double RECT_Y_GAP = 16;
+    68	
+    69		class PlotNode
+    70		{
+    71			public Rectangle rect;
+    72			public Text text;
+    73		}
+    74	
+    75		private IReadOnlyJITDataModel model;
+    76	
+    77		public CompileChainStage(IMemberSelectedListener selectionListener, final IStageAccessProxy stageAccess,
+    78				IReadOnlyJITDataModel model)
+    79		{
+    80			initStyle(StageStyle.DECORATED);
+    81	
+    82			this.stageAccess = stageAccess;
+    83	
+    84			this.model = model;
+    85	
+    86			scrollPane = new ScrollPane();
+    87	
+    88			pane = new Pane();
+    89	
+    90			scrollPane.setContent(pane);
+    91	
+    92			compilationChooser = new CompilationChooser(selectionListener);
+    93			
+    94			VBox verticalLayout = new VBox();
+    95			
+    96			Scene scene = UserInterfaceUtil.getScene(verticalLayout, JITWatchUI.WINDOW_WIDTH, JITWatchUI.WINDOW_HEIGHT);
+    97			
+    98			Region spacer = new Region();
+    99			HBox.setHgrow(spacer, Priority.ALWAYS);
+   100					
+   101			Button buttonSnapShot = UserInterfaceUtil.getSnapshotButton(scene, "CompileChain");
+   102			
+   103			HBox hBox = new HBox();
+   104			
+   105			labelRootNodeMember = new Label();
+   106			
+   107			hBox.getChildren().add(labelRootNodeMember);
+   108			hBox.getChildren().add(compilationChooser.getCombo());
+   109			hBox.getChildren().add(spacer);
+   110			hBox.getChildren().add(buttonSnapShot);
+   111			
+   112			hBox.setSpacing(16.0);
+   113			hBox.setPadding(new Insets(4, 4, 4, 4));
+   114			
+   115			verticalLayout.getChildren().addAll(hBox, scrollPane);
+   116	
+   117			RateLimitedResizeListener resizeListener = new RateLimitedResizeListener(this, 200);
+   118	
+   119			pane.widthProperty().addListener(resizeListener);
+   120			pane.heightProperty().addListener(resizeListener);
+   121	
+   122			setScene(scene);
+   123		}
+   124	
+   125		@Override
+   126		public void compilationChanged(IMetaMember member)
+   127		{
+   128			compilationChooser.compilationChanged(member);
+   129	
+   130			if (member != null)
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.ui.compilationchooser.CompilationChooser","detection":false,"justification":"Inspected ui/src/main/java/org/adoptopenjdk/jitwatch/ui/compilationchooser/CompilationChooser.java and found a small UI helper that mainly wraps one ComboBox and interacts with only IMemberSelectedListener, IMetaMember, and Compilation. Repository search found only two incoming usages: CompileChainStage.java (imports/instantiates it at lines 16, 54, 92, 108) and TriView.java (imports/instantiates it at lines 35, 105, 413-415). That is limited fan-in/fan-out, not the broad dependency hub pattern required for hub-like modularization."}
+tokens used
+16,998

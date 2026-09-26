@@ -1,0 +1,664 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ed2-bbbd-7051-96e7-406d82a8d528
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.bytecode.StackManipulation.Trivial` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.bytecode.StackManipulation.Trivial",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.bytecode.StackManipulation.Trivial`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the `StackManipulation.Trivial` class and tracing who uses it and what it depends on so I can judge fan-in and fan-out from the source itself.
+exec
+/bin/bash -lc "rg -n \"class Trivial|Trivial implements|enum Trivial|Trivial\\b\" net src -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 0ms:
+rg: net: No such file or directory (os error 2)
+rg: src: No such file or directory (os error 2)
+
+exec
+/bin/bash -lc "rg --files -g 'StackManipulation.java' -g '*.java' | rg 'StackManipulation.java|Trivial'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-benchmark/src/test/java/net/bytebuddy/benchmark/TrivialClassCreationBenchmarkTest.java
+byte-buddy-benchmark/src/main/java/net/bytebuddy/benchmark/TrivialClassCreationBenchmark.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TrivialType.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/StackManipulation.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionTrivialTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderRawMatcherTrivialTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/auxiliary/TrivialTypeTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegateTrivialTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegateTrivialTest.java
+
+codex
+I found the source file in `byte-buddy-dep`. Next I’m checking the class body and where `StackManipulation.Trivial` is referenced so I can estimate dependency load without running any analysis tools.
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/StackManipulation.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation.bytecode;
+
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.implementation.Implementation;
+import org.objectweb.asm.MethodVisitor;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Describes a manipulation of a method's operand stack that does not affect the frame's variable array.
+ */
+public interface StackManipulation {
+
+    /**
+     * Determines if this stack manipulation is valid.
+     *
+     * @return If {@code false}, this manipulation cannot be applied and should throw an exception.
+     */
+    boolean isValid();
+
+    /**
+     * Applies the stack manipulation that is described by this instance.
+     *
+     * @param methodVisitor         The method visitor used to write the method implementation to.
+     * @param implementationContext The context of the current implementation.
+     * @return The changes to the size of the operand stack that are implied by this stack manipulation.
+     */
+    Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext);
+
+    /**
+     * Canonical representation of an illegal stack manipulation.
+     */
+    enum Illegal implements StackManipulation {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return false;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            throw new IllegalStateException("An illegal stack manipulation must not be applied");
+        }
+    }
+
+    /**
+     * Canonical representation of a legal stack manipulation which does not require any action.
+     */
+    enum Trivial implements StackManipulation {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return true;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            return StackSize.ZERO.toIncreasingSize();
+        }
+    }
+
+    /**
+     * A description of the size change that is imposed by some
+     * {@link StackManipulation}.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class Size {
+
+        /**
+         * A size of zero.
+         */
+        public static final Size ZERO = new Size(0, 0);
+
+        /**
+         * The impact of any size operation onto the operand stack. This value can be negative if more values
+         * were consumed from the stack than added to it.
+         */
+        private final int sizeImpact;
+
+        /**
+         * The maximal size of stack slots this stack manipulation ever requires. If an operation for example pushes
+         * five values onto the stack and subsequently consumes three operations, this value should still be five
+         * to express that a stack operation requires at least five slots in order to be applicable.
+         */
+        private final int maximalSize;
+
+        /**
+         * Creates an immutable descriptor of the size change that is implied by some stack manipulation.
+         *
+         * @param sizeImpact  The change of the size of the operand stack that is implied by some stack manipulation.
+         * @param maximalSize The maximal stack size that is required for executing this stack manipulation. Should
+         *                    never be negative number.
+         */
+        public Size(int sizeImpact, int maximalSize) {
+            this.sizeImpact = sizeImpact;
+            this.maximalSize = maximalSize;
+        }
+
+        /**
+         * Returns the size change on the operand stack that is represented by this instance.
+         *
+         * @return The size change on the operand stack that is represented by this instance.
+         */
+        public int getSizeImpact() {
+            return sizeImpact;
+        }
+
+        /**
+         * Returns the maximal interim size of the operand stack that is represented by this instance.
+         *
+         * @return The maximal interim size of the operand stack that is represented by this instance.
+         */
+        public int getMaximalSize() {
+            return maximalSize;
+        }
+
+        /**
+         * Concatenates this size representation with another size representation in order to represent the size
+         * change that is represented by both alterations of the operand stack size.
+         *
+         * @param other The other size representation.
+         * @return A new size representation representing both stack size requirements.
+         */
+        public Size aggregate(Size other) {
+            return aggregate(other.sizeImpact, other.maximalSize);
+        }
+
+        /**
+         * Aggregates a size change with this stack manipulation size.
+         *
+         * @param sizeChange         The change in size the other operation implies.
+         * @param interimMaximalSize The interim maximal size of the operand stack that the other operation requires
+         *                           at least to function.
+         * @return The aggregated size.
+         */
+        private Size aggregate(int sizeChange, int interimMaximalSize) {
+            return new Size(sizeImpact + sizeChange, Math.max(maximalSize, sizeImpact + interimMaximalSize));
+        }
+    }
+
+    /**
+     * An abstract base implementation of a valid stack manipulation.
+     */
+    abstract class AbstractBase implements StackManipulation {
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return true;
+        }
+    }
+
+    /**
+     * An immutable stack manipulation that aggregates a sequence of other stack manipulations.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class Compound implements StackManipulation {
+
+        /**
+         * The stack manipulations this compound operation represents in their application order.
+         */
+        private final List<StackManipulation> stackManipulations;
+
+        /**
+         * Creates a new compound stack manipulation.
+         *
+         * @param stackManipulation The stack manipulations to be composed in the order of their composition.
+         */
+        public Compound(StackManipulation... stackManipulation) {
+            this(Arrays.asList(stackManipulation));
+        }
+
+        /**
+         * Creates a new compound stack manipulation.
+         *
+         * @param stackManipulations The stack manipulations to be composed in the order of their composition.
+         */
+        public Compound(List<? extends StackManipulation> stackManipulations) {
+            this.stackManipulations = new ArrayList<StackManipulation>();
+            for (StackManipulation stackManipulation : stackManipulations) {
+                if (stackManipulation instanceof Compound) {
+                    this.stackManipulations.addAll(((Compound) stackManipulation).stackManipulations);
+                } else if (!(stackManipulation instanceof Trivial)) {
+                    this.stackManipulations.add(stackManipulation);
+                }
+            }
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            for (StackManipulation stackManipulation : stackManipulations) {
+                if (!stackManipulation.isValid()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            Size size = Size.ZERO;
+            for (StackManipulation stackManipulation : stackManipulations) {
+                size = size.aggregate(stackManipulation.apply(methodVisitor, implementationContext));
+            }
+            return size;
+        }
+    }
+
+    /**
+     * An implementation of {@link StackManipulation} that simplifies functional invocations via lambda expressions.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class Simple extends StackManipulation.AbstractBase {
+
+        /**
+         * The dispatcher to use.
+         */
+        private final Dispatcher dispatcher;
+
+        /**
+
+exec
+/bin/bash -lc "rg -n \"StackManipulation\\.Trivial|Trivial\\.INSTANCE|new StackManipulation\\.Trivial|StackManipulation\\.Trivial\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1749:                StackManipulation stackManipulation = StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1908:        HASH_CODE("hashCode", StackManipulation.Trivial.INSTANCE, int.class),
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1918:        TO_STRING("toString", StackManipulation.Trivial.INSTANCE, String.class);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/SuperMethodHandleBinderTest.java:54:        when(methodHandle.toStackManipulation()).thenReturn(StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/SuperHandleBinderTest.java:59:        when(methodHandle.toStackManipulation()).thenReturn(StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/DefaultCallHandlerBinderTest.java:73:        when(methodHandle.toStackManipulation()).thenReturn(StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:3033:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:5028:                                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:6356:                                        : StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:6483:                                    return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/DefaultMethodHandlerBinderTest.java:58:        when(methodHandle.toStackManipulation()).thenReturn(StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ImplementationSimpleTest.java:35:        ByteCodeAppender.Size size = new Implementation.Simple(StackManipulation.Trivial.INSTANCE)
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ImplementationSimpleTest.java:46:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ImplementationSimpleTest.java:57:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:827:                        this(typeDefinition, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:866:                        this(typeDefinition, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:890:                        return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:948:                        this(typeDefinition, offset, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:995:                        this(typeDefinition, offset, StackManipulation.Trivial.INSTANCE, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1159:                            ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1174:                        this(fieldDescription, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1242:                            preparation = StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1278:                        this(fieldDescription, StackManipulation.Trivial.INSTANCE, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1299:                            preparation = StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:5953:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:14304:                        stackManipulation = StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:14475:                        return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldValue.java:174:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:281:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:405:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:412:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/ClassVisitorFactory.java:288:        return new MethodCall.ArgumentLoader.ForStackManipulation(new StackManipulation.Compound(virtual ? MethodVariableAccess.loadThis() : StackManipulation.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1582:                                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:757:                    return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:810:                            ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:864:                            ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java:1957:                                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:917:                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1030:                    return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1434:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1516:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:390:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:397:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:674:                return Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java:410:                        StackManipulation.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java:522:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:410:                                ? Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:611:                                        ? Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:846:                                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:939:                                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:1045:                                ? Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:1597:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:2090:                                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:2094:                                    : StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:2345:                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3058:                    return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3073:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3103:                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodVariableAccess.java:292:                    return Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodVariableAccess.java:323:                            ? Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9995:                                        : StackManipulation.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:10043:                                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:10281:                                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:345:            return Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/DefaultValue.java:52:    VOID(Trivial.INSTANCE),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/reference/GenericTypeAwareAssigner.java:53:                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/reference/GenericTypeAwareAssigner.java:56:            return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/reference/GenericTypeAwareAssigner.java:59:                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:35:    BOOLEAN(StackManipulation.Trivial.INSTANCE,                                                     // to boolean
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:48:            StackManipulation.Trivial.INSTANCE,                                                     // to byte
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:49:            StackManipulation.Trivial.INSTANCE,                                                     // to short
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:51:            StackManipulation.Trivial.INSTANCE,                                                     // to integer
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:61:            StackManipulation.Trivial.INSTANCE,                                                     // to short
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:63:            StackManipulation.Trivial.INSTANCE,                                                     // to integer
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:74:            StackManipulation.Trivial.INSTANCE,                                                     // to character
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:75:            StackManipulation.Trivial.INSTANCE,                                                     // to integer
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:87:            StackManipulation.Trivial.INSTANCE,                                                     // to integer
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:100:            StackManipulation.Trivial.INSTANCE,                                                     // to long
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:113:            StackManipulation.Trivial.INSTANCE,                                                     // to float
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:126:            StackManipulation.Trivial.INSTANCE);                                                    // to double
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/reference/ReferenceTypeAwareAssigner.java:40:                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/reference/ReferenceTypeAwareAssigner.java:43:            return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/Assigner.java:120:                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/Assigner.java:132:                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/VoidAwareAssigner.java:59:            return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:36:    BOOLEAN(StackManipulation.Trivial.INSTANCE,                                                     // to boolean
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:49:            StackManipulation.Trivial.INSTANCE,                                                     // to byte
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:64:            StackManipulation.Trivial.INSTANCE,                                                     // to short
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:80:            StackManipulation.Trivial.INSTANCE,                                                     // to character
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:96:            StackManipulation.Trivial.INSTANCE,                                                     // to integer
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:113:            StackManipulation.Trivial.INSTANCE,                                                     // to long
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:131:            StackManipulation.Trivial.INSTANCE,                                                     // to float
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:150:            StackManipulation.Trivial.INSTANCE);                                                    // to double
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:704:                PackageDefinitionStrategy.Trivial.INSTANCE,
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/StackManipulationTest.java:35:        assertThat(StackManipulation.Trivial.INSTANCE.isValid(), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/StackManipulationTest.java:45:        StackManipulation.Size size = StackManipulation.Trivial.INSTANCE.apply(methodVisitor, implementationContext);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionTrivialTest.java:17:        PackageDefinitionStrategy.Definition definition = PackageDefinitionStrategy.Trivial.INSTANCE.define(getClass().getClassLoader(), FOO, BAR);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:15:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.isDefined(), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:20:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getSpecificationTitle(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:25:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getSpecificationVersion(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:30:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getSpecificationVendor(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:35:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getImplementationTitle(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:40:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getImplementationVersion(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:45:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getImplementationVendor(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:50:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getSealBase(), nullValue(URL.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:55:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.isCompatibleTo(getClass().getPackage()), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoaderTest.java:87:                .thenReturn(PackageDefinitionStrategy.Definition.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategy.java:82:            return Definition.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategy.java:603:                return Definition.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java:349:                        PackageDefinitionStrategy.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:200:        this(parent, sealed, typeDefinitions, ClassLoadingStrategy.NO_PROTECTION_DOMAIN, persistenceHandler, PackageDefinitionStrategy.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:331:                PackageDefinitionStrategy.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:1293:                    PackageDefinitionStrategy.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:271:                    PackageDefinitionStrategy.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1345:                                            ? StackManipulation.Trivial.INSTANCE
+
+codex
+I’ve confirmed the target is a tiny enum inside `StackManipulation`. I’m now quantifying the reference pattern: how many source files point at it, versus how many external types it actually uses.
+exec
+/bin/bash -lc "rg -n \"StackManipulation\\.Trivial\\.INSTANCE|\\bTrivial\\.INSTANCE\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1749:                StackManipulation stackManipulation = StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1908:        HASH_CODE("hashCode", StackManipulation.Trivial.INSTANCE, int.class),
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1918:        TO_STRING("toString", StackManipulation.Trivial.INSTANCE, String.class);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:3033:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:5028:                                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:6356:                                        : StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:6483:                                    return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/ClassVisitorFactory.java:288:        return new MethodCall.ArgumentLoader.ForStackManipulation(new StackManipulation.Compound(virtual ? MethodVariableAccess.loadThis() : StackManipulation.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:390:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:397:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:674:                return Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:1597:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:2090:                                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:2094:                                    : StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:2345:                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3058:                    return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3073:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3103:                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:827:                        this(typeDefinition, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:866:                        this(typeDefinition, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:890:                        return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:948:                        this(typeDefinition, offset, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:995:                        this(typeDefinition, offset, StackManipulation.Trivial.INSTANCE, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1159:                            ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1174:                        this(fieldDescription, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1242:                            preparation = StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1278:                        this(fieldDescription, StackManipulation.Trivial.INSTANCE, StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1299:                            preparation = StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:5953:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:14304:                        stackManipulation = StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:14475:                        return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1582:                                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:281:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:405:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:412:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldValue.java:174:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:410:                                ? Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:611:                                        ? Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9995:                                        : StackManipulation.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:10043:                                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:10281:                                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:757:                    return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:810:                            ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:864:                            ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:846:                                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:939:                                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:1045:                                ? Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:917:                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1030:                    return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1434:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1516:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/reference/GenericTypeAwareAssigner.java:53:                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/reference/GenericTypeAwareAssigner.java:56:            return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/reference/GenericTypeAwareAssigner.java:59:                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/reference/ReferenceTypeAwareAssigner.java:40:                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/reference/ReferenceTypeAwareAssigner.java:43:            return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/Assigner.java:120:                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/Assigner.java:132:                        ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1345:                                            ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java:1957:                                    ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodVariableAccess.java:292:                    return Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/MethodVariableAccess.java:323:                            ? Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:35:    BOOLEAN(StackManipulation.Trivial.INSTANCE,                                                     // to boolean
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:48:            StackManipulation.Trivial.INSTANCE,                                                     // to byte
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:49:            StackManipulation.Trivial.INSTANCE,                                                     // to short
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:51:            StackManipulation.Trivial.INSTANCE,                                                     // to integer
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:61:            StackManipulation.Trivial.INSTANCE,                                                     // to short
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:63:            StackManipulation.Trivial.INSTANCE,                                                     // to integer
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:74:            StackManipulation.Trivial.INSTANCE,                                                     // to character
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:75:            StackManipulation.Trivial.INSTANCE,                                                     // to integer
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:87:            StackManipulation.Trivial.INSTANCE,                                                     // to integer
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:100:            StackManipulation.Trivial.INSTANCE,                                                     // to long
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:113:            StackManipulation.Trivial.INSTANCE,                                                     // to float
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveWideningDelegate.java:126:            StackManipulation.Trivial.INSTANCE);                                                    // to double
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:36:    BOOLEAN(StackManipulation.Trivial.INSTANCE,                                                     // to boolean
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:49:            StackManipulation.Trivial.INSTANCE,                                                     // to byte
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:64:            StackManipulation.Trivial.INSTANCE,                                                     // to short
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:80:            StackManipulation.Trivial.INSTANCE,                                                     // to character
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:96:            StackManipulation.Trivial.INSTANCE,                                                     // to integer
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:113:            StackManipulation.Trivial.INSTANCE,                                                     // to long
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:131:            StackManipulation.Trivial.INSTANCE,                                                     // to float
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/PrimitiveNarrowingDelegate.java:150:            StackManipulation.Trivial.INSTANCE);                                                    // to double
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/assign/primitive/VoidAwareAssigner.java:59:            return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoaderTest.java:87:                .thenReturn(PackageDefinitionStrategy.Definition.Trivial.INSTANCE);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionTrivialTest.java:17:        PackageDefinitionStrategy.Definition definition = PackageDefinitionStrategy.Trivial.INSTANCE.define(getClass().getClassLoader(), FOO, BAR);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:15:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.isDefined(), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:20:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getSpecificationTitle(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:25:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getSpecificationVersion(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:30:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getSpecificationVendor(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:35:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getImplementationTitle(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:40:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getImplementationVersion(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:45:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getImplementationVendor(), nullValue(String.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:50:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.getSealBase(), nullValue(URL.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategyTypeTrivialTest.java:55:        assertThat(PackageDefinitionStrategy.Definition.Trivial.INSTANCE.isCompatibleTo(getClass().getPackage()), is(true));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:345:            return Trivial.INSTANCE;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:704:                PackageDefinitionStrategy.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/DefaultValue.java:52:    VOID(Trivial.INSTANCE),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java:410:                        StackManipulation.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java:522:                                ? StackManipulation.Trivial.INSTANCE
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassLoadingStrategy.java:349:                        PackageDefinitionStrategy.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategy.java:82:            return Definition.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/PackageDefinitionStrategy.java:603:                return Definition.Trivial.INSTANCE;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:200:        this(parent, sealed, typeDefinitions, ClassLoadingStrategy.NO_PROTECTION_DOMAIN, persistenceHandler, PackageDefinitionStrategy.Trivial.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:331:                PackageDefinitionStrategy.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ByteArrayClassLoader.java:1293:                    PackageDefinitionStrategy.Trivial.INSTANCE,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/loading/ClassInjector.java:271:                    PackageDefinitionStrategy.Trivial.INSTANCE,
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ImplementationSimpleTest.java:35:        ByteCodeAppender.Size size = new Implementation.Simple(StackManipulation.Trivial.INSTANCE)
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ImplementationSimpleTest.java:46:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/ImplementationSimpleTest.java:57:                return StackManipulation.Trivial.INSTANCE;
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/DefaultMethodHandlerBinderTest.java:58:        when(methodHandle.toStackManipulation()).thenReturn(StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/StackManipulationTest.java:35:        assertThat(StackManipulation.Trivial.INSTANCE.isValid(), is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/StackManipulationTest.java:45:        StackManipulation.Size size = StackManipulation.Trivial.INSTANCE.apply(methodVisitor, implementationContext);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/DefaultCallHandlerBinderTest.java:73:        when(methodHandle.toStackManipulation()).thenReturn(StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/SuperMethodHandleBinderTest.java:54:        when(methodHandle.toStackManipulation()).thenReturn(StackManipulation.Trivial.INSTANCE);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bind/annotation/SuperHandleBinderTest.java:59:        when(methodHandle.toStackManipulation()).thenReturn(StackManipulation.Trivial.INSTANCE);
+
+exec
+/bin/bash -lc "rg -l \"StackManipulation\\.Trivial\\.INSTANCE|\\bTrivial\\.INSTANCE\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java | sort | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+40
+
+exec
+/bin/bash -lc "sed -n '1,130p' byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/StackManipulationTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+package net.bytebuddy.implementation.bytecode;
+
+import net.bytebuddy.implementation.Implementation;
+import org.junit.After;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+import org.objectweb.asm.MethodVisitor;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+public class StackManipulationTest {
+
+    @Rule
+    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+
+    @Mock
+    private MethodVisitor methodVisitor;
+
+    @Mock
+    private Implementation.Context implementationContext;
+
+    @After
+    public void tearDown() throws Exception {
+        verifyNoMoreInteractions(methodVisitor);
+        verifyNoMoreInteractions(implementationContext);
+    }
+
+    @Test
+    public void testLegalIsValid() throws Exception {
+        assertThat(StackManipulation.Trivial.INSTANCE.isValid(), is(true));
+    }
+
+    @Test
+    public void testIllegalIsNotValid() throws Exception {
+        assertThat(StackManipulation.Illegal.INSTANCE.isValid(), is(false));
+    }
+
+    @Test
+    public void testLegalIsApplicable() throws Exception {
+        StackManipulation.Size size = StackManipulation.Trivial.INSTANCE.apply(methodVisitor, implementationContext);
+        assertThat(size.getSizeImpact(), is(0));
+        assertThat(size.getMaximalSize(), is(0));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testIllegalIsNotApplicable() throws Exception {
+        StackManipulation.Illegal.INSTANCE.apply(methodVisitor, implementationContext);
+    }
+}
+
+codex
+{"target":"net.bytebuddy.implementation.bytecode.StackManipulation.Trivial","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/StackManipulation.java and byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/StackManipulationTest.java, plus references from byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java, Advice.java, MethodCall.java, PrimitiveWideningDelegate.java, and 36 other files (40 files total matched). The class is a singleton enum with no fields and only two methods; its fan-out is minimal (it only uses Implementation.Context, MethodVisitor, and StackSize.ZERO), while its fan-in is high. That is broad reuse, but not a hub-like dependency center because outgoing dependencies are not high."}
+tokens used
+14,223

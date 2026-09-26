@@ -1,0 +1,719 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6eb8-fac3-7921-9a50-f5c8f442abc7
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`(default package).HotThrow` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "(default package).HotThrow",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `(default package).HotThrow`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the `HotThrow` source and tracing its incoming and outgoing dependencies so I can judge whether it behaves like a hub. After that I’ll verify the evidence against nearby classes and return a strict JSON verdict.
+exec
+/bin/bash -lc "rg --files | rg '("'^|/)HotThrow'"\\.java"'$|HotThrow'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/toplist/HotThrowTopListVisitable.java
+core/src/main/resources/examples/HotThrow.java
+core/src/main/java/org/adoptopenjdk/jitwatch/hotthrow/HotThrowResult.java
+core/src/main/java/org/adoptopenjdk/jitwatch/hotthrow/HotThrowFinder.java
+
+exec
+/bin/bash -lc "rg -n \"class HotThrow|new HotThrow\\(|HotThrow\\b\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeLoader.java:529:				"        0       8     0  this   LHotThrow;",
+./core/src/main/resources/examples/HotThrow.java:3:public class HotThrow
+./core/src/main/resources/examples/HotThrow.java:7:    public HotThrow()
+./core/src/main/resources/examples/HotThrow.java:41:        new HotThrow();
+./core/src/main/java/org/adoptopenjdk/jitwatch/toplist/HotThrowTopListVisitable.java:17:public class HotThrowTopListVisitable extends AbstractTopListVisitable
+./core/src/main/java/org/adoptopenjdk/jitwatch/hotthrow/HotThrowResult.java:10:public class HotThrowResult
+./core/src/main/java/org/adoptopenjdk/jitwatch/hotthrow/HotThrowFinder.java:56:public final class HotThrowFinder extends AbstractCompilationVisitable
+
+codex
+I found the target as an example source in `core/src/main/resources/examples/HotThrow.java`, not a production class. I’m reading that file plus the classes that reference it to measure fan-out and fan-in from the repository evidence.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/resources/examples/HotThrow.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+import java.util.Random;
+
+public class HotThrow
+{
+    private Random random = new Random();
+
+    public HotThrow()
+    {
+        StringBuilder builder = new StringBuilder();
+
+        String string = "The quick brown fox jumps over the lazy dog";
+
+        char[] chars = string.toCharArray();
+
+        for (int i = 0 ; i < 1_000_000; i++)
+        {
+            int index = random.nextInt(100);
+
+            char c = getChar(chars, index);
+
+            builder.append(c);
+        }
+
+        System.out.println(builder.toString());
+    }
+
+    public char getChar(char[] chars, int index)
+    {
+        try
+        {
+            return chars[index];
+        }
+        catch(ArrayIndexOutOfBoundsException e)
+        {
+            return '*';
+        }
+    }
+
+    public static void main(String[] args)
+    {
+        new HotThrow();
+    }
+}
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/hotthrow/HotThrowFinder.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2016-2021 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.hotthrow;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_HOLDER;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_METHOD;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_NAME;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_PARSE_HIR;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_ASSERT_NULL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_BC;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_BRANCH;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_CALL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_CAST_UP;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_DEPENDENCY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_DIRECT_CALL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INLINE_FAIL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INLINE_SUCCESS;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_INTRINSIC;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_PREALLOCATED;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_KLASS;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_METHOD;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_OBSERVE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PARSE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PARSE_DONE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PHASE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_PREDICTED_CALL;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_TYPE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_UNCOMMON_TRAP;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.TAG_HOT_THROW;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.ATTR_BCI;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.adoptopenjdk.jitwatch.compilation.AbstractCompilationVisitable;
+import org.adoptopenjdk.jitwatch.compilation.CompilationUtil;
+import org.adoptopenjdk.jitwatch.model.Compilation;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IParseDictionary;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+import org.adoptopenjdk.jitwatch.model.LogParseException;
+import org.adoptopenjdk.jitwatch.model.Tag;
+import org.adoptopenjdk.jitwatch.model.bytecode.ExceptionTable;
+import org.adoptopenjdk.jitwatch.model.bytecode.ExceptionTableEntry;
+import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode;
+import org.adoptopenjdk.jitwatch.util.ParseUtil;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+public final class HotThrowFinder extends AbstractCompilationVisitable
+{
+	private Set<HotThrowResult> result;
+	private IReadOnlyJITDataModel model;
+
+	private static final Logger logger = LoggerFactory.getLogger(HotThrowFinder.class);
+
+	public HotThrowFinder(IReadOnlyJITDataModel model)
+	{
+		this.model = model;
+
+		ignoreTags.add(TAG_KLASS);
+		ignoreTags.add(TAG_TYPE);
+		ignoreTags.add(TAG_UNCOMMON_TRAP);
+		ignoreTags.add(TAG_PARSE_DONE);
+		ignoreTags.add(TAG_BRANCH);
+		ignoreTags.add(TAG_CAST_UP);
+		ignoreTags.add(TAG_PARSE);
+		ignoreTags.add(TAG_INLINE_SUCCESS);
+		ignoreTags.add(TAG_INLINE_FAIL);
+		ignoreTags.add(TAG_DIRECT_CALL);
+		ignoreTags.add(TAG_PREDICTED_CALL);
+		ignoreTags.add(TAG_DEPENDENCY);
+		ignoreTags.add(TAG_OBSERVE);
+		ignoreTags.add(TAG_INTRINSIC);
+		ignoreTags.add(TAG_ASSERT_NULL);
+	}
+
+	public Set<HotThrowResult> findHotThrows(IMetaMember member)
+	{
+		result = new HashSet<>();
+
+		if (member != null)
+		{
+			try
+			{
+				for (Compilation compilation : member.getCompilations())
+				{
+					CompilationUtil.visitParseTagsOfCompilation(compilation, this);
+				}
+			}
+			catch (LogParseException e)
+			{
+				logger.error("Error while finding hot throws for member {}", member, e);
+			}
+		}
+
+		return result;
+	}
+
+	@Override
+	public void visitTag(Tag parseTag, IParseDictionary parseDictionary) throws LogParseException
+	{
+		String currentMethod = null;
+		String holder = null;
+		String currentBCI = null;
+
+		Map<String, String> attrs = parseTag.getAttributes();
+
+		String methodID = attrs.get(ATTR_METHOD);
+
+		Tag methodTag = parseDictionary.getMethod(methodID);
+
+		Map<String, String> methodTagAttributes = methodTag.getAttributes();
+
+		currentMethod = methodTagAttributes.get(ATTR_NAME);
+		holder = methodTagAttributes.get(ATTR_HOLDER);
+
+		List<Tag> allChildren = parseTag.getChildren();
+
+		for (Tag child : allChildren)
+		{
+			String tagName = child.getName();
+			attrs = child.getAttributes();
+
+			switch (tagName)
+			{
+			case TAG_METHOD:
+			{
+				currentMethod = attrs.get(ATTR_NAME);
+				holder = attrs.get(ATTR_HOLDER);
+				break;
+			}
+			case TAG_BC:
+			{
+				currentBCI = attrs.get(ATTR_BCI);
+				break;
+			}
+
+			// changes member context
+			case TAG_CALL:
+			{
+				methodID = attrs.get(ATTR_METHOD);
+
+				methodTag = parseDictionary.getMethod(methodID);
+
+				methodTagAttributes = methodTag.getAttributes();
+
+				currentMethod = methodTagAttributes.get(ATTR_NAME);
+				holder = methodTagAttributes.get(ATTR_HOLDER);
+				break;
+			}
+
+			case TAG_HOT_THROW:
+			{
+				if (holder != null && currentMethod != null)
+				{
+					Tag klassTag = parseDictionary.getKlass(holder);
+
+					String preallocated = child.getAttributes().get(ATTR_PREALLOCATED);
+
+					if (currentBCI != null && klassTag != null)
+					{
+						IMetaMember member = ParseUtil.lookupMember(methodID, parseDictionary, model);
+
+						if (member != null)
+						{
+							MemberBytecode memberBytecode = member.getMemberBytecode();
+
+							if (memberBytecode == null)
+							{
+								member.getMetaClass().getClassBytecode(model, new ArrayList<String>());
+
+								memberBytecode = member.getMemberBytecode();
+							}
+
+							if (memberBytecode != null)
+							{
+								ExceptionTable exceptionTable = memberBytecode.getExceptionTable();
+
+								if (exceptionTable != null)
+								{
+									int bciValue = Integer.valueOf(currentBCI);
+									
+									ExceptionTableEntry entry = exceptionTable.getEntryForBCI(bciValue);
+
+									if (entry != null)
+									{
+										HotThrowResult throwResult = new HotThrowResult(member, bciValue, entry.getType(), "1".equals(preallocated));
+
+										result.add(throwResult);
+									}
+								}
+							}
+						}
+					}
+				}
+
+				holder = null;
+				currentMethod = null;
+				break;
+			}
+
+			case TAG_PHASE:
+			{
+				String phaseName = attrs.get(ATTR_NAME);
+
+				if (S_PARSE_HIR.equals(phaseName))
+				{
+					visitTag(child, parseDictionary);
+				}
+				else
+				{
+					logger.warn("Don't know how to handle phase {}", phaseName);
+				}
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/toplist/HotThrowTopListVisitable.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2016 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.toplist;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import org.adoptopenjdk.jitwatch.hotthrow.HotThrowFinder;
+import org.adoptopenjdk.jitwatch.hotthrow.HotThrowResult;
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+
+public class HotThrowTopListVisitable extends AbstractTopListVisitable
+{
+	private final Map<String, Integer> hotThrowMap;
+
+	public HotThrowTopListVisitable(IReadOnlyJITDataModel model, boolean sortHighToLow)
+	{
+		super(model, sortHighToLow);
+		hotThrowMap = new HashMap<>();
+	}
+
+	@Override
+	public void visit(IMetaMember metaMember)
+	{
+		if (metaMember.isCompiled())
+		{
+			HotThrowFinder finder = new HotThrowFinder(model);
+
+			Set<HotThrowResult> results = finder.findHotThrows(metaMember);
+
+			for (HotThrowResult result : results)
+			{
+				String iMapping = result.getMember().toString() + " BCI:" + result.getBci() + " preallocated:"
+						+ result.isPreallocated() + " => " + result.getExceptionType();
+
+				int count = 0;
+
+				if (hotThrowMap.containsKey(iMapping))
+				{
+					count = hotThrowMap.get(iMapping);
+				}
+
+				hotThrowMap.put(iMapping, count + 1);
+			}
+		}
+	}
+
+	@Override
+	public void postProcess()
+	{
+		for (Map.Entry<String, Integer> entry : hotThrowMap.entrySet())
+		{
+			topList.add(new StringTopListScore(entry.getKey(), entry.getValue().longValue()));
+		}
+	}
+}
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/hotthrow/HotThrowResult.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2016 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.hotthrow;
+
+import org.adoptopenjdk.jitwatch.model.IMetaMember;
+
+public class HotThrowResult
+{
+	private IMetaMember member;
+	private int bci;
+	private String exceptionType;
+	private boolean preallocated;
+	
+	public HotThrowResult(IMetaMember member, int bci, String exceptionType, boolean preallocated)
+	{
+		super();
+		this.member = member;
+		this.bci = bci;
+		this.exceptionType = exceptionType;
+		this.preallocated = preallocated;
+	}
+
+	public IMetaMember getMember()
+	{
+		return member;
+	}
+
+	public int getBci()
+	{
+		return bci;
+	}
+
+	public String getExceptionType()
+	{
+		return exceptionType;
+	}
+
+	public boolean isPreallocated()
+	{
+		return preallocated;
+	}
+
+	@Override
+	public int hashCode()
+	{
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + bci;
+		result = prime * result + ((exceptionType == null) ? 0 : exceptionType.hashCode());
+		result = prime * result + ((member == null) ? 0 : member.hashCode());
+		result = prime * result + (preallocated ? 1231 : 1237);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj)
+	{
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		HotThrowResult other = (HotThrowResult) obj;
+		if (bci != other.bci)
+			return false;
+		if (exceptionType == null)
+		{
+			if (other.exceptionType != null)
+				return false;
+		}
+		else if (!exceptionType.equals(other.exceptionType))
+			return false;
+		if (member == null)
+		{
+			if (other.member != null)
+				return false;
+		}
+		else if (!member.equals(other.member))
+			return false;
+		if (preallocated != other.preallocated)
+			return false;
+		return true;
+	}
+
+}
+
+codex
+The source itself is small, so I’m checking who points to it. For hub-like modularization, the target would need either broad fan-out inside its own implementation or many dependents elsewhere; I’m verifying both.
+exec
+/bin/bash -lc "rg -n \"\\bHotThrow\\b\" core src ." in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ exited 2 in 0ms:
+rg: src: No such file or directory (os error 2)
+./core/src/main/resources/examples/HotThrow.java:3:public class HotThrow
+./core/src/main/resources/examples/HotThrow.java:7:    public HotThrow()
+./core/src/main/resources/examples/HotThrow.java:41:        new HotThrow();
+core/src/main/resources/examples/HotThrow.java:3:public class HotThrow
+core/src/main/resources/examples/HotThrow.java:7:    public HotThrow()
+core/src/main/resources/examples/HotThrow.java:41:        new HotThrow();
+
+exec
+/bin/bash -lc "rg -n \"HotThrow\\.java|examples/HotThrow|LHotThrow;|new HotThrow\\(\" core/src/test core/src/main" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/resources/examples/HotThrow.java:41:        new HotThrow();
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeLoader.java:529:				"        0       8     0  this   LHotThrow;",
+
+exec
+/bin/bash -lc "sed -n '500,560p' core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeLoader.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+				"         4: return        ",
+				"      LineNumberTable:",
+				"        line 3: 0",
+				"      LocalVariableTable:",
+				"        Start  Length  Slot  Name   Signature",
+				"               0       5     0  this   Lorg/adoptopenjdk/jitwatch/test/TestBytecodeLoader;",
+				"",
+				"  public char getChar(char[], int);",
+				"descriptor: ([CI)C",
+				"flags: ACC_PUBLIC",
+				"Code:",
+				"  stack=2, locals=4, args_size=3",
+				"     0: aload_1",
+				"     1: iload_2",
+				"     2: caload",
+				"     3: ireturn",
+				"     4: astore_3",
+				"     5: bipush        42",
+				"     7: ireturn",
+				"  Exception table:",
+				"     from    to  target type",
+				"         0     3     4   Class java/lang/ArrayIndexOutOfBoundsException",
+				"  LineNumberTable:",
+				"    line 31: 0",
+				"    line 33: 4",
+				"    line 35: 5",
+				"  LocalVariableTable:",
+				"    Start  Length  Slot  Name   Signature",
+				"        5       3     3     e   Ljava/lang/ArrayIndexOutOfBoundsException;",
+				"        0       8     0  this   LHotThrow;",
+				"        0       8     1 chars   [C",
+				"        0       8     2 index   I",
+				"  StackMapTable: number_of_entries = 1",
+				"    frame_type = 68 /* same_locals_1_stack_item */",
+				"      stack = [ class java/lang/ArrayIndexOutOfBoundsException ]",
+				"}" };
+
+		IMetaMember member = UnitTestUtil.createTestMetaMember(getClass().getName(), "getChar",
+				new Class<?>[] { char[].class, int.class }, char.class);
+
+		ClassBC classBytecode = BytecodeLoader.parse(getClass().getName(), lines, false);
+
+		MemberBytecode memberBytecode = classBytecode.getMemberBytecode(member);
+
+		assertNotNull(memberBytecode);
+
+		List<BytecodeInstruction> instructions = memberBytecode.getInstructions();
+
+		assertEquals(7, instructions.size());
+
+		LineTable lineTable = memberBytecode.getLineTable();
+
+		assertEquals(3, lineTable.size());
+
+		ExceptionTable exceptionTable = memberBytecode.getExceptionTable();
+
+		assertEquals(1, exceptionTable.size());
+
+		ExceptionTableEntry entry = exceptionTable.getEntries().get(0);
+
+		assertEquals(0, entry.getFrom());
+
+exec
+/bin/bash -lc "nl -ba core/src/main/resources/examples/HotThrow.java | sed -n '1,120p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	import java.util.Random;
+     2	
+     3	public class HotThrow
+     4	{
+     5	    private Random random = new Random();
+     6	
+     7	    public HotThrow()
+     8	    {
+     9	        StringBuilder builder = new StringBuilder();
+    10	
+    11	        String string = "The quick brown fox jumps over the lazy dog";
+    12	
+    13	        char[] chars = string.toCharArray();
+    14	
+    15	        for (int i = 0 ; i < 1_000_000; i++)
+    16	        {
+    17	            int index = random.nextInt(100);
+    18	
+    19	            char c = getChar(chars, index);
+    20	
+    21	            builder.append(c);
+    22	        }
+    23	
+    24	        System.out.println(builder.toString());
+    25	    }
+    26	
+    27	    public char getChar(char[] chars, int index)
+    28	    {
+    29	        try
+    30	        {
+    31	            return chars[index];
+    32	        }
+    33	        catch(ArrayIndexOutOfBoundsException e)
+    34	        {
+    35	            return '*';
+    36	        }
+    37	    }
+    38	
+    39	    public static void main(String[] args)
+    40	    {
+    41	        new HotThrow();
+    42	    }
+    43	}
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/toplist/HotThrowTopListVisitable.java | sed -n '1,200p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2016 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.toplist;
+     7	
+     8	import java.util.HashMap;
+     9	import java.util.Map;
+    10	import java.util.Set;
+    11	
+    12	import org.adoptopenjdk.jitwatch.hotthrow.HotThrowFinder;
+    13	import org.adoptopenjdk.jitwatch.hotthrow.HotThrowResult;
+    14	import org.adoptopenjdk.jitwatch.model.IMetaMember;
+    15	import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel;
+    16	
+    17	public class HotThrowTopListVisitable extends AbstractTopListVisitable
+    18	{
+    19		private final Map<String, Integer> hotThrowMap;
+    20	
+    21		public HotThrowTopListVisitable(IReadOnlyJITDataModel model, boolean sortHighToLow)
+    22		{
+    23			super(model, sortHighToLow);
+    24			hotThrowMap = new HashMap<>();
+    25		}
+    26	
+    27		@Override
+    28		public void visit(IMetaMember metaMember)
+    29		{
+    30			if (metaMember.isCompiled())
+    31			{
+    32				HotThrowFinder finder = new HotThrowFinder(model);
+    33	
+    34				Set<HotThrowResult> results = finder.findHotThrows(metaMember);
+    35	
+    36				for (HotThrowResult result : results)
+    37				{
+    38					String iMapping = result.getMember().toString() + " BCI:" + result.getBci() + " preallocated:"
+    39							+ result.isPreallocated() + " => " + result.getExceptionType();
+    40	
+    41					int count = 0;
+    42	
+    43					if (hotThrowMap.containsKey(iMapping))
+    44					{
+    45						count = hotThrowMap.get(iMapping);
+    46					}
+    47	
+    48					hotThrowMap.put(iMapping, count + 1);
+    49				}
+    50			}
+    51		}
+    52	
+    53		@Override
+    54		public void postProcess()
+    55		{
+    56			for (Map.Entry<String, Integer> entry : hotThrowMap.entrySet())
+    57			{
+    58				topList.add(new StringTopListScore(entry.getKey(), entry.getValue().longValue()));
+    59			}
+    60		}
+    61	}
+
+codex
+{"target":"(default package).HotThrow","detection":false,"justification":"Inspected core/src/main/resources/examples/HotThrow.java and found a small self-contained example class with only one field, one helper method, and a main method; its only non-JDK dependency is a call to its own getChar method, so fan-out is minimal. Fan-in is also minimal: rg found no production references, and the only repository reference is the bytecode fixture in core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeLoader.java:529, which mentions LHotThrow; in a test string. This is not evidence of a dependency hub."}
+tokens used
+9,737

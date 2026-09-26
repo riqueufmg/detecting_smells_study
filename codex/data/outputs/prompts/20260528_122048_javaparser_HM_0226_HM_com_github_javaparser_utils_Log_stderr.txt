@@ -1,0 +1,680 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f2c-9722-7c81-8cff-eb4ad55045ca
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.utils.Log` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.utils.Log",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.utils.Log`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `com.github.javaparser.utils.Log` and tracing both its imports/calls and the number of classes that depend on it, then I’ll decide whether the class acts as a dependency hub.
+web search: 
+web search: site:github.com javaparser utils Log class imports ...
+codex
+I have the target class name and I’m checking the local source tree for the implementation plus all references to it so I can estimate both fan-out and fan-in from repository evidence.
+exec
+/bin/bash -lc "rg --files . | rg '("'^|/)Log'"\\.java"'$|(''^|/)log'"\\.java"'$'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"com\\.github\\.javaparser\\.utils\\.Log|\\bLog\\.(trace|info|error|setAdapter)\\b|import static com\\.github\\.javaparser\\.utils\\.Log|import com\\.github\\.javaparser\\.utils\\.Log\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 232ms:
+./javaparser-core/src/main/java/com/github/javaparser/utils/Log.java
+
+ succeeded in 244ms:
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/VisitorGenerator.java:33:import com.github.javaparser.utils.Log;
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/VisitorGenerator.java:65:        Log.info("Running %s", () -> getClass().getSimpleName());
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/TokenKindGenerator.java:36:import com.github.javaparser.utils.Log;
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/TokenKindGenerator.java:52:        Log.info("Running %s", () -> getClass().getSimpleName());
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/BndGenerator.java:25:import com.github.javaparser.utils.Log;
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/BndGenerator.java:46:        Log.info("Running %s", () -> getClass().getSimpleName());
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/BndGenerator.java:64:            Log.info("Written " + output);
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java:33:import com.github.javaparser.utils.Log;
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java:54:        Log.setAdapter(new Log.StandardOutStandardErrorAdapter());
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/NodeGenerator.java:30:import com.github.javaparser.utils.Log;
+./javaparser-core-generators/src/main/java/com/github/javaparser/generator/NodeGenerator.java:45:        Log.info("Running %s", () -> getClass().getSimpleName());
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java:44:import com.github.javaparser.utils.Log;
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java:279:                Log.info("");
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java:280:                Log.info("Problems (" + (i + 1) + " of " + problemResults.size() + "): ");
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java:281:                Log.info(problems.toString());
+./javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java:287:        Log.info("parseResults.size() = " + parseResults.size());
+./javaparser-core/src/main/java/com/github/javaparser/utils/ParserCollectionStrategy.java:100:            Log.error(e, "Unable to walk %s", () -> path);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceZip.java:72:        Log.info("New source zip at \"%s\"", () -> this.zipPath);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceZip.java:84:        Log.info("Parsing zip at \"%s\"", () -> zipPath);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceZip.java:99:        Log.info("Parsing zip at \"%s\"", () -> zipPath);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceZip.java:104:                    Log.info("Parsing zip entry \"%s\"", () -> entry.getName());
+./javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:60:                    Log.info(
+./javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:63:                Log.info("Parse result not present");
+./javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:65:            Log.info("Parsing was not successful.");
+./javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:66:            Log.info(
+./javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:70:            Log.info("Problem parsing file %s : %s", () -> file, () -> e.getLocalizedMessage());
+./javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:72:            Log.info("Could not parse file %s : %s", () -> file, () -> e.getLocalizedMessage());
+./javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:74:            Log.info("Could not read file %s : %s", () -> file, () -> e.getLocalizedMessage());
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:100:        Log.info("New source root at \"%s\"", () -> this.root);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:126:            Log.trace("Retrieving cached %s", () -> relativePath);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:130:        Log.trace("Parsing %s", () -> path);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:187:            Log.trace("Not processing directory \"%s\"", () -> dirToEnter);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:225:                    Log.error(e);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:274:        Log.trace("Parsing %s", () -> localPath);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:356:        Log.info("Parsing package \"%s\"", () -> startPackage);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:381:                        Log.error(e);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:425:        Log.trace("Adding new file %s.%s", () -> startPackage, () -> filename);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:440:            Log.trace("Adding new file %s", () -> path);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:487:        Log.info("Saving all files (%s) to %s", cache::size, () -> root);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:491:                Log.trace("Saving %s", () -> target);
+./javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:642:                Log.error(e);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionTest.java:49:import com.github.javaparser.utils.Log;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionTest.java:58:        Log.setAdapter(new Log.SilentAdapter());
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionTest.java:63:        Log.setAdapter(new Log.StandardOutStandardErrorAdapter());
+./javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonSerializer.java:34:import com.github.javaparser.utils.Log;
+./javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonSerializer.java:51:        Log.info("Serializing Node to JSON.");
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:57:        Log.setAdapter(testAdapter);
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:62:        Log.setAdapter(new Log.SilentAdapter());
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:67:        Log.trace("abc");
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:68:        Log.trace("a%sc%s", () -> "b", () -> "d");
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:74:        Log.info("abc");
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:75:        Log.info("a%sc", () -> "b");
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:81:        Log.error("abc");
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:82:        Log.error("a%sc", () -> "b");
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:83:        Log.error(new Throwable("!!!"), "abc");
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:84:        Log.error(new Throwable("!!!"), "a%sc%s", () -> "b", () -> "d");
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:85:        Log.error(new Throwable("!!!"));
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java:164:        Log.info("Unzipping %s to %s", () -> zipFile, () -> outputFolder);
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java:180:                    Log.trace("mkdir %s", newFile::toAbsolutePath);
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java:183:                    Log.info("unzip %s", newFile::toAbsolutePath);
+./javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java:195:        Log.info("Unzipped %s to %s", () -> zipFile, () -> outputFolder);
+./javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:34:import com.github.javaparser.utils.Log;
+./javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:56:        Log.setAdapter(new Log.StandardOutStandardErrorAdapter());
+./javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:69:            Log.info("Downloading JDK langtools");
+./javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:93:        Log.setAdapter(new Log.StandardOutStandardErrorAdapter());
+./javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:98:        Log.setAdapter(new Log.SilentAdapter());
+./javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:152:        Log.info("Writing results...");
+./javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:185:        Log.info("Results are in %s", () -> finalTestResults);
+./javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonDeserializer.java:34:import com.github.javaparser.utils.Log;
+./javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonDeserializer.java:54:        Log.info("Deserializing JSON to Node.");
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionWithJavassistTest.java:40:import com.github.javaparser.utils.Log;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionWithJavassistTest.java:50:        Log.setAdapter(new Log.SilentAdapter());
+./changelog.md:1556:* fix Log.error() throwing NullPointerException (PR [#3243](https://github.com/javaparser/javaparser/pull/3243) by [@CD4017BE](https://github.com/CD4017BE))
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategyTest.java:30:import com.github.javaparser.utils.Log;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategyTest.java:63:                        Log.error(e, "Unable to resolve %s from %s", () -> expr, () -> compilationUnit
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:34:import com.github.javaparser.utils.Log;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:93:                            Log.info("Trying to compute the source root from %s", () -> file.toString());
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:101:                                Log.info("New current source root is %s", () -> current_root.toString());
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:104:                        Log.info("Jar file is found %s", () -> file.toString());
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:113:                        Log.info("Skipping sub-tree %s", () -> dir.toString());
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:122:                        Log.info("Adding source root %s", () -> dir.toString());
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:131:            Log.error(e, "Unable to walk %s", () -> path);
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/logic/AbstractTypeDeclaration.java:31:import com.github.javaparser.utils.Log;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/logic/AbstractTypeDeclaration.java:130:            Log.error("Could not invoke isRecord on " + clazz.getName() + " due to " + e.getMessage());
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:56:import com.github.javaparser.utils.Log;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:331:        Log.trace("getType on method call %s", () -> node);
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:334:        Log.trace("getType on method call %s resolved to %s", () -> node, () -> ref);
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:335:        Log.trace("getType on method call %s return type is %s", () -> node, ref::returnType);
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:342:        Log.trace("getType on name expr %s", () -> node);
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:352:        Log.trace("getType on type expr %s", () -> node);
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:483:            Log.trace(
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:651:            Log.trace(
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacade.java:53:import com.github.javaparser.utils.Log;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacade.java:426:                Log.trace("getType on %s  -> %s", () -> node, () -> res);
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacade.java:442:            Log.trace("getType on %s (no solveLambdas) -> %s", () -> node, () -> res);
+
+codex
+I found the implementation and a broad set of call sites across core, symbol-solver, serialization, generators, and tests. Next I’m checking the actual API surface and the spread of callers to see whether this is a central utility or just a moderately reused helper.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/utils/Log.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -l \"\\bLog\\b\" javaparser-core javaparser-core-serialization javaparser-core-testing javaparser-core-generators javaparser-core-metamodel-generator javaparser-symbol-solver-core javaparser-symbol-solver-testing | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 227ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.utils;
+
+import static com.github.javaparser.utils.CodeGenerationUtils.f;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.function.Supplier;
+
+/**
+ * To avoid dependencies on logging frameworks, we have invented yet another logging framework :-)
+ * <p>
+ * See <a href="http://javaparser.org/javaparsers-logging-framework-in-one-file/">a blog about this</a>
+ */
+public class Log {
+
+    /**
+     * This adapter logs to standard out and standard error.
+     */
+    public static class StandardOutStandardErrorAdapter implements Adapter {
+
+        @Override
+        public void info(Supplier<String> messageSupplier) {
+            System.out.println(messageSupplier.get());
+        }
+
+        @Override
+        public void trace(Supplier<String> messageSupplier) {
+            System.out.println(messageSupplier.get());
+        }
+
+        @Override
+        public void error(Supplier<Throwable> throwableSupplier, Supplier<String> messageSupplier) {
+            Throwable throwable = throwableSupplier.get();
+            String message = messageSupplier.get();
+            if (message == null) {
+                System.err.println(throwable.getMessage());
+                printStackTrace(throwable);
+            } else if (throwable == null) {
+                System.err.println(message);
+            } else {
+                System.err.println(message + ":" + throwable.getMessage());
+                printStackTrace(throwable);
+            }
+        }
+
+        private void printStackTrace(Throwable throwable) {
+            try (StringWriter sw = new StringWriter();
+                    PrintWriter pw = new PrintWriter(sw)) {
+                throwable.printStackTrace(pw);
+                trace(sw::toString);
+            } catch (IOException e) {
+                throw new AssertionError("Error in logging library");
+            }
+        }
+    }
+
+    /**
+     * This adapter logs nothing.
+     */
+    public static class SilentAdapter implements Adapter {
+
+        @Override
+        public void info(Supplier<String> messageSupplier) {}
+
+        @Override
+        public void trace(Supplier<String> messageSupplier) {}
+
+        @Override
+        public void error(Supplier<Throwable> throwableSupplier, Supplier<String> messageSupplier) {}
+    }
+
+    public interface Adapter {
+
+        void info(Supplier<String> message);
+
+        void trace(Supplier<String> message);
+
+        /**
+         * Both can supply a null.
+         */
+        void error(Supplier<Throwable> throwableSupplier, Supplier<String> messageSupplier);
+    }
+
+    private static Adapter CURRENT_ADAPTER = new SilentAdapter();
+
+    /**
+     * Change how logging is handled. You can set your own implementation that forwards to your logging library.
+     */
+    public static void setAdapter(Adapter adapter) {
+        CURRENT_ADAPTER = adapter;
+    }
+
+    /**
+     * For logging information that may help solving a problem.
+     */
+    @SafeVarargs
+    public static void trace(String format, Supplier<Object>... args) {
+        CURRENT_ADAPTER.trace(makeFormattingSupplier(format, args));
+    }
+
+    private static Supplier<String> makeFormattingSupplier(String format, Supplier<Object>[] args) {
+        return () -> {
+            Object[] objects = new Object[args.length];
+            for (int i = 0; i < args.length; i++) {
+                objects[i] = args[i].get();
+            }
+            return f(format, objects);
+        };
+    }
+
+    /**
+     * For logging things that are nice to see scrolling by.
+     */
+    @SafeVarargs
+    public static void info(String format, Supplier<Object>... args) {
+        CURRENT_ADAPTER.info(makeFormattingSupplier(format, args));
+    }
+
+    /**
+     * For drawing attention to an error.
+     */
+    public static void error(Throwable throwable) {
+        CURRENT_ADAPTER.error(() -> throwable, () -> null);
+    }
+
+    /**
+     * For drawing attention to an error that you don't have an exception for.
+     */
+    @SafeVarargs
+    public static void error(Throwable throwable, String format, Supplier<Object>... args) {
+        CURRENT_ADAPTER.error(() -> throwable, makeFormattingSupplier(format, args));
+    }
+
+    /**
+     * For drawing attention to an error that you don't have an exception for.
+     */
+    @SafeVarargs
+    public static void error(String format, Supplier<Object>... args) {
+        CURRENT_ADAPTER.error(() -> null, makeFormattingSupplier(format, args));
+    }
+}
+
+ succeeded in 363ms:
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/NodeGenerator.java
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/VisitorGenerator.java
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/BndGenerator.java
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/TokenKindGenerator.java
+javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java
+javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonDeserializer.java
+javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonSerializer.java
+javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/Issue3773Test.java
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java
+javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java
+javaparser-core/src/main/java/com/github/javaparser/utils/Log.java
+javaparser-core/src/main/java/com/github/javaparser/utils/ParserCollectionStrategy.java
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceZip.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacade.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/logic/AbstractTypeDeclaration.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionWithJavassistTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategyTest.java
+
+codex
+I have the class body now. I’m quantifying the reference spread so the verdict rests on concrete fan-in evidence rather than a vague impression.
+exec
+/bin/bash -lc "rg -l \"\\bLog\\b\" javaparser-core javaparser-core-serialization javaparser-core-testing javaparser-core-generators javaparser-core-metamodel-generator javaparser-symbol-solver-core javaparser-symbol-solver-testing | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -l \"\\bLog\\b\" javaparser-core javaparser-core-serialization javaparser-core-testing javaparser-core-generators javaparser-core-metamodel-generator javaparser-symbol-solver-core javaparser-symbol-solver-testing | sort | sed -n '1,40p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 371ms:
+24
+
+ succeeded in 375ms:
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/NodeGenerator.java
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/VisitorGenerator.java
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/BndGenerator.java
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/TokenKindGenerator.java
+javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java
+javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonDeserializer.java
+javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonSerializer.java
+javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/lexicalpreservation/Issue3773Test.java
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java
+javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java
+javaparser-core/src/main/java/com/github/javaparser/utils/Log.java
+javaparser-core/src/main/java/com/github/javaparser/utils/ParserCollectionStrategy.java
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceZip.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacade.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/logic/AbstractTypeDeclaration.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionWithJavassistTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategyTest.java
+
+codex
+The reference count is broad: 24 files touch `Log`, spanning core, generators, serialization, symbol-solver, and tests. I’m pulling line numbers from `Log.java` so the final justification can contrast that fan-in with the class’s small internal dependency set.
+exec
+/bin/bash -lc "nl -ba javaparser-core/src/main/java/com/github/javaparser/utils/Log.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"import com\\.github\\.javaparser\\.utils\\.Log|import static com\\.github\\.javaparser\\.utils\\.Log|Log\\.(trace|info|error|setAdapter)\\b\" javaparser-core javaparser-core-serialization javaparser-core-testing javaparser-core-generators javaparser-core-metamodel-generator javaparser-symbol-solver-core javaparser-symbol-solver-testing" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 228ms:
+     1	/*
+     2	 * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+     3	 * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	package com.github.javaparser.utils;
+    22	
+    23	import static com.github.javaparser.utils.CodeGenerationUtils.f;
+    24	
+    25	import java.io.IOException;
+    26	import java.io.PrintWriter;
+    27	import java.io.StringWriter;
+    28	import java.util.function.Supplier;
+    29	
+    30	/**
+    31	 * To avoid dependencies on logging frameworks, we have invented yet another logging framework :-)
+    32	 * <p>
+    33	 * See <a href="http://javaparser.org/javaparsers-logging-framework-in-one-file/">a blog about this</a>
+    34	 */
+    35	public class Log {
+    36	
+    37	    /**
+    38	     * This adapter logs to standard out and standard error.
+    39	     */
+    40	    public static class StandardOutStandardErrorAdapter implements Adapter {
+    41	
+    42	        @Override
+    43	        public void info(Supplier<String> messageSupplier) {
+    44	            System.out.println(messageSupplier.get());
+    45	        }
+    46	
+    47	        @Override
+    48	        public void trace(Supplier<String> messageSupplier) {
+    49	            System.out.println(messageSupplier.get());
+    50	        }
+    51	
+    52	        @Override
+    53	        public void error(Supplier<Throwable> throwableSupplier, Supplier<String> messageSupplier) {
+    54	            Throwable throwable = throwableSupplier.get();
+    55	            String message = messageSupplier.get();
+    56	            if (message == null) {
+    57	                System.err.println(throwable.getMessage());
+    58	                printStackTrace(throwable);
+    59	            } else if (throwable == null) {
+    60	                System.err.println(message);
+    61	            } else {
+    62	                System.err.println(message + ":" + throwable.getMessage());
+    63	                printStackTrace(throwable);
+    64	            }
+    65	        }
+    66	
+    67	        private void printStackTrace(Throwable throwable) {
+    68	            try (StringWriter sw = new StringWriter();
+    69	                    PrintWriter pw = new PrintWriter(sw)) {
+    70	                throwable.printStackTrace(pw);
+    71	                trace(sw::toString);
+    72	            } catch (IOException e) {
+    73	                throw new AssertionError("Error in logging library");
+    74	            }
+    75	        }
+    76	    }
+    77	
+    78	    /**
+    79	     * This adapter logs nothing.
+    80	     */
+    81	    public static class SilentAdapter implements Adapter {
+    82	
+    83	        @Override
+    84	        public void info(Supplier<String> messageSupplier) {}
+    85	
+    86	        @Override
+    87	        public void trace(Supplier<String> messageSupplier) {}
+    88	
+    89	        @Override
+    90	        public void error(Supplier<Throwable> throwableSupplier, Supplier<String> messageSupplier) {}
+    91	    }
+    92	
+    93	    public interface Adapter {
+    94	
+    95	        void info(Supplier<String> message);
+    96	
+    97	        void trace(Supplier<String> message);
+    98	
+    99	        /**
+   100	         * Both can supply a null.
+   101	         */
+   102	        void error(Supplier<Throwable> throwableSupplier, Supplier<String> messageSupplier);
+   103	    }
+   104	
+   105	    private static Adapter CURRENT_ADAPTER = new SilentAdapter();
+   106	
+   107	    /**
+   108	     * Change how logging is handled. You can set your own implementation that forwards to your logging library.
+   109	     */
+   110	    public static void setAdapter(Adapter adapter) {
+   111	        CURRENT_ADAPTER = adapter;
+   112	    }
+   113	
+   114	    /**
+   115	     * For logging information that may help solving a problem.
+   116	     */
+   117	    @SafeVarargs
+   118	    public static void trace(String format, Supplier<Object>... args) {
+   119	        CURRENT_ADAPTER.trace(makeFormattingSupplier(format, args));
+   120	    }
+   121	
+   122	    private static Supplier<String> makeFormattingSupplier(String format, Supplier<Object>[] args) {
+   123	        return () -> {
+   124	            Object[] objects = new Object[args.length];
+   125	            for (int i = 0; i < args.length; i++) {
+   126	                objects[i] = args[i].get();
+   127	            }
+   128	            return f(format, objects);
+   129	        };
+   130	    }
+   131	
+   132	    /**
+   133	     * For logging things that are nice to see scrolling by.
+   134	     */
+   135	    @SafeVarargs
+   136	    public static void info(String format, Supplier<Object>... args) {
+   137	        CURRENT_ADAPTER.info(makeFormattingSupplier(format, args));
+   138	    }
+   139	
+   140	    /**
+   141	     * For drawing attention to an error.
+   142	     */
+   143	    public static void error(Throwable throwable) {
+   144	        CURRENT_ADAPTER.error(() -> throwable, () -> null);
+   145	    }
+   146	
+   147	    /**
+   148	     * For drawing attention to an error that you don't have an exception for.
+   149	     */
+   150	    @SafeVarargs
+   151	    public static void error(Throwable throwable, String format, Supplier<Object>... args) {
+   152	        CURRENT_ADAPTER.error(() -> throwable, makeFormattingSupplier(format, args));
+   153	    }
+   154	
+   155	    /**
+   156	     * For drawing attention to an error that you don't have an exception for.
+   157	     */
+   158	    @SafeVarargs
+   159	    public static void error(String format, Supplier<Object>... args) {
+   160	        CURRENT_ADAPTER.error(() -> null, makeFormattingSupplier(format, args));
+   161	    }
+   162	}
+
+ succeeded in 326ms:
+javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:34:import com.github.javaparser.utils.Log;
+javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:56:        Log.setAdapter(new Log.StandardOutStandardErrorAdapter());
+javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:69:            Log.info("Downloading JDK langtools");
+javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:93:        Log.setAdapter(new Log.StandardOutStandardErrorAdapter());
+javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:98:        Log.setAdapter(new Log.SilentAdapter());
+javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:152:        Log.info("Writing results...");
+javaparser-core-testing/src/test/java/com/github/javaparser/manual/BulkParseTest.java:185:        Log.info("Results are in %s", () -> finalTestResults);
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/VisitorGenerator.java:33:import com.github.javaparser.utils.Log;
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/VisitorGenerator.java:65:        Log.info("Running %s", () -> getClass().getSimpleName());
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:56:import com.github.javaparser.utils.Log;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:331:        Log.trace("getType on method call %s", () -> node);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:334:        Log.trace("getType on method call %s resolved to %s", () -> node, () -> ref);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:335:        Log.trace("getType on method call %s return type is %s", () -> node, ref::returnType);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:342:        Log.trace("getType on name expr %s", () -> node);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:352:        Log.trace("getType on type expr %s", () -> node);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:483:            Log.trace(
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java:651:            Log.trace(
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacade.java:53:import com.github.javaparser.utils.Log;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacade.java:426:                Log.trace("getType on %s  -> %s", () -> node, () -> res);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacade.java:442:            Log.trace("getType on %s (no solveLambdas) -> %s", () -> node, () -> res);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/logic/AbstractTypeDeclaration.java:31:import com.github.javaparser.utils.Log;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/logic/AbstractTypeDeclaration.java:130:            Log.error("Could not invoke isRecord on " + clazz.getName() + " due to " + e.getMessage());
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:34:import com.github.javaparser.utils.Log;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:93:                            Log.info("Trying to compute the source root from %s", () -> file.toString());
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:101:                                Log.info("New current source root is %s", () -> current_root.toString());
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:104:                        Log.info("Jar file is found %s", () -> file.toString());
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:113:                        Log.info("Skipping sub-tree %s", () -> dir.toString());
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:122:                        Log.info("Adding source root %s", () -> dir.toString());
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategy.java:131:            Log.error(e, "Unable to walk %s", () -> path);
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java:33:import com.github.javaparser.utils.Log;
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/CoreGenerator.java:54:        Log.setAdapter(new Log.StandardOutStandardErrorAdapter());
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/NodeGenerator.java:30:import com.github.javaparser.utils.Log;
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/NodeGenerator.java:45:        Log.info("Running %s", () -> getClass().getSimpleName());
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/TokenKindGenerator.java:36:import com.github.javaparser.utils.Log;
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/TokenKindGenerator.java:52:        Log.info("Running %s", () -> getClass().getSimpleName());
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/BndGenerator.java:25:import com.github.javaparser.utils.Log;
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/BndGenerator.java:46:        Log.info("Running %s", () -> getClass().getSimpleName());
+javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/BndGenerator.java:64:            Log.info("Written " + output);
+javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonSerializer.java:34:import com.github.javaparser.utils.Log;
+javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonSerializer.java:51:        Log.info("Serializing Node to JSON.");
+javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonDeserializer.java:34:import com.github.javaparser.utils.Log;
+javaparser-core-serialization/src/main/java/com/github/javaparser/serialization/JavaParserJsonDeserializer.java:54:        Log.info("Deserializing JSON to Node.");
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java:164:        Log.info("Unzipping %s to %s", () -> zipFile, () -> outputFolder);
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java:180:                    Log.trace("mkdir %s", newFile::toAbsolutePath);
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java:183:                    Log.info("unzip %s", newFile::toAbsolutePath);
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/TestUtils.java:195:        Log.info("Unzipped %s to %s", () -> zipFile, () -> outputFolder);
+javaparser-core/src/main/java/com/github/javaparser/utils/ParserCollectionStrategy.java:100:            Log.error(e, "Unable to walk %s", () -> path);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceZip.java:72:        Log.info("New source zip at \"%s\"", () -> this.zipPath);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceZip.java:84:        Log.info("Parsing zip at \"%s\"", () -> zipPath);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceZip.java:99:        Log.info("Parsing zip at \"%s\"", () -> zipPath);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceZip.java:104:                    Log.info("Parsing zip entry \"%s\"", () -> entry.getName());
+javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:60:                    Log.info(
+javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:63:                Log.info("Parse result not present");
+javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:65:            Log.info("Parsing was not successful.");
+javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:66:            Log.info(
+javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:70:            Log.info("Problem parsing file %s : %s", () -> file, () -> e.getLocalizedMessage());
+javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:72:            Log.info("Could not parse file %s : %s", () -> file, () -> e.getLocalizedMessage());
+javaparser-core/src/main/java/com/github/javaparser/utils/CollectionStrategy.java:74:            Log.info("Could not read file %s : %s", () -> file, () -> e.getLocalizedMessage());
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:100:        Log.info("New source root at \"%s\"", () -> this.root);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:126:            Log.trace("Retrieving cached %s", () -> relativePath);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:130:        Log.trace("Parsing %s", () -> path);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:187:            Log.trace("Not processing directory \"%s\"", () -> dirToEnter);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:225:                    Log.error(e);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:274:        Log.trace("Parsing %s", () -> localPath);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:356:        Log.info("Parsing package \"%s\"", () -> startPackage);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:381:                        Log.error(e);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:425:        Log.trace("Adding new file %s.%s", () -> startPackage, () -> filename);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:440:            Log.trace("Adding new file %s", () -> path);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:487:        Log.info("Saving all files (%s) to %s", cache::size, () -> root);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:491:                Log.trace("Saving %s", () -> target);
+javaparser-core/src/main/java/com/github/javaparser/utils/SourceRoot.java:642:                Log.error(e);
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:57:        Log.setAdapter(testAdapter);
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:62:        Log.setAdapter(new Log.SilentAdapter());
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:67:        Log.trace("abc");
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:68:        Log.trace("a%sc%s", () -> "b", () -> "d");
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:74:        Log.info("abc");
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:75:        Log.info("a%sc", () -> "b");
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:81:        Log.error("abc");
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:82:        Log.error("a%sc", () -> "b");
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:83:        Log.error(new Throwable("!!!"), "abc");
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:84:        Log.error(new Throwable("!!!"), "a%sc%s", () -> "b", () -> "d");
+javaparser-core-testing/src/test/java/com/github/javaparser/utils/LogTest.java:85:        Log.error(new Throwable("!!!"));
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionTest.java:49:import com.github.javaparser.utils.Log;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionTest.java:58:        Log.setAdapter(new Log.SilentAdapter());
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionTest.java:63:        Log.setAdapter(new Log.StandardOutStandardErrorAdapter());
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionWithJavassistTest.java:40:import com.github.javaparser.utils.Log;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionWithJavassistTest.java:50:        Log.setAdapter(new Log.SilentAdapter());
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategyTest.java:30:import com.github.javaparser.utils.Log;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/utils/SymbolSolverCollectionStrategyTest.java:63:                        Log.error(e, "Unable to resolve %s from %s", () -> expr, () -> compilationUnit
+javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java:44:import com.github.javaparser.utils.Log;
+javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java:279:                Log.info("");
+javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java:280:                Log.info("Problems (" + (i + 1) + " of " + problemResults.size() + "): ");
+javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java:281:                Log.info(problems.toString());
+javaparser-core-metamodel-generator/src/main/java/com/github/javaparser/generator/AbstractGenerator.java:287:        Log.info("parseResults.size() = " + parseResults.size());
+
+codex
+{"target":"com.github.javaparser.utils.Log","detection":false,"justification":"Inspected `javaparser-core/src/main/java/com/github/javaparser/utils/Log.java` and its usages across the repo. The class is a small self-contained logging utility: it only depends on `CodeGenerationUtils.f` plus JDK `IOException`, `PrintWriter`, `StringWriter`, and `Supplier`, and exposes a narrow static API with two nested adapters. Fan-in is broad (23 other files across core, serialization, generators, symbol-solver, and tests import/call `Log`), but fan-out is low, so it does not show the high incoming-and-outgoing dependency pattern expected for hub-like modularization."}
+tokens used
+24,900

@@ -1,0 +1,879 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f38-a5d5-7a52-b861-b55fa4aa9197
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.printer.concretesyntaxmodel.CsmComment` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.printer.concretesyntaxmodel.CsmComment",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.printer.concretesyntaxmodel.CsmComment`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and then tracing its direct dependencies and callers so I can judge fan-out and fan-in from the repository evidence.
+exec
+/bin/bash -lc "rg -n \"class CsmComment|interface CsmComment|new CsmComment|CsmComment\\b\" src test -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg --files | rg 'CsmComment\\.java"'$|Csm.*java$|ConcreteSyntaxModel|printer/concretesyntaxmodel'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ exited 2 in 278ms:
+rg: src: No such file or directory (os error 2)
+rg: test: No such file or directory (os error 2)
+
+ succeeded in 345ms:
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/ConcreteSyntaxModelTest.java
+javaparser-core-testing/src/test/java/com/github/javaparser/printer/ConcreteSyntaxModelAcceptanceTest.java
+javaparser-core/src/main/java/com/github/javaparser/printer/ConcreteSyntaxModel.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmElement.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmToken.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmUnindent.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmComment.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmIndent.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmString.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmSequence.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmNone.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmConditional.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmList.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmAttribute.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/PrintingHelper.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmSingleReference.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmChar.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmMix.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmOrphanCommentsEnding.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmTextBlock.java
+
+codex
+I found the class under `javaparser-core`; next I’m reading the implementation and the concrete syntax model tests to see how widely it is used and how many dependencies it pulls in.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmComment.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,260p' javaparser-core/src/main/java/com/github/javaparser/printer/ConcreteSyntaxModel.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"\\bCsmComment\\b\" javaparser-core javaparser-core-testing -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 179ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.printer.concretesyntaxmodel;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.comments.Comment;
+import com.github.javaparser.printer.SourcePrinter;
+
+public class CsmComment implements CsmElement {
+
+    static void process(Comment comment, SourcePrinter printer) {
+        String content = printer.normalizeEolInTextBlock(comment.getContent());
+        printer.print(comment.getHeader());
+        printer.print(content);
+        printer.println(comment.getFooter());
+    }
+
+    @Override
+    public void prettyPrint(Node node, SourcePrinter printer) {
+        node.getComment().ifPresent(c -> process(c, printer));
+    }
+}
+
+ succeeded in 179ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.printer;
+
+import static com.github.javaparser.GeneratedJavaParserConstants.*;
+import static com.github.javaparser.ast.observer.ObservableProperty.*;
+import static com.github.javaparser.printer.concretesyntaxmodel.CsmConditional.Condition.FLAG;
+import static com.github.javaparser.printer.concretesyntaxmodel.CsmConditional.Condition.IS_EMPTY;
+import static com.github.javaparser.printer.concretesyntaxmodel.CsmConditional.Condition.IS_NOT_EMPTY;
+import static com.github.javaparser.printer.concretesyntaxmodel.CsmConditional.Condition.IS_PRESENT;
+import static com.github.javaparser.printer.concretesyntaxmodel.CsmElement.*;
+
+import com.github.javaparser.GeneratedJavaParserConstants;
+import com.github.javaparser.ast.*;
+import com.github.javaparser.ast.body.*;
+import com.github.javaparser.ast.comments.Comment;
+import com.github.javaparser.ast.expr.*;
+import com.github.javaparser.ast.modules.*;
+import com.github.javaparser.ast.observer.ObservableProperty;
+import com.github.javaparser.ast.stmt.*;
+import com.github.javaparser.ast.type.*;
+import com.github.javaparser.metamodel.JavaParserMetaModel;
+import com.github.javaparser.printer.concretesyntaxmodel.CsmConditional;
+import com.github.javaparser.printer.concretesyntaxmodel.CsmElement;
+import com.github.javaparser.printer.concretesyntaxmodel.CsmMix;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * The Concrete Syntax Model for a single node type. It knows the syntax used to represent a certain element in Java
+ * code.
+ */
+public class ConcreteSyntaxModel {
+
+    private static final Map<Class, CsmElement> concreteSyntaxModelByClass = new HashMap<>();
+
+    private static Optional<String> initializationError;
+
+    private static CsmElement modifiers() {
+        return list(ObservableProperty.MODIFIERS, space(), none(), space());
+    }
+
+    /**
+     * Build a mix collecting all the elements specified.
+     */
+    private static CsmElement mix(CsmElement... elements) {
+        return new CsmMix(Arrays.asList(elements));
+    }
+
+    private static CsmElement memberAnnotations() {
+        return list(ObservableProperty.ANNOTATIONS, newline(), none(), newline());
+    }
+
+    private static CsmElement annotations() {
+        return list(ObservableProperty.ANNOTATIONS, space(), none(), newline());
+    }
+
+    private static CsmElement onlineAnnotations() {
+        return list(ObservableProperty.ANNOTATIONS, space(), none(), space());
+    }
+
+    private static CsmElement typeParameters() {
+        return list(
+                ObservableProperty.TYPE_PARAMETERS,
+                sequence(comma(), space()),
+                token(GeneratedJavaParserConstants.LT),
+                sequence(token(GeneratedJavaParserConstants.GT), space()));
+    }
+
+    private static CsmElement typeArguments() {
+        return list(
+                ObservableProperty.TYPE_ARGUMENTS,
+                sequence(comma(), space()),
+                token(GeneratedJavaParserConstants.LT),
+                sequence(token(GeneratedJavaParserConstants.GT)));
+    }
+
+    static {
+        // /
+        // / Body
+        // /
+        concreteSyntaxModelByClass.put(
+                AnnotationDeclaration.class,
+                sequence(
+                        comment(),
+                        memberAnnotations(),
+                        modifiers(),
+                        token(GeneratedJavaParserConstants.AT),
+                        token(GeneratedJavaParserConstants.INTERFACE),
+                        space(),
+                        child(ObservableProperty.NAME),
+                        space(),
+                        token(LBRACE),
+                        newline(),
+                        indent(),
+                        list(ObservableProperty.MEMBERS, newline(), none(), none(), newline()),
+                        unindent(),
+                        token(RBRACE)));
+        concreteSyntaxModelByClass.put(
+                AnnotationMemberDeclaration.class,
+                sequence(
+                        comment(),
+                        memberAnnotations(),
+                        modifiers(),
+                        child(ObservableProperty.TYPE),
+                        space(),
+                        child(ObservableProperty.NAME),
+                        token(LPAREN),
+                        token(RPAREN),
+                        conditional(
+                                ObservableProperty.DEFAULT_VALUE,
+                                IS_PRESENT,
+                                sequence(
+                                        space(),
+                                        token(GeneratedJavaParserConstants._DEFAULT),
+                                        space(),
+                                        child(DEFAULT_VALUE))),
+                        semicolon()));
+        concreteSyntaxModelByClass.put(
+                ClassOrInterfaceDeclaration.class,
+                sequence(
+                        comment(),
+                        memberAnnotations(),
+                        modifiers(),
+                        conditional(
+                                ObservableProperty.INTERFACE,
+                                FLAG,
+                                token(GeneratedJavaParserConstants.INTERFACE),
+                                token(GeneratedJavaParserConstants.CLASS)),
+                        space(),
+                        child(ObservableProperty.NAME),
+                        list(
+                                TYPE_PARAMETERS,
+                                sequence(comma(), space()),
+                                string(GeneratedJavaParserConstants.LT),
+                                string(GeneratedJavaParserConstants.GT)),
+                        list(
+                                ObservableProperty.EXTENDED_TYPES,
+                                sequence(string(GeneratedJavaParserConstants.COMMA), space()),
+                                sequence(space(), token(GeneratedJavaParserConstants.EXTENDS), space()),
+                                none()),
+                        list(
+                                ObservableProperty.IMPLEMENTED_TYPES,
+                                sequence(string(GeneratedJavaParserConstants.COMMA), space()),
+                                sequence(space(), token(GeneratedJavaParserConstants.IMPLEMENTS), space()),
+                                none()),
+                        space(),
+                        list(
+                                ObservableProperty.PERMITTED_TYPES,
+                                sequence(string(GeneratedJavaParserConstants.COMMA), space()),
+                                sequence(space(), token(GeneratedJavaParserConstants.PERMITS), space()),
+                                none()),
+                        block(sequence(
+                                newline(),
+                                list(
+                                        ObservableProperty.MEMBERS,
+                                        sequence(newline(), newline()),
+                                        newline(),
+                                        newline())))));
+        concreteSyntaxModelByClass.put(
+                ConstructorDeclaration.class,
+                sequence(
+                        comment(),
+                        memberAnnotations(),
+                        modifiers(),
+                        typeParameters(),
+                        child(ObservableProperty.NAME),
+                        token(GeneratedJavaParserConstants.LPAREN),
+                        list(ObservableProperty.PARAMETERS, sequence(comma(), space()), none(), none()),
+                        token(GeneratedJavaParserConstants.RPAREN),
+                        list(
+                                ObservableProperty.THROWN_EXCEPTIONS,
+                                sequence(comma(), space()),
+                                sequence(space(), token(GeneratedJavaParserConstants.THROWS), space()),
+                                none()),
+                        space(),
+                        child(ObservableProperty.BODY)));
+        concreteSyntaxModelByClass.put(
+                RecordDeclaration.class,
+                sequence(
+                        comment(),
+                        memberAnnotations(),
+                        modifiers(),
+                        token(GeneratedJavaParserConstants.RECORD),
+                        space(),
+                        child(ObservableProperty.NAME),
+                        token(GeneratedJavaParserConstants.LPAREN),
+                        list(ObservableProperty.PARAMETERS, sequence(comma(), space()), none(), none()),
+                        token(GeneratedJavaParserConstants.RPAREN),
+                        list(
+                                TYPE_PARAMETERS,
+                                sequence(comma(), space()),
+                                string(GeneratedJavaParserConstants.LT),
+                                string(GeneratedJavaParserConstants.GT)),
+                        list(
+                                ObservableProperty.IMPLEMENTED_TYPES,
+                                sequence(string(GeneratedJavaParserConstants.COMMA), space()),
+                                sequence(space(), token(GeneratedJavaParserConstants.IMPLEMENTS), space()),
+                                none()),
+                        space(),
+                        block(sequence(
+                                newline(),
+                                list(
+                                        ObservableProperty.MEMBERS,
+                                        sequence(newline(), newline()),
+                                        newline(),
+                                        newline())))));
+        concreteSyntaxModelByClass.put(
+                CompactConstructorDeclaration.class,
+                sequence(
+                        comment(),
+                        memberAnnotations(),
+                        modifiers(),
+                        typeParameters(),
+                        child(ObservableProperty.NAME),
+                        list(
+                                ObservableProperty.THROWN_EXCEPTIONS,
+                                sequence(comma(), space()),
+                                sequence(space(), token(GeneratedJavaParserConstants.THROWS), space()),
+                                none()),
+                        space(),
+                        child(ObservableProperty.BODY)));
+        concreteSyntaxModelByClass.put(
+                EnumConstantDeclaration.class,
+                sequence(
+                        comment(),
+                        memberAnnotations(),
+                        child(ObservableProperty.NAME),
+                        list(
+                                ObservableProperty.ARGUMENTS,
+                                sequence(comma(), space()),
+                                token(GeneratedJavaParserConstants.LPAREN),
+                                token(GeneratedJavaParserConstants.RPAREN)),
+                        conditional(
+                                CLASS_BODY,
+                                IS_NOT_EMPTY,
+                                sequence(
+                                        space(),
+                                        token(GeneratedJavaParserConstants.LBRACE),
+                                        newline(),
+                                        indent(),
+                                        newline(),
+
+ succeeded in 255ms:
+javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalDifferenceCalculator.java:209:        } else if (csm instanceof CsmComment) {
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmElement.java:105:        return new CsmComment();
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmComment.java:27:public class CsmComment implements CsmElement {
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmOrphanCommentsEnding.java:52:            CsmComment.process(c, printer);
+
+codex
+The first pass shows `CsmComment` is only referenced in a couple of printer internals. I’m checking the surrounding factory and lexical-preservation code to confirm whether its coupling is narrow or whether it sits on a broader dependency path.
+exec
+/bin/bash -lc "sed -n '1,140p' javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmOrphanCommentsEnding.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,180p' javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmElement.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '180,240p' javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalDifferenceCalculator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"comment\\(\\)\" javaparser-core/src/main/java/com/github/javaparser/printer/ConcreteSyntaxModel.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 132ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.printer.concretesyntaxmodel;
+
+import static com.github.javaparser.utils.PositionUtils.sortByBeginPosition;
+
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.comments.Comment;
+import com.github.javaparser.printer.SourcePrinter;
+import java.util.LinkedList;
+import java.util.List;
+
+public class CsmOrphanCommentsEnding implements CsmElement {
+
+    @Override
+    public void prettyPrint(Node node, SourcePrinter printer) {
+        List<Node> everything = new LinkedList<>();
+        everything.addAll(node.getChildNodes());
+        sortByBeginPosition(everything);
+        if (everything.isEmpty()) {
+            return;
+        }
+        int commentsAtEnd = 0;
+        boolean findingComments = true;
+        while (findingComments && commentsAtEnd < everything.size()) {
+            Node last = everything.get(everything.size() - 1 - commentsAtEnd);
+            findingComments = (last instanceof Comment);
+            if (findingComments) {
+                commentsAtEnd++;
+            }
+        }
+        for (int i = 0; i < commentsAtEnd; i++) {
+            Comment c = (Comment) everything.get(everything.size() - commentsAtEnd + i);
+            CsmComment.process(c, printer);
+        }
+    }
+}
+
+ succeeded in 147ms:
+    void calculatePropertyChange(
+            NodeText nodeText, Node observedNode, ObservableProperty property, Object oldValue, Object newValue) {
+        if (nodeText == null) {
+            throw new NullPointerException();
+        }
+        CsmElement element = ConcreteSyntaxModel.forClass(observedNode.getClass());
+        CalculatedSyntaxModel original = calculatedSyntaxModelForNode(element, observedNode);
+        CalculatedSyntaxModel after =
+                calculatedSyntaxModelAfterPropertyChange(element, observedNode, property, oldValue, newValue);
+        List<DifferenceElement> differenceElements = new DifferenceElementCalculator().calculate(original, after);
+        Difference difference = new Difference(differenceElements, nodeText, observedNode);
+        difference.apply();
+    }
+
+    // Visible for testing
+    CalculatedSyntaxModel calculatedSyntaxModelForNode(CsmElement csm, Node node) {
+        List<CsmElement> elements = new LinkedList<>();
+        calculatedSyntaxModelForNode(csm, node, elements, new NoChange());
+        return new CalculatedSyntaxModel(elements);
+    }
+
+    CalculatedSyntaxModel calculatedSyntaxModelForNode(Node node) {
+        return calculatedSyntaxModelForNode(ConcreteSyntaxModel.forClass(node.getClass()), node);
+    }
+
+    private void calculatedSyntaxModelForNode(CsmElement csm, Node node, List<CsmElement> elements, Change change) {
+        if (csm instanceof CsmSequence) {
+            CsmSequence csmSequence = (CsmSequence) csm;
+            csmSequence.getElements().forEach(e -> calculatedSyntaxModelForNode(e, node, elements, change));
+        } else if (csm instanceof CsmComment) {
+            // nothing to do
+        } else if (csm instanceof CsmSingleReference) {
+            CsmSingleReference csmSingleReference = (CsmSingleReference) csm;
+            Node child;
+            if (change instanceof PropertyChange
+                    && ((PropertyChange) change).getProperty() == csmSingleReference.getProperty()) {
+                child = (Node) ((PropertyChange) change).getNewValue();
+                if (node instanceof LambdaExpr && child instanceof ExpressionStmt) {
+                    // Same edge-case as in DefaultPrettyPrinterVisitor.visit(LambdaExpr, Void)
+                    child = ((ExpressionStmt) child).getExpression();
+                }
+            } else {
+                child = csmSingleReference.getProperty().getValueAsSingleReference(node);
+            }
+            if (child != null) {
+                elements.add(new CsmChild(child));
+            }
+        } else if (csm instanceof CsmNone) {
+            // nothing to do
+        } else if (csm instanceof CsmToken) {
+            elements.add(csm);
+        } else if (csm instanceof CsmOrphanCommentsEnding) {
+            // nothing to do
+        } else if (csm instanceof CsmList) {
+            CsmList csmList = (CsmList) csm;
+            if (csmList.getProperty().isAboutNodes()) {
+                Object rawValue = change.getValue(csmList.getProperty(), node);
+                NodeList<?> nodeList;
+                if (rawValue instanceof Optional) {
+                    Optional<?> optional = (Optional<?>) rawValue;
+                    if (optional.isPresent()) {
+
+ succeeded in 238ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.printer.concretesyntaxmodel;
+
+import static com.github.javaparser.TokenTypes.eolTokenKind;
+import static com.github.javaparser.TokenTypes.spaceTokenKind;
+
+import com.github.javaparser.GeneratedJavaParserConstants;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.observer.ObservableProperty;
+import com.github.javaparser.printer.SourcePrinter;
+import com.github.javaparser.printer.lexicalpreservation.TextElement;
+import com.github.javaparser.utils.LineSeparator;
+import java.util.Arrays;
+import java.util.List;
+
+public interface CsmElement {
+
+    void prettyPrint(Node node, SourcePrinter printer);
+
+    static CsmElement child(ObservableProperty property) {
+        return new CsmSingleReference(property);
+    }
+
+    static CsmElement attribute(ObservableProperty property) {
+        return new CsmAttribute(property);
+    }
+
+    static CsmElement sequence(CsmElement... elements) {
+        return new CsmSequence(Arrays.asList(elements));
+    }
+
+    static CsmElement string(int tokenType, String content) {
+        return new CsmToken(tokenType, content);
+    }
+
+    static CsmElement string(int tokenType) {
+        return new CsmToken(tokenType);
+    }
+
+    static CsmElement stringToken(ObservableProperty property) {
+        return new CsmString(property);
+    }
+
+    static CsmElement textBlockToken(ObservableProperty property) {
+        return new CsmString(property);
+    }
+
+    static CsmElement charToken(ObservableProperty property) {
+        return new CsmChar(property);
+    }
+
+    static CsmElement token(int tokenType) {
+        return new CsmToken(tokenType);
+    }
+
+    static CsmElement conditional(
+            ObservableProperty property, CsmConditional.Condition condition, CsmElement thenElement) {
+        return new CsmConditional(property, condition, thenElement);
+    }
+
+    static CsmElement conditional(
+            ObservableProperty property,
+            CsmConditional.Condition condition,
+            CsmElement thenElement,
+            CsmElement elseElement) {
+        return new CsmConditional(property, condition, thenElement, elseElement);
+    }
+
+    static CsmElement conditional(
+            List<ObservableProperty> properties,
+            CsmConditional.Condition condition,
+            CsmElement thenElement,
+            CsmElement elseElement) {
+        return new CsmConditional(properties, condition, thenElement, elseElement);
+    }
+
+    static CsmElement space() {
+        return new CsmToken(spaceTokenKind(), " ");
+    }
+
+    static CsmElement semicolon() {
+        return new CsmToken(GeneratedJavaParserConstants.SEMICOLON);
+    }
+
+    static CsmElement comment() {
+        return new CsmComment();
+    }
+
+    static CsmElement newline() {
+        return newline(LineSeparator.SYSTEM);
+    }
+
+    static CsmElement newline(LineSeparator lineSeparator) {
+        return new CsmToken(eolTokenKind(lineSeparator), lineSeparator.asRawString());
+    }
+
+    static CsmElement none() {
+        return new CsmNone();
+    }
+
+    static CsmElement comma() {
+        return new CsmToken(GeneratedJavaParserConstants.COMMA);
+    }
+
+    static CsmElement list(ObservableProperty property) {
+        return new CsmList(property);
+    }
+
+    static CsmElement list(ObservableProperty property, CsmElement separator) {
+        return new CsmList(property, CsmElement.none(), separator, new CsmNone(), new CsmNone());
+    }
+
+    static CsmElement list(
+            ObservableProperty property, CsmElement separator, CsmElement preceeding, CsmElement following) {
+        return new CsmList(property, none(), separator, preceeding, following);
+    }
+
+    static CsmElement list(
+            ObservableProperty property,
+            CsmElement separatorPre,
+            CsmElement separatorPost,
+            CsmElement preceeding,
+            CsmElement following) {
+        return new CsmList(property, separatorPre, separatorPost, preceeding, following);
+    }
+
+    static CsmElement orphanCommentsEnding() {
+        return new CsmOrphanCommentsEnding();
+    }
+
+    static CsmElement orphanCommentsBeforeThis() {
+        // FIXME
+        return new CsmNone();
+    }
+
+    static CsmElement indent() {
+        return new CsmIndent();
+    }
+
+    static CsmElement unindent() {
+        return new CsmUnindent();
+    }
+
+    static CsmElement block(CsmElement content) {
+        return sequence(
+                token(GeneratedJavaParserConstants.LBRACE),
+                indent(),
+                content,
+                unindent(),
+                token(GeneratedJavaParserConstants.RBRACE));
+    }
+
+    /*
+     * Verifies if the content of the {@code CsmElement} is the same as the provided {@code TextElement}
+     */
+    default boolean isCorrespondingElement(TextElement textElement) {
+        return false;
+    }
+}
+
+ succeeded in 237ms:
+103:                        comment(),
+120:                        comment(),
+140:                        comment(),
+181:                        comment(),
+199:                        comment(),
+229:                        comment(),
+244:                        comment(),
+268:                        comment(),
+300:                        comment(),
+312:                        comment(),
+322:                        comment(),
+348:                        comment(),
+362:                        comment(),
+371:                        comment(), /* list(ObservableProperty.EXTRA_ARRAY_LEVELS), */
+387:                        comment(),
+395:                        comment(),
+407:                        comment(),
+415:                        comment(),
+424:                        comment(),
+430:        concreteSyntaxModelByClass.put(BooleanLiteralExpr.class, sequence(comment(), attribute(VALUE)));
+434:                        comment(),
+440:        concreteSyntaxModelByClass.put(CharLiteralExpr.class, sequence(comment(), charToken(ObservableProperty.VALUE)));
+444:                        comment(),
+451:                        comment(),
+462:                DoubleLiteralExpr.class, sequence(comment(), attribute(ObservableProperty.VALUE)));
+466:                        comment(),
+473:                        comment(),
+480:                        comment(),
+487:                IntegerLiteralExpr.class, sequence(comment(), attribute(ObservableProperty.VALUE)));
+491:                        comment(),
+509:        concreteSyntaxModelByClass.put(LongLiteralExpr.class, sequence(comment(), attribute(ObservableProperty.VALUE)));
+512:                sequence(comment(), token(GeneratedJavaParserConstants.AT), attribute(ObservableProperty.NAME)));
+515:                sequence(comment(), token(GeneratedJavaParserConstants.UNNAMED_PLACEHOLDER)));
+519:                        comment(),
+528:                        comment(),
+541:                        comment(),
+550:                        comment(),
+558:                NameExpr.class, sequence(comment(), child(ObservableProperty.NAME), orphanCommentsEnding()));
+562:                        comment(),
+570:                NullLiteralExpr.class, sequence(comment(), token(GeneratedJavaParserConstants.NULL)));
+574:                        comment(),
+606:                        comment(),
+616:                        comment(),
+623:                StringLiteralExpr.class, sequence(comment(), stringToken(ObservableProperty.VALUE)));
+627:                        comment(),
+634:                TextBlockLiteralExpr.class, sequence(comment(), textBlockToken(ObservableProperty.VALUE)));
+641:                        comment(),
+647:        concreteSyntaxModelByClass.put(TypeExpr.class, sequence(comment(), child(ObservableProperty.TYPE)));
+657:                        comment(),
+669:                        comment(),
+686:                        comment(),
+695:                        comment(),
+705:                        comment(),
+717:                        comment(),
+727:                        comment(),
+739:                EmptyStmt.class, sequence(comment(), token(GeneratedJavaParserConstants.SEMICOLON)));
+741:                UnparsableStmt.class, sequence(comment(), token(GeneratedJavaParserConstants.SEMICOLON)));
+745:                        comment(),
+765:                sequence(orphanCommentsBeforeThis(), comment(), child(ObservableProperty.EXPRESSION), semicolon()));
+769:                        comment(),
+784:                        comment(),
+801:                        comment(),
+839:                        comment(),
+845:                LocalClassDeclarationStmt.class, sequence(comment(), child(ObservableProperty.CLASS_DECLARATION)));
+847:                LocalRecordDeclarationStmt.class, sequence(comment(), child(ObservableProperty.RECORD_DECLARATION)));
+851:                        comment(),
+861:                        comment(),
+871:                        comment(),
+924:                        comment(),
+937:                        comment(),
+950:                        comment(),
+961:                        comment(),
+969:                        comment(),
+997:                        comment(),
+1018:                        comment(),
+1033:                        comment(),
+1040:                sequence(comment(), list(ObservableProperty.ANNOTATIONS), attribute(ObservableProperty.TYPE)));
+1044:                        comment(),
+1055:                        comment(),
+1062:                VoidType.class, sequence(comment(), annotations(), token(GeneratedJavaParserConstants.VOID)));
+1065:                sequence(comment(), annotations(), string(GeneratedJavaParserConstants.IDENTIFIER, "var")));
+1069:                        comment(),
+1101:                        comment(),
+1110:                        comment(),
+1133:                        comment(),
+
+codex
+I’ve confirmed the class body is tiny. I’m now counting actual repository references to separate direct fan-in to `CsmComment` from the many indirect `comment()` factory calls in `ConcreteSyntaxModel`.
+exec
+/bin/bash -lc "sed -n '1,120p' javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmComment.java | nl -ba" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -l \"\\bCsmComment\\b\" javaparser-core javaparser-core-testing -g '"'!**/target/**'"' | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"return new CsmComment\\(|new CsmComment\\(\" javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmElement.java javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmComment.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 224ms:
+     1	/*
+     2	 * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+     3	 * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+     4	 *
+     5	 * This file is part of JavaParser.
+     6	 *
+     7	 * JavaParser can be used either under the terms of
+     8	 * a) the GNU Lesser General Public License as published by
+     9	 *     the Free Software Foundation, either version 3 of the License, or
+    10	 *     (at your option) any later version.
+    11	 * b) the terms of the Apache License
+    12	 *
+    13	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    14	 * LICENCE.APACHE. Please refer to those files for details.
+    15	 *
+    16	 * JavaParser is distributed in the hope that it will be useful,
+    17	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    18	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    19	 * GNU Lesser General Public License for more details.
+    20	 */
+    21	package com.github.javaparser.printer.concretesyntaxmodel;
+    22	
+    23	import com.github.javaparser.ast.Node;
+    24	import com.github.javaparser.ast.comments.Comment;
+    25	import com.github.javaparser.printer.SourcePrinter;
+    26	
+    27	public class CsmComment implements CsmElement {
+    28	
+    29	    static void process(Comment comment, SourcePrinter printer) {
+    30	        String content = printer.normalizeEolInTextBlock(comment.getContent());
+    31	        printer.print(comment.getHeader());
+    32	        printer.print(content);
+    33	        printer.println(comment.getFooter());
+    34	    }
+    35	
+    36	    @Override
+    37	    public void prettyPrint(Node node, SourcePrinter printer) {
+    38	        node.getComment().ifPresent(c -> process(c, printer));
+    39	    }
+    40	}
+
+ succeeded in 298ms:
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmComment.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmElement.java
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmOrphanCommentsEnding.java
+javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalDifferenceCalculator.java
+
+ succeeded in 353ms:
+javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmElement.java:105:        return new CsmComment();
+
+codex
+{"target":"com.github.javaparser.printer.concretesyntaxmodel.CsmComment","detection":false,"justification":"Inspected javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmComment.java, CsmElement.java, CsmOrphanCommentsEnding.java, and javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/LexicalDifferenceCalculator.java. CsmComment is a tiny helper with only 3 direct dependencies (Node, Comment, SourcePrinter) and one process/prettyPrint path; repository-wide rg shows only 3 direct callers/uses besides itself: CsmElement.comment() creates it, CsmOrphanCommentsEnding.processes comments through it, and LexicalDifferenceCalculator has an instanceof branch for it. Although ConcreteSyntaxModel calls comment() many times, that is indirect fan-in to CsmElement, not to CsmComment itself, so there is no strong hub-like dependency pattern."}
+tokens used
+10,484

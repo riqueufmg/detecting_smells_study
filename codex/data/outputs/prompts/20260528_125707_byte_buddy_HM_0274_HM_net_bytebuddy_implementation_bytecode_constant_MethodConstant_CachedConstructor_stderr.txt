@@ -1,0 +1,913 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f4d-d6af-7b22-b6fc-e25fed443785
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.bytecode.constant.MethodConstant.CachedConstructor` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.bytecode.constant.MethodConstant.CachedConstructor",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.bytecode.constant.MethodConstant.CachedConstructor`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and the surrounding implementation files first, then I’ll trace how many direct dependencies it has and how widely it is referenced to decide whether it behaves like a hub.
+exec
+/bin/bash -lc "rg --files | rg 'MethodConstant|CachedConstructor|CachedMethod|Cached'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc 'rg -n "class CachedConstructor|CachedConstructor" byte-buddy-dep*/src/main/java net src main .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 330ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java
+byte-buddy-dep/src/main/java/net/bytebuddy/build/CachedReturnPlugin.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/constant/MethodConstantTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/build/CachedReturnPluginTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/build/CachedReturnPluginOtherTest.java
+
+ exited 2 in 336ms:
+rg: net: No such file or directory (os error 2)
+rg: src: No such file or directory (os error 2)
+rg: main: No such file or directory (os error 2)
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:359:            return new CachedConstructor(this);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:424:                    ? new CachedConstructor(this)
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:505:    protected static class CachedConstructor implements StackManipulation {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:522:        protected CachedConstructor(StackManipulation constructorConstant) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:554:            CachedConstructor cachedConstructor = (CachedConstructor) other;
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:359:            return new CachedConstructor(this);
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:424:                    ? new CachedConstructor(this)
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:505:    protected static class CachedConstructor implements StackManipulation {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:522:        protected CachedConstructor(StackManipulation constructorConstant) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:554:            CachedConstructor cachedConstructor = (CachedConstructor) other;
+
+codex
+I found the class inside `MethodConstant.java`; next I’m checking its constructor, fields, and call sites to measure both its outgoing dependencies and whether anything outside the enclosing class depends on it directly.
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"new CachedConstructor\\(|CachedConstructor\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '220,620p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 210ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation.bytecode.constant;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.auxiliary.PrivilegedMemberLookupAction;
+import net.bytebuddy.implementation.bytecode.Duplication;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.TypeCreation;
+import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
+import net.bytebuddy.implementation.bytecode.collection.ArrayFactory;
+import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+import net.bytebuddy.implementation.bytecode.member.MethodInvocation;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.objectweb.asm.MethodVisitor;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
+import java.util.List;
+
+import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+
+/**
+ * Represents the creation of a {@link java.lang.reflect.Method} value which can be created from a given
+ * set of constant pool values and can therefore be considered a constant in the broader meaning.
+ */
+public abstract class MethodConstant extends StackManipulation.AbstractBase {
+
+    /**
+     * The {@code java.security.AccessController#doPrivileged(PrivilegedExceptionAction)} method or {@code null} if
+     * this method is not available on the current VM.
+     */
+    @MaybeNull
+    protected static final MethodDescription.InDefinedShape DO_PRIVILEGED = doPrivileged();
+
+    /**
+     * Resolves the {@code java.security.AccessController#doPrivileged} method if the security manager is supported
+     * on the current VM and if security manager support is not explicitly disabled.
+     *
+     * @return The {@code doPrivileged} method or {@code null}.
+     */
+    @MaybeNull
+    @SuppressFBWarnings(value = "REC_CATCH_EXCEPTION", justification = "Exception should not be rethrown but trigger a fallback.")
+    private static MethodDescription.InDefinedShape doPrivileged() {
+        MethodDescription.InDefinedShape doPrivileged;
+        try {
+            doPrivileged = new MethodDescription.ForLoadedMethod(Class.forName("java.security.AccessController").getMethod("doPrivileged", PrivilegedExceptionAction.class));
+            try {
+                if (!Boolean.parseBoolean(System.getProperty("net.bytebuddy.securitymanager", "true"))) {
+                    doPrivileged = null;
+                }
+            } catch (SecurityException ignored) {
+                /* do nothing */
+            }
+        } catch (Exception ignored) {
+            doPrivileged = null;
+        }
+        return doPrivileged;
+    }
+
+    /**
+     * A description of the method to be loaded onto the stack.
+     */
+    protected final MethodDescription.InDefinedShape methodDescription;
+
+    /**
+     * Creates a new method constant.
+     *
+     * @param methodDescription The method description for which the {@link java.lang.reflect.Method} representation
+     *                          should be created.
+     */
+    protected MethodConstant(MethodDescription.InDefinedShape methodDescription) {
+        this.methodDescription = methodDescription;
+    }
+
+    /**
+     * Creates a stack manipulation that loads a method constant onto the operand stack.
+     *
+     * @param methodDescription The method to be loaded onto the stack.
+     * @return A stack manipulation that assigns a method constant for the given method description.
+     */
+    public static CanCache of(MethodDescription.InDefinedShape methodDescription) {
+        if (methodDescription.isTypeInitializer()) {
+            return CanCacheIllegal.INSTANCE;
+        } else if (methodDescription.isConstructor()) {
+            return new ForConstructor(methodDescription);
+        } else {
+            return new ForMethod(methodDescription);
+        }
+    }
+
+    /**
+     * Creates a stack manipulation that loads a method constant onto the operand stack using an {@code java.security.AccessController}.
+     * If the current VM does not support the access controller API, or if {@code net.bytebuddy.securitymanager} is set to false, this
+     * method has the same effect as {@link MethodConstant#of(MethodDescription.InDefinedShape)}.
+     *
+     * @param methodDescription The method to be loaded onto the stack.
+     * @return A stack manipulation that assigns a method constant for the given method description.
+     */
+    public static CanCache ofPrivileged(MethodDescription.InDefinedShape methodDescription) {
+        if (DO_PRIVILEGED == null) {
+            return of(methodDescription);
+        }
+        if (methodDescription.isTypeInitializer()) {
+            return CanCacheIllegal.INSTANCE;
+        } else if (methodDescription.isConstructor()) {
+            return new ForConstructor(methodDescription).withPrivilegedLookup();
+        } else {
+            return new ForMethod(methodDescription).withPrivilegedLookup();
+        }
+    }
+
+    /**
+     * Returns a list of type constant load operations for the given list of parameters.
+     *
+     * @param parameterTypes A list of all type descriptions that should be represented as type constant
+     *                       load operations.
+     * @return A corresponding list of type constant load operations.
+     */
+    protected static List<StackManipulation> typeConstantsFor(List<TypeDescription> parameterTypes) {
+        List<StackManipulation> typeConstants = new ArrayList<StackManipulation>(parameterTypes.size());
+        for (TypeDescription parameterType : parameterTypes) {
+            typeConstants.add(ClassConstant.of(parameterType));
+        }
+        return typeConstants;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+        return new Compound(
+                ClassConstant.of(methodDescription.getDeclaringType()),
+                methodName(),
+                ArrayFactory.forType(TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(Class.class))
+                        .withValues(typeConstantsFor(methodDescription.getParameters().asTypeList().asErasures())),
+                MethodInvocation.invoke(accessorMethod())
+        ).apply(methodVisitor, implementationContext);
+    }
+
+    /**
+     * Returns a method constant that uses an {@code java.security.AccessController} to look up this constant.
+     *
+     * @return A method constant that uses an {@code java.security.AccessController} to look up this constant.
+     */
+    protected CanCache withPrivilegedLookup() {
+        return new PrivilegedLookup(methodDescription, methodName());
+    }
+
+    /**
+     * Returns a stack manipulation that loads the method name onto the operand stack if this is required.
+     *
+     * @return A stack manipulation that loads the method name onto the operand stack if this is required.
+     */
+    protected abstract StackManipulation methodName();
+
+    /**
+     * Returns the method for loading a declared method or constructor onto the operand stack.
+     *
+     * @return The method for loading a declared method or constructor onto the operand stack.
+     */
+    protected abstract MethodDescription.InDefinedShape accessorMethod();
+
+    @Override
+    public int hashCode() {
+        return methodDescription.hashCode();
+    }
+
+    @Override
+    public boolean equals(@MaybeNull Object other) {
+        if (this == other) {
+            return true;
+        } else if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        MethodConstant methodConstant = (MethodConstant) other;
+        return methodDescription.equals(methodConstant.methodDescription);
+    }
+
+    /**
+     * Represents a method constant that cannot be represented by Java's reflection API.
+     */
+    protected enum CanCacheIllegal implements CanCache {
+
+        /**
+         * The singleton instance.
+         */
+        INSTANCE;
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation cached() {
+            return Illegal.INSTANCE;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return false;
+        }
+
+ succeeded in 176ms:
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            return Illegal.INSTANCE.apply(methodVisitor, implementationContext);
+        }
+    }
+
+    /**
+     * Represents a {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant} that is
+     * directly loaded onto the operand stack without caching the value. Since the look-up of a Java method bares
+     * some costs that sometimes need to be avoided, such a stack manipulation offers a convenience method for
+     * defining this loading instruction as the retrieval of a field value that is initialized in the instrumented
+     * type's type initializer.
+     */
+    public interface CanCache extends StackManipulation {
+
+        /**
+         * Returns this method constant as a cached version.
+         *
+         * @return A cached version of the method constant that is represented by this instance.
+         */
+        StackManipulation cached();
+    }
+
+    /**
+     * Creates a {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant} for loading
+     * a {@link java.lang.reflect.Method} instance onto the operand stack.
+     */
+    protected static class ForMethod extends MethodConstant implements CanCache {
+
+        /**
+         * The {@link Class#getMethod(String, Class[])} method.
+         */
+        private static final MethodDescription.InDefinedShape GET_METHOD;
+
+        /**
+         * The {@link Class#getDeclaredMethod(String, Class[])} method.
+         */
+        private static final MethodDescription.InDefinedShape GET_DECLARED_METHOD;
+
+        /*
+         * Looks up methods used for creating the manipulation.
+         */
+        static {
+            try {
+                GET_METHOD = new MethodDescription.ForLoadedMethod(Class.class.getMethod("getMethod", String.class, Class[].class));
+                GET_DECLARED_METHOD = new MethodDescription.ForLoadedMethod(Class.class.getMethod("getDeclaredMethod", String.class, Class[].class));
+            } catch (NoSuchMethodException exception) {
+                throw new IllegalStateException("Could not locate method lookup", exception);
+            }
+        }
+
+        /**
+         * Creates a new {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant} for
+         * creating a {@link java.lang.reflect.Method} instance.
+         *
+         * @param methodDescription The method to be loaded onto the stack.
+         */
+        protected ForMethod(MethodDescription.InDefinedShape methodDescription) {
+            super(methodDescription);
+        }
+
+        @Override
+        protected StackManipulation methodName() {
+            return new TextConstant(methodDescription.getInternalName());
+        }
+
+        @Override
+        protected MethodDescription.InDefinedShape accessorMethod() {
+            return methodDescription.isPublic()
+                    ? GET_METHOD
+                    : GET_DECLARED_METHOD;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation cached() {
+            return new CachedMethod(this);
+        }
+    }
+
+    /**
+     * Creates a {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant} for loading
+     * a {@link java.lang.reflect.Constructor} instance onto the operand stack.
+     */
+    protected static class ForConstructor extends MethodConstant implements CanCache {
+
+        /**
+         * The {@link Class#getConstructor(Class[])} method.
+         */
+        private static final MethodDescription.InDefinedShape GET_CONSTRUCTOR;
+
+        /**
+         * The {@link Class#getDeclaredConstructor(Class[])} method.
+         */
+        private static final MethodDescription.InDefinedShape GET_DECLARED_CONSTRUCTOR;
+
+        /*
+         * Looks up the method used for creating the manipulation.
+         */
+        static {
+            try {
+                GET_CONSTRUCTOR = new MethodDescription.ForLoadedMethod(Class.class.getMethod("getConstructor", Class[].class));
+                GET_DECLARED_CONSTRUCTOR = new MethodDescription.ForLoadedMethod(Class.class.getMethod("getDeclaredConstructor", Class[].class));
+            } catch (NoSuchMethodException exception) {
+                throw new IllegalStateException("Could not locate Class::getDeclaredConstructor", exception);
+            }
+        }
+
+        /**
+         * Creates a new {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant} for
+         * creating a {@link java.lang.reflect.Constructor} instance.
+         *
+         * @param methodDescription The constructor to be loaded onto the stack.
+         */
+        protected ForConstructor(MethodDescription.InDefinedShape methodDescription) {
+            super(methodDescription);
+        }
+
+        @Override
+        protected StackManipulation methodName() {
+            return Trivial.INSTANCE;
+        }
+
+        @Override
+        protected MethodDescription.InDefinedShape accessorMethod() {
+            return methodDescription.isPublic()
+                    ? GET_CONSTRUCTOR
+                    : GET_DECLARED_CONSTRUCTOR;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation cached() {
+            return new CachedConstructor(this);
+        }
+    }
+
+    /**
+     * Performs a privileged lookup of a method constant by using an {@code java.security.AccessController}.
+     */
+    protected static class PrivilegedLookup implements StackManipulation, CanCache {
+
+        /**
+         * The method constant to load.
+         */
+        private final MethodDescription.InDefinedShape methodDescription;
+
+        /**
+         * The stack manipulation for locating the method name.
+         */
+        private final StackManipulation methodName;
+
+        /**
+         * Creates a new privileged lookup.
+         *
+         * @param methodDescription The method constant to load.
+         * @param methodName        The stack manipulation for locating the method name.
+         */
+        protected PrivilegedLookup(MethodDescription.InDefinedShape methodDescription, StackManipulation methodName) {
+            this.methodDescription = methodDescription;
+            this.methodName = methodName;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return methodName.isValid();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            if (DO_PRIVILEGED == null) {
+                throw new IllegalStateException("Privileged method invocation is not supported on the current VM");
+            }
+            TypeDescription auxiliaryType = implementationContext.register(PrivilegedMemberLookupAction.of(methodDescription));
+            return new Compound(
+                    TypeCreation.of(auxiliaryType),
+                    Duplication.SINGLE,
+                    ClassConstant.of(methodDescription.getDeclaringType()),
+                    methodName,
+                    ArrayFactory.forType(TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(Class.class))
+                            .withValues(typeConstantsFor(methodDescription.getParameters().asTypeList().asErasures())),
+                    MethodInvocation.invoke(auxiliaryType.getDeclaredMethods().filter(isConstructor()).getOnly()),
+                    MethodInvocation.invoke(DO_PRIVILEGED),
+                    TypeCasting.to(TypeDescription.ForLoadedType.of(methodDescription.isConstructor()
+                            ? Constructor.class
+                            : Method.class))
+            ).apply(methodVisitor, implementationContext);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation cached() {
+            return methodDescription.isConstructor()
+                    ? new CachedConstructor(this)
+                    : new CachedMethod(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return methodDescription.hashCode();
+        }
+
+        @Override
+        public boolean equals(@MaybeNull Object other) {
+            if (this == other) {
+                return true;
+            } else if (other == null || getClass() != other.getClass()) {
+                return false;
+            }
+            PrivilegedLookup privilegedLookup = (PrivilegedLookup) other;
+            return methodDescription.equals(privilegedLookup.methodDescription);
+        }
+    }
+
+    /**
+     * Represents a cached method for a {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant}.
+     */
+    protected static class CachedMethod implements StackManipulation {
+
+        /**
+         * A description of the {@link java.lang.reflect.Method} type.
+         */
+        private static final TypeDescription METHOD_TYPE = TypeDescription.ForLoadedType.of(Method.class);
+
+        /**
+         * The stack manipulation that is represented by this caching wrapper.
+         */
+        private final StackManipulation methodConstant;
+
+        /**
+         * Creates a new cached {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant}.
+         *
+         * @param methodConstant The method constant to store in the field cache.
+         */
+        protected CachedMethod(StackManipulation methodConstant) {
+            this.methodConstant = methodConstant;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return methodConstant.isValid();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            return FieldAccess.forField(implementationContext.cache(methodConstant, METHOD_TYPE))
+                    .read()
+                    .apply(methodVisitor, implementationContext);
+        }
+
+        @Override
+        public int hashCode() {
+            return methodConstant.hashCode();
+        }
+
+        @Override
+        public boolean equals(@MaybeNull Object other) {
+            if (this == other) {
+                return true;
+            } else if (other == null || getClass() != other.getClass()) {
+                return false;
+            }
+            CachedMethod cachedMethod = (CachedMethod) other;
+            return methodConstant.equals(cachedMethod.methodConstant);
+        }
+    }
+
+    /**
+     * Represents a cached constructor for a {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant}.
+     */
+    protected static class CachedConstructor implements StackManipulation {
+
+        /**
+         * A description of the {@link java.lang.reflect.Constructor} type.
+         */
+        private static final TypeDescription CONSTRUCTOR_TYPE = TypeDescription.ForLoadedType.of(Constructor.class);
+
+        /**
+         * The stack manipulation that is represented by this caching wrapper.
+         */
+        private final StackManipulation constructorConstant;
+
+        /**
+         * Creates a new cached {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant}.
+         *
+         * @param constructorConstant The method constant to store in the field cache.
+         */
+        protected CachedConstructor(StackManipulation constructorConstant) {
+            this.constructorConstant = constructorConstant;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public boolean isValid() {
+            return constructorConstant.isValid();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+            return FieldAccess.forField(implementationContext.cache(constructorConstant, CONSTRUCTOR_TYPE))
+                    .read()
+                    .apply(methodVisitor, implementationContext);
+        }
+
+        @Override
+        public int hashCode() {
+            return constructorConstant.hashCode();
+        }
+
+        @Override
+        public boolean equals(@MaybeNull Object other) {
+            if (this == other) {
+                return true;
+            } else if (other == null || getClass() != other.getClass()) {
+                return false;
+            }
+            CachedConstructor cachedConstructor = (CachedConstructor) other;
+            return constructorConstant.equals(cachedConstructor.constructorConstant);
+        }
+    }
+}
+
+ succeeded in 274ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:359:            return new CachedConstructor(this);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:424:                    ? new CachedConstructor(this)
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:505:    protected static class CachedConstructor implements StackManipulation {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:522:        protected CachedConstructor(StackManipulation constructorConstant) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:554:            CachedConstructor cachedConstructor = (CachedConstructor) other;
+
+codex
+The first pass shows the inner class is only instantiated from within `MethodConstant.java`. I’m verifying that no other source or test code references it directly, because lack of external fan-in is the key signal against a hub-like classification.
+exec
+/bin/bash -lc "rg -n \"MethodConstant\\.CachedConstructor|CachedConstructor\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java | sed -n '340,570p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 272ms:
+   340	            super(methodDescription);
+   341	        }
+   342	
+   343	        @Override
+   344	        protected StackManipulation methodName() {
+   345	            return Trivial.INSTANCE;
+   346	        }
+   347	
+   348	        @Override
+   349	        protected MethodDescription.InDefinedShape accessorMethod() {
+   350	            return methodDescription.isPublic()
+   351	                    ? GET_CONSTRUCTOR
+   352	                    : GET_DECLARED_CONSTRUCTOR;
+   353	        }
+   354	
+   355	        /**
+   356	         * {@inheritDoc}
+   357	         */
+   358	        public StackManipulation cached() {
+   359	            return new CachedConstructor(this);
+   360	        }
+   361	    }
+   362	
+   363	    /**
+   364	     * Performs a privileged lookup of a method constant by using an {@code java.security.AccessController}.
+   365	     */
+   366	    protected static class PrivilegedLookup implements StackManipulation, CanCache {
+   367	
+   368	        /**
+   369	         * The method constant to load.
+   370	         */
+   371	        private final MethodDescription.InDefinedShape methodDescription;
+   372	
+   373	        /**
+   374	         * The stack manipulation for locating the method name.
+   375	         */
+   376	        private final StackManipulation methodName;
+   377	
+   378	        /**
+   379	         * Creates a new privileged lookup.
+   380	         *
+   381	         * @param methodDescription The method constant to load.
+   382	         * @param methodName        The stack manipulation for locating the method name.
+   383	         */
+   384	        protected PrivilegedLookup(MethodDescription.InDefinedShape methodDescription, StackManipulation methodName) {
+   385	            this.methodDescription = methodDescription;
+   386	            this.methodName = methodName;
+   387	        }
+   388	
+   389	        /**
+   390	         * {@inheritDoc}
+   391	         */
+   392	        public boolean isValid() {
+   393	            return methodName.isValid();
+   394	        }
+   395	
+   396	        /**
+   397	         * {@inheritDoc}
+   398	         */
+   399	        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+   400	            if (DO_PRIVILEGED == null) {
+   401	                throw new IllegalStateException("Privileged method invocation is not supported on the current VM");
+   402	            }
+   403	            TypeDescription auxiliaryType = implementationContext.register(PrivilegedMemberLookupAction.of(methodDescription));
+   404	            return new Compound(
+   405	                    TypeCreation.of(auxiliaryType),
+   406	                    Duplication.SINGLE,
+   407	                    ClassConstant.of(methodDescription.getDeclaringType()),
+   408	                    methodName,
+   409	                    ArrayFactory.forType(TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(Class.class))
+   410	                            .withValues(typeConstantsFor(methodDescription.getParameters().asTypeList().asErasures())),
+   411	                    MethodInvocation.invoke(auxiliaryType.getDeclaredMethods().filter(isConstructor()).getOnly()),
+   412	                    MethodInvocation.invoke(DO_PRIVILEGED),
+   413	                    TypeCasting.to(TypeDescription.ForLoadedType.of(methodDescription.isConstructor()
+   414	                            ? Constructor.class
+   415	                            : Method.class))
+   416	            ).apply(methodVisitor, implementationContext);
+   417	        }
+   418	
+   419	        /**
+   420	         * {@inheritDoc}
+   421	         */
+   422	        public StackManipulation cached() {
+   423	            return methodDescription.isConstructor()
+   424	                    ? new CachedConstructor(this)
+   425	                    : new CachedMethod(this);
+   426	        }
+   427	
+   428	        @Override
+   429	        public int hashCode() {
+   430	            return methodDescription.hashCode();
+   431	        }
+   432	
+   433	        @Override
+   434	        public boolean equals(@MaybeNull Object other) {
+   435	            if (this == other) {
+   436	                return true;
+   437	            } else if (other == null || getClass() != other.getClass()) {
+   438	                return false;
+   439	            }
+   440	            PrivilegedLookup privilegedLookup = (PrivilegedLookup) other;
+   441	            return methodDescription.equals(privilegedLookup.methodDescription);
+   442	        }
+   443	    }
+   444	
+   445	    /**
+   446	     * Represents a cached method for a {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant}.
+   447	     */
+   448	    protected static class CachedMethod implements StackManipulation {
+   449	
+   450	        /**
+   451	         * A description of the {@link java.lang.reflect.Method} type.
+   452	         */
+   453	        private static final TypeDescription METHOD_TYPE = TypeDescription.ForLoadedType.of(Method.class);
+   454	
+   455	        /**
+   456	         * The stack manipulation that is represented by this caching wrapper.
+   457	         */
+   458	        private final StackManipulation methodConstant;
+   459	
+   460	        /**
+   461	         * Creates a new cached {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant}.
+   462	         *
+   463	         * @param methodConstant The method constant to store in the field cache.
+   464	         */
+   465	        protected CachedMethod(StackManipulation methodConstant) {
+   466	            this.methodConstant = methodConstant;
+   467	        }
+   468	
+   469	        /**
+   470	         * {@inheritDoc}
+   471	         */
+   472	        public boolean isValid() {
+   473	            return methodConstant.isValid();
+   474	        }
+   475	
+   476	        /**
+   477	         * {@inheritDoc}
+   478	         */
+   479	        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+   480	            return FieldAccess.forField(implementationContext.cache(methodConstant, METHOD_TYPE))
+   481	                    .read()
+   482	                    .apply(methodVisitor, implementationContext);
+   483	        }
+   484	
+   485	        @Override
+   486	        public int hashCode() {
+   487	            return methodConstant.hashCode();
+   488	        }
+   489	
+   490	        @Override
+   491	        public boolean equals(@MaybeNull Object other) {
+   492	            if (this == other) {
+   493	                return true;
+   494	            } else if (other == null || getClass() != other.getClass()) {
+   495	                return false;
+   496	            }
+   497	            CachedMethod cachedMethod = (CachedMethod) other;
+   498	            return methodConstant.equals(cachedMethod.methodConstant);
+   499	        }
+   500	    }
+   501	
+   502	    /**
+   503	     * Represents a cached constructor for a {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant}.
+   504	     */
+   505	    protected static class CachedConstructor implements StackManipulation {
+   506	
+   507	        /**
+   508	         * A description of the {@link java.lang.reflect.Constructor} type.
+   509	         */
+   510	        private static final TypeDescription CONSTRUCTOR_TYPE = TypeDescription.ForLoadedType.of(Constructor.class);
+   511	
+   512	        /**
+   513	         * The stack manipulation that is represented by this caching wrapper.
+   514	         */
+   515	        private final StackManipulation constructorConstant;
+   516	
+   517	        /**
+   518	         * Creates a new cached {@link net.bytebuddy.implementation.bytecode.constant.MethodConstant}.
+   519	         *
+   520	         * @param constructorConstant The method constant to store in the field cache.
+   521	         */
+   522	        protected CachedConstructor(StackManipulation constructorConstant) {
+   523	            this.constructorConstant = constructorConstant;
+   524	        }
+   525	
+   526	        /**
+   527	         * {@inheritDoc}
+   528	         */
+   529	        public boolean isValid() {
+   530	            return constructorConstant.isValid();
+   531	        }
+   532	
+   533	        /**
+   534	         * {@inheritDoc}
+   535	         */
+   536	        public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+   537	            return FieldAccess.forField(implementationContext.cache(constructorConstant, CONSTRUCTOR_TYPE))
+   538	                    .read()
+   539	                    .apply(methodVisitor, implementationContext);
+   540	        }
+   541	
+   542	        @Override
+   543	        public int hashCode() {
+   544	            return constructorConstant.hashCode();
+   545	        }
+   546	
+   547	        @Override
+   548	        public boolean equals(@MaybeNull Object other) {
+   549	            if (this == other) {
+   550	                return true;
+   551	            } else if (other == null || getClass() != other.getClass()) {
+   552	                return false;
+   553	            }
+   554	            CachedConstructor cachedConstructor = (CachedConstructor) other;
+   555	            return constructorConstant.equals(cachedConstructor.constructorConstant);
+   556	        }
+   557	    }
+   558	}
+
+ succeeded in 330ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:359:            return new CachedConstructor(this);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:424:                    ? new CachedConstructor(this)
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:505:    protected static class CachedConstructor implements StackManipulation {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:522:        protected CachedConstructor(StackManipulation constructorConstant) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:554:            CachedConstructor cachedConstructor = (CachedConstructor) other;
+
+codex
+{"target":"net.bytebuddy.implementation.bytecode.constant.MethodConstant.CachedConstructor","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java` (class at lines 505-556, call sites at lines 359 and 424) and searched `byte-buddy-dep/src/main/java` + `byte-buddy-dep/src/test/java` for `CachedConstructor`; the only references are the two in the enclosing `MethodConstant` class, with no external fan-in. Its fan-out is also narrow: one cached field plus `apply()` using `FieldAccess`, `Implementation.Context`, `MethodVisitor`, `TypeDescription`, and `StackManipulation`, which is not the high-in/high-out dependency pattern expected for hub-like modularization."}
+tokens used
+9,509

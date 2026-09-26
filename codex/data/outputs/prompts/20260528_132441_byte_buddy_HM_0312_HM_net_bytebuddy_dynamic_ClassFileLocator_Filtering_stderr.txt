@@ -1,0 +1,446 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f67-1132-7710-9ca1-4a61f755dabe
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.dynamic.ClassFileLocator.Filtering` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.dynamic.ClassFileLocator.Filtering",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.dynamic.ClassFileLocator.Filtering`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and the surrounding references first, then I’ll check whether it really acts as a dependency hub from the code structure rather than guessing from name alone.
+exec
+/bin/bash -lc "rg -n \"ClassFileLocator\\.Filtering|Filtering\\b\" -S byte-buddy* ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc 'rg -n "class Filtering|interface Filtering|enum Filtering" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 277ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2393:                class Filtering implements Origin {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2465:                    private static class FilteringIterator implements Iterator<Element> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3297:            class Filtering implements Source {
+./byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2234:        class Filtering implements Listener {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:2063:    class Filtering implements ClassFileLocator {
+
+ succeeded in 329ms:
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:376:            source = new Plugin.Engine.Source.Filtering(source, stalenessFilter);
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:600:                    source = new Plugin.Engine.Source.Filtering(new Plugin.Engine.Source.ForFolder(root), new FilePrefixMatcher(names));
+./byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1326:                log.debug("Filtering " + file + " due to staleness: " + file.lastModified());
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:49:        Plugin.Engine.Source.Origin origin = new Plugin.Engine.Source.Filtering(source, matcher).read();
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:62:        new Plugin.Engine.Source.Filtering(source, matcher).read().close();
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:70:        assertThat(new Plugin.Engine.Source.Filtering(source, matcher, false).read().getManifest(), nullValue(Manifest.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:78:        assertThat(new Plugin.Engine.Source.Filtering(source, matcher).read().getManifest(), nullValue(Manifest.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:89:        assertThat(new Plugin.Engine.Source.Filtering(source, matcher).read().toClassFileLocator(null), is(classFileLocator));
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:101:        Plugin.Engine.Source.Origin origin = Plugin.Engine.Source.Filtering.dropMultiReleaseClassFilesAbove(source, ClassFileVersion.JAVA_V11).read();
+byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:119:        Plugin.Engine.Source.Origin origin = Plugin.Engine.Source.Filtering.dropFolders(source).read();
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:49:        Plugin.Engine.Source.Origin origin = new Plugin.Engine.Source.Filtering(source, matcher).read();
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:62:        new Plugin.Engine.Source.Filtering(source, matcher).read().close();
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:70:        assertThat(new Plugin.Engine.Source.Filtering(source, matcher, false).read().getManifest(), nullValue(Manifest.class));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:78:        assertThat(new Plugin.Engine.Source.Filtering(source, matcher).read().getManifest(), nullValue(Manifest.class));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:89:        assertThat(new Plugin.Engine.Source.Filtering(source, matcher).read().toClassFileLocator(null), is(classFileLocator));
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:101:        Plugin.Engine.Source.Origin origin = Plugin.Engine.Source.Filtering.dropMultiReleaseClassFilesAbove(source, ClassFileVersion.JAVA_V11).read();
+./byte-buddy-dep/src/test/java/net/bytebuddy/build/PluginEngineSourceFilteringTest.java:119:        Plugin.Engine.Source.Origin origin = Plugin.Engine.Source.Filtering.dropFolders(source).read();
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:376:            source = new Plugin.Engine.Source.Filtering(source, stalenessFilter);
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:600:                    source = new Plugin.Engine.Source.Filtering(new Plugin.Engine.Source.ForFolder(root), new FilePrefixMatcher(names));
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1326:                log.debug("Filtering " + file + " due to staleness: " + file.lastModified());
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:237:        AgentBuilder.Listener listener = new AgentBuilder.Listener.Filtering(none(), delegate);
+byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:249:        AgentBuilder.Listener listener = new AgentBuilder.Listener.Filtering(ElementMatchers.any(), delegate);
+./byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:237:        AgentBuilder.Listener listener = new AgentBuilder.Listener.Filtering(none(), delegate);
+./byte-buddy-dep/src/test/java/net/bytebuddy/agent/builder/AgentBuilderListenerTest.java:249:        AgentBuilder.Listener listener = new AgentBuilder.Listener.Filtering(ElementMatchers.any(), delegate);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:28:        assertThat(new ClassFileLocator.Filtering(is(FOO), classFileLocator).locate(FOO).isResolved(), CoreMatchers.is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:29:        assertThat(new ClassFileLocator.Filtering(is(FOO), classFileLocator).locate(BAR).isResolved(), CoreMatchers.is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:34:        new ClassFileLocator.Filtering(is(FOO), classFileLocator).close();
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:28:        assertThat(new ClassFileLocator.Filtering(is(FOO), classFileLocator).locate(FOO).isResolved(), CoreMatchers.is(true));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:29:        assertThat(new ClassFileLocator.Filtering(is(FOO), classFileLocator).locate(BAR).isResolved(), CoreMatchers.is(false));
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:34:        new ClassFileLocator.Filtering(is(FOO), classFileLocator).close();
+./byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2234:        class Filtering implements Listener {
+./byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2252:            public Filtering(ElementMatcher<? super String> matcher, Listener delegate) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2393:                class Filtering implements Origin {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2416:                    public Filtering(Origin delegate, ElementMatcher<Element> matcher) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2427:                    public Filtering(Origin delegate, ElementMatcher<Element> matcher, boolean manifest) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3297:            class Filtering implements Source {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3320:                public Filtering(Source delegate, ElementMatcher<Element> matcher) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3331:                public Filtering(Source delegate, ElementMatcher<Element> matcher, boolean manifest) {
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3345:                    return new Filtering(delegate, new MultiReleaseVersionMatcher(classFileVersion));
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3355:                    return new Filtering(delegate, NoFolderMatcher.INSTANCE);
+./byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3362:                    return new Origin.Filtering(delegate.read(), matcher, manifest);
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:2063:    class Filtering implements ClassFileLocator {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:2081:        public Filtering(ElementMatcher<? super String> matcher, ClassFileLocator delegate) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2234:        class Filtering implements Listener {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2252:            public Filtering(ElementMatcher<? super String> matcher, Listener delegate) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2393:                class Filtering implements Origin {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2416:                    public Filtering(Origin delegate, ElementMatcher<Element> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2427:                    public Filtering(Origin delegate, ElementMatcher<Element> matcher, boolean manifest) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3297:            class Filtering implements Source {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3320:                public Filtering(Source delegate, ElementMatcher<Element> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3331:                public Filtering(Source delegate, ElementMatcher<Element> matcher, boolean manifest) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3345:                    return new Filtering(delegate, new MultiReleaseVersionMatcher(classFileVersion));
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3355:                    return new Filtering(delegate, NoFolderMatcher.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3362:                    return new Origin.Filtering(delegate.read(), matcher, manifest);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:2063:    class Filtering implements ClassFileLocator {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java:2081:        public Filtering(ElementMatcher<? super String> matcher, ClassFileLocator delegate) {
+
+codex
+I found the implementation and the first-pass references. Next I’m checking how many distinct production sites actually instantiate or depend on this class, and how many types it pulls in itself, because the smell requires both fan-in and fan-out to be strong.
+exec
+/bin/bash -lc "rg -n \"new ClassFileLocator\\.Filtering|ClassFileLocator\\.Filtering\\(\" byte-buddy-dep byte-buddy-maven-plugin -S" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"ClassFileLocator\\.Filtering|Filtering\\b\" byte-buddy-dep/src/main/java byte-buddy-maven-plugin/src/main/java --glob '"'!**/ClassFileLocator.java'"' --glob '"'!**/*FilteringTest.java'"' -S" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '2040,2135p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 195ms:
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:376:            source = new Plugin.Engine.Source.Filtering(source, stalenessFilter);
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:600:                    source = new Plugin.Engine.Source.Filtering(new Plugin.Engine.Source.ForFolder(root), new FilePrefixMatcher(names));
+byte-buddy-maven-plugin/src/main/java/net/bytebuddy/build/maven/ByteBuddyMojo.java:1326:                log.debug("Filtering " + file + " due to staleness: " + file.lastModified());
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2234:        class Filtering implements Listener {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:2252:            public Filtering(ElementMatcher<? super String> matcher, Listener delegate) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2393:                class Filtering implements Origin {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2416:                    public Filtering(Origin delegate, ElementMatcher<Element> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:2427:                    public Filtering(Origin delegate, ElementMatcher<Element> matcher, boolean manifest) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3297:            class Filtering implements Source {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3320:                public Filtering(Source delegate, ElementMatcher<Element> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3331:                public Filtering(Source delegate, ElementMatcher<Element> matcher, boolean manifest) {
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3345:                    return new Filtering(delegate, new MultiReleaseVersionMatcher(classFileVersion));
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3355:                    return new Filtering(delegate, NoFolderMatcher.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/build/Plugin.java:3362:                    return new Origin.Filtering(delegate.read(), matcher, manifest);
+
+ succeeded in 295ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:28:        assertThat(new ClassFileLocator.Filtering(is(FOO), classFileLocator).locate(FOO).isResolved(), CoreMatchers.is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:29:        assertThat(new ClassFileLocator.Filtering(is(FOO), classFileLocator).locate(BAR).isResolved(), CoreMatchers.is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:34:        new ClassFileLocator.Filtering(is(FOO), classFileLocator).close();
+
+ succeeded in 251ms:
+        /**
+         * {@inheritDoc}
+         */
+        public Resolution locate(String name) throws IOException {
+            int packageIndex = name.lastIndexOf('.');
+            ClassFileLocator classFileLocator = classFileLocators.get(packageIndex == -1 ? NamedElement.EMPTY_NAME : name.substring(0, packageIndex));
+            return classFileLocator == null ? new Resolution.Illegal(name) : classFileLocator.locate(name);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public void close() throws IOException {
+            for (ClassFileLocator classFileLocator : classFileLocators.values()) {
+                classFileLocator.close();
+            }
+        }
+    }
+
+    /**
+     * A class file locator that only applies for matched names.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class Filtering implements ClassFileLocator {
+
+        /**
+         * The matcher to determine if the delegate matcher is considered.
+         */
+        private final ElementMatcher<? super String> matcher;
+
+        /**
+         * The delegate class file locator.
+         */
+        private final ClassFileLocator delegate;
+
+        /**
+         * Creates a new filtering class file locator.
+         *
+         * @param matcher  The matcher to determine if the delegate matcher is considered.
+         * @param delegate The delegate class file locator.
+         */
+        public Filtering(ElementMatcher<? super String> matcher, ClassFileLocator delegate) {
+            this.matcher = matcher;
+            this.delegate = delegate;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Resolution locate(String name) throws IOException {
+            return matcher.matches(name) ? delegate.locate(name) : new Resolution.Illegal(name);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public void close() throws IOException {
+            delegate.close();
+        }
+    }
+
+    /**
+     * A compound {@link ClassFileLocator} that chains several locators.
+     * Any class file locator is queried in the supplied order until one locator is able to provide an input
+     * stream of the class file.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    class Compound implements ClassFileLocator, Closeable {
+
+        /**
+         * The {@link ClassFileLocator}s which are represented by this compound
+         * class file locator  in the order of their application.
+         */
+        private final List<ClassFileLocator> classFileLocators;
+
+        /**
+         * Creates a new compound class file locator.
+         *
+         * @param classFileLocator The {@link ClassFileLocator}s to be
+         *                         represented by this compound class file locator in the order of their application.
+         */
+        public Compound(ClassFileLocator... classFileLocator) {
+            this(Arrays.asList(classFileLocator));
+        }
+
+        /**
+         * Creates a new compound class file locator.
+         *
+         * @param classFileLocators The {@link ClassFileLocator}s to be represented by this compound class file locator in
+         *                          the order of their application.
+         */
+        public Compound(List<? extends ClassFileLocator> classFileLocators) {
+            this.classFileLocators = new ArrayList<ClassFileLocator>();
+            for (ClassFileLocator classFileLocator : classFileLocators) {
+                if (classFileLocator instanceof Compound) {
+                    this.classFileLocators.addAll(((Compound) classFileLocator).classFileLocators);
+
+codex
+The target appears to be a small wrapper rather than an architectural junction. I’m verifying that by reading the focused test and checking whether any production code in the repository actually instantiates `ClassFileLocator.Filtering` beyond that test.
+exec
+/bin/bash -lc "sed -n '1,120p' byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"ClassFileLocatorFilteringTest|ClassFileLocator\\.Filtering\" byte-buddy-dep/src/test/java byte-buddy-dep/src/main/java -S" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,120p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 245ms:
+package net.bytebuddy.dynamic;
+
+import org.hamcrest.CoreMatchers;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+
+import static net.bytebuddy.matcher.ElementMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+public class ClassFileLocatorFilteringTest {
+
+    private static final String FOO = "foo", BAR = "bar";
+
+    @Rule
+    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+
+    @Mock
+    private ClassFileLocator classFileLocator;
+
+    @Test
+    public void testLocation() throws Exception {
+        when(classFileLocator.locate(FOO)).thenReturn(new ClassFileLocator.Resolution.Explicit(new byte[0]));
+        assertThat(new ClassFileLocator.Filtering(is(FOO), classFileLocator).locate(FOO).isResolved(), CoreMatchers.is(true));
+        assertThat(new ClassFileLocator.Filtering(is(FOO), classFileLocator).locate(BAR).isResolved(), CoreMatchers.is(false));
+    }
+
+    @Test
+    public void testClose() throws Exception {
+        new ClassFileLocator.Filtering(is(FOO), classFileLocator).close();
+        verify(classFileLocator).close();
+    }
+}
+
+ succeeded in 256ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:15:public class ClassFileLocatorFilteringTest {
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:28:        assertThat(new ClassFileLocator.Filtering(is(FOO), classFileLocator).locate(FOO).isResolved(), CoreMatchers.is(true));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:29:        assertThat(new ClassFileLocator.Filtering(is(FOO), classFileLocator).locate(BAR).isResolved(), CoreMatchers.is(false));
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java:34:        new ClassFileLocator.Filtering(is(FOO), classFileLocator).close();
+
+ succeeded in 268ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.dynamic;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.agent.builder.AgentBuilder;
+import net.bytebuddy.build.AccessControllerPlugin;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.NamedElement;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.utility.JavaModule;
+import net.bytebuddy.utility.JavaType;
+import net.bytebuddy.utility.StreamDrainer;
+import net.bytebuddy.utility.dispatcher.JavaDispatcher;
+import net.bytebuddy.utility.nullability.AlwaysNull;
+import net.bytebuddy.utility.nullability.MaybeNull;
+
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.Instrumentation;
+import java.lang.instrument.UnmodifiableClassException;
+import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.security.PrivilegedAction;
+import java.security.ProtectionDomain;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.Vector;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
+import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+
+import static net.bytebuddy.matcher.ElementMatchers.isChildOf;
+
+/**
+ * Locates a class file or its byte array representation when it is given its type description.
+ */
+public interface ClassFileLocator extends Closeable {
+
+    /**
+     * The file extension for a Java class file.
+     */
+    String CLASS_FILE_EXTENSION = ".class";
+
+    /**
+     * The prefix folder for {@code META-INF/versions/} which contains multi-release files.
+     */
+    String META_INF_VERSIONS = "META-INF/versions/";
+
+    /**
+     * Locates the class file for a given type and returns the binary data of the class file.
+     *
+     * @param name The name of the type to locate a class file representation for.
+     * @return Any binary representation of the type which might be illegal.
+     * @throws java.io.IOException If reading a class file causes an error.
+     */
+    Resolution locate(String name) throws IOException;
+
+    /**
+     * Represents a class file as binary data.
+     */
+    interface Resolution {
+
+        /**
+         * Checks if this binary representation is valid.
+         *
+         * @return {@code true} if this binary representation is valid.
+         */
+        boolean isResolved();
+
+        /**
+         * Finds the data of this binary representation. Calling this method is only legal for resolved instances.
+         * For non-resolved instances, an exception is thrown.
+         *
+         * @return The requested binary data. The returned array must not be altered.
+         */
+        byte[] resolve();
+
+        /**
+         * A canonical representation of an illegal binary representation.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class Illegal implements Resolution {
+
+
+codex
+{"target":"net.bytebuddy.dynamic.ClassFileLocator.Filtering","detection":false,"justification":"In `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/ClassFileLocator.java`, `Filtering` is a small wrapper with only two fields (`ElementMatcher<? super String>` and a delegate `ClassFileLocator`) and two behaviors (`locate` and `close`), so its fan-out is minimal. Repository-wide searches found no production callers of `ClassFileLocator.Filtering`; the only direct usages are the three assertions in `byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/ClassFileLocatorFilteringTest.java`. That is not enough incoming dependency evidence for a hub-like modularization smell."}
+tokens used
+8,200

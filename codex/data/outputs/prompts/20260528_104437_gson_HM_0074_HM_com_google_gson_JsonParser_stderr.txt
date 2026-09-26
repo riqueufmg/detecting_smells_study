@@ -1,0 +1,870 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ed4-7912-74c2-9f4b-57f389431433
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.gson.JsonParser` in the repository located at:
+
+`data/repositories/google/gson`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.gson.JsonParser",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.gson.JsonParser`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `com.google.gson.JsonParser` and checking its direct dependencies and usage sites to judge whether it behaves like a dependency hub.
+exec
+/bin/bash -lc "rg -n \"class\\s+JsonParser|new\\s+JsonParser\\b|JsonParser\\b\" src test -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ exited 2 in 0ms:
+rg: src: No such file or directory (os error 2)
+rg: test: No such file or directory (os error 2)
+
+exec
+/bin/bash -lc "rg --files | rg 'JsonParser\\.java"'$|JsonParser'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+gson/src/test/java/com/google/gson/JsonParserParameterizedTest.java
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java
+gson/src/test/java/com/google/gson/JsonParserTest.java
+gson/src/main/java/com/google/gson/JsonParser.java
+
+codex
+I found the class under `gson/src/main/java`. Next I’m reading the class itself and the tests that reference it to see how central it is and what it depends on.
+exec
+/bin/bash -lc "sed -n '1,220p' gson/src/main/java/com/google/gson/JsonParser.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2009 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.google.gson;
+
+import com.google.errorprone.annotations.InlineMe;
+import com.google.gson.internal.Streams;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.MalformedJsonException;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+
+/**
+ * A parser to parse JSON into a parse tree of {@link JsonElement}s.
+ *
+ * <p>The JSON data is parsed in {@linkplain JsonReader#setStrictness(Strictness) lenient mode}.
+ *
+ * <p>Here's an example of parsing from a string:
+ *
+ * <pre>
+ * String json = "{\"key\": \"value\"}";
+ * JsonElement jsonElement = JsonParser.parseString(json);
+ * JsonObject jsonObject = jsonElement.getAsJsonObject();
+ * </pre>
+ *
+ * <p>It can also parse from a reader:
+ *
+ * <pre>
+ * try (Reader reader = new FileReader("my-data.json", StandardCharsets.UTF_8)) {
+ *   JsonElement jsonElement = JsonParser.parseReader(reader);
+ *   JsonObject jsonObject = jsonElement.getAsJsonObject();
+ * }
+ * </pre>
+ *
+ * <p>If you want to parse from a {@link JsonReader} for more customized parsing requirements, the
+ * following example demonstrates how to achieve it:
+ *
+ * <pre>
+ * String json = "{\"skipObj\": {\"skipKey\": \"skipValue\"}, \"obj\": {\"key\": \"value\"}}";
+ * try (JsonReader jsonReader = new JsonReader(new StringReader(json))) {
+ *   jsonReader.beginObject();
+ *   while (jsonReader.hasNext()) {
+ *     String fieldName = jsonReader.nextName();
+ *     if (fieldName.equals("skipObj")) {
+ *       jsonReader.skipValue();
+ *     } else {
+ *       JsonElement jsonElement = JsonParser.parseReader(jsonReader);
+ *       JsonObject jsonObject = jsonElement.getAsJsonObject();
+ *     }
+ *   }
+ *   jsonReader.endObject();
+ * }
+ * </pre>
+ *
+ * @author Inderjeet Singh
+ * @author Joel Leitch
+ * @since 1.3
+ */
+public final class JsonParser {
+  /**
+   * @deprecated No need to instantiate this class, use the static methods instead.
+   */
+  @Deprecated
+  public JsonParser() {}
+
+  /**
+   * Parses the specified JSON string into a parse tree. An exception is thrown if the JSON string
+   * has multiple top-level JSON elements, or if there is trailing data.
+   *
+   * <p>The JSON string is parsed in {@linkplain JsonReader#setStrictness(Strictness) lenient mode}.
+   *
+   * @param json JSON text
+   * @return a parse tree of {@link JsonElement}s corresponding to the specified JSON
+   * @throws JsonParseException if the specified text is not valid JSON
+   * @since 2.8.6
+   */
+  public static JsonElement parseString(String json) throws JsonSyntaxException {
+    return parseReader(new StringReader(json));
+  }
+
+  /**
+   * Parses the complete JSON string provided by the reader into a parse tree. An exception is
+   * thrown if the JSON string has multiple top-level JSON elements, or if there is trailing data.
+   *
+   * <p>The JSON data is parsed in {@linkplain JsonReader#setStrictness(Strictness) lenient mode}.
+   *
+   * @param reader JSON text
+   * @return a parse tree of {@link JsonElement}s corresponding to the specified JSON
+   * @throws JsonParseException if there is an IOException or if the specified text is not valid
+   *     JSON
+   * @since 2.8.6
+   */
+  public static JsonElement parseReader(Reader reader) throws JsonIOException, JsonSyntaxException {
+    try {
+      JsonReader jsonReader = new JsonReader(reader);
+      JsonElement element = parseReader(jsonReader);
+      if (!element.isJsonNull() && jsonReader.peek() != JsonToken.END_DOCUMENT) {
+        throw new JsonSyntaxException("Did not consume the entire document.");
+      }
+      return element;
+    } catch (MalformedJsonException | NumberFormatException e) {
+      throw new JsonSyntaxException(e);
+    } catch (IOException e) {
+      throw new JsonIOException(e);
+    }
+  }
+
+  /**
+   * Returns the next value from the JSON stream as a parse tree. Unlike the other {@code parse}
+   * methods, no exception is thrown if the JSON data has multiple top-level JSON elements, or if
+   * there is trailing data.
+   *
+   * <p>If the {@linkplain JsonReader#getStrictness() strictness of the reader} is {@link
+   * Strictness#STRICT}, that strictness will be used for parsing. Otherwise the strictness will be
+   * temporarily changed to {@link Strictness#LENIENT} and will be restored once this method
+   * returns.
+   *
+   * @throws JsonParseException if there is an IOException or if the specified text is not valid
+   *     JSON
+   * @since 2.8.6
+   */
+  public static JsonElement parseReader(JsonReader reader)
+      throws JsonIOException, JsonSyntaxException {
+    Strictness strictness = reader.getStrictness();
+    if (strictness == Strictness.LEGACY_STRICT) {
+      // For backward compatibility change to LENIENT if reader has default strictness LEGACY_STRICT
+      reader.setStrictness(Strictness.LENIENT);
+    }
+    try {
+      return Streams.parse(reader);
+    } catch (StackOverflowError | OutOfMemoryError e) {
+      throw new JsonParseException("Failed parsing JSON source: " + reader + " to Json", e);
+    } finally {
+      reader.setStrictness(strictness);
+    }
+  }
+
+  /**
+   * @deprecated Use {@link JsonParser#parseString}
+   */
+  @Deprecated
+  @InlineMe(replacement = "JsonParser.parseString(json)", imports = "com.google.gson.JsonParser")
+  public JsonElement parse(String json) throws JsonSyntaxException {
+    return parseString(json);
+  }
+
+  /**
+   * @deprecated Use {@link JsonParser#parseReader(Reader)}
+   */
+  @Deprecated
+  @InlineMe(replacement = "JsonParser.parseReader(json)", imports = "com.google.gson.JsonParser")
+  public JsonElement parse(Reader json) throws JsonIOException, JsonSyntaxException {
+    return parseReader(json);
+  }
+
+  /**
+   * @deprecated Use {@link JsonParser#parseReader(JsonReader)}
+   */
+  @Deprecated
+  @InlineMe(replacement = "JsonParser.parseReader(json)", imports = "com.google.gson.JsonParser")
+  public JsonElement parse(JsonReader json) throws JsonIOException, JsonSyntaxException {
+    return parseReader(json);
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' gson/src/test/java/com/google/gson/JsonParserParameterizedTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2022 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson;
+
+import static com.google.common.truth.Truth.assertThat;
+
+import com.google.gson.internal.bind.JsonElementTypeAdapter;
+import java.util.Arrays;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
+
+@RunWith(Parameterized.class)
+public class JsonParserParameterizedTest {
+  @Parameters
+  public static Iterable<String> data() {
+    return Arrays.asList(
+        "[]",
+        "{}",
+        "null",
+        "1.0",
+        "true",
+        "\"string\"",
+        "[true,1.0,null,{},2.0,{\"a\":[false]},[3.0,\"test\"],4.0]",
+        "{\"\":1.0,\"a\":true,\"b\":null,\"c\":[],\"d\":{\"a1\":2.0,\"b2\":[true,{\"a3\":3.0}]},\"e\":[{\"f\":4.0},\"test\"]}");
+  }
+
+  private final TypeAdapter<JsonElement> adapter = JsonElementTypeAdapter.ADAPTER;
+  @Parameter public String json;
+
+  @Test
+  public void testParse() {
+    JsonElement deserialized = JsonParser.parseString(json);
+    String actualSerialized = adapter.toJson(deserialized);
+
+    // Serialized JsonElement should be the same as original JSON
+    assertThat(actualSerialized).isEqualTo(json);
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' gson/src/test/java/com/google/gson/JsonParserTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2009 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson;
+
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
+
+import com.google.gson.common.TestTypes.BagOfPrimitives;
+import com.google.gson.internal.Streams;
+import com.google.gson.stream.JsonReader;
+import java.io.CharArrayReader;
+import java.io.CharArrayWriter;
+import java.io.IOException;
+import java.io.StringReader;
+import org.junit.Test;
+
+/**
+ * Unit test for {@link JsonParser}
+ *
+ * @author Inderjeet Singh
+ */
+public class JsonParserTest {
+
+  @Test
+  public void testParseInvalidJson() {
+    assertThrows(JsonSyntaxException.class, () -> JsonParser.parseString("[[]"));
+  }
+
+  @Test
+  public void testParseUnquotedStringArrayFails() {
+    JsonElement element = JsonParser.parseString("[a,b,c]");
+    assertThat(element.getAsJsonArray().get(0).getAsString()).isEqualTo("a");
+    assertThat(element.getAsJsonArray().get(1).getAsString()).isEqualTo("b");
+    assertThat(element.getAsJsonArray().get(2).getAsString()).isEqualTo("c");
+    assertThat(element.getAsJsonArray()).hasSize(3);
+  }
+
+  @Test
+  public void testParseString() {
+    String json = "{a:10,b:'c'}";
+    JsonElement e = JsonParser.parseString(json);
+    assertThat(e.isJsonObject()).isTrue();
+    assertThat(e.getAsJsonObject().get("a").getAsInt()).isEqualTo(10);
+    assertThat(e.getAsJsonObject().get("b").getAsString()).isEqualTo("c");
+  }
+
+  @Test
+  public void testParseEmptyString() {
+    JsonElement e = JsonParser.parseString("\"   \"");
+    assertThat(e.isJsonPrimitive()).isTrue();
+    assertThat(e.getAsString()).isEqualTo("   ");
+  }
+
+  @Test
+  public void testParseEmptyWhitespaceInput() {
+    JsonElement e = JsonParser.parseString("     ");
+    assertThat(e.isJsonNull()).isTrue();
+  }
+
+  @Test
+  public void testParseUnquotedSingleWordStringFails() {
+    assertThat(JsonParser.parseString("Test").getAsString()).isEqualTo("Test");
+  }
+
+  @Test
+  public void testParseUnquotedMultiWordStringFails() {
+    assertThrows(
+        JsonSyntaxException.class, () -> JsonParser.parseString("Test is a test..blah blah"));
+  }
+
+  @Test
+  public void testParseMixedArray() {
+    String json = "[{},13,\"stringValue\"]";
+    JsonElement e = JsonParser.parseString(json);
+    assertThat(e.isJsonArray()).isTrue();
+
+    JsonArray array = e.getAsJsonArray();
+    assertThat(array.get(0).toString()).isEqualTo("{}");
+    assertThat(array.get(1).getAsInt()).isEqualTo(13);
+    assertThat(array.get(2).getAsString()).isEqualTo("stringValue");
+  }
+
+  /** Deeply nested JSON arrays should not cause {@link StackOverflowError} */
+  @Test
+  public void testParseDeeplyNestedArrays() throws IOException {
+    int times = 10000;
+    // [[[ ... ]]]
+    String json = "[".repeat(times) + "]".repeat(times);
+    JsonReader jsonReader = new JsonReader(new StringReader(json));
+    jsonReader.setNestingLimit(Integer.MAX_VALUE);
+
+    int actualTimes = 0;
+    JsonArray current = JsonParser.parseReader(jsonReader).getAsJsonArray();
+    while (true) {
+      actualTimes++;
+      if (current.isEmpty()) {
+        break;
+      }
+      assertThat(current.size()).isEqualTo(1);
+      current = current.get(0).getAsJsonArray();
+    }
+    assertThat(actualTimes).isEqualTo(times);
+  }
+
+  /** Deeply nested JSON objects should not cause {@link StackOverflowError} */
+  @Test
+  public void testParseDeeplyNestedObjects() throws IOException {
+    int times = 10000;
+    // {"a":{"a": ... {"a":null} ... }}
+    String json = "{\"a\":".repeat(times) + "null" + "}".repeat(times);
+    JsonReader jsonReader = new JsonReader(new StringReader(json));
+    jsonReader.setNestingLimit(Integer.MAX_VALUE);
+
+    int actualTimes = 0;
+    JsonObject current = JsonParser.parseReader(jsonReader).getAsJsonObject();
+    while (true) {
+      assertThat(current.size()).isEqualTo(1);
+      actualTimes++;
+      JsonElement next = current.get("a");
+      if (next.isJsonNull()) {
+        break;
+      } else {
+        current = next.getAsJsonObject();
+      }
+    }
+    assertThat(actualTimes).isEqualTo(times);
+  }
+
+  @Test
+  public void testParseReader() {
+    StringReader reader = new StringReader("{a:10,b:'c'}");
+    JsonElement e = JsonParser.parseReader(reader);
+    assertThat(e.isJsonObject()).isTrue();
+    assertThat(e.getAsJsonObject().get("a").getAsInt()).isEqualTo(10);
+    assertThat(e.getAsJsonObject().get("b").getAsString()).isEqualTo("c");
+  }
+
+  @Test
+  public void testReadWriteTwoObjects() throws Exception {
+    Gson gson = new Gson();
+    CharArrayWriter writer = new CharArrayWriter();
+    BagOfPrimitives expectedOne = new BagOfPrimitives(1, 1, true, "one");
+    writer.write(gson.toJson(expectedOne).toCharArray());
+    BagOfPrimitives expectedTwo = new BagOfPrimitives(2, 2, false, "two");
+    writer.write(gson.toJson(expectedTwo).toCharArray());
+    CharArrayReader reader = new CharArrayReader(writer.toCharArray());
+
+    JsonReader parser = new JsonReader(reader);
+    parser.setStrictness(Strictness.LENIENT);
+    JsonElement element1 = Streams.parse(parser);
+    JsonElement element2 = Streams.parse(parser);
+    BagOfPrimitives actualOne = gson.fromJson(element1, BagOfPrimitives.class);
+    assertThat(actualOne.stringValue).isEqualTo("one");
+    BagOfPrimitives actualTwo = gson.fromJson(element2, BagOfPrimitives.class);
+    assertThat(actualTwo.stringValue).isEqualTo("two");
+  }
+
+  @Test
+  public void testLegacyStrict() {
+    JsonReader reader = new JsonReader(new StringReader("unquoted"));
+    Strictness strictness = Strictness.LEGACY_STRICT;
+    // LEGACY_STRICT is ignored by JsonParser later; parses in lenient mode instead
+    reader.setStrictness(strictness);
+
+    assertThat(JsonParser.parseReader(reader)).isEqualTo(new JsonPrimitive("unquoted"));
+    // Original strictness was restored
+    assertThat(reader.getStrictness()).isEqualTo(strictness);
+  }
+
+  @Test
+  public void testStrict() {
+    JsonReader reader = new JsonReader(new StringReader("faLsE"));
+    Strictness strictness = Strictness.STRICT;
+    reader.setStrictness(strictness);
+
+    var e = assertThrows(JsonSyntaxException.class, () -> JsonParser.parseReader(reader));
+    assertThat(e)
+        .hasCauseThat()
+        .hasMessageThat()
+        .startsWith("Use JsonReader.setStrictness(Strictness.LENIENT) to accept malformed JSON");
+    // Original strictness was kept
+    assertThat(reader.getStrictness()).isEqualTo(strictness);
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' gson/src/test/java/com/google/gson/functional/JsonParserTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2008 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson.functional;
+
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.common.TestTypes.BagOfPrimitives;
+import com.google.gson.common.TestTypes.Nested;
+import com.google.gson.reflect.TypeToken;
+import java.io.EOFException;
+import java.io.StringReader;
+import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import org.junit.Before;
+import org.junit.Test;
+
+/**
+ * Functional tests for that use JsonParser and related Gson methods
+ *
+ * @author Inderjeet Singh
+ * @author Joel Leitch
+ */
+public class JsonParserTest {
+  private Gson gson;
+
+  @Before
+  public void setUp() throws Exception {
+    gson = new Gson();
+  }
+
+  @Test
+  public void testParseInvalidJson() {
+    var e = assertThrows(JsonSyntaxException.class, () -> gson.fromJson("[[]", Object[].class));
+    assertThat(e).hasCauseThat().isInstanceOf(EOFException.class);
+  }
+
+  @Test
+  public void testDeserializingCustomTree() {
+    JsonObject obj = new JsonObject();
+    obj.addProperty("stringValue", "foo");
+    obj.addProperty("intValue", 11);
+    BagOfPrimitives target = gson.fromJson(obj, BagOfPrimitives.class);
+    assertThat(target.intValue).isEqualTo(11);
+    assertThat(target.stringValue).isEqualTo("foo");
+  }
+
+  @Test
+  public void testBadTypeForDeserializingCustomTree() {
+    JsonObject obj = new JsonObject();
+    obj.addProperty("stringValue", "foo");
+    obj.addProperty("intValue", 11);
+    JsonArray array = new JsonArray();
+    array.add(obj);
+    // BagOfPrimitives should not be an array
+    assertThrows(JsonParseException.class, () -> gson.fromJson(array, BagOfPrimitives.class));
+  }
+
+  @Test
+  public void testBadFieldTypeForCustomDeserializerCustomTree() {
+    JsonArray array = new JsonArray();
+    array.add(new JsonPrimitive("blah"));
+    JsonObject obj = new JsonObject();
+    obj.addProperty("stringValue", "foo");
+    obj.addProperty("intValue", 11);
+    obj.add("longValue", array);
+
+    // `longValue` should not be an array
+    assertThrows(JsonParseException.class, () -> gson.fromJson(obj, BagOfPrimitives.class));
+  }
+
+  @Test
+  public void testBadFieldTypeForDeserializingCustomTree() {
+    JsonArray array = new JsonArray();
+    array.add(new JsonPrimitive("blah"));
+    JsonObject primitive1 = new JsonObject();
+    primitive1.addProperty("string", "foo");
+    primitive1.addProperty("intValue", 11);
+
+    JsonObject obj = new JsonObject();
+    obj.add("primitive1", primitive1);
+    obj.add("primitive2", array);
+
+    // Nested has field BagOfPrimitives which is not an array
+    assertThrows(JsonParseException.class, () -> gson.fromJson(obj, Nested.class));
+  }
+
+  @Test
+  public void testChangingCustomTreeAndDeserializing() {
+    StringReader json =
+        new StringReader("{'stringValue':'no message','intValue':10,'longValue':20}");
+    JsonObject obj = (JsonObject) JsonParser.parseReader(json);
+    obj.remove("stringValue");
+    obj.addProperty("stringValue", "fooBar");
+    BagOfPrimitives target = gson.fromJson(obj, BagOfPrimitives.class);
+    assertThat(target.intValue).isEqualTo(10);
+    assertThat(target.longValue).isEqualTo(20);
+    assertThat(target.stringValue).isEqualTo("fooBar");
+  }
+
+  @Test
+  public void testExtraCommasInArrays() {
+    TypeToken<List<String>> type = new TypeToken<>() {};
+    assertThat(gson.fromJson("[a,,b,,]", type))
+        .isEqualTo(Arrays.asList("a", null, "b", null, null));
+    assertThat(gson.fromJson("[,]", type)).isEqualTo(Arrays.asList(null, null));
+    assertThat(gson.fromJson("[a,]", type)).isEqualTo(Arrays.asList("a", null));
+  }
+
+  @Test
+  public void testExtraCommasInMaps() {
+    Type type = new TypeToken<Map<String, String>>() {}.getType();
+    var e = assertThrows(JsonSyntaxException.class, () -> gson.fromJson("{a:b,}", type));
+    assertThat(e)
+        .hasCauseThat()
+        .hasMessageThat()
+        .startsWith("Expected name at line 1 column 7 path $.\n");
+  }
+}
+
+codex
+I have the class and its direct dependencies. I’m now checking how broadly it is used across the repository, since hub-like modularization needs both outgoing dependencies and many incoming references.
+exec
+/bin/bash -lc "rg -n \"\\bJsonParser\\b\" gson/src/main/java gson/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+gson/src/test/java/com/google/gson/SubsetTest.java:12:    JsonElement json = JsonParser.parseString("{\"a\":1,\"b\":[2.1, null]}");
+gson/src/test/java/com/google/gson/JsonParserParameterizedTest.java:49:    JsonElement deserialized = JsonParser.parseString(json);
+gson/src/test/java/com/google/gson/JsonObjectTest.java:152:    JsonObject jsonObj = JsonParser.parseString("{\"\":true}").getAsJsonObject();
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:23:import com.google.gson.JsonParser;
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:36:    JsonElement element = JsonParser.parseString("[1, 2, 3]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:47:    JsonElement element = JsonParser.parseString("[NaN, -Infinity, Infinity]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:59:    JsonElement element = JsonParser.parseString("[NaN, -Infinity, Infinity]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:83:    JsonElement element = JsonParser.parseString("[\"1\", \"2\", \"3\"]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:94:    JsonElement element = JsonParser.parseString("[1]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:103:    JsonElement element = JsonParser.parseString("[true, false]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:113:    JsonElement element = JsonParser.parseString("[null,null]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:123:    JsonElement element = JsonParser.parseString("[\"A\",\"B\"]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:133:    JsonElement element = JsonParser.parseString("[1, 2, 3]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:150:    JsonElement element = JsonParser.parseString("{\"A\": 1, \"B\": 2}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:169:    JsonElement element = JsonParser.parseString("[]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:177:    JsonElement element = JsonParser.parseString("[[],[[]]]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:191:    JsonElement element = JsonParser.parseString("{\"A\":{},\"B\":{\"C\":{}}}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:208:    JsonElement element = JsonParser.parseString("{}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:216:    JsonElement element = JsonParser.parseString("[\"A\",{\"B\":[[]]},\"C\",[[]],\"D\",null]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:230:    JsonElement element = JsonParser.parseString("[[],\"A\"]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:261:    JsonElement element = JsonParser.parseString("{\"A\": 1, \"B\" : {}, \"C\" : []}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:285:    JsonElement element = JsonParser.parseString("[1, 2, 3]");
+gson/src/test/java/com/google/gson/JsonParserTest.java:32: * Unit test for {@link JsonParser}
+gson/src/test/java/com/google/gson/JsonParserTest.java:40:    assertThrows(JsonSyntaxException.class, () -> JsonParser.parseString("[[]"));
+gson/src/test/java/com/google/gson/JsonParserTest.java:45:    JsonElement element = JsonParser.parseString("[a,b,c]");
+gson/src/test/java/com/google/gson/JsonParserTest.java:55:    JsonElement e = JsonParser.parseString(json);
+gson/src/test/java/com/google/gson/JsonParserTest.java:63:    JsonElement e = JsonParser.parseString("\"   \"");
+gson/src/test/java/com/google/gson/JsonParserTest.java:70:    JsonElement e = JsonParser.parseString("     ");
+gson/src/test/java/com/google/gson/JsonParserTest.java:76:    assertThat(JsonParser.parseString("Test").getAsString()).isEqualTo("Test");
+gson/src/test/java/com/google/gson/JsonParserTest.java:82:        JsonSyntaxException.class, () -> JsonParser.parseString("Test is a test..blah blah"));
+gson/src/test/java/com/google/gson/JsonParserTest.java:88:    JsonElement e = JsonParser.parseString(json);
+gson/src/test/java/com/google/gson/JsonParserTest.java:107:    JsonArray current = JsonParser.parseReader(jsonReader).getAsJsonArray();
+gson/src/test/java/com/google/gson/JsonParserTest.java:129:    JsonObject current = JsonParser.parseReader(jsonReader).getAsJsonObject();
+gson/src/test/java/com/google/gson/JsonParserTest.java:146:    JsonElement e = JsonParser.parseReader(reader);
+gson/src/test/java/com/google/gson/JsonParserTest.java:176:    // LEGACY_STRICT is ignored by JsonParser later; parses in lenient mode instead
+gson/src/test/java/com/google/gson/JsonParserTest.java:179:    assertThat(JsonParser.parseReader(reader)).isEqualTo(new JsonPrimitive("unquoted"));
+gson/src/test/java/com/google/gson/JsonParserTest.java:190:    var e = assertThrows(JsonSyntaxException.class, () -> JsonParser.parseReader(reader));
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java:26:import com.google.gson.JsonParser;
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java:42: * Functional tests for that use JsonParser and related Gson methods
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java:115:    JsonObject obj = (JsonObject) JsonParser.parseReader(json);
+gson/src/test/java/com/google/gson/JsonArrayTest.java:134:        JsonParser.parseString(
+gson/src/main/java/com/google/gson/JsonElement.java:43: *   <li>{@link JsonParser}, for example:
+gson/src/main/java/com/google/gson/JsonElement.java:45: * JsonObject jsonObject = JsonParser.parseString("{}").getAsJsonObject();
+gson/src/test/java/com/google/gson/functional/MapTest.java:30:import com.google.gson.JsonParser;
+gson/src/test/java/com/google/gson/functional/MapTest.java:730:    JsonElement tree = JsonParser.parseString(json);
+gson/src/main/java/com/google/gson/JsonParser.java:36: * JsonElement jsonElement = JsonParser.parseString(json);
+gson/src/main/java/com/google/gson/JsonParser.java:44: *   JsonElement jsonElement = JsonParser.parseReader(reader);
+gson/src/main/java/com/google/gson/JsonParser.java:61: *       JsonElement jsonElement = JsonParser.parseReader(jsonReader);
+gson/src/main/java/com/google/gson/JsonParser.java:73:public final class JsonParser {
+gson/src/main/java/com/google/gson/JsonParser.java:78:  public JsonParser() {}
+gson/src/main/java/com/google/gson/JsonParser.java:153:   * @deprecated Use {@link JsonParser#parseString}
+gson/src/main/java/com/google/gson/JsonParser.java:156:  @InlineMe(replacement = "JsonParser.parseString(json)", imports = "com.google.gson.JsonParser")
+gson/src/main/java/com/google/gson/JsonParser.java:162:   * @deprecated Use {@link JsonParser#parseReader(Reader)}
+gson/src/main/java/com/google/gson/JsonParser.java:165:  @InlineMe(replacement = "JsonParser.parseReader(json)", imports = "com.google.gson.JsonParser")
+gson/src/main/java/com/google/gson/JsonParser.java:171:   * @deprecated Use {@link JsonParser#parseReader(JsonReader)}
+gson/src/main/java/com/google/gson/JsonParser.java:174:  @InlineMe(replacement = "JsonParser.parseReader(json)", imports = "com.google.gson.JsonParser")
+
+exec
+/bin/bash -lc "rg -n \"parseString\\(|parseReader\\(|new JsonParser\\(|JsonParser\\.parse\" gson/src/main/java gson/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+gson/src/main/java/com/google/gson/JsonParser.java:36: * JsonElement jsonElement = JsonParser.parseString(json);
+gson/src/main/java/com/google/gson/JsonParser.java:44: *   JsonElement jsonElement = JsonParser.parseReader(reader);
+gson/src/main/java/com/google/gson/JsonParser.java:61: *       JsonElement jsonElement = JsonParser.parseReader(jsonReader);
+gson/src/main/java/com/google/gson/JsonParser.java:91:  public static JsonElement parseString(String json) throws JsonSyntaxException {
+gson/src/main/java/com/google/gson/JsonParser.java:92:    return parseReader(new StringReader(json));
+gson/src/main/java/com/google/gson/JsonParser.java:107:  public static JsonElement parseReader(Reader reader) throws JsonIOException, JsonSyntaxException {
+gson/src/main/java/com/google/gson/JsonParser.java:110:      JsonElement element = parseReader(jsonReader);
+gson/src/main/java/com/google/gson/JsonParser.java:136:  public static JsonElement parseReader(JsonReader reader)
+gson/src/main/java/com/google/gson/JsonParser.java:156:  @InlineMe(replacement = "JsonParser.parseString(json)", imports = "com.google.gson.JsonParser")
+gson/src/main/java/com/google/gson/JsonParser.java:158:    return parseString(json);
+gson/src/main/java/com/google/gson/JsonParser.java:162:   * @deprecated Use {@link JsonParser#parseReader(Reader)}
+gson/src/main/java/com/google/gson/JsonParser.java:165:  @InlineMe(replacement = "JsonParser.parseReader(json)", imports = "com.google.gson.JsonParser")
+gson/src/main/java/com/google/gson/JsonParser.java:167:    return parseReader(json);
+gson/src/main/java/com/google/gson/JsonParser.java:171:   * @deprecated Use {@link JsonParser#parseReader(JsonReader)}
+gson/src/main/java/com/google/gson/JsonParser.java:174:  @InlineMe(replacement = "JsonParser.parseReader(json)", imports = "com.google.gson.JsonParser")
+gson/src/main/java/com/google/gson/JsonParser.java:176:    return parseReader(json);
+gson/src/main/java/com/google/gson/JsonElement.java:45: * JsonObject jsonObject = JsonParser.parseString("{}").getAsJsonObject();
+gson/src/test/java/com/google/gson/SubsetTest.java:12:    JsonElement json = JsonParser.parseString("{\"a\":1,\"b\":[2.1, null]}");
+gson/src/test/java/com/google/gson/JsonParserParameterizedTest.java:49:    JsonElement deserialized = JsonParser.parseString(json);
+gson/src/test/java/com/google/gson/JsonParserTest.java:40:    assertThrows(JsonSyntaxException.class, () -> JsonParser.parseString("[[]"));
+gson/src/test/java/com/google/gson/JsonParserTest.java:45:    JsonElement element = JsonParser.parseString("[a,b,c]");
+gson/src/test/java/com/google/gson/JsonParserTest.java:55:    JsonElement e = JsonParser.parseString(json);
+gson/src/test/java/com/google/gson/JsonParserTest.java:63:    JsonElement e = JsonParser.parseString("\"   \"");
+gson/src/test/java/com/google/gson/JsonParserTest.java:70:    JsonElement e = JsonParser.parseString("     ");
+gson/src/test/java/com/google/gson/JsonParserTest.java:76:    assertThat(JsonParser.parseString("Test").getAsString()).isEqualTo("Test");
+gson/src/test/java/com/google/gson/JsonParserTest.java:82:        JsonSyntaxException.class, () -> JsonParser.parseString("Test is a test..blah blah"));
+gson/src/test/java/com/google/gson/JsonParserTest.java:88:    JsonElement e = JsonParser.parseString(json);
+gson/src/test/java/com/google/gson/JsonParserTest.java:107:    JsonArray current = JsonParser.parseReader(jsonReader).getAsJsonArray();
+gson/src/test/java/com/google/gson/JsonParserTest.java:129:    JsonObject current = JsonParser.parseReader(jsonReader).getAsJsonObject();
+gson/src/test/java/com/google/gson/JsonParserTest.java:146:    JsonElement e = JsonParser.parseReader(reader);
+gson/src/test/java/com/google/gson/JsonParserTest.java:179:    assertThat(JsonParser.parseReader(reader)).isEqualTo(new JsonPrimitive("unquoted"));
+gson/src/test/java/com/google/gson/JsonParserTest.java:190:    var e = assertThrows(JsonSyntaxException.class, () -> JsonParser.parseReader(reader));
+gson/src/test/java/com/google/gson/JsonObjectTest.java:152:    JsonObject jsonObj = JsonParser.parseString("{\"\":true}").getAsJsonObject();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:134:        JsonParser.parseString(
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:36:    JsonElement element = JsonParser.parseString("[1, 2, 3]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:47:    JsonElement element = JsonParser.parseString("[NaN, -Infinity, Infinity]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:59:    JsonElement element = JsonParser.parseString("[NaN, -Infinity, Infinity]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:83:    JsonElement element = JsonParser.parseString("[\"1\", \"2\", \"3\"]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:94:    JsonElement element = JsonParser.parseString("[1]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:103:    JsonElement element = JsonParser.parseString("[true, false]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:113:    JsonElement element = JsonParser.parseString("[null,null]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:123:    JsonElement element = JsonParser.parseString("[\"A\",\"B\"]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:133:    JsonElement element = JsonParser.parseString("[1, 2, 3]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:150:    JsonElement element = JsonParser.parseString("{\"A\": 1, \"B\": 2}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:169:    JsonElement element = JsonParser.parseString("[]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:177:    JsonElement element = JsonParser.parseString("[[],[[]]]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:191:    JsonElement element = JsonParser.parseString("{\"A\":{},\"B\":{\"C\":{}}}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:208:    JsonElement element = JsonParser.parseString("{}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:216:    JsonElement element = JsonParser.parseString("[\"A\",{\"B\":[[]]},\"C\",[[]],\"D\",null]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:230:    JsonElement element = JsonParser.parseString("[[],\"A\"]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:261:    JsonElement element = JsonParser.parseString("{\"A\": 1, \"B\" : {}, \"C\" : []}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:285:    JsonElement element = JsonParser.parseString("[1, 2, 3]");
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java:115:    JsonObject obj = (JsonObject) JsonParser.parseReader(json);
+gson/src/test/java/com/google/gson/functional/MapTest.java:730:    JsonElement tree = JsonParser.parseString(json);
+
+codex
+The evidence so far points to a small façade with limited outgoing dependencies. I’m verifying whether the incoming references are broad enough in production code to qualify as a hub, or mostly confined to tests and examples.
+exec
+/bin/bash -lc "rg -n \"\\bJsonParser\\b\" gson/src/main/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+gson/src/main/java/com/google/gson/JsonElement.java:43: *   <li>{@link JsonParser}, for example:
+gson/src/main/java/com/google/gson/JsonElement.java:45: * JsonObject jsonObject = JsonParser.parseString("{}").getAsJsonObject();
+gson/src/main/java/com/google/gson/JsonParser.java:36: * JsonElement jsonElement = JsonParser.parseString(json);
+gson/src/main/java/com/google/gson/JsonParser.java:44: *   JsonElement jsonElement = JsonParser.parseReader(reader);
+gson/src/main/java/com/google/gson/JsonParser.java:61: *       JsonElement jsonElement = JsonParser.parseReader(jsonReader);
+gson/src/main/java/com/google/gson/JsonParser.java:73:public final class JsonParser {
+gson/src/main/java/com/google/gson/JsonParser.java:78:  public JsonParser() {}
+gson/src/main/java/com/google/gson/JsonParser.java:153:   * @deprecated Use {@link JsonParser#parseString}
+gson/src/main/java/com/google/gson/JsonParser.java:156:  @InlineMe(replacement = "JsonParser.parseString(json)", imports = "com.google.gson.JsonParser")
+gson/src/main/java/com/google/gson/JsonParser.java:162:   * @deprecated Use {@link JsonParser#parseReader(Reader)}
+gson/src/main/java/com/google/gson/JsonParser.java:165:  @InlineMe(replacement = "JsonParser.parseReader(json)", imports = "com.google.gson.JsonParser")
+gson/src/main/java/com/google/gson/JsonParser.java:171:   * @deprecated Use {@link JsonParser#parseReader(JsonReader)}
+gson/src/main/java/com/google/gson/JsonParser.java:174:  @InlineMe(replacement = "JsonParser.parseReader(json)", imports = "com.google.gson.JsonParser")
+
+exec
+/bin/bash -lc "rg -n \"import com\\.google\\.gson\\.JsonParser|JsonParser\\.parse(String|Reader)|new JsonParser\\(\" gson/src/main/java gson/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+gson/src/main/java/com/google/gson/JsonParser.java:36: * JsonElement jsonElement = JsonParser.parseString(json);
+gson/src/main/java/com/google/gson/JsonParser.java:44: *   JsonElement jsonElement = JsonParser.parseReader(reader);
+gson/src/main/java/com/google/gson/JsonParser.java:61: *       JsonElement jsonElement = JsonParser.parseReader(jsonReader);
+gson/src/main/java/com/google/gson/JsonParser.java:156:  @InlineMe(replacement = "JsonParser.parseString(json)", imports = "com.google.gson.JsonParser")
+gson/src/main/java/com/google/gson/JsonParser.java:165:  @InlineMe(replacement = "JsonParser.parseReader(json)", imports = "com.google.gson.JsonParser")
+gson/src/main/java/com/google/gson/JsonParser.java:174:  @InlineMe(replacement = "JsonParser.parseReader(json)", imports = "com.google.gson.JsonParser")
+gson/src/main/java/com/google/gson/JsonElement.java:45: * JsonObject jsonObject = JsonParser.parseString("{}").getAsJsonObject();
+gson/src/test/java/com/google/gson/SubsetTest.java:12:    JsonElement json = JsonParser.parseString("{\"a\":1,\"b\":[2.1, null]}");
+gson/src/test/java/com/google/gson/JsonParserParameterizedTest.java:49:    JsonElement deserialized = JsonParser.parseString(json);
+gson/src/test/java/com/google/gson/JsonParserTest.java:40:    assertThrows(JsonSyntaxException.class, () -> JsonParser.parseString("[[]"));
+gson/src/test/java/com/google/gson/JsonParserTest.java:45:    JsonElement element = JsonParser.parseString("[a,b,c]");
+gson/src/test/java/com/google/gson/JsonParserTest.java:55:    JsonElement e = JsonParser.parseString(json);
+gson/src/test/java/com/google/gson/JsonParserTest.java:63:    JsonElement e = JsonParser.parseString("\"   \"");
+gson/src/test/java/com/google/gson/JsonParserTest.java:70:    JsonElement e = JsonParser.parseString("     ");
+gson/src/test/java/com/google/gson/JsonParserTest.java:76:    assertThat(JsonParser.parseString("Test").getAsString()).isEqualTo("Test");
+gson/src/test/java/com/google/gson/JsonParserTest.java:82:        JsonSyntaxException.class, () -> JsonParser.parseString("Test is a test..blah blah"));
+gson/src/test/java/com/google/gson/JsonParserTest.java:88:    JsonElement e = JsonParser.parseString(json);
+gson/src/test/java/com/google/gson/JsonParserTest.java:107:    JsonArray current = JsonParser.parseReader(jsonReader).getAsJsonArray();
+gson/src/test/java/com/google/gson/JsonParserTest.java:129:    JsonObject current = JsonParser.parseReader(jsonReader).getAsJsonObject();
+gson/src/test/java/com/google/gson/JsonParserTest.java:146:    JsonElement e = JsonParser.parseReader(reader);
+gson/src/test/java/com/google/gson/JsonParserTest.java:179:    assertThat(JsonParser.parseReader(reader)).isEqualTo(new JsonPrimitive("unquoted"));
+gson/src/test/java/com/google/gson/JsonParserTest.java:190:    var e = assertThrows(JsonSyntaxException.class, () -> JsonParser.parseReader(reader));
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:23:import com.google.gson.JsonParser;
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:36:    JsonElement element = JsonParser.parseString("[1, 2, 3]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:47:    JsonElement element = JsonParser.parseString("[NaN, -Infinity, Infinity]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:59:    JsonElement element = JsonParser.parseString("[NaN, -Infinity, Infinity]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:83:    JsonElement element = JsonParser.parseString("[\"1\", \"2\", \"3\"]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:94:    JsonElement element = JsonParser.parseString("[1]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:103:    JsonElement element = JsonParser.parseString("[true, false]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:113:    JsonElement element = JsonParser.parseString("[null,null]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:123:    JsonElement element = JsonParser.parseString("[\"A\",\"B\"]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:133:    JsonElement element = JsonParser.parseString("[1, 2, 3]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:150:    JsonElement element = JsonParser.parseString("{\"A\": 1, \"B\": 2}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:169:    JsonElement element = JsonParser.parseString("[]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:177:    JsonElement element = JsonParser.parseString("[[],[[]]]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:191:    JsonElement element = JsonParser.parseString("{\"A\":{},\"B\":{\"C\":{}}}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:208:    JsonElement element = JsonParser.parseString("{}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:216:    JsonElement element = JsonParser.parseString("[\"A\",{\"B\":[[]]},\"C\",[[]],\"D\",null]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:230:    JsonElement element = JsonParser.parseString("[[],\"A\"]");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:261:    JsonElement element = JsonParser.parseString("{\"A\": 1, \"B\" : {}, \"C\" : []}");
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java:285:    JsonElement element = JsonParser.parseString("[1, 2, 3]");
+gson/src/test/java/com/google/gson/JsonArrayTest.java:134:        JsonParser.parseString(
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java:26:import com.google.gson.JsonParser;
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java:115:    JsonObject obj = (JsonObject) JsonParser.parseReader(json);
+gson/src/test/java/com/google/gson/JsonObjectTest.java:152:    JsonObject jsonObj = JsonParser.parseString("{\"\":true}").getAsJsonObject();
+gson/src/test/java/com/google/gson/functional/MapTest.java:30:import com.google.gson.JsonParser;
+gson/src/test/java/com/google/gson/functional/MapTest.java:730:    JsonElement tree = JsonParser.parseString(json);
+
+codex
+{"target":"com.google.gson.JsonParser","detection":false,"justification":"Inspected gson/src/main/java/com/google/gson/JsonParser.java, gson/src/main/java/com/google/gson/JsonElement.java, and the main test references in gson/src/test/java/com/google/gson/JsonParserTest.java, JsonParserParameterizedTest.java, functional/JsonParserTest.java, internal/bind/JsonElementReaderTest.java, JsonArrayTest.java, JsonObjectTest.java, SubsetTest.java, and functional/MapTest.java. JsonParser itself is a small facade: it exposes only three parse entry points plus deprecated wrappers and mainly delegates to Streams.parse via JsonReader, with a limited set of direct dependencies. It has some incoming usage, but the references are concentrated in tests and examples, with only a doc mention in production code, so the class does not show the strong high fan-in/high fan-out pattern expected for hub-like modularization."}
+tokens used
+14,951

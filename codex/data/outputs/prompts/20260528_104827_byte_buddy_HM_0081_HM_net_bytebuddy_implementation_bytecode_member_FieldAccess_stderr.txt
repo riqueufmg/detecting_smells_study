@@ -1,0 +1,1058 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ed7-f9f7-7543-8fd2-9138597062a2
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.bytecode.member.FieldAccess` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.bytecode.member.FieldAccess",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.bytecode.member.FieldAccess`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the `FieldAccess` class and tracing its direct dependencies and inbound references so I can decide whether it acts as a dependency hub.
+web search: 
+web search: site:github.com raphw byte-buddy FieldAccess net.bytebuddy.implementation.bytecode.member.FieldAccess
+codex
+I’ve started from the class name and now I’m checking the source tree to find the exact file and measure how broadly it is referenced and how many types it touches.
+exec
+/bin/bash -lc "rg --files | rg 'FieldAccess\\.java"'$|FieldAccess'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorFieldNameExtractorForBeanPropertyTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorFieldNameExtractorForArgumentSubstitutionTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorOtherTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java
+
+exec
+/bin/bash -lc 'rg -n "class FieldAccess|interface FieldAccess|enum FieldAccess" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/asm/MemberSubstitutionTest.java:1351:    public static class FieldAccessSample {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:69:public abstract class FieldAccessor implements Implementation {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorOtherTest.java:27:public class FieldAccessorOtherTest {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java:35:public enum FieldAccess {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorFieldNameExtractorForArgumentSubstitutionTest.java:13:public class FieldAccessorFieldNameExtractorForArgumentSubstitutionTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorFieldNameExtractorForBeanPropertyTest.java:14:public class FieldAccessorFieldNameExtractorForBeanPropertyTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/FieldAccessorTest.java:26:public class FieldAccessorTest<T extends CallTraceable,
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessTest.java:30:public class FieldAccessTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:22:public class FieldAccessOtherTest {
+
+codex
+I found the target in `byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java`. Next I’m checking how many classes depend on it and how many collaborators it depends on.
+exec
+/bin/bash -lc "sed -n '1,240p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation.bytecode.member;
+
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.enumeration.EnumerationDescription;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.field.FieldList;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.StackSize;
+import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import static net.bytebuddy.matcher.ElementMatchers.named;
+
+/**
+ * An access representation to a given field.
+ */
+public enum FieldAccess {
+
+    /**
+     * The representation of field access to a static field.
+     */
+    STATIC(Opcodes.PUTSTATIC, Opcodes.GETSTATIC, StackSize.ZERO),
+
+    /**
+     * The representation of field access to an instance field.
+     */
+    INSTANCE(Opcodes.PUTFIELD, Opcodes.GETFIELD, StackSize.SINGLE);
+
+    /**
+     * The opcode for setting a field value.
+     */
+    private final int putterOpcode;
+
+    /**
+     * The opcode for getting a field value.
+     */
+    private final int getterOpcode;
+
+    /**
+     * The amount of operand slots this field access operation consumes when it is applied before eventually
+     * adding new values onto the operand stack.
+     */
+    private final int targetSizeChange;
+
+    /**
+     * Creates a new field access.
+     *
+     * @param putterOpcode     The opcode for setting a field value.
+     * @param getterOpcode     The opcode for getting a field value.
+     * @param targetSizeChange The amount of operand slots this field access operation consumes when it is applied
+     *                         before eventually adding new values onto the operand stack.
+     */
+    FieldAccess(int putterOpcode, int getterOpcode, StackSize targetSizeChange) {
+        this.putterOpcode = putterOpcode;
+        this.getterOpcode = getterOpcode;
+        this.targetSizeChange = targetSizeChange.getSize();
+    }
+
+    /**
+     * Creates an accessor to read an enumeration value.
+     *
+     * @param enumerationDescription The description of the enumeration.
+     * @return A stack manipulation for reading the enumeration.
+     */
+    public static StackManipulation forEnumeration(EnumerationDescription enumerationDescription) {
+        FieldList<FieldDescription.InDefinedShape> fieldList = enumerationDescription.getEnumerationType()
+                .getDeclaredFields()
+                .filter(named(enumerationDescription.getValue()));
+        return fieldList.size() != 1 || !fieldList.getOnly().isStatic() || !fieldList.getOnly().isPublic() || !fieldList.getOnly().isEnum()
+                ? StackManipulation.Illegal.INSTANCE
+                : STATIC.new AccessDispatcher(fieldList.getOnly()).read();
+    }
+
+    /**
+     * Creates a field access representation for a given field.
+     *
+     * @param fieldDescription The field to be accessed.
+     * @return A field access definition for the given field.
+     */
+    public static Defined forField(FieldDescription.InDefinedShape fieldDescription) {
+        return fieldDescription.isStatic()
+                ? STATIC.new AccessDispatcher(fieldDescription)
+                : INSTANCE.new AccessDispatcher(fieldDescription);
+    }
+
+    /**
+     * Creates a field access representation for a given field. If the field's return type derives from its declared shape, the value
+     * is additionally casted to the generically resolved field.
+     *
+     * @param fieldDescription The field to be accessed.
+     * @return A field access definition for the given field.
+     */
+    public static Defined forField(FieldDescription fieldDescription) {
+        FieldDescription.InDefinedShape declaredField = fieldDescription.asDefined();
+        return fieldDescription.getType().asErasure().equals(declaredField.getType().asErasure())
+                ? forField(declaredField)
+                : OfGenericField.of(fieldDescription, forField(declaredField));
+    }
+
+    /**
+     * Representation of a field access for which a getter and a setter can be created.
+     */
+    public interface Defined {
+
+        /**
+         * Creates a getter representation for a given field.
+         *
+         * @return A stack manipulation representing the retrieval of a field value.
+         */
+        StackManipulation read();
+
+        /**
+         * Creates a setter representation for a given field.
+         *
+         * @return A stack manipulation representing the setting of a field value.
+         */
+        StackManipulation write();
+    }
+
+    /**
+     * A dispatcher for implementing a generic read or write access on a field.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    protected static class OfGenericField implements Defined {
+
+        /**
+         * The resolved generic field type.
+         */
+        private final TypeDefinition targetType;
+
+        /**
+         * An accessor for the field in its defined shape.
+         */
+        private final Defined defined;
+
+        /**
+         * Creates a new dispatcher for a generic field.
+         *
+         * @param targetType The resolved generic field type.
+         * @param defined    An accessor for the field in its defined shape.
+         */
+        protected OfGenericField(TypeDefinition targetType, Defined defined) {
+            this.targetType = targetType;
+            this.defined = defined;
+        }
+
+        /**
+         * Creates a generic access dispatcher for a given field.
+         *
+         * @param fieldDescription The field that is being accessed.
+         * @param fieldAccess      A field accessor for the field in its defined shape.
+         * @return A field access dispatcher for the given field.
+         */
+        protected static Defined of(FieldDescription fieldDescription, Defined fieldAccess) {
+            return new OfGenericField(fieldDescription.getType(), fieldAccess);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation read() {
+            return new StackManipulation.Compound(defined.read(), TypeCasting.to(targetType));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation write() {
+            return defined.write();
+        }
+    }
+
+    /**
+     * A dispatcher for implementing a non-generic read or write access on a field.
+     */
+    @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+    protected class AccessDispatcher implements Defined {
+
+        /**
+         * A description of the accessed field.
+         */
+        private final FieldDescription.InDefinedShape fieldDescription;
+
+        /**
+         * Creates a new access dispatcher.
+         *
+         * @param fieldDescription A description of the accessed field.
+         */
+        protected AccessDispatcher(FieldDescription.InDefinedShape fieldDescription) {
+            this.fieldDescription = fieldDescription;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation read() {
+            return new FieldGetInstruction();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public StackManipulation write() {
+            return new FieldPutInstruction();
+        }
+
+        /**
+         * An abstract base implementation for accessing a field value.
+         */
+        private abstract class AbstractFieldInstruction extends StackManipulation.AbstractBase {
+
+            /**
+             * {@inheritDoc}
+             */
+            public Size apply(MethodVisitor methodVisitor, Implementation.Context implementationContext) {
+                methodVisitor.visitFieldInsn(getOpcode(),
+                        fieldDescription.getDeclaringType().getInternalName(),
+                        fieldDescription.getInternalName(),
+                        fieldDescription.getDescriptor());
+                return resolveSize(fieldDescription.getType().getStackSize());
+            }
+
+
+exec
+/bin/bash -lc "rg -n \"\\bFieldAccess\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:68:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1712:                        FieldAccess.forField(valuesField).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1759:                            FieldAccess.forField(fieldDescription).write());
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1764:                    fieldGetters.add(FieldAccess.forField(fieldDescription).read());
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1769:                        FieldAccess.forField(instrumentedType.getDeclaredFields().filter(named(ENUM_VALUES)).getOnly()).write()
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1876:                            FieldAccess.forField(instrumentedType.getDeclaredFields().filter(named(instrumentedMethod.getName())).getOnly()).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1887:                        stackManipulations.add(FieldAccess.forField(instrumentedType.getDeclaredFields()
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ToStringMethod.java:29:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ToStringMethod.java:323:                stackManipulations.add(FieldAccess.forField(fieldDescription).read());
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:56:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1399:                    return FieldAccess.forField(fieldDescription).write();
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:1408:                    return FieldAccess.forField(fieldDescription).read();
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:2018:                                        stackManipulations.add(FieldAccess.forField((FieldDescription) member).read());
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:2021:                                        stackManipulations.add(FieldAccess.forField((FieldDescription) member).write());
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:2616:                            return new Simple(new StackManipulation.Compound(stackManipulation, FieldAccess.forField(fieldDescription).read()), fieldDescription.getType());
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:2699:                                    FieldAccess.forField(fieldDescription).write()), TypeDefinition.Sort.describe(void.class));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:5029:                                        : MethodVariableAccess.loadThis(), FieldAccess.forField(fieldDescription).read(), assignment));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8344:                                        ? FieldAccess.forField(candidates.getOnly()).read()
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java:8345:                                        : FieldAccess.forField(candidates.getOnly()).write(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java:40:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java:1384:                    return new ByteCodeAppender.Simple(this, FieldAccess.forField(fieldDescription).write());
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java:1959:                            FieldAccess.forField(fieldDescription).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java:2012:                            FieldAccess.forField(fieldDescription).write(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldValue.java:28:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldValue.java:176:                        FieldAccess.forField(fieldDescription).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:46:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1530:                    return new Resolved.Simple(new StackManipulation.Compound(FieldAccess.forField(fieldDescription).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:1583:                                    : MethodVariableAccess.loadThis(), FieldAccess.forField(resolution.getField()).read()),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java:2105:                    return new Resolved.Simple(FieldAccess.forEnumeration(enumerationDescription), enumerationDescription.getEnumerationType());
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:29:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java:679:                fieldGetAccess = FieldAccess.forField(instrumentedType.getDeclaredFields().filter((named(name))).getOnly()).read();
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/ClassVisitorFactory.java:41:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/ClassVisitorFactory.java:313:                                FieldAccess.forField(new FieldDescription.ForLoadedField(target.getField("type"))).read()), String.class)
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Pipe.java:43:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Pipe.java:402:                                    FieldAccess.forField(fieldDescription).write()
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Pipe.java:491:                            fieldLoading[index++] = new StackManipulation.Compound(MethodVariableAccess.loadThis(), FieldAccess.forField(fieldDescription).read());
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:37:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:469:                    FieldAccess.forField(proxyType.getDeclaredFields().filter((named(INSTANCE_FIELD))).getOnly()).write()
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:534:                    FieldAccess.forField(proxyType.getDeclaredFields().filter((named(INSTANCE_FIELD))).getOnly()).write()
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:591:                    FieldAccess.forField(proxyType.getDeclaredFields().filter((named(INSTANCE_FIELD))).getOnly()).write()
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java:649:                fieldLoadingInstruction = FieldAccess.forField(instrumentedType.getDeclaredFields().filter((named(INSTANCE_FIELD))).getOnly()).read();
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/SuperMethod.java:31:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/SuperMethod.java:213:                        ? FieldAccess.forField(implementationContext.cache(methodConstant, TypeDescription.ForLoadedType.of(Method.class))).read()
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/MethodCallProxy.java:43:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/MethodCallProxy.java:327:                            FieldAccess.forField(fieldDescription).write()
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/MethodCallProxy.java:412:                    fieldLoadings.add(new StackManipulation.Compound(MethodVariableAccess.loadThis(), FieldAccess.forField(fieldDescription).read()));
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:59:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1160:                            : MethodVariableAccess.loadThis(), FieldAccess.forField(fieldDescription).read(), readAssignment);
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1250:                        return new StackManipulation.Compound(writeAssignment, preparation, FieldAccess.forField(fieldDescription).write());
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:1307:                        return new StackManipulation.Compound(writeAssignment, preparation, FieldAccess.forField(fieldDescription).write());
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:4890:                    this(annotationType, FieldAccess.forEnumeration(enumerationDescription), enumerationDescription.getEnumerationType().asGenericType());
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java:14321:                            FieldAccess.forField(resolution.getField()).write());
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DefaultMethod.java:32:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DefaultMethod.java:279:                        ? FieldAccess.forField(implementationContext.cache(methodConstant, TypeDescription.ForLoadedType.of(Method.class))).read()
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:41:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:759:                            FieldAccess.forField(fieldDescription).write(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:849:                                    FieldAccess.forField(typeDescription.getDeclaredFields().filter((named(AccessorProxy.FIELD_NAME))).getOnly()).read()),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java:942:                                    FieldAccess.forField(typeDescription.getDeclaredFields()
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:42:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:524:                                FieldAccess.forField(fieldDescription).write(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java:614:                                        FieldAccess.forField(typeDescription.getDeclaredFields()
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/ConstantValue.java:24:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/ConstantValue.java:104:                return new Simple(FieldAccess.forEnumeration((EnumerationDescription) value), ((EnumerationDescription) value).getEnumerationType());
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/ConstantValue.java:118:                return new Simple(FieldAccess.forEnumeration(new EnumerationDescription.ForLoadedEnumeration((Enum<?>) value)), TypeDescription.ForLoadedType.of(((Enum<?>) value).getDeclaringClass()));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:28:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:480:            return FieldAccess.forField(implementationContext.cache(methodConstant, METHOD_TYPE))
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java:537:            return FieldAccess.forField(implementationContext.cache(constructorConstant, CONSTRUCTOR_TYPE))
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java:32:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java:252:                FieldAccess.forField(fieldDescription).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:34:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java:811:                            : MethodVariableAccess.loadThis(), FieldAccess.forField(fieldDescription).read());
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:42:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:341:            argumentLoaders.add(new ArgumentLoader.ForStackManipulation(FieldAccess.forEnumeration(anEnumerationDescription), anEnumerationDescription.getEnumerationType()));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:1503:                        FieldAccess.forField(fieldDescription).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:1599:                        FieldAccess.forField(fieldDescription).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:2235:                        FieldAccess.forField(fieldDescription).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:2347:                        FieldAccess.forField(fieldDescription).read(), stackManipulation);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3117:                return new StackManipulation.Compound(stackManipulation, FieldAccess.forField(fieldDescription).write());
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/FieldConstant.java:23:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/FieldConstant.java:119:            return FieldAccess.forField(implementationContext.cache(fieldConstant, TypeDescription.ForLoadedType.of(Field.class)))
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:32:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java:782:                stackManipulations.add(FieldAccess.forField(fieldDescription).read());
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:32:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:804:                stackManipulations.add(FieldAccess.forField(fieldDescription).read());
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java:807:                stackManipulations.add(FieldAccess.forField(fieldDescription).read());
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:30:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:922:                            FieldAccess.forField(fieldDescription).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:934:                            FieldAccess.forField(fieldDescription).write(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1347:                        FieldAccess.forField(target).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1436:                        FieldAccess.forField(resolved).read(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java:1519:                        FieldAccess.forField(fieldDescription).write(),
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java:35:public enum FieldAccess {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java:71:    FieldAccess(int putterOpcode, int getterOpcode, StackSize targetSizeChange) {
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:66:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9756:                            fieldAssignments.add(FieldAccess.forField(declaredFields.get(parameterDescription.getIndex())).write());
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:9983:                            fieldAccess.add(FieldAccess.forField(fieldDescription).read());
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java:10179:                                FieldAccess.forField(fieldDescription).read(),
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:36:import net.bytebuddy.implementation.bytecode.member.FieldAccess;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:414:                                FieldAccess.forField(instrumentedMethod.getDeclaringType().getDeclaredFields().filter(named(FOO)).getOnly()).write()
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessTest.java:108:        FieldAccess.Defined getter = FieldAccess.forField(fieldDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessTest.java:119:        FieldAccess.Defined setter = FieldAccess.forField(fieldDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:60:        StackManipulation stackManipulation = FieldAccess.forEnumeration(enumerationDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:70:        StackManipulation stackManipulation = FieldAccess.forEnumeration(enumerationDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:80:        StackManipulation stackManipulation = FieldAccess.forEnumeration(enumerationDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:90:        StackManipulation stackManipulation = FieldAccess.forEnumeration(enumerationDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:100:        StackManipulation stackManipulation = FieldAccess.forEnumeration(enumerationDescription);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:110:        StackManipulation stackManipulation = FieldAccess.forField(genericField).read();
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:112:        assertThat(stackManipulation, hasPrototype((StackManipulation) new StackManipulation.Compound(FieldAccess.forField(fieldDescription).read(), TypeCasting.to(genericErasure))));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:120:        StackManipulation stackManipulation = FieldAccess.forField(genericField).write();
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:122:        assertThat(stackManipulation, hasPrototype(FieldAccess.forField(fieldDescription).write()));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:130:        StackManipulation stackManipulation = FieldAccess.forField(genericField).read();
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:132:        assertThat(stackManipulation, hasPrototype(FieldAccess.forField(fieldDescription).read()));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:140:        StackManipulation stackManipulation = FieldAccess.forField(genericField).write();
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java:142:        assertThat(stackManipulation, hasPrototype(FieldAccess.forField(fieldDescription).write()));
+
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+package net.bytebuddy.implementation.bytecode.member;
+
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.StackSize;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import java.util.Arrays;
+import java.util.Collection;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+@RunWith(Parameterized.class)
+public class FieldAccessTest {
+
+    private static final String FOO = "foo", BAR = "bar", QUX = "qux";
+
+    private final boolean isStatic;
+
+    private final StackSize fieldSize;
+
+    private final int getterChange, getterMaximum, getterOpcode;
+
+    private final int putterChange, putterMaximum, putterOpcode;
+
+    @Rule
+    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+
+    @Mock
+    private FieldDescription.InDefinedShape fieldDescription;
+
+    @Mock
+    private TypeDescription declaringType, fieldType;
+
+    @Mock
+    private TypeDescription.Generic genericFieldType;
+
+    @Mock
+    private MethodVisitor methodVisitor;
+
+    @Mock
+    private Implementation.Context implementationContext;
+
+    public FieldAccessTest(boolean isStatic,
+                           StackSize fieldSize,
+                           int getterChange,
+                           int getterMaximum,
+                           int getterOpcode,
+                           int putterChange,
+                           int putterMaximum,
+                           int putterOpcode) {
+        this.isStatic = isStatic;
+        this.fieldSize = fieldSize;
+        this.getterChange = getterChange;
+        this.getterMaximum = getterMaximum;
+        this.getterOpcode = getterOpcode;
+        this.putterChange = putterChange;
+        this.putterMaximum = putterMaximum;
+        this.putterOpcode = putterOpcode;
+    }
+
+    @Parameterized.Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][]{
+                {true, StackSize.SINGLE, 1, 1, Opcodes.GETSTATIC, -1, 0, Opcodes.PUTSTATIC},
+                {true, StackSize.DOUBLE, 2, 2, Opcodes.GETSTATIC, -2, 0, Opcodes.PUTSTATIC},
+                {false, StackSize.SINGLE, 0, 0, Opcodes.GETFIELD, -2, 0, Opcodes.PUTFIELD},
+                {false, StackSize.DOUBLE, 1, 1, Opcodes.GETFIELD, -3, 0, Opcodes.PUTFIELD}
+        });
+    }
+
+    @Before
+    public void setUp() throws Exception {
+        when(declaringType.asErasure()).thenReturn(declaringType);
+        when(fieldDescription.getDeclaringType()).thenReturn(declaringType);
+        when(fieldDescription.getType()).thenReturn(genericFieldType);
+        when(genericFieldType.asErasure()).thenReturn(fieldType);
+        when(genericFieldType.getStackSize()).thenReturn(fieldSize);
+        when(declaringType.getInternalName()).thenReturn(FOO);
+        when(fieldDescription.getInternalName()).thenReturn(BAR);
+        when(fieldDescription.getDescriptor()).thenReturn(QUX);
+        when(fieldDescription.isStatic()).thenReturn(isStatic);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        verifyNoMoreInteractions(implementationContext);
+    }
+
+    @Test
+    public void testGetter() throws Exception {
+        FieldAccess.Defined getter = FieldAccess.forField(fieldDescription);
+        assertThat(getter.read().isValid(), is(true));
+        StackManipulation.Size size = getter.read().apply(methodVisitor, implementationContext);
+        assertThat(size.getSizeImpact(), is(getterChange));
+        assertThat(size.getMaximalSize(), is(getterMaximum));
+        verify(methodVisitor).visitFieldInsn(getterOpcode, FOO, BAR, QUX);
+        verifyNoMoreInteractions(methodVisitor);
+    }
+
+    @Test
+    public void testPutter() throws Exception {
+        FieldAccess.Defined setter = FieldAccess.forField(fieldDescription);
+        assertThat(setter.write().isValid(), is(true));
+        StackManipulation.Size size = setter.write().apply(methodVisitor, implementationContext);
+        assertThat(size.getSizeImpact(), is(putterChange));
+        assertThat(size.getMaximalSize(), is(putterMaximum));
+        verify(methodVisitor).visitFieldInsn(putterOpcode, FOO, BAR, QUX);
+        verifyNoMoreInteractions(methodVisitor);
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '240,520p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+
+            /**
+             * Returns the opcode for implementing the field access.
+             *
+             * @return The opcode for implementing the field access.
+             */
+            protected abstract int getOpcode();
+
+            /**
+             * Resolves the actual size of this field access operation.
+             *
+             * @param fieldSize The size of the accessed field.
+             * @return The size of the field access operation based on the field's size.
+             */
+            protected abstract Size resolveSize(StackSize fieldSize);
+        }
+
+        /**
+         * A reading field access operation.
+         */
+        @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+        protected class FieldGetInstruction extends AbstractFieldInstruction {
+
+            @Override
+            protected int getOpcode() {
+                return getterOpcode;
+            }
+
+            @Override
+            protected Size resolveSize(StackSize fieldSize) {
+                int sizeChange = fieldSize.getSize() - targetSizeChange;
+                return new Size(sizeChange, sizeChange);
+            }
+        }
+
+        /**
+         * A writing field access operation.
+         */
+        @HashCodeAndEqualsPlugin.Enhance(includeSyntheticFields = true)
+        protected class FieldPutInstruction extends AbstractFieldInstruction {
+
+            @Override
+            protected int getOpcode() {
+                return putterOpcode;
+            }
+
+            @Override
+            protected Size resolveSize(StackSize fieldSize) {
+                return new Size(-1 * (fieldSize.getSize() + targetSizeChange), 0);
+            }
+        }
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,240p' byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+package net.bytebuddy.implementation.bytecode.member;
+
+import net.bytebuddy.description.enumeration.EnumerationDescription;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.field.FieldList;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+
+import static net.bytebuddy.test.utility.FieldByFieldComparison.hasPrototype;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+public class FieldAccessOtherTest {
+
+    private static final String FOO = "foo", BAR = "bar";
+
+    @Rule
+    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+
+    @Mock
+    private EnumerationDescription enumerationDescription;
+
+    @Mock
+    private TypeDescription.Generic genericType, declaredType;
+
+    @Mock
+    private TypeDescription enumerationType;
+
+    @Mock
+    private FieldDescription.InDefinedShape fieldDescription;
+
+    @Mock
+    private FieldDescription genericField;
+
+    @Before
+    public void setUp() throws Exception {
+        when(genericField.asDefined()).thenReturn(fieldDescription);
+        when(genericField.getType()).thenReturn(genericType);
+        when(fieldDescription.getType()).thenReturn(declaredType);
+        when(enumerationDescription.getEnumerationType()).thenReturn(enumerationType);
+        when(enumerationDescription.getValue()).thenReturn(FOO);
+        when(enumerationType.getDeclaredFields()).thenReturn(new FieldList.Explicit<FieldDescription.InDefinedShape>(fieldDescription));
+    }
+
+    @Test
+    public void testEnumerationDescription() throws Exception {
+        when(fieldDescription.isPublic()).thenReturn(true);
+        when(fieldDescription.isStatic()).thenReturn(true);
+        when(fieldDescription.isEnum()).thenReturn(true);
+        when(fieldDescription.getActualName()).thenReturn(FOO);
+        StackManipulation stackManipulation = FieldAccess.forEnumeration(enumerationDescription);
+        assertThat(stackManipulation.isValid(), is(true));
+    }
+
+    @Test
+    public void testEnumerationDescriptionWithIllegalName() throws Exception {
+        when(fieldDescription.isPublic()).thenReturn(true);
+        when(fieldDescription.isStatic()).thenReturn(true);
+        when(fieldDescription.isEnum()).thenReturn(true);
+        when(fieldDescription.getActualName()).thenReturn(BAR);
+        StackManipulation stackManipulation = FieldAccess.forEnumeration(enumerationDescription);
+        assertThat(stackManipulation.isValid(), is(false));
+    }
+
+    @Test
+    public void testEnumerationDescriptionWithIllegalOwnership() throws Exception {
+        when(fieldDescription.isPublic()).thenReturn(true);
+        when(fieldDescription.isStatic()).thenReturn(false);
+        when(fieldDescription.isEnum()).thenReturn(true);
+        when(fieldDescription.getActualName()).thenReturn(FOO);
+        StackManipulation stackManipulation = FieldAccess.forEnumeration(enumerationDescription);
+        assertThat(stackManipulation.isValid(), is(false));
+    }
+
+    @Test
+    public void testEnumerationDescriptionWithIllegalVisibility() throws Exception {
+        when(fieldDescription.isPublic()).thenReturn(false);
+        when(fieldDescription.isStatic()).thenReturn(true);
+        when(fieldDescription.isEnum()).thenReturn(true);
+        when(fieldDescription.getActualName()).thenReturn(FOO);
+        StackManipulation stackManipulation = FieldAccess.forEnumeration(enumerationDescription);
+        assertThat(stackManipulation.isValid(), is(false));
+    }
+
+    @Test
+    public void testEnumerationDescriptionNonEnumeration() throws Exception {
+        when(fieldDescription.isPublic()).thenReturn(true);
+        when(fieldDescription.isStatic()).thenReturn(true);
+        when(fieldDescription.isEnum()).thenReturn(false);
+        when(fieldDescription.getActualName()).thenReturn(FOO);
+        StackManipulation stackManipulation = FieldAccess.forEnumeration(enumerationDescription);
+        assertThat(stackManipulation.isValid(), is(false));
+    }
+
+    @Test
+    public void testGenericFieldAccessGetter() throws Exception {
+        TypeDescription genericErasure = mock(TypeDescription.class), declaredErasure = mock(TypeDescription.class);
+        when(genericErasure.asErasure()).thenReturn(genericErasure);
+        when(genericType.asErasure()).thenReturn(genericErasure);
+        when(declaredType.asErasure()).thenReturn(declaredErasure);
+        StackManipulation stackManipulation = FieldAccess.forField(genericField).read();
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype((StackManipulation) new StackManipulation.Compound(FieldAccess.forField(fieldDescription).read(), TypeCasting.to(genericErasure))));
+    }
+
+    @Test
+    public void testGenericFieldAccessPutter() throws Exception {
+        TypeDescription genericErasure = mock(TypeDescription.class), declaredErasure = mock(TypeDescription.class);
+        when(genericType.asErasure()).thenReturn(genericErasure);
+        when(declaredType.asErasure()).thenReturn(declaredErasure);
+        StackManipulation stackManipulation = FieldAccess.forField(genericField).write();
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype(FieldAccess.forField(fieldDescription).write()));
+    }
+
+    @Test
+    public void testGenericFieldAccessGetterEqualErasure() throws Exception {
+        TypeDescription declaredErasure = mock(TypeDescription.class);
+        when(genericType.asErasure()).thenReturn(declaredErasure);
+        when(declaredType.asErasure()).thenReturn(declaredErasure);
+        StackManipulation stackManipulation = FieldAccess.forField(genericField).read();
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype(FieldAccess.forField(fieldDescription).read()));
+    }
+
+    @Test
+    public void testGenericFieldAccessPutterEqualErasure() throws Exception {
+        TypeDescription declaredErasure = mock(TypeDescription.class);
+        when(genericType.asErasure()).thenReturn(declaredErasure);
+        when(declaredType.asErasure()).thenReturn(declaredErasure);
+        StackManipulation stackManipulation = FieldAccess.forField(genericField).write();
+        assertThat(stackManipulation.isValid(), is(true));
+        assertThat(stackManipulation, hasPrototype(FieldAccess.forField(fieldDescription).write()));
+    }
+}
+
+codex
+I have the class body and the call sites. I’m now turning the raw references into evidence: how many production files import or invoke `FieldAccess`, and what the class itself depends on internally.
+exec
+/bin/bash -lc "rg -l \"\\bFieldAccess\\b\" byte-buddy-dep/src/main/java | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+27
+
+exec
+/bin/bash -lc "sed -n '1,120p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.implementation.bytecode.member;
+
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.enumeration.EnumerationDescription;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.field.FieldList;
+import net.bytebuddy.description.type.TypeDefinition;
+import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
+import net.bytebuddy.implementation.bytecode.StackSize;
+import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import static net.bytebuddy.matcher.ElementMatchers.named;
+
+/**
+ * An access representation to a given field.
+ */
+public enum FieldAccess {
+
+    /**
+     * The representation of field access to a static field.
+     */
+    STATIC(Opcodes.PUTSTATIC, Opcodes.GETSTATIC, StackSize.ZERO),
+
+    /**
+     * The representation of field access to an instance field.
+     */
+    INSTANCE(Opcodes.PUTFIELD, Opcodes.GETFIELD, StackSize.SINGLE);
+
+    /**
+     * The opcode for setting a field value.
+     */
+    private final int putterOpcode;
+
+    /**
+     * The opcode for getting a field value.
+     */
+    private final int getterOpcode;
+
+    /**
+     * The amount of operand slots this field access operation consumes when it is applied before eventually
+     * adding new values onto the operand stack.
+     */
+    private final int targetSizeChange;
+
+    /**
+     * Creates a new field access.
+     *
+     * @param putterOpcode     The opcode for setting a field value.
+     * @param getterOpcode     The opcode for getting a field value.
+     * @param targetSizeChange The amount of operand slots this field access operation consumes when it is applied
+     *                         before eventually adding new values onto the operand stack.
+     */
+    FieldAccess(int putterOpcode, int getterOpcode, StackSize targetSizeChange) {
+        this.putterOpcode = putterOpcode;
+        this.getterOpcode = getterOpcode;
+        this.targetSizeChange = targetSizeChange.getSize();
+    }
+
+    /**
+     * Creates an accessor to read an enumeration value.
+     *
+     * @param enumerationDescription The description of the enumeration.
+     * @return A stack manipulation for reading the enumeration.
+     */
+    public static StackManipulation forEnumeration(EnumerationDescription enumerationDescription) {
+        FieldList<FieldDescription.InDefinedShape> fieldList = enumerationDescription.getEnumerationType()
+                .getDeclaredFields()
+                .filter(named(enumerationDescription.getValue()));
+        return fieldList.size() != 1 || !fieldList.getOnly().isStatic() || !fieldList.getOnly().isPublic() || !fieldList.getOnly().isEnum()
+                ? StackManipulation.Illegal.INSTANCE
+                : STATIC.new AccessDispatcher(fieldList.getOnly()).read();
+    }
+
+    /**
+     * Creates a field access representation for a given field.
+     *
+     * @param fieldDescription The field to be accessed.
+     * @return A field access definition for the given field.
+     */
+    public static Defined forField(FieldDescription.InDefinedShape fieldDescription) {
+        return fieldDescription.isStatic()
+                ? STATIC.new AccessDispatcher(fieldDescription)
+                : INSTANCE.new AccessDispatcher(fieldDescription);
+    }
+
+    /**
+     * Creates a field access representation for a given field. If the field's return type derives from its declared shape, the value
+     * is additionally casted to the generically resolved field.
+     *
+     * @param fieldDescription The field to be accessed.
+     * @return A field access definition for the given field.
+     */
+    public static Defined forField(FieldDescription fieldDescription) {
+        FieldDescription.InDefinedShape declaredField = fieldDescription.asDefined();
+        return fieldDescription.getType().asErasure().equals(declaredField.getType().asErasure())
+                ? forField(declaredField)
+                : OfGenericField.of(fieldDescription, forField(declaredField));
+    }
+
+    /**
+     * Representation of a field access for which a getter and a setter can be created.
+     */
+
+exec
+/bin/bash -lc "rg -l \"\\bFieldAccess\\b\" byte-buddy-dep/src/test/java | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+3
+
+codex
+The reference count is already high enough to matter, but I want the exact inbound set excluding the class itself so the verdict is grounded in concrete files rather than a vague “many users” claim.
+exec
+/bin/bash -lc "rg -l \"\\bFieldAccess\\b\" byte-buddy-dep/src/main/java | grep -v 'byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java' | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java
+byte-buddy-dep/src/main/java/net/bytebuddy/agent/builder/AgentBuilder.java
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/Advice.java
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/ClassVisitorFactory.java
+byte-buddy-dep/src/main/java/net/bytebuddy/asm/MemberSubstitution.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/EqualsMethod.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FieldAccessor.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/FixedValue.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/HashCodeMethod.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/Implementation.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvocationHandlerAdapter.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/InvokeDynamic.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodDelegation.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/ToStringMethod.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/MethodCallProxy.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/auxiliary/TypeProxy.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/DefaultMethod.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldProxy.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/FieldValue.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Morph.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/Pipe.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bind/annotation/SuperMethod.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/FieldConstant.java
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/constant/MethodConstant.java
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/ConstantValue.java
+
+exec
+/bin/bash -lc "rg -l \"\\bFieldAccess\\b\" byte-buddy-dep/src/test/java | grep -v 'byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessTest.java' | grep -v 'byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java' | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java
+
+exec
+/bin/bash -lc "rg -n \"import net\\.bytebuddy\\.implementation\\.bytecode\\.member\\.FieldAccess;|FieldAccess\\.for(Field|Enumeration)\\(\" byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java byte-buddy-dep/src/main/java | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+95
+
+codex
+I have the candidate fan-in set. I’m checking the exact counts after excluding the target file itself so I can state the evidence precisely in the verdict.
+exec
+/bin/bash -lc "(rg -l \"\\bFieldAccess\\b\" byte-buddy-dep/src/main/java | grep -v 'byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java' | wc -l)" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+26
+
+exec
+/bin/bash -lc "sed -n '1,60p' byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java | nl -ba" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy.implementation.bytecode.member;
+    17	
+    18	import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+    19	import net.bytebuddy.description.enumeration.EnumerationDescription;
+    20	import net.bytebuddy.description.field.FieldDescription;
+    21	import net.bytebuddy.description.field.FieldList;
+    22	import net.bytebuddy.description.type.TypeDefinition;
+    23	import net.bytebuddy.implementation.Implementation;
+    24	import net.bytebuddy.implementation.bytecode.StackManipulation;
+    25	import net.bytebuddy.implementation.bytecode.StackSize;
+    26	import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
+    27	import org.objectweb.asm.MethodVisitor;
+    28	import org.objectweb.asm.Opcodes;
+    29	
+    30	import static net.bytebuddy.matcher.ElementMatchers.named;
+    31	
+    32	/**
+    33	 * An access representation to a given field.
+    34	 */
+    35	public enum FieldAccess {
+    36	
+    37	    /**
+    38	     * The representation of field access to a static field.
+    39	     */
+    40	    STATIC(Opcodes.PUTSTATIC, Opcodes.GETSTATIC, StackSize.ZERO),
+    41	
+    42	    /**
+    43	     * The representation of field access to an instance field.
+    44	     */
+    45	    INSTANCE(Opcodes.PUTFIELD, Opcodes.GETFIELD, StackSize.SINGLE);
+    46	
+    47	    /**
+    48	     * The opcode for setting a field value.
+    49	     */
+    50	    private final int putterOpcode;
+    51	
+    52	    /**
+    53	     * The opcode for getting a field value.
+    54	     */
+    55	    private final int getterOpcode;
+    56	
+    57	    /**
+    58	     * The amount of operand slots this field access operation consumes when it is applied before eventually
+    59	     * adding new values onto the operand stack.
+    60	     */
+
+exec
+/bin/bash -lc "(rg -l \"\\bFieldAccess\\b\" byte-buddy-dep/src/test/java | grep -v 'byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessTest.java' | grep -v 'byte-buddy-dep/src/test/java/net/bytebuddy/implementation/bytecode/member/FieldAccessOtherTest.java' | wc -l)" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+1
+
+codex
+{"target":"net.bytebuddy.implementation.bytecode.member.FieldAccess","detection":true,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/implementation/bytecode/member/FieldAccess.java and its call sites. `rg` found 26 production classes plus 1 additional test class referencing `FieldAccess` outside its own source file, including ByteBuddy.java, AgentBuilder.java, Advice.java, MemberSubstitution.java, MethodCall.java, FieldAccessor.java, TypeProxy.java, and FieldProxy.java. The class itself imports 11 collaborators (e.g. FieldDescription, FieldList, EnumerationDescription, TypeDefinition, StackManipulation, StackSize, TypeCasting, MethodVisitor, Opcodes) and implements nested dispatcher logic over them, so it has strong fan-in and nontrivial fan-out consistent with a hub-like dependency center."}
+tokens used
+25,173

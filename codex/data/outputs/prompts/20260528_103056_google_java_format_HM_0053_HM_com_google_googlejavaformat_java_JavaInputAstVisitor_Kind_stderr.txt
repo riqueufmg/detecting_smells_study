@@ -1,0 +1,1030 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ec7-f1a0-77f2-b2d4-573d529f5f3c
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.googlejavaformat.java.JavaInputAstVisitor.Kind` in the repository located at:
+
+`data/repositories/google/google-java-format`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.googlejavaformat.java.JavaInputAstVisitor.Kind",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.googlejavaformat.java.JavaInputAstVisitor.Kind`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the nested `Kind` class and tracing who uses it and what it depends on so I can judge fan-in and fan-out from the repository evidence alone.
+exec
+/bin/bash -lc "rg --files . | rg \"JavaInputAstVisitor|JavaInputAstVisitor\\.java|Kind\"" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java
+
+exec
+/bin/bash -lc "rg -n \"class\\s+JavaInputAstVisitor|enum\\s+Kind|class\\s+Kind\" java core src ." in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ exited 2 in 0ms:
+rg: java: No such file or directory (os error 2)
+rg: src: No such file or directory (os error 2)
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:181:public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2501:    enum Kind {
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:181:public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2501:    enum Kind {
+
+codex
+I found the target in `core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java`. Next I’m checking how much the nested `Kind` enum is coupled inside the file and whether anything outside the class depends on it.
+exec
+/bin/bash -lc "sed -n '2300,2620p' core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+        builder.breakToFill(" ");
+      }
+    }
+  }
+
+  void verticalAnnotations(List<AnnotationTree> annotations) {
+    for (AnnotationTree annotation : annotations) {
+      builder.forcedBreak();
+      scan(annotation, null);
+      builder.forcedBreak();
+    }
+  }
+
+  /** Helper method for blocks. */
+  protected void visitBlock(
+      BlockTree node,
+      CollapseEmptyOrNot collapseEmptyOrNot,
+      AllowLeadingBlankLine allowLeadingBlankLine,
+      AllowTrailingBlankLine allowTrailingBlankLine) {
+    sync(node);
+    if (node.isStatic()) {
+      token("static");
+      builder.space();
+    }
+    if (collapseEmptyOrNot.isYes() && node.getStatements().isEmpty()) {
+      if (builder.peekToken().equals(Optional.of(";"))) {
+        // TODO(cushon): is this needed?
+        token(";");
+      } else {
+        tokenBreakTrailingComment("{", plusTwo);
+        builder.blankLineWanted(BlankLineWanted.NO);
+        token("}", plusTwo);
+      }
+    } else {
+      builder.open(ZERO);
+      builder.open(plusTwo);
+      tokenBreakTrailingComment("{", plusTwo);
+      if (allowLeadingBlankLine == AllowLeadingBlankLine.NO) {
+        builder.blankLineWanted(BlankLineWanted.NO);
+      } else {
+        builder.blankLineWanted(BlankLineWanted.PRESERVE);
+      }
+      visitStatements(node.getStatements());
+      builder.close();
+      builder.forcedBreak();
+      builder.close();
+      if (allowTrailingBlankLine == AllowTrailingBlankLine.NO) {
+        builder.blankLineWanted(BlankLineWanted.NO);
+      } else {
+        builder.blankLineWanted(BlankLineWanted.PRESERVE);
+      }
+      markForPartialFormat();
+      token("}", plusTwo);
+    }
+  }
+
+  /** Helper method for statements. */
+  private void visitStatement(
+      StatementTree node,
+      CollapseEmptyOrNot collapseEmptyOrNot,
+      AllowLeadingBlankLine allowLeadingBlank,
+      AllowTrailingBlankLine allowTrailingBlank) {
+    sync(node);
+    switch (node.getKind()) {
+      case BLOCK -> {
+        builder.space();
+        visitBlock((BlockTree) node, collapseEmptyOrNot, allowLeadingBlank, allowTrailingBlank);
+      }
+      default -> {
+        builder.open(plusTwo);
+        builder.breakOp(" ");
+        scan(node, null);
+        builder.close();
+      }
+    }
+  }
+
+  protected void visitStatements(List<? extends StatementTree> statements) {
+    boolean afterFirstToken = false;
+    PeekingIterator<StatementTree> it = Iterators.peekingIterator(statements.iterator());
+    dropEmptyDeclarations();
+    while (it.hasNext()) {
+      StatementTree tree = it.next();
+      builder.forcedBreak();
+      if (afterFirstToken) {
+        builder.blankLineWanted(BlankLineWanted.PRESERVE);
+      }
+      markForPartialFormat();
+      afterFirstToken = true;
+      List<VariableTree> fragments = variableFragments(it, tree);
+      if (!fragments.isEmpty()) {
+        visitVariables(
+            fragments,
+            DeclarationKind.NONE,
+            canLocalHaveHorizontalAnnotations(fragments.get(0).getModifiers()));
+      } else {
+        scan(tree, null);
+      }
+    }
+  }
+
+  protected void typeDeclarationModifiers(ModifiersTree modifiers) {
+    List<AnnotationTree> typeAnnotations =
+        visitModifiers(
+            modifiers, Direction.VERTICAL, /* declarationAnnotationBreak= */ Optional.empty());
+    verticalAnnotations(typeAnnotations);
+  }
+
+  /** Output combined modifiers and annotations and the trailing break. */
+  void visitAndBreakModifiers(
+      ModifiersTree modifiers,
+      Direction annotationDirection,
+      Optional<BreakTag> declarationAnnotationBreak) {
+    List<AnnotationTree> typeAnnotations =
+        visitModifiers(modifiers, annotationDirection, declarationAnnotationBreak);
+    visitAnnotations(typeAnnotations, BreakOrNot.NO, BreakOrNot.YES);
+  }
+
+  @Override
+  public Void visitModifiers(ModifiersTree node, Void unused) {
+    throw new IllegalStateException("expected manual descent into modifiers");
+  }
+
+  /** Output combined modifiers and annotations and returns the trailing break. */
+  @CheckReturnValue
+  protected ImmutableList<AnnotationTree> visitModifiers(
+      ModifiersTree modifiersTree,
+      Direction annotationsDirection,
+      Optional<BreakTag> declarationAnnotationBreak) {
+    return visitModifiers(
+        modifiersTree,
+        modifiersTree.getAnnotations(),
+        annotationsDirection,
+        declarationAnnotationBreak);
+  }
+
+  @CheckReturnValue
+  protected ImmutableList<AnnotationTree> visitModifiers(
+      ModifiersTree modifiersTree,
+      List<? extends AnnotationTree> annotationTrees,
+      Direction annotationsDirection,
+      Optional<BreakTag> declarationAnnotationBreak) {
+    DeclarationModifiersAndTypeAnnotations splitModifiers =
+        splitModifiers(modifiersTree, annotationTrees);
+    return visitModifiers(splitModifiers, annotationsDirection, declarationAnnotationBreak);
+  }
+
+  @CheckReturnValue
+  private ImmutableList<AnnotationTree> visitModifiers(
+      DeclarationModifiersAndTypeAnnotations splitModifiers,
+      Direction annotationsDirection,
+      Optional<BreakTag> declarationAnnotationBreak) {
+    if (splitModifiers.declarationModifiers().isEmpty()) {
+      return splitModifiers.typeAnnotations();
+    }
+    Deque<AnnotationOrModifier> declarationModifiers =
+        new ArrayDeque<>(splitModifiers.declarationModifiers());
+    builder.open(ZERO);
+    boolean afterFirstToken = false;
+    boolean lastWasAnnotation = false;
+    while (!declarationModifiers.isEmpty() && !declarationModifiers.peekFirst().isModifier()) {
+      if (afterFirstToken) {
+        builder.addAll(
+            annotationsDirection.isVertical()
+                ? forceBreakList(declarationAnnotationBreak)
+                : breakList(declarationAnnotationBreak));
+      }
+      formatAnnotationOrModifier(declarationModifiers);
+      afterFirstToken = true;
+      lastWasAnnotation = true;
+    }
+    builder.close();
+    ImmutableList<Op> trailingBreak =
+        annotationsDirection.isVertical()
+            ? forceBreakList(declarationAnnotationBreak)
+            : breakList(declarationAnnotationBreak);
+    if (declarationModifiers.isEmpty()) {
+      builder.addAll(trailingBreak);
+      return splitModifiers.typeAnnotations();
+    }
+    if (lastWasAnnotation) {
+      builder.addAll(trailingBreak);
+    }
+
+    builder.open(ZERO);
+    afterFirstToken = false;
+    while (!declarationModifiers.isEmpty()) {
+      if (afterFirstToken) {
+        builder.addAll(breakFillList(Optional.empty()));
+      }
+      formatAnnotationOrModifier(declarationModifiers);
+      afterFirstToken = true;
+    }
+    builder.close();
+    builder.addAll(breakFillList(Optional.empty()));
+    return splitModifiers.typeAnnotations();
+  }
+
+  /** Represents an annotation or a modifier in a {@link ModifiersTree}. */
+  @AutoOneOf(AnnotationOrModifier.Kind.class)
+  abstract static class AnnotationOrModifier implements Comparable<AnnotationOrModifier> {
+    enum Kind {
+      MODIFIER,
+      ANNOTATION
+    }
+
+    abstract Kind getKind();
+
+    abstract AnnotationTree annotation();
+
+    abstract Input.Tok modifier();
+
+    static AnnotationOrModifier ofModifier(Input.Tok m) {
+      return AutoOneOf_JavaInputAstVisitor_AnnotationOrModifier.modifier(m);
+    }
+
+    static AnnotationOrModifier ofAnnotation(AnnotationTree a) {
+      return AutoOneOf_JavaInputAstVisitor_AnnotationOrModifier.annotation(a);
+    }
+
+    boolean isModifier() {
+      return getKind().equals(Kind.MODIFIER);
+    }
+
+    boolean isAnnotation() {
+      return getKind().equals(Kind.ANNOTATION);
+    }
+
+    int position() {
+      return switch (getKind()) {
+        case MODIFIER -> modifier().getPosition();
+        case ANNOTATION -> getStartPosition(annotation());
+      };
+    }
+
+    private static final Comparator<AnnotationOrModifier> COMPARATOR =
+        Comparator.comparingInt(AnnotationOrModifier::position);
+
+    @Override
+    public int compareTo(AnnotationOrModifier o) {
+      return COMPARATOR.compare(this, o);
+    }
+  }
+
+  /**
+   * The modifiers annotations for a declaration, grouped in to a prefix that contains all of the
+   * declaration annotations and modifiers, and a suffix of type annotations.
+   *
+   * <p>For examples like {@code @Deprecated public @Nullable Foo foo();}, this allows us to format
+   * {@code @Deprecated public} as declaration modifiers, and {@code @Nullable} as a type annotation
+   * on the return type.
+   */
+  @AutoValue
+  abstract static class DeclarationModifiersAndTypeAnnotations {
+    abstract ImmutableList<AnnotationOrModifier> declarationModifiers();
+
+    abstract ImmutableList<AnnotationTree> typeAnnotations();
+
+    static DeclarationModifiersAndTypeAnnotations create(
+        ImmutableList<AnnotationOrModifier> declarationModifiers,
+        ImmutableList<AnnotationTree> typeAnnotations) {
+      return new AutoValue_JavaInputAstVisitor_DeclarationModifiersAndTypeAnnotations(
+          declarationModifiers, typeAnnotations);
+    }
+
+    static DeclarationModifiersAndTypeAnnotations empty() {
+      return create(ImmutableList.of(), ImmutableList.of());
+    }
+
+    boolean hasDeclarationAnnotation() {
+      return declarationModifiers().stream().anyMatch(AnnotationOrModifier::isAnnotation);
+    }
+  }
+
+  /**
+   * Examines the token stream to convert the modifiers for a declaration into a {@link
+   * DeclarationModifiersAndTypeAnnotations}.
+   */
+  DeclarationModifiersAndTypeAnnotations splitModifiers(
+      ModifiersTree modifiersTree, List<? extends AnnotationTree> annotations) {
+    if (annotations.isEmpty() && !isModifier(builder.peekToken().get())) {
+      return DeclarationModifiersAndTypeAnnotations.empty();
+    }
+    RangeSet<Integer> annotationRanges = TreeRangeSet.create();
+    for (AnnotationTree annotationTree : annotations) {
+      annotationRanges.add(
+          Range.closedOpen(
+              getStartPosition(annotationTree), getEndPosition(annotationTree, getCurrentPath())));
+    }
+    ImmutableList<Input.Tok> toks =
+        builder.peekTokens(
+            getStartPosition(modifiersTree),
+            (Input.Tok tok) ->
+                // ModifiersTree end position information isn't reliable, so scan tokens as long as
+                // we're seeing annotations or modifiers
+                annotationRanges.contains(tok.getPosition()) || isModifier(tok.getText()));
+    ImmutableList<AnnotationOrModifier> modifiers =
+        ImmutableList.copyOf(
+            Streams.concat(
+                    toks.stream()
+                        // reject tokens from inside AnnotationTrees, we only want modifiers
+                        .filter(t -> !annotationRanges.contains(t.getPosition()))
+                        .map(AnnotationOrModifier::ofModifier),
+                    annotations.stream().map(AnnotationOrModifier::ofAnnotation))
+                .sorted()
+                .collect(toList()));
+    // Take a suffix of annotations that are well-known type annotations, and which appear after any
+    // declaration annotations or modifiers
+    ImmutableList.Builder<AnnotationTree> typeAnnotations = ImmutableList.builder();
+    int idx = modifiers.size() - 1;
+    while (idx >= 0) {
+      AnnotationOrModifier modifier = modifiers.get(idx);
+      if (!modifier.isAnnotation() || !isTypeAnnotation(modifier.annotation())) {
+        break;
+      }
+      typeAnnotations.add(modifier.annotation());
+      idx--;
+    }
+    return DeclarationModifiersAndTypeAnnotations.create(
+        modifiers.subList(0, idx + 1), typeAnnotations.build().reverse());
+  }
+
+exec
+/bin/bash -lc "rg -n \"JavaInputAstVisitor\\.Kind|Kind\\b\" core/src/main/java/com/google/googlejavaformat/java -g '"'!**/target/**'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+core/src/main/java/com/google/googlejavaformat/java/DimensionHelpers.java:109:    return switch (node.getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/DimensionHelpers.java:113:        if (annotatedTypeTree.getUnderlyingType().getKind() != Tree.Kind.ARRAY_TYPE) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInput.java:37:import com.sun.tools.javac.parser.Tokens.TokenKind;
+core/src/main/java/com/google/googlejavaformat/java/JavaInput.java:57:import javax.tools.JavaFileObject.Kind;
+core/src/main/java/com/google/googlejavaformat/java/JavaInput.java:82:    private final TokenKind kind;
+core/src/main/java/com/google/googlejavaformat/java/JavaInput.java:102:        TokenKind kind) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInput.java:184:    public TokenKind kind() {
+core/src/main/java/com/google/googlejavaformat/java/JavaInput.java:352:  static ImmutableList<Tok> buildToks(String text, ImmutableSet<TokenKind> stopTokens)
+core/src/main/java/com/google/googlejavaformat/java/JavaInput.java:354:    stopTokens = ImmutableSet.<TokenKind>builder().addAll(stopTokens).add(TokenKind.EOF).build();
+core/src/main/java/com/google/googlejavaformat/java/JavaInput.java:363:        new SimpleJavaFileObject(URI.create("Source.java"), Kind.SOURCE) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInput.java:379:    if (ds.stream().anyMatch(d -> d.getKind() == Diagnostic.Kind.ERROR)) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInput.java:394:          t.kind() == TokenKind.STRINGLITERAL
+core/src/main/java/com/google/googlejavaformat/java/Trees.java:125:      switch (path.getLeaf().getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/Trees.java:162:        new SimpleJavaFileObject(URI.create("source"), JavaFileObject.Kind.SOURCE) {
+core/src/main/java/com/google/googlejavaformat/java/Trees.java:182:    if (input.getKind() != Diagnostic.Kind.ERROR) {
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:29:import com.sun.tools.javac.parser.Tokens.TokenKind;
+core/src/main/java/com/google/googlejavaformat/java/ModifierOrderer.java:209:    TokenKind kind = ((JavaInput.Tok) token.getTok()).kind();
+core/src/main/java/com/google/googlejavaformat/java/StringWrapper.java:35:import com.sun.source.tree.Tree.Kind;
+core/src/main/java/com/google/googlejavaformat/java/StringWrapper.java:149:        if (literalTree.getKind() != Kind.STRING_LITERAL) {
+core/src/main/java/com/google/googlejavaformat/java/StringWrapper.java:229:        while (enclosing.getParentPath().getLeaf().getKind() == Kind.PLUS) {
+core/src/main/java/com/google/googlejavaformat/java/StringWrapper.java:411:      if (first.getKind() == Tree.Kind.PLUS) {
+core/src/main/java/com/google/googlejavaformat/java/StringWrapper.java:427:        && flat.get(startIdx - 1).getKind() == Tree.Kind.STRING_LITERAL
+core/src/main/java/com/google/googlejavaformat/java/StringWrapper.java:432:        && flat.get(endIdx).getKind() == Tree.Kind.STRING_LITERAL
+core/src/main/java/com/google/googlejavaformat/java/Formatter.java:124:    if (input.getKind() != Diagnostic.Kind.ERROR) {
+core/src/main/java/com/google/googlejavaformat/java/JavacTokens.java:27:import com.sun.tools.javac.parser.Tokens.TokenKind;
+core/src/main/java/com/google/googlejavaformat/java/JavacTokens.java:43:    private final TokenKind kind;
+core/src/main/java/com/google/googlejavaformat/java/JavacTokens.java:47:    RawTok(String stringVal, TokenKind kind, int pos, int endPos) {
+core/src/main/java/com/google/googlejavaformat/java/JavacTokens.java:55:    public TokenKind kind() {
+core/src/main/java/com/google/googlejavaformat/java/JavacTokens.java:77:      String source, Context context, Set<TokenKind> stopTokens) {
+core/src/main/java/com/google/googlejavaformat/java/JavacTokens.java:102:        if (t.kind != TokenKind.EOF) {
+core/src/main/java/com/google/googlejavaformat/java/JavacTokens.java:112:              t.kind == TokenKind.STRINGLITERAL ? "\"" + t.stringVal() + "\"" : null,
+core/src/main/java/com/google/googlejavaformat/java/JavacTokens.java:117:    } while (scanner.token().kind != TokenKind.EOF);
+core/src/main/java/com/google/googlejavaformat/java/SnippetFormatter.java:33:  public enum SnippetKind {
+core/src/main/java/com/google/googlejavaformat/java/SnippetFormatter.java:102:      SnippetKind kind,
+core/src/main/java/com/google/googlejavaformat/java/SnippetFormatter.java:113:      if (kind != SnippetKind.COMPILATION_UNIT) {
+core/src/main/java/com/google/googlejavaformat/java/SnippetFormatter.java:169:  private SnippetWrapper snippetWrapper(SnippetKind kind, String source, int initialIndent) {
+core/src/main/java/com/google/googlejavaformat/java/ImportOrderer.java:28:import com.sun.tools.javac.parser.Tokens.TokenKind;
+core/src/main/java/com/google/googlejavaformat/java/ImportOrderer.java:108:   * {@link TokenKind}s that indicate the start of a type definition. We use this to avoid scanning
+core/src/main/java/com/google/googlejavaformat/java/ImportOrderer.java:111:  private static final ImmutableSet<TokenKind> CLASS_START =
+core/src/main/java/com/google/googlejavaformat/java/ImportOrderer.java:112:      ImmutableSet.of(TokenKind.CLASS, TokenKind.INTERFACE, TokenKind.ENUM);
+core/src/main/java/com/google/googlejavaformat/java/filer/FormattingJavaFileObject.java:88:            messager.printMessage(Diagnostic.Kind.NOTE, "Error formatting " + getName());
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:33:import static com.sun.source.tree.Tree.Kind.ANNOTATION;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:34:import static com.sun.source.tree.Tree.Kind.ARRAY_ACCESS;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:35:import static com.sun.source.tree.Tree.Kind.ASSIGNMENT;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:36:import static com.sun.source.tree.Tree.Kind.BLOCK;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:37:import static com.sun.source.tree.Tree.Kind.EXTENDS_WILDCARD;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:38:import static com.sun.source.tree.Tree.Kind.IF;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:39:import static com.sun.source.tree.Tree.Kind.METHOD_INVOCATION;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:40:import static com.sun.source.tree.Tree.Kind.NEW_ARRAY;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:41:import static com.sun.source.tree.Tree.Kind.NEW_CLASS;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:42:import static com.sun.source.tree.Tree.Kind.STRING_LITERAL;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:43:import static com.sun.source.tree.Tree.Kind.UNION_TYPE;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:44:import static com.sun.source.tree.Tree.Kind.VARIABLE;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:413:      if (type.getKind() == Tree.Kind.IMPORT) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:458:    switch (tree.getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:463:      default -> throw new AssertionError(tree.getKind());
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:545:        builder.open(row.iterator().next().getKind() == NEW_ARRAY || cols == 1 ? ZERO : plusFour);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:572:        if (path.getLeaf().getKind() == ANNOTATION) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:785:    if (node.getStatement().getKind() == BLOCK) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:815:        DeclarationKind.NONE,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1045:        DeclarationKind.NONE,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1052:      DeclarationKind declarationKind,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1057:          declarationKind,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1096:                && node.getInitializer().get(0).getKind() == Tree.Kind.EXPRESSION_STATEMENT
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1100:      if (node.getInitializer().get(0).getKind() == VARIABLE) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1104:            variableFragments(it, it.next()), DeclarationKind.NONE, Direction.HORIZONTAL);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1164:      if (node.getElseStatement() != null && node.getElseStatement().getKind() == IF) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1198:      followingBlock = statements.get(i).getKind() == BLOCK;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1350:    boolean statementBody = node.getBodyKind() == LambdaExpressionTree.BodyKind.STATEMENT;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1364:          DeclarationKind.NONE,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1380:    if (node.getBody().getKind() == Tree.Kind.BLOCK) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1452:    boolean isArrayInitializer = node.getExpression().getKind() == NEW_ARRAY;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1630:        if (node.getDefaultValue().getKind() == Tree.Kind.NEW_ARRAY) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1890:    switch (node.getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1923:    switch (node.getPrimitiveTypeKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1933:      default -> throw new AssertionError(node.getPrimitiveTypeKind());
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1961:    if (value.getKind() == ASSIGNMENT) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1964:    boolean isArrayInitializer = value.getKind() == NEW_ARRAY;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1985:        labels.size() == 1 && getOnlyElement(labels).getKind().name().equals("DEFAULT_CASE_LABEL");
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:1986:    builder.open(node.getCaseKind().equals(CaseTree.CaseKind.RULE) ? plusFour : ZERO);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2013:    switch (node.getCaseKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2025:        if (node.getBody().getKind() == BLOCK) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2119:              DeclarationKind.PARAMETER,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2182:    token(node.getKind() == Tree.Kind.INTERFACE ? "interface" : "class");
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2202:          node.getKind() == Tree.Kind.INTERFACE ? "extends" : "implements",
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2273:      token(node.getKind() == EXTENDS_WILDCARD ? "extends" : "super");
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2363:    switch (node.getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2393:            DeclarationKind.NONE,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2499:  @AutoOneOf(AnnotationOrModifier.Kind.class)
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2501:    enum Kind {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2506:    abstract Kind getKind();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2521:      return getKind().equals(Kind.MODIFIER);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2525:      return getKind().equals(Kind.ANNOTATION);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2529:      return switch (getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2624:    switch (modifier.getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2680:    if (ex.getType().getKind() == UNION_TYPE) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2724:        DeclarationKind.NONE,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2768:          DeclarationKind.PARAMETER,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2787:          DeclarationKind.PARAMETER,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2826:    if (node.getModuleType() == ModuleTree.ModuleKind.OPEN) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2842:      Optional<Tree.Kind> previousDirective = Optional.empty();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2846:            previousDirective.map(k -> !k.equals(directiveTree.getKind())).orElse(false)
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2851:        previousDirective = Optional.of(directiveTree.getKind());
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2954:      DeclarationKind kind,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3021:      if (node.getKind() == ARRAY_ACCESS) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3024:      switch (node.getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3049:      if (node.getKind() == NEW_CLASS && ((NewClassTree) node).getClassBody() != null) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3077:        if (expression.getKind() == METHOD_INVOCATION) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3183:    if (e.getKind() != METHOD_INVOCATION) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3266:      boolean isArray = expression.getKind() == ARRAY_ACCESS;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3268:      switch (expression.getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3289:    switch (expression.getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3330:    switch (expression.getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3494:        switch (tree.getKind()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3499:        if (tree.getKind() == STRING_LITERAL) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3575:      if (tree.getKind() != NEW_ARRAY) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3597:    Multiset<Tree.Kind> nodeTypes = HashMultiset.create();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3605:        nodeTypes.add(((UnaryTree) row.get(column)).getExpression().getKind());
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3607:        nodeTypes.add(row.get(column).getKind());
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3610:    for (Multiset.Entry<Tree.Kind> nodeType : nodeTypes.entrySet()) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3620:  /** Kind of declaration. */
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3621:  protected enum DeclarationKind {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3629:      DeclarationKind kind,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3647:    boolean isField = kind == DeclarationKind.FIELD;
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3664:        kind == DeclarationKind.PARAMETER && declarationAndTypeModifiers.hasDeclarationAnnotation()
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3721:        if (initializer.get().getKind() == Tree.Kind.NEW_ARRAY
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3907:            bodyDeclaration.getKind() != VARIABLE || hasJavaDoc(bodyDeclaration);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3915:        if (bodyDeclaration.getKind() == VARIABLE) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3918:              DeclarationKind.FIELD,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3969:    if (first.getKind() == VARIABLE) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3973:          && it.peek().getKind() == VARIABLE
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:4106:        DeclarationKind.PARAMETER,
+
+codex
+The first pass suggests the nested `Kind` enum is very local. I’m verifying the exact scope and the number of direct references so the verdict is grounded in file-level evidence rather than inference.
+exec
+/bin/bash -lc "nl -ba core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java | sed -n '2488,2545p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+  2488	        builder.addAll(breakFillList(Optional.empty()));
+  2489	      }
+  2490	      formatAnnotationOrModifier(declarationModifiers);
+  2491	      afterFirstToken = true;
+  2492	    }
+  2493	    builder.close();
+  2494	    builder.addAll(breakFillList(Optional.empty()));
+  2495	    return splitModifiers.typeAnnotations();
+  2496	  }
+  2497	
+  2498	  /** Represents an annotation or a modifier in a {@link ModifiersTree}. */
+  2499	  @AutoOneOf(AnnotationOrModifier.Kind.class)
+  2500	  abstract static class AnnotationOrModifier implements Comparable<AnnotationOrModifier> {
+  2501	    enum Kind {
+  2502	      MODIFIER,
+  2503	      ANNOTATION
+  2504	    }
+  2505	
+  2506	    abstract Kind getKind();
+  2507	
+  2508	    abstract AnnotationTree annotation();
+  2509	
+  2510	    abstract Input.Tok modifier();
+  2511	
+  2512	    static AnnotationOrModifier ofModifier(Input.Tok m) {
+  2513	      return AutoOneOf_JavaInputAstVisitor_AnnotationOrModifier.modifier(m);
+  2514	    }
+  2515	
+  2516	    static AnnotationOrModifier ofAnnotation(AnnotationTree a) {
+  2517	      return AutoOneOf_JavaInputAstVisitor_AnnotationOrModifier.annotation(a);
+  2518	    }
+  2519	
+  2520	    boolean isModifier() {
+  2521	      return getKind().equals(Kind.MODIFIER);
+  2522	    }
+  2523	
+  2524	    boolean isAnnotation() {
+  2525	      return getKind().equals(Kind.ANNOTATION);
+  2526	    }
+  2527	
+  2528	    int position() {
+  2529	      return switch (getKind()) {
+  2530	        case MODIFIER -> modifier().getPosition();
+  2531	        case ANNOTATION -> getStartPosition(annotation());
+  2532	      };
+  2533	    }
+  2534	
+  2535	    private static final Comparator<AnnotationOrModifier> COMPARATOR =
+  2536	        Comparator.comparingInt(AnnotationOrModifier::position);
+  2537	
+  2538	    @Override
+  2539	    public int compareTo(AnnotationOrModifier o) {
+  2540	      return COMPARATOR.compare(this, o);
+  2541	    }
+  2542	  }
+  2543	
+  2544	  /**
+  2545	   * The modifiers annotations for a declaration, grouped in to a prefix that contains all of the
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java | sed -n '2610,2645p'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+  2610	    while (idx >= 0) {
+  2611	      AnnotationOrModifier modifier = modifiers.get(idx);
+  2612	      if (!modifier.isAnnotation() || !isTypeAnnotation(modifier.annotation())) {
+  2613	        break;
+  2614	      }
+  2615	      typeAnnotations.add(modifier.annotation());
+  2616	      idx--;
+  2617	    }
+  2618	    return DeclarationModifiersAndTypeAnnotations.create(
+  2619	        modifiers.subList(0, idx + 1), typeAnnotations.build().reverse());
+  2620	  }
+  2621	
+  2622	  private void formatAnnotationOrModifier(Deque<AnnotationOrModifier> modifiers) {
+  2623	    AnnotationOrModifier modifier = modifiers.removeFirst();
+  2624	    switch (modifier.getKind()) {
+  2625	      case MODIFIER -> {
+  2626	        token(modifier.modifier().getText());
+  2627	        if (modifier.modifier().getText().equals("non")) {
+  2628	          token(modifiers.removeFirst().modifier().getText());
+  2629	          token(modifiers.removeFirst().modifier().getText());
+  2630	        }
+  2631	      }
+  2632	      case ANNOTATION -> scan(modifier.annotation(), null);
+  2633	    }
+  2634	  }
+  2635	
+  2636	  boolean isTypeAnnotation(AnnotationTree annotationTree) {
+  2637	    Tree annotationType = annotationTree.getAnnotationType();
+  2638	    if (!(annotationType instanceof IdentifierTree)) {
+  2639	      return false;
+  2640	    }
+  2641	    return typeAnnotationSimpleNames.contains(((IdentifierTree) annotationType).getName());
+  2642	  }
+  2643	
+  2644	  private static boolean isModifier(String token) {
+  2645	    return switch (token) {
+
+exec
+/bin/bash -lc "rg -n \"AnnotationOrModifier\\.Kind|\\bKind\\.(MODIFIER|ANNOTATION)\\b|getKind\\(\\)\" core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+33:import static com.sun.source.tree.Tree.Kind.ANNOTATION;
+413:      if (type.getKind() == Tree.Kind.IMPORT) {
+458:    switch (tree.getKind()) {
+463:      default -> throw new AssertionError(tree.getKind());
+545:        builder.open(row.iterator().next().getKind() == NEW_ARRAY || cols == 1 ? ZERO : plusFour);
+572:        if (path.getLeaf().getKind() == ANNOTATION) {
+785:    if (node.getStatement().getKind() == BLOCK) {
+1096:                && node.getInitializer().get(0).getKind() == Tree.Kind.EXPRESSION_STATEMENT
+1100:      if (node.getInitializer().get(0).getKind() == VARIABLE) {
+1164:      if (node.getElseStatement() != null && node.getElseStatement().getKind() == IF) {
+1198:      followingBlock = statements.get(i).getKind() == BLOCK;
+1380:    if (node.getBody().getKind() == Tree.Kind.BLOCK) {
+1452:    boolean isArrayInitializer = node.getExpression().getKind() == NEW_ARRAY;
+1630:        if (node.getDefaultValue().getKind() == Tree.Kind.NEW_ARRAY) {
+1890:    switch (node.getKind()) {
+1961:    if (value.getKind() == ASSIGNMENT) {
+1964:    boolean isArrayInitializer = value.getKind() == NEW_ARRAY;
+1985:        labels.size() == 1 && getOnlyElement(labels).getKind().name().equals("DEFAULT_CASE_LABEL");
+2025:        if (node.getBody().getKind() == BLOCK) {
+2182:    token(node.getKind() == Tree.Kind.INTERFACE ? "interface" : "class");
+2202:          node.getKind() == Tree.Kind.INTERFACE ? "extends" : "implements",
+2273:      token(node.getKind() == EXTENDS_WILDCARD ? "extends" : "super");
+2363:    switch (node.getKind()) {
+2499:  @AutoOneOf(AnnotationOrModifier.Kind.class)
+2506:    abstract Kind getKind();
+2521:      return getKind().equals(Kind.MODIFIER);
+2525:      return getKind().equals(Kind.ANNOTATION);
+2529:      return switch (getKind()) {
+2624:    switch (modifier.getKind()) {
+2680:    if (ex.getType().getKind() == UNION_TYPE) {
+2846:            previousDirective.map(k -> !k.equals(directiveTree.getKind())).orElse(false)
+2851:        previousDirective = Optional.of(directiveTree.getKind());
+3021:      if (node.getKind() == ARRAY_ACCESS) {
+3024:      switch (node.getKind()) {
+3049:      if (node.getKind() == NEW_CLASS && ((NewClassTree) node).getClassBody() != null) {
+3077:        if (expression.getKind() == METHOD_INVOCATION) {
+3183:    if (e.getKind() != METHOD_INVOCATION) {
+3266:      boolean isArray = expression.getKind() == ARRAY_ACCESS;
+3268:      switch (expression.getKind()) {
+3289:    switch (expression.getKind()) {
+3330:    switch (expression.getKind()) {
+3494:        switch (tree.getKind()) {
+3499:        if (tree.getKind() == STRING_LITERAL) {
+3575:      if (tree.getKind() != NEW_ARRAY) {
+3605:        nodeTypes.add(((UnaryTree) row.get(column)).getExpression().getKind());
+3607:        nodeTypes.add(row.get(column).getKind());
+3721:        if (initializer.get().getKind() == Tree.Kind.NEW_ARRAY
+3907:            bodyDeclaration.getKind() != VARIABLE || hasJavaDoc(bodyDeclaration);
+3915:        if (bodyDeclaration.getKind() == VARIABLE) {
+3969:    if (first.getKind() == VARIABLE) {
+3973:          && it.peek().getKind() == VARIABLE
+
+codex
+I’ve confirmed the enum is only used inside `JavaInputAstVisitor` and not referenced elsewhere in the source tree. I’m checking for any hidden fan-in around the enclosing helper types before finalizing the verdict.
+exec
+/bin/bash -lc "rg -n \"AnnotationOrModifier|DeclarationModifiersAndTypeAnnotations|JavaInputAstVisitor\\.AnnotationOrModifier|JavaInputAstVisitor\\.DeclarationModifiersAndTypeAnnotations\" core/src/main/java test src ." in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ exited 2 in 0ms:
+rg: test: No such file or directory (os error 2)
+rg: src: No such file or directory (os error 2)
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2442:    DeclarationModifiersAndTypeAnnotations splitModifiers =
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2449:      DeclarationModifiersAndTypeAnnotations splitModifiers,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2455:    Deque<AnnotationOrModifier> declarationModifiers =
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2467:      formatAnnotationOrModifier(declarationModifiers);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2490:      formatAnnotationOrModifier(declarationModifiers);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2499:  @AutoOneOf(AnnotationOrModifier.Kind.class)
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2500:  abstract static class AnnotationOrModifier implements Comparable<AnnotationOrModifier> {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2512:    static AnnotationOrModifier ofModifier(Input.Tok m) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2513:      return AutoOneOf_JavaInputAstVisitor_AnnotationOrModifier.modifier(m);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2516:    static AnnotationOrModifier ofAnnotation(AnnotationTree a) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2517:      return AutoOneOf_JavaInputAstVisitor_AnnotationOrModifier.annotation(a);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2535:    private static final Comparator<AnnotationOrModifier> COMPARATOR =
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2536:        Comparator.comparingInt(AnnotationOrModifier::position);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2539:    public int compareTo(AnnotationOrModifier o) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2553:  abstract static class DeclarationModifiersAndTypeAnnotations {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2554:    abstract ImmutableList<AnnotationOrModifier> declarationModifiers();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2558:    static DeclarationModifiersAndTypeAnnotations create(
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2559:        ImmutableList<AnnotationOrModifier> declarationModifiers,
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2561:      return new AutoValue_JavaInputAstVisitor_DeclarationModifiersAndTypeAnnotations(
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2565:    static DeclarationModifiersAndTypeAnnotations empty() {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2570:      return declarationModifiers().stream().anyMatch(AnnotationOrModifier::isAnnotation);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2576:   * DeclarationModifiersAndTypeAnnotations}.
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2578:  DeclarationModifiersAndTypeAnnotations splitModifiers(
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2581:      return DeclarationModifiersAndTypeAnnotations.empty();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2596:    ImmutableList<AnnotationOrModifier> modifiers =
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2602:                        .map(AnnotationOrModifier::ofModifier),
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2603:                    annotations.stream().map(AnnotationOrModifier::ofAnnotation))
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2611:      AnnotationOrModifier modifier = modifiers.get(idx);
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2618:    return DeclarationModifiersAndTypeAnnotations.create(
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2622:  private void formatAnnotationOrModifier(Deque<AnnotationOrModifier> modifiers) {
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2623:    AnnotationOrModifier modifier = modifiers.removeFirst();
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3659:    DeclarationModifiersAndTypeAnnotations declarationAndTypeModifiers =
+core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3662:            .orElse(DeclarationModifiersAndTypeAnnotations.empty());
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2442:    DeclarationModifiersAndTypeAnnotations splitModifiers =
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2449:      DeclarationModifiersAndTypeAnnotations splitModifiers,
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2455:    Deque<AnnotationOrModifier> declarationModifiers =
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2467:      formatAnnotationOrModifier(declarationModifiers);
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2490:      formatAnnotationOrModifier(declarationModifiers);
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2499:  @AutoOneOf(AnnotationOrModifier.Kind.class)
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2500:  abstract static class AnnotationOrModifier implements Comparable<AnnotationOrModifier> {
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2512:    static AnnotationOrModifier ofModifier(Input.Tok m) {
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2513:      return AutoOneOf_JavaInputAstVisitor_AnnotationOrModifier.modifier(m);
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2516:    static AnnotationOrModifier ofAnnotation(AnnotationTree a) {
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2517:      return AutoOneOf_JavaInputAstVisitor_AnnotationOrModifier.annotation(a);
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2535:    private static final Comparator<AnnotationOrModifier> COMPARATOR =
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2536:        Comparator.comparingInt(AnnotationOrModifier::position);
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2539:    public int compareTo(AnnotationOrModifier o) {
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2553:  abstract static class DeclarationModifiersAndTypeAnnotations {
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2554:    abstract ImmutableList<AnnotationOrModifier> declarationModifiers();
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2558:    static DeclarationModifiersAndTypeAnnotations create(
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2559:        ImmutableList<AnnotationOrModifier> declarationModifiers,
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2561:      return new AutoValue_JavaInputAstVisitor_DeclarationModifiersAndTypeAnnotations(
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2565:    static DeclarationModifiersAndTypeAnnotations empty() {
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2570:      return declarationModifiers().stream().anyMatch(AnnotationOrModifier::isAnnotation);
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2576:   * DeclarationModifiersAndTypeAnnotations}.
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2578:  DeclarationModifiersAndTypeAnnotations splitModifiers(
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2581:      return DeclarationModifiersAndTypeAnnotations.empty();
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2596:    ImmutableList<AnnotationOrModifier> modifiers =
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2602:                        .map(AnnotationOrModifier::ofModifier),
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2603:                    annotations.stream().map(AnnotationOrModifier::ofAnnotation))
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2611:      AnnotationOrModifier modifier = modifiers.get(idx);
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2618:    return DeclarationModifiersAndTypeAnnotations.create(
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2622:  private void formatAnnotationOrModifier(Deque<AnnotationOrModifier> modifiers) {
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:2623:    AnnotationOrModifier modifier = modifiers.removeFirst();
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3659:    DeclarationModifiersAndTypeAnnotations declarationAndTypeModifiers =
+./core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java:3662:            .orElse(DeclarationModifiersAndTypeAnnotations.empty());
+
+exec
+/bin/bash -lc "sed -n '1,240p' core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/google-java-format
+ succeeded in 0ms:
+/*
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package com.google.googlejavaformat.java;
+
+import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.Iterables.getLast;
+import static com.google.common.collect.Iterables.getOnlyElement;
+import static com.google.googlejavaformat.Doc.FillMode.INDEPENDENT;
+import static com.google.googlejavaformat.Doc.FillMode.UNIFIED;
+import static com.google.googlejavaformat.Indent.If.make;
+import static com.google.googlejavaformat.OpsBuilder.BlankLineWanted.PRESERVE;
+import static com.google.googlejavaformat.OpsBuilder.BlankLineWanted.YES;
+import static com.google.googlejavaformat.java.Trees.getEndPosition;
+import static com.google.googlejavaformat.java.Trees.getLength;
+import static com.google.googlejavaformat.java.Trees.getMethodName;
+import static com.google.googlejavaformat.java.Trees.getSourceForNode;
+import static com.google.googlejavaformat.java.Trees.getStartPosition;
+import static com.google.googlejavaformat.java.Trees.operatorName;
+import static com.google.googlejavaformat.java.Trees.precedence;
+import static com.google.googlejavaformat.java.Trees.skipParen;
+import static com.sun.source.tree.Tree.Kind.ANNOTATION;
+import static com.sun.source.tree.Tree.Kind.ARRAY_ACCESS;
+import static com.sun.source.tree.Tree.Kind.ASSIGNMENT;
+import static com.sun.source.tree.Tree.Kind.BLOCK;
+import static com.sun.source.tree.Tree.Kind.EXTENDS_WILDCARD;
+import static com.sun.source.tree.Tree.Kind.IF;
+import static com.sun.source.tree.Tree.Kind.METHOD_INVOCATION;
+import static com.sun.source.tree.Tree.Kind.NEW_ARRAY;
+import static com.sun.source.tree.Tree.Kind.NEW_CLASS;
+import static com.sun.source.tree.Tree.Kind.STRING_LITERAL;
+import static com.sun.source.tree.Tree.Kind.UNION_TYPE;
+import static com.sun.source.tree.Tree.Kind.VARIABLE;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+
+import com.google.auto.value.AutoOneOf;
+import com.google.auto.value.AutoValue;
+import com.google.common.base.MoreObjects;
+import com.google.common.base.Predicate;
+import com.google.common.base.Throwables;
+import com.google.common.base.Verify;
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSetMultimap;
+import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Multiset;
+import com.google.common.collect.PeekingIterator;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.Streams;
+import com.google.common.collect.TreeRangeSet;
+import com.google.errorprone.annotations.CheckReturnValue;
+import com.google.googlejavaformat.CloseOp;
+import com.google.googlejavaformat.Doc;
+import com.google.googlejavaformat.Doc.FillMode;
+import com.google.googlejavaformat.FormattingError;
+import com.google.googlejavaformat.Indent;
+import com.google.googlejavaformat.Input;
+import com.google.googlejavaformat.Newlines;
+import com.google.googlejavaformat.Op;
+import com.google.googlejavaformat.OpenOp;
+import com.google.googlejavaformat.OpsBuilder;
+import com.google.googlejavaformat.OpsBuilder.BlankLineWanted;
+import com.google.googlejavaformat.Output.BreakTag;
+import com.google.googlejavaformat.java.DimensionHelpers.SortedDims;
+import com.google.googlejavaformat.java.DimensionHelpers.TypeWithDims;
+import com.sun.source.tree.AnnotatedTypeTree;
+import com.sun.source.tree.AnnotationTree;
+import com.sun.source.tree.ArrayAccessTree;
+import com.sun.source.tree.ArrayTypeTree;
+import com.sun.source.tree.AssertTree;
+import com.sun.source.tree.AssignmentTree;
+import com.sun.source.tree.BinaryTree;
+import com.sun.source.tree.BindingPatternTree;
+import com.sun.source.tree.BlockTree;
+import com.sun.source.tree.BreakTree;
+import com.sun.source.tree.CaseLabelTree;
+import com.sun.source.tree.CaseTree;
+import com.sun.source.tree.CatchTree;
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.CompoundAssignmentTree;
+import com.sun.source.tree.ConditionalExpressionTree;
+import com.sun.source.tree.ConstantCaseLabelTree;
+import com.sun.source.tree.ContinueTree;
+import com.sun.source.tree.DeconstructionPatternTree;
+import com.sun.source.tree.DefaultCaseLabelTree;
+import com.sun.source.tree.DirectiveTree;
+import com.sun.source.tree.DoWhileLoopTree;
+import com.sun.source.tree.EmptyStatementTree;
+import com.sun.source.tree.EnhancedForLoopTree;
+import com.sun.source.tree.ExportsTree;
+import com.sun.source.tree.ExpressionStatementTree;
+import com.sun.source.tree.ExpressionTree;
+import com.sun.source.tree.ForLoopTree;
+import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.IfTree;
+import com.sun.source.tree.ImportTree;
+import com.sun.source.tree.InstanceOfTree;
+import com.sun.source.tree.IntersectionTypeTree;
+import com.sun.source.tree.LabeledStatementTree;
+import com.sun.source.tree.LambdaExpressionTree;
+import com.sun.source.tree.LiteralTree;
+import com.sun.source.tree.MemberReferenceTree;
+import com.sun.source.tree.MemberSelectTree;
+import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.ModifiersTree;
+import com.sun.source.tree.ModuleTree;
+import com.sun.source.tree.NewArrayTree;
+import com.sun.source.tree.NewClassTree;
+import com.sun.source.tree.OpensTree;
+import com.sun.source.tree.ParameterizedTypeTree;
+import com.sun.source.tree.ParenthesizedTree;
+import com.sun.source.tree.PatternCaseLabelTree;
+import com.sun.source.tree.PatternTree;
+import com.sun.source.tree.PrimitiveTypeTree;
+import com.sun.source.tree.ProvidesTree;
+import com.sun.source.tree.RequiresTree;
+import com.sun.source.tree.ReturnTree;
+import com.sun.source.tree.StatementTree;
+import com.sun.source.tree.SwitchExpressionTree;
+import com.sun.source.tree.SwitchTree;
+import com.sun.source.tree.SynchronizedTree;
+import com.sun.source.tree.ThrowTree;
+import com.sun.source.tree.Tree;
+import com.sun.source.tree.TryTree;
+import com.sun.source.tree.TypeCastTree;
+import com.sun.source.tree.TypeParameterTree;
+import com.sun.source.tree.UnaryTree;
+import com.sun.source.tree.UnionTypeTree;
+import com.sun.source.tree.UsesTree;
+import com.sun.source.tree.VariableTree;
+import com.sun.source.tree.WhileLoopTree;
+import com.sun.source.tree.WildcardTree;
+import com.sun.source.tree.YieldTree;
+import com.sun.source.util.TreePath;
+import com.sun.source.util.TreePathScanner;
+import com.sun.tools.javac.code.Flags;
+import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
+import com.sun.tools.javac.tree.TreeInfo;
+import com.sun.tools.javac.tree.TreeScanner;
+import java.lang.reflect.Method;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+import javax.lang.model.element.Name;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * An AST visitor that builds a stream of {@link Op}s to format from the given {@link
+ * CompilationUnitTree}.
+ */
+public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
+
+  /** Direction for Annotations (usually VERTICAL). */
+  protected enum Direction {
+    VERTICAL,
+    HORIZONTAL;
+
+    boolean isVertical() {
+      return this == VERTICAL;
+    }
+  }
+
+  /** Whether to break or not. */
+  protected enum BreakOrNot {
+    YES,
+    NO;
+
+    boolean isYes() {
+      return this == YES;
+    }
+  }
+
+  /** Whether to collapse empty blocks. */
+  protected enum CollapseEmptyOrNot {
+    YES,
+    NO;
+
+    static CollapseEmptyOrNot valueOf(boolean b) {
+      return b ? YES : NO;
+    }
+
+    boolean isYes() {
+      return this == YES;
+    }
+  }
+
+  /** Whether to allow leading blank lines in blocks. */
+  protected enum AllowLeadingBlankLine {
+    YES,
+    NO;
+
+    static AllowLeadingBlankLine valueOf(boolean b) {
+      return b ? YES : NO;
+    }
+  }
+
+  /** Whether to allow trailing blank lines in blocks. */
+  protected enum AllowTrailingBlankLine {
+    YES,
+    NO;
+
+    static AllowTrailingBlankLine valueOf(boolean b) {
+      return b ? YES : NO;
+    }
+  }
+
+  /** Whether to include braces. */
+  protected enum BracesOrNot {
+    YES,
+    NO;
+
+codex
+{"target":"com.google.googlejavaformat.java.JavaInputAstVisitor.Kind","detection":false,"justification":"Inspected `core/src/main/java/com/google/googlejavaformat/java/JavaInputAstVisitor.java` around lines 2498-2533 and 2622-2633. The nested enum `AnnotationOrModifier.Kind` has only two constants (`MODIFIER`, `ANNOTATION`), no methods of its own, and is used only by the enclosing `AnnotationOrModifier` helper (`@AutoOneOf`, `getKind()`, `isModifier()`, `isAnnotation()`, and the small `switch` in `formatAnnotationOrModifier`). A repo-wide search found no references to `AnnotationOrModifier.Kind` outside this file, so there is no evidence of high fan-in or fan-out for this unit."}
+tokens used
+21,470

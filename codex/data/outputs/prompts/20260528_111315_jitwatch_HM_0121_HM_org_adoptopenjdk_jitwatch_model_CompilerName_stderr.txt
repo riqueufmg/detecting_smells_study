@@ -1,0 +1,350 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6eee-b0be-7f12-a060-cbf479f2488e
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.model.CompilerName` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.model.CompilerName",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.model.CompilerName`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’ll locate `CompilerName`, read its implementation, and trace where it is referenced so I can judge incoming and outgoing dependencies from evidence in the repo.
+exec
+/bin/bash -lc 'rg -n "class CompilerName|enum CompilerName|interface CompilerName" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java:8:public enum CompilerName
+
+exec
+/bin/bash -lc "rg -n \"org\\.adoptopenjdk\\.jitwatch\\.model\\.CompilerName|\\bCompilerName\\b\" -S src ." in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ exited 2 in 0ms:
+rg: src: No such file or directory (os error 2)
+./core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java:8:public enum CompilerName
+
+codex
+I found the target file in `core/src/main/java/.../CompilerName.java`. Next I’m checking its members and all repo references to measure actual fan-in and fan-out instead of guessing from the name.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2015 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.model;
+
+public enum CompilerName
+{
+	C1, C2;
+}
+
+exec
+/bin/bash -lc "rg -n \"\\bCompilerName\\b\" core/src/main/java core/src/test/java -S" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java:8:public enum CompilerName
+
+codex
+The first pass suggests very low coupling. I’m confirming across the whole repository, including docs/tests, so the verdict rests on a complete reference search rather than a partial source-tree scan.
+exec
+/bin/bash -lc "rg -n \"\\bC1\\b|\\bC2\\b\" core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java core/src/main/java core/src/test/java -S" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java:10:	C1, C2;
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:27:				"<nmethod stub_offset='912' dependencies_offset='1896' address='0x000000010b721090' method='InlineElimAlloc outer (I)J' level='4' count='6' backedge_count='101376' stamp='0.249' scopes_data_offset='1040' iicount='6' handler_table_offset='1904' oops_offset='936' entry='0x000000010b7211e0' size='1928' scopes_pcs_offset='1496' insts_offset='336' bytes='31' relocation_offset='296' compile_id='33' compiler='C2'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:33:				"    <method level='3' bytes='31' name='outer' flags='1' holder='831' arguments='721' id='832' compile_id='31' compiler='C1' iicount='6' return='722'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:40:				"      <method level='4' bytes='55' name='inner' flags='1' holder='831' arguments='721 721' id='834' compile_id='29' compiler='C2' iicount='5376' return='722'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:63:				"            <method level='3' bytes='5' name='get' flags='17' holder='843' id='845' compile_id='17' compiler='C1' iicount='10751' return='722'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:71:				"            <method level='3' bytes='13' name='compareAndSet' flags='17' holder='843' arguments='722 722' id='846' compile_id='18' compiler='C1' iicount='10751' return='715'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:94:				"          <method level='4' bytes='53' name='&lt;init&gt;' flags='1' holder='835' arguments='722' id='841' compile_id='27' compiler='C2' iicount='5375' return='723'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:99:				"            <method level='1' bytes='1' name='&lt;init&gt;' flags='1' holder='728' id='854' compile_id='24' compiler='C1' iicount='12620' return='723'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:113:				"            <method level='3' bytes='10' name='initialScramble' flags='10' holder='835' arguments='722' id='858' compile_id='23' compiler='C1' iicount='5375' return='722'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:120:				"            <method level='3' bytes='10' name='&lt;init&gt;' flags='1' holder='843' arguments='722' id='859' compile_id='21' compiler='C1' iicount='5376' return='723'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:126:				"              <method level='3' bytes='5' name='&lt;init&gt;' flags='1' holder='810' id='863' compile_id='16' compiler='C1' iicount='5639' return='723'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:151:				"          <method level='4' bytes='47' name='next' flags='4' holder='835' arguments='721' id='866' compile_id='28' compiler='C2' iicount='5375' return='721'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:365:				"<nmethod stub_offset='1072' dependencies_offset='1584' address='0x00000001102b7d10' method='LockEliminate &lt;init&gt; ()V' level='4' count='1' backedge_count='101376' stamp='0.191' scopes_data_offset='1128' iicount='1' oops_offset='1096' entry='0x00000001102b7e60' size='1592' scopes_pcs_offset='1280' compile_kind='osr' insts_offset='336' bytes='65' relocation_offset='296' compile_id='21' compiler='C2'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:370:				"    <method level='3' bytes='65' name='&lt;init&gt;' flags='1' holder='832' id='833' compile_id='20' compiler='C1' iicount='1' return='724'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:388:				"      <method level='1' bytes='6' name='increment' flags='34' holder='832' arguments='723' id='838' compile_id='17' compiler='C1' iicount='83200' return='723'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestReport.java:395:				"      <method level='1' bytes='6' name='decrement' flags='34' holder='832' arguments='723' id='839' compile_id='18' compiler='C1' iicount='42240' return='723'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestIntrinsicFinder.java:31:				"<nmethod compile_id='3557' compiler='C2' entry='0x000000010744c060' size='1256' address='0x000000010744bf10' relocation_offset='296' insts_offset='336' stub_offset='688' scopes_data_offset='720' scopes_pcs_offset='832' dependencies_offset='1232' nul_chk_table_offset='1240' method='org/eclipse/jdt/internal/compiler/util/SimpleLookupTable get (Ljava/lang/Object;)Ljava/lang/Object;' bytes='55' count='546' backedge_count='5389' iicount='546' stamp='0.105'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestIntrinsicFinder.java:83:				"<nmethod compile_id='1564' compiler='C2' entry='0x000000010744c060' size='1256' address='0x000000010744bf10' relocation_offset='296' insts_offset='336' stub_offset='688' scopes_data_offset='720' scopes_pcs_offset='832' dependencies_offset='1232' nul_chk_table_offset='1240' method='java/util/TimSort mergeLo (IIII)V' bytes='55' count='546' backedge_count='5389' iicount='546' stamp='0.105'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestIntrinsicFinder.java:151:				"<method id='746' holder='733' name='compare' return='634' arguments='645 645' flags='4161' bytes='13' compile_id='1562' compiler='C2' iicount='17524'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestAssemblyProcessor.java:427:				"<uncommon_trap thread='140176877946624' reason='unloaded' action='reinterpret' index='39' compile_id='2' compile_kind='osr' compiler='C2' unresolved='1' name='java/lang/System' stamp='0.374'>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestAssemblyProcessor.java:485:				"<nmethod compile_id='2' compile_kind='osr' compiler='C2' entry='0x00007f7d733642e0' size='800' address='0x00007f7d73364190' relocation_offset='288' insts_offset='336' stub_offset='528' scopes_data_offset='576' scopes_pcs_offset='632' dependencies_offset='792' oops_offset='552' method='org/adoptopenjdk/jitwatch/test/TestAssemblyProcessor dummyMethod2 ([Ljava/lang/String;)V' bytes='57' count='10000' backedge_count='5377' iicount='1' stamp='0.373'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestAssemblyProcessor.java:493:				"<uncommon_trap thread='140176877946624' reason='unloaded' action='reinterpret' index='39' compile_id='2' compile_kind='osr' compiler='C2' unresolved='1' name='java/lang/System' stamp='0.374'>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestAssemblyProcessor.java:721:				"<nmethod compile_id='1' compiler='C1' level='3' entry='0x00007fb5ad0fe420' size='2504' address='0x00007fb5ad0fe290' relocation_offset='288'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestAssemblyProcessor.java:765:				"<uncommon_trap thread='139769789089536' reason='unloaded' action='reinterpret' index='39' compile_id='2' compile_kind='osr' compiler='C2' unresolved='1' name='java/lang/System' stamp='0.560'>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestAssemblyProcessor.java:964:		// <nmethod compile_id='125' compiler='C1' level='1' entry='0x00007fab74150300' size='736' address='0x00007fab74150190' relocation_offset='312' 
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestAssemblyProcessor.java:1008:				"============================= C1-compiled nmethod ==============================",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestLogSplitting.java:26:		String nmethodTag = "<nmethod compile_id='999' compiler='C1' level='3' entry='0x00007fb5ad0fe420' size='2504' address='0x0000aaaaaaaaa' relocation_offset='288' method='java/lang/String hashCode ()I' />";
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestLogSplitting.java:31:				"<nmethod compile_id='1' compiler='C1' level='3' entry='0x00007fb5ad0fe420' size='2504' address='0x00007fb5ad0fe290' relocation_offset='288' method='java/lang/String length ()I' />",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestLogSplitting.java:211:				"<nmethod compile_id='236' compiler='C2' entry='0x0000000105a44ce0' size='736' address='0x0000000105a44b90' relocation_offset='296' insts_offset='336' stub_offset='464' scopes_data_offset='504' scopes_pcs_offset='552' dependencies_offset='712' nul_chk_table_offset='720' method='java/lang/String &lt;init&gt; ()V' bytes='26' count='5047' backedge_count='1' iicount='10047' stamp='3.560'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:180:				"<method level='4' bytes='18' name='test' flags='2' holder='776' arguments='678 678' id='779' compile_id='125' compiler='C2' iicount='7613' return='672'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:185:				"<method level='4' bytes='16' name='chainC1' flags='2' holder='776' arguments='679' id='781' compile_id='126' compiler='C2' iicount='32985' return='679'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:189:				"<method level='2' bytes='6' name='chainC2' flags='2' holder='776' arguments='679' id='783' compile_id='123' compiler='C1' iicount='32985' return='679'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:193:				"<method level='3' bytes='6' name='chainC3' flags='2' holder='776' arguments='679' id='785' compile_id='124' compiler='C1' iicount='32985' return='679'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:211:				"<method level='1' bytes='1' name='<init>' flags='1' holder='685' id='793' compile_id='12' compiler='C1' iicount='749967' return='680'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:357:				"<method id='739' holder='729' name='chainA1' return='635' arguments='635' flags='2' bytes='8' compile_id='63' compiler='C2' iicount='10929'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:363:				"<method id='741' holder='729' name='chainA2' return='635' arguments='635' flags='2' bytes='10' compile_id='64' compiler='C2' iicount='10929'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:368:				"<method id='743' holder='729' name='chainA3' return='635' arguments='635' flags='2' bytes='10' compile_id='65' compiler='C2' iicount='10929'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:373:				"<method id='745' holder='729' name='chainA4' return='635' arguments='635' flags='2' bytes='7' compile_id='66' compiler='C2' iicount='10929'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:379:				"<method id='747' holder='729' name='bigMethod' return='635' arguments='635 634' flags='2' bytes='350' compile_id='15' compiler='C2' iicount='11233'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:392:				"<method id='740' holder='729' name='chainB1' return='635' arguments='635' flags='2' bytes='8' compile_id='67' compiler='C2' iicount='15458'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:402:				"<method id='751' holder='729' name='chainB3' return='635' arguments='635' flags='2' bytes='6' compile_id='69' compiler='C2' iicount='15458'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:458:				"<method id='763' holder='645' name='&lt;init&gt;' return='636' flags='1' bytes='1' compile_id='26' compiler='C2' iicount='15818'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:630:				"<method id='786' holder='776' name='chainA1' return='679' arguments='679' flags='2' bytes='8' compile_id='61' compiler='C2' iicount='10785'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:636:				"<method id='788' holder='776' name='chainA2' return='679' arguments='679' flags='2' bytes='10' compile_id='62' compiler='C2' iicount='10785'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:641:				"<method id='790' holder='776' name='chainA3' return='679' arguments='679' flags='2' bytes='10' compile_id='63' compiler='C2' iicount='10785'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:646:				"<method id='792' holder='776' name='chainA4' return='679' arguments='679' flags='2' bytes='7' compile_id='64' compiler='C2' iicount='10785'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:652:				"<method id='794' holder='776' name='bigMethod' return='679' arguments='679 678' flags='2' bytes='350' compile_id='15' compiler='C2' iicount='11290'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:665:				"<method id='787' holder='776' name='chainB1' return='679' arguments='679' flags='2' bytes='8' compile_id='65' compiler='C2' iicount='16240'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:670:				"<method id='796' holder='776' name='chainB2' return='679' arguments='679' flags='2' bytes='10' compile_id='66' compiler='C2' iicount='16240'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:675:				"<method id='798' holder='776' name='chainB3' return='679' arguments='679' flags='2' bytes='6' compile_id='67' compiler='C2' iicount='16240'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:731:				"<method id='810' holder='685' name='&lt;init&gt;' return='680' flags='1' bytes='1' compile_id='26' compiler='C2' iicount='19740'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:922:				"<task compiler='C1' compile_id='881' compile_kind='osr' method='org.adoptopenjdk.jitwatch.demo.MakeHotSpotLog testCallChain3 ()V' bytes='71' count='1' backedge_count='60529' iicount='1' osr_bci='8' level='3' stamp='18.121'>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:935:				"<method id='871' holder='868' name='test' return='750' arguments='756 756' flags='2' bytes='18' compile_id='879' compiler='C2' level='4' iicount='32412'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:943:				"<method id='873' holder='868' name='chainC1' return='757' arguments='757' flags='2' bytes='16' compile_id='880' compiler='C2' level='4' iicount='36824'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:948:				"<method id='875' holder='868' name='chainC2' return='757' arguments='757' flags='2' bytes='6' compile_id='878' compiler='C1' level='3' iicount='36824'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:955:				"<method id='877' holder='868' name='chainC3' return='757' arguments='757' flags='2' bytes='6' compile_id='877' compiler='C1' level='3' iicount='36824'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:971:				"<method id='881' holder='831' name='&lt;init&gt;' return='758' flags='1' bytes='7' compile_id='157' compiler='C1' level='3' iicount='3350'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:977:				"<method id='883' holder='829' name='&lt;init&gt;' return='758' arguments='756' flags='0' bytes='12' compile_id='127' compiler='C1' level='3' iicount='4382'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:983:				"<method id='885' holder='763' name='&lt;init&gt;' return='758' flags='1' bytes='1' compile_id='9' compiler='C1' level='1' iicount='406725'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:995:				"<method id='888' holder='831' name='append' return='831' arguments='764' flags='1' bytes='8' compile_id='481' compiler='C2' level='4' iicount='7576'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:1000:				"<method id='890' holder='829' name='append' return='829' arguments='764' flags='1' bytes='50' compile_id='480' compiler='C2' level='4' iicount='5332'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:1017:				"<method id='896' holder='831' name='toString' return='764' flags='1' bytes='17' compile_id='164' compiler='C1' level='3' iicount='3924'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:1023:				"<method id='898' holder='764' name='&lt;init&gt;' return='758' arguments='857 756 756' flags='1' bytes='82' compile_id='431' compiler='C1' level='3' iicount='12354'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:1210:				"<task method='java.io.BufferedInputStream read ()I' bytes='49' count='5485' stamp='3.616' compiler='C2' compile_id='730' iicount='5489'>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:1213:				"  <method level='3' bytes='49' name='read' flags='33' holder='868' id='869' compile_id='611' compiler='C1' iicount='5621' return='756'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestCompileChain.java:1231:				"    <method level='3' bytes='21' name='getBufIfOpen' flags='2' holder='868' id='871' compile_id='610' compiler='C1' iicount='8108' return='860'/>",
+core/src/main/java/org/adoptopenjdk/jitwatch/model/JITDataModel.java:11:import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C1;
+core/src/main/java/org/adoptopenjdk/jitwatch/model/JITDataModel.java:12:import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C2;
+core/src/main/java/org/adoptopenjdk/jitwatch/model/JITDataModel.java:200:			if (C1.equalsIgnoreCase(compiler))
+core/src/main/java/org/adoptopenjdk/jitwatch/model/JITDataModel.java:204:			else if (C2.equalsIgnoreCase(compiler))
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:108:				"<nmethod compile_id='82' compiler='C2' entry='0x000000010744c060' size='1256' address='0x000000010744bf10' relocation_offset='296' insts_offset='336' stub_offset='688' scopes_data_offset='720' scopes_pcs_offset='832' dependencies_offset='1232' nul_chk_table_offset='1240' method='org/adoptopenjdk/jitwatch/demo/MakeHotSpotLog testLeaf (J)V' bytes='55' count='546' backedge_count='5389' iicount='546' stamp='0.105'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:122:				"<method id='732' holder='729' name='leaf1' return='635' arguments='635' flags='2' bytes='4' compile_id='78' compiler='C2' iicount='10013'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:130:				"<method id='733' holder='729' name='leaf2' return='635' arguments='635' flags='2' bytes='6' compile_id='79' compiler='C2' iicount='10013'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:137:				"<method id='734' holder='729' name='leaf3' return='635' arguments='635' flags='2' bytes='6' compile_id='80' compiler='C2' iicount='10013'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:144:				"<method id='735' holder='729' name='leaf4' return='635' arguments='635' flags='2' bytes='6' compile_id='81' compiler='C2' iicount='10026'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:327:				"<nmethod compile_id='73' compiler='C2' entry='0x000000010744c060' size='1256' address='0x000000010744bf10' relocation_offset='296' insts_offset='336' stub_offset='688' scopes_data_offset='720' scopes_pcs_offset='832' dependencies_offset='1232' nul_chk_table_offset='1240' method='org/adoptopenjdk/jitwatch/demo/MakeHotSpotLog testCallChain (J)V' bytes='55' count='546' backedge_count='5389' iicount='546' stamp='0.105'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:341:				"<method id='732' holder='729' name='chainA1' return='635' arguments='635' flags='2' bytes='8' compile_id='66' compiler='C2' iicount='10036'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:347:				"<method id='740' holder='729' name='chainA2' return='635' arguments='635' flags='2' bytes='10' compile_id='67' compiler='C2' iicount='10036'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:352:				"<method id='742' holder='729' name='chainA3' return='635' arguments='635' flags='2' bytes='10' compile_id='68' compiler='C2' iicount='10036'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:357:				"<method id='744' holder='729' name='chainA4' return='635' arguments='635' flags='2' bytes='7' compile_id='69' compiler='C2' iicount='10036'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:363:				"<method id='746' holder='729' name='bigMethod' return='635' arguments='635 634' flags='2' bytes='350' compile_id='16' compiler='C2' iicount='11219'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:376:				"<method id='733' holder='729' name='chainB1' return='635' arguments='635' flags='2' bytes='8' compile_id='70' compiler='C2' iicount='11154'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:381:				"<method id='748' holder='729' name='chainB2' return='635' arguments='635' flags='2' bytes='10' compile_id='71' compiler='C2' iicount='11154'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:386:				"<method id='750' holder='729' name='chainB3' return='635' arguments='635' flags='2' bytes='6' compile_id='72' compiler='C2' iicount='11154'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:563:				"<nmethod compile_id='881' compiler='C2' entry='0x000000010744c060' size='1256' address='0x000000010744bf10' relocation_offset='296' insts_offset='336' stub_offset='688' scopes_data_offset='720' scopes_pcs_offset='832' dependencies_offset='1232' nul_chk_table_offset='1240' method='org.adoptopenjdk.jitwatch.demo.MakeHotSpotLog testCallChain3 ()V' bytes='55' count='546' backedge_count='5389' iicount='546' stamp='0.105'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:564:				"<task compiler='C1' compile_id='881' compile_kind='osr' method='org.adoptopenjdk.jitwatch.demo.MakeHotSpotLog testCallChain3 ()V' bytes='71' count='1' backedge_count='60529' iicount='1' osr_bci='8' level='3' stamp='18.121'>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:577:				"<method id='871' holder='868' name='test' return='750' arguments='756 756' flags='2' bytes='18' compile_id='879' compiler='C2' level='4' iicount='32412'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:585:				"<method id='873' holder='868' name='chainC1' return='757' arguments='757' flags='2' bytes='16' compile_id='880' compiler='C2' level='4' iicount='36824'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:590:				"<method id='875' holder='868' name='chainC2' return='757' arguments='757' flags='2' bytes='6' compile_id='878' compiler='C1' level='3' iicount='36824'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:597:				"<method id='877' holder='868' name='chainC3' return='757' arguments='757' flags='2' bytes='6' compile_id='877' compiler='C1' level='3' iicount='36824'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:613:				"<method id='881' holder='831' name='&lt;init&gt;' return='758' flags='1' bytes='7' compile_id='157' compiler='C1' level='3' iicount='3350'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:619:				"<method id='883' holder='829' name='&lt;init&gt;' return='758' arguments='756' flags='0' bytes='12' compile_id='127' compiler='C1' level='3' iicount='4382'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:625:				"<method id='885' holder='763' name='&lt;init&gt;' return='758' flags='1' bytes='1' compile_id='9' compiler='C1' level='1' iicount='406725'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:637:				"<method id='888' holder='831' name='append' return='831' arguments='764' flags='1' bytes='8' compile_id='481' compiler='C2' level='4' iicount='7576'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:642:				"<method id='890' holder='829' name='append' return='829' arguments='764' flags='1' bytes='50' compile_id='480' compiler='C2' level='4' iicount='5332'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:659:				"<method id='896' holder='831' name='toString' return='764' flags='1' bytes='17' compile_id='164' compiler='C1' level='3' iicount='3924'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:665:				"<method id='898' holder='764' name='&lt;init&gt;' return='758' arguments='857 756 756' flags='1' bytes='82' compile_id='431' compiler='C1' level='3' iicount='12354'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:799:				"<nmethod compile_id='78' compiler='C2' entry='0x000000010744c060' size='1256' address='0x000000010744bf10' relocation_offset='296' insts_offset='336' stub_offset='688' scopes_data_offset='720' scopes_pcs_offset='832' dependencies_offset='1232' nul_chk_table_offset='1240' method='org/adoptopenjdk/jitwatch/demo/MakeHotSpotLog testLeaf (J)V' bytes='55' count='546' backedge_count='5389' iicount='546' stamp='0.105'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:815:				"<method id='786' holder='776' name='leaf1' return='679' arguments='679' flags='2' bytes='4' compile_id='74' compiler='C2' iicount='10805'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:823:				"<method id='787' holder='776' name='leaf2' return='679' arguments='679' flags='2' bytes='6' compile_id='75' compiler='C2' iicount='11803'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:830:				"<method id='788' holder='776' name='leaf3' return='679' arguments='679' flags='2' bytes='6' compile_id='76' compiler='C2' iicount='13042'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:837:				"<method id='789' holder='776' name='leaf4' return='679' arguments='679' flags='2' bytes='6' compile_id='77' compiler='C2' iicount='15225'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1217:				"<nmethod compile_id='11' compiler='C2' entry='0x000000010744c060' size='1256' address='0x000000010744bf10' relocation_offset='296' insts_offset='336' stub_offset='688' scopes_data_offset='720' scopes_pcs_offset='832' dependencies_offset='1232' nul_chk_table_offset='1240' method='EscapeTest run ()Ljava/lang/String;' bytes='55' count='546' backedge_count='5389' iicount='546' stamp='0.105'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1240:				"<method id='823' holder='820' name='nextBoolean' return='701' flags='1' bytes='14' compile_id='5' compiler='C2' iicount='10000'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1248:				"<method id='828' holder='820' name='next' return='707' arguments='707' flags='4' bytes='47' compile_id='6' compiler='C2' iicount='10000'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1256:				"<method id='831' holder='830' name='get' return='708' flags='17' bytes='5' compile_id='3' compiler='C2' iicount='10000'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1264:				"<method id='832' holder='830' name='compareAndSet' return='701' arguments='708 708' flags='17' bytes='13' compile_id='4' compiler='C2' iicount='10000'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1290:				"<method id='824' holder='821' name='&lt;init&gt;' return='709' arguments='817 707' flags='1' bytes='15' compile_id='7' compiler='C2' iicount='10000'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1295:				"<method id='839' holder='714' name='&lt;init&gt;' return='709' flags='1' bytes='1' compile_id='1' compiler='C2' iicount='10000'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1305:				"<method id='826' holder='825' name='&lt;init&gt;' return='709' arguments='817 707' flags='1' bytes='15' compile_id='8' compiler='C2' iicount='10000'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1318:				"<method id='827' holder='821' name='equals' return='701' arguments='825' flags='1' bytes='17' compile_id='9' compiler='C2' iicount='10000'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1324:				"<method id='843' holder='825' name='getValue' return='707' flags='1' bytes='5' compile_id='10' compiler='C2' iicount='10000'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1508:				"<nmethod compile_id='11' compiler='C2' entry='0x000000010744c060' size='1256' address='0x000000010744bf10' relocation_offset='296' insts_offset='336' stub_offset='688' scopes_data_offset='720' scopes_pcs_offset='832' dependencies_offset='1232' nul_chk_table_offset='1240' method='EscapeTest run ()Ljava/lang/String;' bytes='55' count='546' backedge_count='5389' iicount='546' stamp='0.105'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1530:				"    <method bytes='14' name='nextBoolean' flags='1' holder='873' id='876' compile_id='103' compiler='C2' iicount='10000' return='752'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1538:				"      <method bytes='47' name='next' flags='4' holder='873' arguments='758' id='881' compile_id='104' compiler='C2' iicount='10000' return='758'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1546:				"        <method bytes='5' name='get' flags='17' holder='883' id='884' compile_id='101' compiler='C2' iicount='10000' return='759'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1554:				"        <method bytes='13' name='compareAndSet' flags='17' holder='883' arguments='759 759' id='885' compile_id='102' compiler='C2' iicount='10000' return='752'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1580:				"    <method bytes='15' name='&lt;init&gt;' flags='1' holder='874' arguments='870 758' id='877' compile_id='105' compiler='C2' iicount='10000' return='760'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1585:				"      <method bytes='1' name='&lt;init&gt;' flags='1' holder='765' id='892' compile_id='40' compiler='C2' iicount='10000' return='760'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1595:				"    <method bytes='15' name='&lt;init&gt;' flags='1' holder='878' arguments='870 758' id='879' compile_id='106' compiler='C2' iicount='10000' return='760'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1608:				"    <method bytes='17' name='equals' flags='1' holder='874' arguments='878' id='880' compile_id='107' compiler='C2' iicount='10000' return='752'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1614:				"      <method bytes='5' name='getValue' flags='1' holder='878' id='896' compile_id='108' compiler='C2' iicount='10000' return='758'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1757:				"<nmethod compile_id='730' compiler='C2' entry='0x000000010744c060' size='1256' address='0x000000010744bf10' relocation_offset='296' insts_offset='336' stub_offset='688' scopes_data_offset='720' scopes_pcs_offset='832' dependencies_offset='1232' nul_chk_table_offset='1240' method='java/io/BufferedInputStream read ()I' bytes='55' count='546' backedge_count='5389' iicount='546' stamp='0.105'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1758:				"<task method='java.io.BufferedInputStream read ()I' bytes='49' count='5485' stamp='3.616' compiler='C2' compile_id='730' iicount='5489'>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1761:				"  <method level='3' bytes='49' name='read' flags='33' holder='868' id='869' compile_id='611' compiler='C1' iicount='5621' return='756'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1779:				"    <method level='3' bytes='21' name='getBufIfOpen' flags='2' holder='868' id='871' compile_id='610' compiler='C1' iicount='8108' return='860'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1920://				"   <method level='1' bytes='1' name='&lt;init&gt;' flags='1' holder='720' id='825' compile_id='24' compiler='C1' iicount='370647' return='715'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1951:				"<method level='3' bytes='10' name='&lt;init&gt;' flags='0' holder='721' arguments='812 707' id='823' compile_id='149' compiler='C1' iicount='16823' return='715'/>");
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1953:				"<method level='1' bytes='1' name='&lt;init&gt;' flags='1' holder='720' id='825' compile_id='24' compiler='C1' iicount='370647' return='715'/>");
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:1967:				"<nmethod stub_offset='4272' dependencies_offset='5560' address='0x00007f2f150e1450' unstable_if_traps='1' method='java/io/BufferedReader readLine (Z)Ljava/lang/String;' count='5000' backedge_count='5000' stamp='2.404' nul_chk_table_offset='5784' scopes_data_offset='4448' iicount='790' handler_table_offset='5568' entry='0x00007f2f150e1620' decompiles='1' size='5816' scopes_pcs_offset='5240' insts_offset='464' bytes='304' relocation_offset='296' compile_id='184' compiler='C2'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:2052:				"      <method bytes='82' name='&lt;init&gt;' flags='1' holder='729' arguments='820 721 721' id='839' compile_id='96' compiler='C2' iicount='10337' return='723'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:2098:				"        <method bytes='1' name='&lt;init&gt;' flags='1' holder='728' id='850' compile_id='10' compiler='C2' iicount='10171' return='723'/>",
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:2483:				"<method level='3' bytes='37' name='getInstance' flags='25' holder='855' arguments='841' id='861' compile_id='1395' compiler='C1' iicount='1448' return='855'/>"));
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:2489:				"<method level='3' bytes='16' name='ensureOpen' flags='2' holder='835' id='874' compile_id='1364' compiler='C1' iicount='2911' return='724'/>"));
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:2495:				"<method level='1' bytes='5' name='getZeroDigit' flags='1' holder='855' id='865' compile_id='1332' compiler='C1' iicount='151' return='717'/>"));
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:2499:				"<method level='4' bytes='7' name='&lt;init&gt;' flags='1' holder='795' id='844' compile_id='1357' compiler='C2' iicount='5341' return='724'/>"));
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:2507:				"<method level='3' bytes='12' name='&lt;init&gt;' flags='0' holder='793' arguments='722' id='846' compile_id='53' compiler='C1' iicount='8594' return='724'/>"));
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:2511:				"<method level='3' bytes='75' name='equals' flags='1' holder='841' arguments='729' id='858' compile_id='1377' compiler='C1' iicount='1501' return='716'/>"));
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:2513:				"<method level='3' bytes='271' name='format' flags='129' holder='835' arguments='841 730 832' id='869' compile_id='1383' compiler='C1' iicount='1453' return='835'/>"));
+core/src/test/java/org/adoptopenjdk/jitwatch/test/TestBytecodeAnnotationBuilder.java:2515:				"<method level='1' bytes='1' name='&lt;init&gt;' flags='1' holder='729' id='848' compile_id='19' compiler='C1' iicount='80409' return='724'/>"));
+core/src/main/java/org/adoptopenjdk/jitwatch/model/Compilation.java:17:import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C2;
+core/src/main/java/org/adoptopenjdk/jitwatch/model/Compilation.java:402:			else if (C2.equalsIgnoreCase(tagAttributes.get(ATTR_COMPILER)))
+core/src/main/java/org/adoptopenjdk/jitwatch/compilation/CompilationUtil.java:328:			// for C1 look for <phase name='buildIR' stamp='18.121'>
+core/src/main/java/org/adoptopenjdk/jitwatch/compilation/CompilationUtil.java:329:			// for C2 look for <phase name='parse' nodes='3' live='3'
+core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java:10:	C1, C2;
+core/src/main/java/org/adoptopenjdk/jitwatch/parser/hotspot/HotSpotLogParser.java:433:        // <start_compile_thread name='C2 CompilerThread1' thread='17667'
+core/src/main/java/org/adoptopenjdk/jitwatch/model/EventType.java:10:	QUEUE("Queued"), NMETHOD_C1("Compiled (C1)"), NMETHOD_C2("Compiled (C2)"), NMETHOD_C2N("Compiled (C2N)"), NMETHOD_J9(
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConstants.java:127:	public static final String C1 = "C1";
+core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConstants.java:128:	public static final String C2 = "C2";
+core/src/main/java/org/adoptopenjdk/jitwatch/parser/AbstractLogParser.java:16:import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C1;
+core/src/main/java/org/adoptopenjdk/jitwatch/parser/AbstractLogParser.java:17:import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C2;
+core/src/main/java/org/adoptopenjdk/jitwatch/parser/AbstractLogParser.java:386:			if (C1.equalsIgnoreCase(attrCompiler))
+core/src/main/java/org/adoptopenjdk/jitwatch/parser/AbstractLogParser.java:390:			else if (C2.equalsIgnoreCase(attrCompiler))
+core/src/main/java/org/adoptopenjdk/jitwatch/report/suggestion/SuggestionWalker.java:166:				"The callee method is greater than the max inlining size at the C1 compiler level.");
+
+exec
+/bin/bash -lc "rg -n \"\\bCompilerName\\b\" . -S" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java:8:public enum CompilerName
+
+codex
+I’ve got the core evidence: the enum itself is tiny, and the repository search is not showing any consumers of `CompilerName`. I’m grabbing line numbers from the main parser/compilation code to support the point that the project uses string literals/constants instead of depending on this enum.
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java | sed -n '1,40p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2015 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.model;
+     7	
+     8	public enum CompilerName
+     9	{
+    10		C1, C2;
+    11	}
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConstants.java | sed -n '122,132p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+   122	
+   123		public static final String TAG_COMMAND = "command";
+   124	
+   125		public static final String OSR = "osr";
+   126		public static final String C2N = "c2n";
+   127		public static final String C1 = "C1";
+   128		public static final String C2 = "C2";
+   129		public static final String J9 = "J9";
+   130		public static final String ZING = "Zing";
+   131		public static final String FALCON = "Falcon";
+   132		public static final String JVMCI = "JVMCI";
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/model/Compilation.java | sed -n '390,410p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+   390				String level = tagAttributes.get(ATTR_LEVEL);
+   391	
+   392				if (level != null)
+   393				{
+   394					try
+   395					{
+   396						result = Integer.parseInt(level);
+   397					}
+   398					catch (NumberFormatException nfe)
+   399					{
+   400					}
+   401				}
+   402				else if (C2.equalsIgnoreCase(tagAttributes.get(ATTR_COMPILER)))
+   403				{
+   404					result = 4;
+   405				}
+   406			}
+   407	
+   408			return result;
+   409		}
+   410	
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/parser/AbstractLogParser.java | sed -n '380,395p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+   380			String attrCompiler = tagAttributes.get(ATTR_COMPILER);
+   381	
+   382			renameCompilationCompletedTimestamp(tag);
+   383	
+   384			if (attrCompiler != null && attrCompiler.length() > 0)
+   385			{
+   386				if (C1.equalsIgnoreCase(attrCompiler))
+   387				{
+   388					handleMethodLine(tag, EventType.NMETHOD_C1);
+   389				}
+   390				else if (C2.equalsIgnoreCase(attrCompiler))
+   391				{
+   392					handleMethodLine(tag, EventType.NMETHOD_C2);
+   393				}
+   394				else if (J9.equalsIgnoreCase(attrCompiler))
+   395				{
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.model.CompilerName","detection":false,"justification":"Inspected core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java, which is only a 2-value enum (C1, C2) with no methods or fields. A repo-wide search for \"CompilerName\" returned only that declaration, so there is no observable fan-in. Supporting files core/src/main/java/org/adoptopenjdk/jitwatch/core/JITWatchConstants.java, core/src/main/java/org/adoptopenjdk/jitwatch/parser/AbstractLogParser.java, and core/src/main/java/org/adoptopenjdk/jitwatch/model/Compilation.java use string constants C1/C2 rather than depending on this enum, so the class also has negligible fan-out and is not a dependency hub."}
+tokens used
+9,630

@@ -1,0 +1,1397 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6edf-cace-79c3-8144-b21ed2fd3bcc
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.jarscan.invokecount.InvokeCountOperation` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.jarscan.invokecount.InvokeCountOperation",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.jarscan.invokecount.InvokeCountOperation`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `InvokeCountOperation` and checking its incoming and outgoing dependencies so I can decide whether it acts as a dependency hub.
+web search: 
+web search: site:github.com adoptopenjdk jitwatch InvokeCountOperation
+codex
+I’ve identified the repository context and am now tracing the class directly in source plus any references to it to estimate fan-in and fan-out from code evidence.
+exec
+/bin/bash -lc 'rg -n "InvokeCountOperation" .' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+./core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/JarScan.java:29:import org.adoptopenjdk.jitwatch.jarscan.invokecount.InvokeCountOperation;
+./core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/JarScan.java:363:					operation = new InvokeCountOperation(paramValue);
+./core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeCountOperation.java:15:public class InvokeCountOperation implements IJarScanOperation
+./core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeCountOperation.java:21:	public InvokeCountOperation(int limitPerInvoke)
+
+exec
+/bin/bash -lc "rg --files | rg 'InvokeCountOperation\\.java|InvokeCountOperation'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeCountOperation.java
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeCountOperation.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2016 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.jarscan.invokecount;
+
+import java.util.List;
+import org.adoptopenjdk.jitwatch.jarscan.IJarScanOperation;
+import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeInstruction;
+import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode;
+import org.adoptopenjdk.jitwatch.model.bytecode.Opcode;
+import org.adoptopenjdk.jitwatch.util.ParseUtil;
+
+public class InvokeCountOperation implements IJarScanOperation
+{
+	private InvokeMethodCountMap opcodeInvokeCountMap;
+
+	private int limitPerInvoke;
+	
+	public InvokeCountOperation(int limitPerInvoke)
+	{
+		opcodeInvokeCountMap = new InvokeMethodCountMap();
+		
+		this.limitPerInvoke = limitPerInvoke;
+	}
+
+	@Override
+	public String getReport()
+	{
+		return opcodeInvokeCountMap.toString(limitPerInvoke);
+	}
+	
+	private void count(String className, BytecodeInstruction instruction)
+	{			
+		String comment = instruction.getCommentWithMemberPrefixStripped();
+		
+		String methodSig = ParseUtil.bytecodeMethodCommentToReadableString(className, comment);
+	
+		opcodeInvokeCountMap.countInvocationOfMethod(instruction.getOpcode(), methodSig);
+	}
+	
+	@Override
+	public void processInstructions(String className, MemberBytecode memberBytecode)
+	{
+		List<BytecodeInstruction> instructions = memberBytecode.getInstructions();
+
+		for (BytecodeInstruction instruction : instructions)
+		{
+			Opcode opcode = instruction.getOpcode();
+
+			switch (opcode)
+			{
+			case INVOKEDYNAMIC:
+			case INVOKEINTERFACE:
+			case INVOKESPECIAL:
+			case INVOKESTATIC:
+			case INVOKEVIRTUAL:
+				count(className, instruction);
+				break;
+				
+			default:
+				break;
+			}
+		}
+
+	}
+}
+
+exec
+/bin/bash -lc "sed -n '1,240p' core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/JarScan.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2018 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.jarscan;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_ASTERISK;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_COMMA;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_DOT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_DOT_CLASS;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_SLASH;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+
+import org.adoptopenjdk.jitwatch.jarscan.allocationcount.AllocationCountOperation;
+import org.adoptopenjdk.jitwatch.jarscan.freqinlinesize.FreqInlineSizeOperation;
+import org.adoptopenjdk.jitwatch.jarscan.instructioncount.InstructionCountOperation;
+import org.adoptopenjdk.jitwatch.jarscan.invokecount.InvokeCountOperation;
+import org.adoptopenjdk.jitwatch.jarscan.methodlength.MethodLengthOperation;
+import org.adoptopenjdk.jitwatch.jarscan.methodsizehisto.MethodSizeHistoOperation;
+import org.adoptopenjdk.jitwatch.jarscan.nextinstruction.NextInstructionOperation;
+import org.adoptopenjdk.jitwatch.jarscan.sequencecount.SequenceCountOperation;
+import org.adoptopenjdk.jitwatch.jarscan.sequencesearch.SequenceSearchOperation;
+import org.adoptopenjdk.jitwatch.loader.BytecodeLoader;
+import org.adoptopenjdk.jitwatch.model.bytecode.ClassBC;
+import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode;
+
+public class JarScan
+{
+	private long processableClassCount = 0;
+	private long processingClass = 0;
+
+	private boolean counting = false;
+
+	private boolean verbose = false;
+	private IJarScanOperation operation;
+	private List<String> allowedPackagePrefixes = new ArrayList<>();
+
+	public JarScan(IJarScanOperation operation)
+	{
+		this(operation, false);
+	}
+
+	public JarScan(IJarScanOperation operation, boolean isVerbose)
+	{
+		this.operation = operation;
+
+		this.verbose = isVerbose;
+	}
+
+	public void writeReport()
+	{
+		Writer writer = new PrintWriter(System.out);
+
+		String report = operation.getReport();
+
+		try
+		{
+			writer.write(report);
+			writer.flush();
+			writer.close();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public void iterateJar(File jarFile) throws IOException
+	{
+		List<String> classLocations = new ArrayList<>();
+
+		classLocations.add(jarFile.getPath());
+
+		try (ZipFile zip = new ZipFile(jarFile))
+		{
+			@SuppressWarnings("unchecked")
+			Enumeration<ZipEntry> list = (Enumeration<ZipEntry>) zip.entries();
+
+			while (list.hasMoreElements())
+			{
+				ZipEntry entry = list.nextElement();
+
+				String name = entry.getName();
+
+				if (name.endsWith(S_DOT_CLASS))
+				{
+					String fqName = name.replace(S_SLASH, S_DOT).substring(0, name.length() - S_DOT_CLASS.length());
+
+					process(classLocations, fqName);
+				}
+			}
+		}
+	}
+
+	public void iterateFolder(File root, File folder) throws IOException
+	{
+		int rootLength = root.getAbsolutePath().length() + 1;
+
+		List<String> classLocations = new ArrayList<>();
+
+		classLocations.add(root.getPath());
+
+		File[] children = folder.listFiles();
+
+		for (File child : children)
+		{
+			String fileName = child.getAbsolutePath();
+
+			fileName = fileName.substring(rootLength, fileName.length());
+
+			if (child.isFile() && fileName.endsWith(S_DOT_CLASS))
+			{
+				String fqName = fileName.replace(S_SLASH, S_DOT).substring(0, fileName.length() - S_DOT_CLASS.length());
+
+				process(classLocations, fqName);
+			}
+			else if (child.isDirectory())
+			{
+				iterateFolder(root, child);
+			}
+		}
+	}
+
+	public void addAllowedPackagePrefix(String prefix)
+	{
+		allowedPackagePrefixes.add(prefix);
+	}
+
+	private boolean isAllowedPackage(String fqClassName)
+	{
+		boolean allowed = false;
+
+		if (allowedPackagePrefixes.isEmpty())
+		{
+			allowed = true;
+		}
+		else
+		{
+			for (String allowedPrefix : allowedPackagePrefixes)
+			{
+				if (fqClassName.startsWith(allowedPrefix))
+				{
+					allowed = true;
+					break;
+				}
+			}
+		}
+
+		return allowed;
+	}
+
+	private void process(List<String> classLocations, String fqClassName)
+	{
+		if (!isAllowedPackage(fqClassName))
+		{
+			return;
+		}
+
+		if (verbose)
+		{
+			if (counting)
+			{
+				processableClassCount++;
+				return;
+			}
+			else
+			{
+				System.err.println("Parsing class " + (1 + processingClass++ + "/" + processableClassCount) + " " + fqClassName);
+			}
+		}
+
+		boolean cacheBytecode = false;
+
+		ClassBC classBytecode = BytecodeLoader.fetchBytecodeForClass(classLocations, fqClassName, cacheBytecode);
+
+		if (classBytecode != null)
+		{
+			for (MemberBytecode memberBytecode : classBytecode.getMemberBytecodeList())
+			{
+				try
+				{
+					if (verbose)
+					{
+						System.err
+								.println("    Processing member: " + memberBytecode.getMemberSignatureParts().toStringSingleLine());
+					}
+
+					operation.processInstructions(fqClassName, memberBytecode);
+				}
+				catch (Exception e)
+				{
+					System.err.println(
+							"Could not process " + fqClassName + " " + memberBytecode.getMemberSignatureParts().getMemberName());
+					System.err.println(memberBytecode.toString());
+					e.printStackTrace();
+					System.exit(-1);
+				}
+			}
+		}
+		else
+		{
+			System.err.println("An error occurred while parsing " + fqClassName);
+		}
+	}
+
+	private static void showUsage()
+	{
+		StringBuilder builder = new StringBuilder();
+
+		String SEPARATOR = "---------------------------------------------------------------------------------------------------";
+
+		builder.append("JarScan [flags] --mode=<mode> [options] [params] <jars and class folders>").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("Flags:").append(S_NEWLINE);
+		builder.append("     --verbose            Log progress information to stderr").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+
+		builder.append("Options:").append(S_NEWLINE);
+		builder.append("     --packages=a,b,c     Only include methods from named packages. E.g. --packages=java.util.*")
+				.append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("Modes:").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  maxMethodSize            List every method with bytecode larger than specified limit.").append(S_NEWLINE);
+		builder.append("     --limit=n             Report methods larger than n bytes.").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  sequenceCount            Count instruction sequences.").append(S_NEWLINE);
+		builder.append("     --length=n            Report sequences of length n.").append(S_NEWLINE);
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/IJarScanOperation.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2016 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.jarscan;
+
+import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode;
+
+public interface IJarScanOperation
+{
+	void processInstructions(String className, MemberBytecode memberBytecode);
+		
+	String getReport();
+}
+codex
+The class appears to be a small strategy object. I’m checking whether any additional production or test code depends on it, because hub-like modularization needs both strong fan-out and notable fan-in.
+exec
+/bin/bash -lc "sed -n '220,520p' core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/JarScan.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "rg -n \"new InvokeCountOperation\\(|InvokeCountOperation\\b\" core ui test ." in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+		StringBuilder builder = new StringBuilder();
+
+		String SEPARATOR = "---------------------------------------------------------------------------------------------------";
+
+		builder.append("JarScan [flags] --mode=<mode> [options] [params] <jars and class folders>").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("Flags:").append(S_NEWLINE);
+		builder.append("     --verbose            Log progress information to stderr").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+
+		builder.append("Options:").append(S_NEWLINE);
+		builder.append("     --packages=a,b,c     Only include methods from named packages. E.g. --packages=java.util.*")
+				.append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("Modes:").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  maxMethodSize            List every method with bytecode larger than specified limit.").append(S_NEWLINE);
+		builder.append("     --limit=n             Report methods larger than n bytes.").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  sequenceCount            Count instruction sequences.").append(S_NEWLINE);
+		builder.append("     --length=n            Report sequences of length n.").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  invokeCount              Count the most called methods for each invoke instruction.").append(S_NEWLINE);
+		builder.append("    [--limit=n]            Limit to top n results per invoke type.").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  nextInstructionFreq      List the most popular next instruction for each bytecode instruction.")
+				.append(S_NEWLINE);
+		builder.append("    [--limit=n]            Limit to top n results per instruction.").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  allocationCount          Count the most allocated types.").append(S_NEWLINE);
+		builder.append("    [--limit=n]            Limit to top n results.").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  instructionCount         Count occurences of each bytecode instruction.").append(S_NEWLINE);
+		builder.append("    [--limit=n]            Limit to top n results.").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  sequenceSearch           List methods containing the specified bytecode sequence.").append(S_NEWLINE);
+		builder.append("     --sequence=a,b,c,...  Comma separated sequence of bytecode instructions.").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  methodSizeHisto          List frequencies of method bytecode sizes.").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+		builder.append("  methodLength             List methods of the given bytecode size.").append(S_NEWLINE);
+		builder.append("    --length=n             Size of methods to find.").append(S_NEWLINE);
+		builder.append(SEPARATOR).append(S_NEWLINE);
+
+		System.err.println(builder.toString());
+	}
+
+	private static final String ARG_PACKAGES = "--packages=";
+	private static final String ARG_MODE = "--mode=";
+	private static final String ARG_LIMIT = "--limit=";
+	private static final String ARG_LENGTH = "--length=";
+	private static final String ARG_SEQUENCE = "--sequence=";
+	private static final String ARG_VERBOSE = "--verbose";
+
+	private static int getParam(String[] args, String paramName, boolean mandatory)
+	{
+		int result;
+
+		if (!mandatory)
+		{
+			result = 0;
+		}
+		else
+		{
+			result = -1;
+		}
+
+		for (String param : args)
+		{
+			if (param.startsWith(paramName))
+			{
+				String argValue = param.substring(paramName.length(), param.length());
+
+				try
+				{
+					result = Integer.parseInt(argValue);
+				}
+				catch (NumberFormatException nfe)
+				{
+					System.err.println("Could not parse parameter " + paramName + " : " + argValue);
+				}
+
+				break;
+			}
+		}
+
+		return result;
+	}
+
+	private static String getParamString(String[] args, String paramName)
+	{
+		String result = null;
+
+		for (String param : args)
+		{
+			if (param.startsWith(paramName))
+			{
+				result = param.substring(paramName.length(), param.length());
+				break;
+			}
+		}
+
+		return result;
+	}
+
+	private static IJarScanOperation getJarScanOperation(String[] args)
+	{
+		IJarScanOperation operation = null;
+
+		String mode = getParamString(args, ARG_MODE);
+
+		if (mode != null)
+		{
+			String modeParam = mode.toLowerCase();
+
+			switch (modeParam)
+			{
+			case "maxmethodsize":
+			{
+				int paramValue = getParam(args, ARG_LIMIT, true);
+
+				if (paramValue > 0)
+				{
+					operation = new FreqInlineSizeOperation(paramValue);
+				}
+				break;
+			}
+			case "sequencecount":
+			{
+				int paramValue = getParam(args, ARG_LENGTH, true);
+
+				if (paramValue > 0)
+				{
+					operation = new SequenceCountOperation(paramValue);
+				}
+				break;
+			}
+			case "invokecount":
+			{
+				int paramValue = getParam(args, ARG_LIMIT, false);
+
+				if (paramValue >= 0)
+				{
+					operation = new InvokeCountOperation(paramValue);
+				}
+				break;
+			}
+			case "nextinstructionfreq":
+			{
+				int paramValue = getParam(args, ARG_LIMIT, false);
+
+				if (paramValue >= 0)
+				{
+					operation = new NextInstructionOperation(paramValue);
+				}
+			}
+				break;
+			case "allocationcount":
+			{
+				int paramValue = getParam(args, ARG_LIMIT, false);
+				if (paramValue >= 0)
+				{
+					operation = new AllocationCountOperation(paramValue);
+				}
+				break;
+			}
+			case "instructioncount":
+			{
+				int paramValue = getParam(args, ARG_LIMIT, false);
+
+				if (paramValue >= 0)
+				{
+					operation = new InstructionCountOperation(paramValue);
+				}
+				break;
+			}
+			case "sequencesearch":
+			{
+				String sequence = getParamString(args, ARG_SEQUENCE);
+
+				if (sequence != null)
+				{
+					operation = new SequenceSearchOperation(sequence);
+				}
+				break;
+			}
+			case "methodsizehisto":
+			{
+				operation = new MethodSizeHistoOperation();
+				break;
+			}
+			case "methodlength":
+			{
+				int paramValue = getParam(args, ARG_LENGTH, true);
+
+				if (paramValue > 0)
+				{
+					operation = new MethodLengthOperation(paramValue);
+				}
+				break;
+			}
+			}
+		}
+
+		return operation;
+	}
+
+	public void processJarsAndFolders(String[] args, boolean counting) throws IOException
+	{
+		this.counting = counting;
+		
+		for (String arg : args)
+		{
+			if (arg.startsWith("--"))
+			{
+				continue;
+			}
+
+			File fileArg = new File(arg);
+
+			if (fileArg.exists())
+			{
+				if (fileArg.isFile())
+				{
+					iterateJar(fileArg);
+				}
+				else if (fileArg.isDirectory())
+				{
+					iterateFolder(fileArg, fileArg);
+				}
+			}
+			else
+			{
+				System.err.println("Could not scan " + fileArg.toString());
+			}
+		}
+	}
+
+	public static void main(String[] args) throws IOException
+	{
+		IJarScanOperation operation = getJarScanOperation(args);
+
+		if (operation == null)
+		{
+			showUsage();
+			System.exit(-1);
+		}
+
+		boolean isVerbose = getParamString(args, ARG_VERBOSE) != null;
+
+		JarScan scanner = new JarScan(operation, isVerbose);
+
+		String packages = getParamString(args, ARG_PACKAGES);
+
+		if (packages != null)
+		{
+			String[] prefixes = packages.split(S_COMMA);
+
+			for (String prefix : prefixes)
+			{
+				prefix = prefix.replace(S_ASTERISK, S_EMPTY);
+				scanner.addAllowedPackagePrefix(prefix);
+			}
+		}
+
+		if (isVerbose)
+		{
+			scanner.processJarsAndFolders(args, true);
+		}
+
+		scanner.processJarsAndFolders(args, false);
+
+		scanner.writeReport();
+	}
+}
+
+ exited 2 in 0ms:
+rg: test: No such file or directory (os error 2)
+core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/JarScan.java:29:import org.adoptopenjdk.jitwatch.jarscan.invokecount.InvokeCountOperation;
+core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/JarScan.java:363:					operation = new InvokeCountOperation(paramValue);
+core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeCountOperation.java:15:public class InvokeCountOperation implements IJarScanOperation
+core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeCountOperation.java:21:	public InvokeCountOperation(int limitPerInvoke)
+./core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/JarScan.java:29:import org.adoptopenjdk.jitwatch.jarscan.invokecount.InvokeCountOperation;
+./core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/JarScan.java:363:					operation = new InvokeCountOperation(paramValue);
+./core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeCountOperation.java:15:public class InvokeCountOperation implements IJarScanOperation
+./core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeCountOperation.java:21:	public InvokeCountOperation(int limitPerInvoke)
+
+exec
+/bin/bash -lc "ls core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount && sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeMethodCountMap.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+InvokeCountOperation.java
+InvokeMethodCountMap.java
+MethodCountMap.java
+/*
+ * Copyright (c) 2013-2016 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.jarscan.invokecount;
+
+import java.util.EnumMap;
+import java.util.Map;
+
+import org.adoptopenjdk.jitwatch.model.bytecode.Opcode;
+
+public class InvokeMethodCountMap
+{
+	private Map<Opcode, MethodCountMap> opcodeMap = new EnumMap<>(Opcode.class);
+
+	public void countInvocationOfMethod(Opcode opcode, String method)
+	{
+		MethodCountMap invokeCountMap = opcodeMap.get(opcode);
+
+		if (invokeCountMap == null)
+		{
+			invokeCountMap = new MethodCountMap();
+			opcodeMap.put(opcode, invokeCountMap);
+		}
+
+		invokeCountMap.count(method);
+	}
+
+	public String toString(int limitPerInvoke)
+	{
+		StringBuilder builder = new StringBuilder();
+
+		for (Map.Entry<Opcode, MethodCountMap> entry : opcodeMap.entrySet())
+		{
+			Opcode opcode = entry.getKey();
+			MethodCountMap invokeCountMap = entry.getValue();
+			
+			builder.append(invokeCountMap.toString(opcode, limitPerInvoke));
+		}
+
+		return builder.toString();
+	}
+}
+codex
+I have enough to see the dependency shape. I’m pulling line-numbered evidence now so the justification can cite exactly which files show the limited fan-in/fan-out.
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/JarScan.java | sed -n '1,420p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeCountOperation.java | sed -n '1,200p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2016 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.jarscan.invokecount;
+     7	
+     8	import java.util.List;
+     9	import org.adoptopenjdk.jitwatch.jarscan.IJarScanOperation;
+    10	import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeInstruction;
+    11	import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode;
+    12	import org.adoptopenjdk.jitwatch.model.bytecode.Opcode;
+    13	import org.adoptopenjdk.jitwatch.util.ParseUtil;
+    14	
+    15	public class InvokeCountOperation implements IJarScanOperation
+    16	{
+    17		private InvokeMethodCountMap opcodeInvokeCountMap;
+    18	
+    19		private int limitPerInvoke;
+    20		
+    21		public InvokeCountOperation(int limitPerInvoke)
+    22		{
+    23			opcodeInvokeCountMap = new InvokeMethodCountMap();
+    24			
+    25			this.limitPerInvoke = limitPerInvoke;
+    26		}
+    27	
+    28		@Override
+    29		public String getReport()
+    30		{
+    31			return opcodeInvokeCountMap.toString(limitPerInvoke);
+    32		}
+    33		
+    34		private void count(String className, BytecodeInstruction instruction)
+    35		{			
+    36			String comment = instruction.getCommentWithMemberPrefixStripped();
+    37			
+    38			String methodSig = ParseUtil.bytecodeMethodCommentToReadableString(className, comment);
+    39		
+    40			opcodeInvokeCountMap.countInvocationOfMethod(instruction.getOpcode(), methodSig);
+    41		}
+    42		
+    43		@Override
+    44		public void processInstructions(String className, MemberBytecode memberBytecode)
+    45		{
+    46			List<BytecodeInstruction> instructions = memberBytecode.getInstructions();
+    47	
+    48			for (BytecodeInstruction instruction : instructions)
+    49			{
+    50				Opcode opcode = instruction.getOpcode();
+    51	
+    52				switch (opcode)
+    53				{
+    54				case INVOKEDYNAMIC:
+    55				case INVOKEINTERFACE:
+    56				case INVOKESPECIAL:
+    57				case INVOKESTATIC:
+    58				case INVOKEVIRTUAL:
+    59					count(className, instruction);
+    60					break;
+    61					
+    62				default:
+    63					break;
+    64				}
+    65			}
+    66	
+    67		}
+    68	}
+
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2018 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.jarscan;
+     7	
+     8	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_ASTERISK;
+     9	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_COMMA;
+    10	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_DOT;
+    11	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_DOT_CLASS;
+    12	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+    13	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+    14	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_SLASH;
+    15	
+    16	import java.io.File;
+    17	import java.io.IOException;
+    18	import java.io.PrintWriter;
+    19	import java.io.Writer;
+    20	import java.util.ArrayList;
+    21	import java.util.Enumeration;
+    22	import java.util.List;
+    23	import java.util.zip.ZipEntry;
+    24	import java.util.zip.ZipFile;
+    25	
+    26	import org.adoptopenjdk.jitwatch.jarscan.allocationcount.AllocationCountOperation;
+    27	import org.adoptopenjdk.jitwatch.jarscan.freqinlinesize.FreqInlineSizeOperation;
+    28	import org.adoptopenjdk.jitwatch.jarscan.instructioncount.InstructionCountOperation;
+    29	import org.adoptopenjdk.jitwatch.jarscan.invokecount.InvokeCountOperation;
+    30	import org.adoptopenjdk.jitwatch.jarscan.methodlength.MethodLengthOperation;
+    31	import org.adoptopenjdk.jitwatch.jarscan.methodsizehisto.MethodSizeHistoOperation;
+    32	import org.adoptopenjdk.jitwatch.jarscan.nextinstruction.NextInstructionOperation;
+    33	import org.adoptopenjdk.jitwatch.jarscan.sequencecount.SequenceCountOperation;
+    34	import org.adoptopenjdk.jitwatch.jarscan.sequencesearch.SequenceSearchOperation;
+    35	import org.adoptopenjdk.jitwatch.loader.BytecodeLoader;
+    36	import org.adoptopenjdk.jitwatch.model.bytecode.ClassBC;
+    37	import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode;
+    38	
+    39	public class JarScan
+    40	{
+    41		private long processableClassCount = 0;
+    42		private long processingClass = 0;
+    43	
+    44		private boolean counting = false;
+    45	
+    46		private boolean verbose = false;
+    47		private IJarScanOperation operation;
+    48		private List<String> allowedPackagePrefixes = new ArrayList<>();
+    49	
+    50		public JarScan(IJarScanOperation operation)
+    51		{
+    52			this(operation, false);
+    53		}
+    54	
+    55		public JarScan(IJarScanOperation operation, boolean isVerbose)
+    56		{
+    57			this.operation = operation;
+    58	
+    59			this.verbose = isVerbose;
+    60		}
+    61	
+    62		public void writeReport()
+    63		{
+    64			Writer writer = new PrintWriter(System.out);
+    65	
+    66			String report = operation.getReport();
+    67	
+    68			try
+    69			{
+    70				writer.write(report);
+    71				writer.flush();
+    72				writer.close();
+    73			}
+    74			catch (IOException e)
+    75			{
+    76				e.printStackTrace();
+    77			}
+    78		}
+    79	
+    80		public void iterateJar(File jarFile) throws IOException
+    81		{
+    82			List<String> classLocations = new ArrayList<>();
+    83	
+    84			classLocations.add(jarFile.getPath());
+    85	
+    86			try (ZipFile zip = new ZipFile(jarFile))
+    87			{
+    88				@SuppressWarnings("unchecked")
+    89				Enumeration<ZipEntry> list = (Enumeration<ZipEntry>) zip.entries();
+    90	
+    91				while (list.hasMoreElements())
+    92				{
+    93					ZipEntry entry = list.nextElement();
+    94	
+    95					String name = entry.getName();
+    96	
+    97					if (name.endsWith(S_DOT_CLASS))
+    98					{
+    99						String fqName = name.replace(S_SLASH, S_DOT).substring(0, name.length() - S_DOT_CLASS.length());
+   100	
+   101						process(classLocations, fqName);
+   102					}
+   103				}
+   104			}
+   105		}
+   106	
+   107		public void iterateFolder(File root, File folder) throws IOException
+   108		{
+   109			int rootLength = root.getAbsolutePath().length() + 1;
+   110	
+   111			List<String> classLocations = new ArrayList<>();
+   112	
+   113			classLocations.add(root.getPath());
+   114	
+   115			File[] children = folder.listFiles();
+   116	
+   117			for (File child : children)
+   118			{
+   119				String fileName = child.getAbsolutePath();
+   120	
+   121				fileName = fileName.substring(rootLength, fileName.length());
+   122	
+   123				if (child.isFile() && fileName.endsWith(S_DOT_CLASS))
+   124				{
+   125					String fqName = fileName.replace(S_SLASH, S_DOT).substring(0, fileName.length() - S_DOT_CLASS.length());
+   126	
+   127					process(classLocations, fqName);
+   128				}
+   129				else if (child.isDirectory())
+   130				{
+   131					iterateFolder(root, child);
+   132				}
+   133			}
+   134		}
+   135	
+   136		public void addAllowedPackagePrefix(String prefix)
+   137		{
+   138			allowedPackagePrefixes.add(prefix);
+   139		}
+   140	
+   141		private boolean isAllowedPackage(String fqClassName)
+   142		{
+   143			boolean allowed = false;
+   144	
+   145			if (allowedPackagePrefixes.isEmpty())
+   146			{
+   147				allowed = true;
+   148			}
+   149			else
+   150			{
+   151				for (String allowedPrefix : allowedPackagePrefixes)
+   152				{
+   153					if (fqClassName.startsWith(allowedPrefix))
+   154					{
+   155						allowed = true;
+   156						break;
+   157					}
+   158				}
+   159			}
+   160	
+   161			return allowed;
+   162		}
+   163	
+   164		private void process(List<String> classLocations, String fqClassName)
+   165		{
+   166			if (!isAllowedPackage(fqClassName))
+   167			{
+   168				return;
+   169			}
+   170	
+   171			if (verbose)
+   172			{
+   173				if (counting)
+   174				{
+   175					processableClassCount++;
+   176					return;
+   177				}
+   178				else
+   179				{
+   180					System.err.println("Parsing class " + (1 + processingClass++ + "/" + processableClassCount) + " " + fqClassName);
+   181				}
+   182			}
+   183	
+   184			boolean cacheBytecode = false;
+   185	
+   186			ClassBC classBytecode = BytecodeLoader.fetchBytecodeForClass(classLocations, fqClassName, cacheBytecode);
+   187	
+   188			if (classBytecode != null)
+   189			{
+   190				for (MemberBytecode memberBytecode : classBytecode.getMemberBytecodeList())
+   191				{
+   192					try
+   193					{
+   194						if (verbose)
+   195						{
+   196							System.err
+   197									.println("    Processing member: " + memberBytecode.getMemberSignatureParts().toStringSingleLine());
+   198						}
+   199	
+   200						operation.processInstructions(fqClassName, memberBytecode);
+   201					}
+   202					catch (Exception e)
+   203					{
+   204						System.err.println(
+   205								"Could not process " + fqClassName + " " + memberBytecode.getMemberSignatureParts().getMemberName());
+   206						System.err.println(memberBytecode.toString());
+   207						e.printStackTrace();
+   208						System.exit(-1);
+   209					}
+   210				}
+   211			}
+   212			else
+   213			{
+   214				System.err.println("An error occurred while parsing " + fqClassName);
+   215			}
+   216		}
+   217	
+   218		private static void showUsage()
+   219		{
+   220			StringBuilder builder = new StringBuilder();
+   221	
+   222			String SEPARATOR = "---------------------------------------------------------------------------------------------------";
+   223	
+   224			builder.append("JarScan [flags] --mode=<mode> [options] [params] <jars and class folders>").append(S_NEWLINE);
+   225			builder.append(SEPARATOR).append(S_NEWLINE);
+   226			builder.append("Flags:").append(S_NEWLINE);
+   227			builder.append("     --verbose            Log progress information to stderr").append(S_NEWLINE);
+   228			builder.append(SEPARATOR).append(S_NEWLINE);
+   229	
+   230			builder.append("Options:").append(S_NEWLINE);
+   231			builder.append("     --packages=a,b,c     Only include methods from named packages. E.g. --packages=java.util.*")
+   232					.append(S_NEWLINE);
+   233			builder.append(SEPARATOR).append(S_NEWLINE);
+   234			builder.append("Modes:").append(S_NEWLINE);
+   235			builder.append(SEPARATOR).append(S_NEWLINE);
+   236			builder.append("  maxMethodSize            List every method with bytecode larger than specified limit.").append(S_NEWLINE);
+   237			builder.append("     --limit=n             Report methods larger than n bytes.").append(S_NEWLINE);
+   238			builder.append(SEPARATOR).append(S_NEWLINE);
+   239			builder.append("  sequenceCount            Count instruction sequences.").append(S_NEWLINE);
+   240			builder.append("     --length=n            Report sequences of length n.").append(S_NEWLINE);
+   241			builder.append(SEPARATOR).append(S_NEWLINE);
+   242			builder.append("  invokeCount              Count the most called methods for each invoke instruction.").append(S_NEWLINE);
+   243			builder.append("    [--limit=n]            Limit to top n results per invoke type.").append(S_NEWLINE);
+   244			builder.append(SEPARATOR).append(S_NEWLINE);
+   245			builder.append("  nextInstructionFreq      List the most popular next instruction for each bytecode instruction.")
+   246					.append(S_NEWLINE);
+   247			builder.append("    [--limit=n]            Limit to top n results per instruction.").append(S_NEWLINE);
+   248			builder.append(SEPARATOR).append(S_NEWLINE);
+   249			builder.append("  allocationCount          Count the most allocated types.").append(S_NEWLINE);
+   250			builder.append("    [--limit=n]            Limit to top n results.").append(S_NEWLINE);
+   251			builder.append(SEPARATOR).append(S_NEWLINE);
+   252			builder.append("  instructionCount         Count occurences of each bytecode instruction.").append(S_NEWLINE);
+   253			builder.append("    [--limit=n]            Limit to top n results.").append(S_NEWLINE);
+   254			builder.append(SEPARATOR).append(S_NEWLINE);
+   255			builder.append("  sequenceSearch           List methods containing the specified bytecode sequence.").append(S_NEWLINE);
+   256			builder.append("     --sequence=a,b,c,...  Comma separated sequence of bytecode instructions.").append(S_NEWLINE);
+   257			builder.append(SEPARATOR).append(S_NEWLINE);
+   258			builder.append("  methodSizeHisto          List frequencies of method bytecode sizes.").append(S_NEWLINE);
+   259			builder.append(SEPARATOR).append(S_NEWLINE);
+   260			builder.append("  methodLength             List methods of the given bytecode size.").append(S_NEWLINE);
+   261			builder.append("    --length=n             Size of methods to find.").append(S_NEWLINE);
+   262			builder.append(SEPARATOR).append(S_NEWLINE);
+   263	
+   264			System.err.println(builder.toString());
+   265		}
+   266	
+   267		private static final String ARG_PACKAGES = "--packages=";
+   268		private static final String ARG_MODE = "--mode=";
+   269		private static final String ARG_LIMIT = "--limit=";
+   270		private static final String ARG_LENGTH = "--length=";
+   271		private static final String ARG_SEQUENCE = "--sequence=";
+   272		private static final String ARG_VERBOSE = "--verbose";
+   273	
+   274		private static int getParam(String[] args, String paramName, boolean mandatory)
+   275		{
+   276			int result;
+   277	
+   278			if (!mandatory)
+   279			{
+   280				result = 0;
+   281			}
+   282			else
+   283			{
+   284				result = -1;
+   285			}
+   286	
+   287			for (String param : args)
+   288			{
+   289				if (param.startsWith(paramName))
+   290				{
+   291					String argValue = param.substring(paramName.length(), param.length());
+   292	
+   293					try
+   294					{
+   295						result = Integer.parseInt(argValue);
+   296					}
+   297					catch (NumberFormatException nfe)
+   298					{
+   299						System.err.println("Could not parse parameter " + paramName + " : " + argValue);
+   300					}
+   301	
+   302					break;
+   303				}
+   304			}
+   305	
+   306			return result;
+   307		}
+   308	
+   309		private static String getParamString(String[] args, String paramName)
+   310		{
+   311			String result = null;
+   312	
+   313			for (String param : args)
+   314			{
+   315				if (param.startsWith(paramName))
+   316				{
+   317					result = param.substring(paramName.length(), param.length());
+   318					break;
+   319				}
+   320			}
+   321	
+   322			return result;
+   323		}
+   324	
+   325		private static IJarScanOperation getJarScanOperation(String[] args)
+   326		{
+   327			IJarScanOperation operation = null;
+   328	
+   329			String mode = getParamString(args, ARG_MODE);
+   330	
+   331			if (mode != null)
+   332			{
+   333				String modeParam = mode.toLowerCase();
+   334	
+   335				switch (modeParam)
+   336				{
+   337				case "maxmethodsize":
+   338				{
+   339					int paramValue = getParam(args, ARG_LIMIT, true);
+   340	
+   341					if (paramValue > 0)
+   342					{
+   343						operation = new FreqInlineSizeOperation(paramValue);
+   344					}
+   345					break;
+   346				}
+   347				case "sequencecount":
+   348				{
+   349					int paramValue = getParam(args, ARG_LENGTH, true);
+   350	
+   351					if (paramValue > 0)
+   352					{
+   353						operation = new SequenceCountOperation(paramValue);
+   354					}
+   355					break;
+   356				}
+   357				case "invokecount":
+   358				{
+   359					int paramValue = getParam(args, ARG_LIMIT, false);
+   360	
+   361					if (paramValue >= 0)
+   362					{
+   363						operation = new InvokeCountOperation(paramValue);
+   364					}
+   365					break;
+   366				}
+   367				case "nextinstructionfreq":
+   368				{
+   369					int paramValue = getParam(args, ARG_LIMIT, false);
+   370	
+   371					if (paramValue >= 0)
+   372					{
+   373						operation = new NextInstructionOperation(paramValue);
+   374					}
+   375				}
+   376					break;
+   377				case "allocationcount":
+   378				{
+   379					int paramValue = getParam(args, ARG_LIMIT, false);
+   380					if (paramValue >= 0)
+   381					{
+   382						operation = new AllocationCountOperation(paramValue);
+   383					}
+   384					break;
+   385				}
+   386				case "instructioncount":
+   387				{
+   388					int paramValue = getParam(args, ARG_LIMIT, false);
+   389	
+   390					if (paramValue >= 0)
+   391					{
+   392						operation = new InstructionCountOperation(paramValue);
+   393					}
+   394					break;
+   395				}
+   396				case "sequencesearch":
+   397				{
+   398					String sequence = getParamString(args, ARG_SEQUENCE);
+   399	
+   400					if (sequence != null)
+   401					{
+   402						operation = new SequenceSearchOperation(sequence);
+   403					}
+   404					break;
+   405				}
+   406				case "methodsizehisto":
+   407				{
+   408					operation = new MethodSizeHistoOperation();
+   409					break;
+   410				}
+   411				case "methodlength":
+   412				{
+   413					int paramValue = getParam(args, ARG_LENGTH, true);
+   414	
+   415					if (paramValue > 0)
+   416					{
+   417						operation = new MethodLengthOperation(paramValue);
+   418					}
+   419					break;
+   420				}
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeMethodCountMap.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2016 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.jarscan.invokecount;
+     7	
+     8	import java.util.EnumMap;
+     9	import java.util.Map;
+    10	
+    11	import org.adoptopenjdk.jitwatch.model.bytecode.Opcode;
+    12	
+    13	public class InvokeMethodCountMap
+    14	{
+    15		private Map<Opcode, MethodCountMap> opcodeMap = new EnumMap<>(Opcode.class);
+    16	
+    17		public void countInvocationOfMethod(Opcode opcode, String method)
+    18		{
+    19			MethodCountMap invokeCountMap = opcodeMap.get(opcode);
+    20	
+    21			if (invokeCountMap == null)
+    22			{
+    23				invokeCountMap = new MethodCountMap();
+    24				opcodeMap.put(opcode, invokeCountMap);
+    25			}
+    26	
+    27			invokeCountMap.count(method);
+    28		}
+    29	
+    30		public String toString(int limitPerInvoke)
+    31		{
+    32			StringBuilder builder = new StringBuilder();
+    33	
+    34			for (Map.Entry<Opcode, MethodCountMap> entry : opcodeMap.entrySet())
+    35			{
+    36				Opcode opcode = entry.getKey();
+    37				MethodCountMap invokeCountMap = entry.getValue();
+    38				
+    39				builder.append(invokeCountMap.toString(opcode, limitPerInvoke));
+    40			}
+    41	
+    42			return builder.toString();
+    43		}
+    44	}
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/MethodCountMap.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2017 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.jarscan.invokecount;
+     7	
+     8	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_COMMA;
+     9	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOUBLE_QUOTE;
+    10	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_NEWLINE;
+    11	
+    12	import java.util.ArrayList;
+    13	import java.util.Collections;
+    14	import java.util.Comparator;
+    15	import java.util.List;
+    16	import java.util.Map;
+    17	import java.util.TreeMap;
+    18	
+    19	import org.adoptopenjdk.jitwatch.model.bytecode.Opcode;
+    20	
+    21	public class MethodCountMap
+    22	{
+    23		private Map<String, Integer> methodCountMap = new TreeMap<>();
+    24		
+    25		public void count(String method)
+    26		{
+    27			Integer count = methodCountMap.get(method);
+    28			
+    29			if (count == null)
+    30			{
+    31				count = 1;
+    32			}
+    33			else
+    34			{
+    35				count++;
+    36			}
+    37			
+    38			methodCountMap.put(method, count);
+    39		}
+    40		
+    41		public String toString(Opcode prefix, int limitPerInvoke)
+    42		{
+    43			StringBuilder builder = new StringBuilder();
+    44			
+    45			List<Map.Entry<String, Integer>> sortedList = new ArrayList<>(methodCountMap.entrySet());
+    46	
+    47			Collections.sort(sortedList, new Comparator<Map.Entry<String, Integer>>()
+    48			{
+    49				@Override
+    50				public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2)
+    51				{
+    52					return o2.getValue().compareTo(o1.getValue());
+    53				}
+    54			});
+    55			
+    56			int outputCount = 0;
+    57	
+    58			for (Map.Entry<String, Integer> entry : sortedList)
+    59			{
+    60				String methodName = entry.getKey();
+    61				Integer count = entry.getValue();
+    62				
+    63				builder.append(C_DOUBLE_QUOTE).append(prefix.getMnemonic()).append(C_DOUBLE_QUOTE).append(C_COMMA);
+    64				builder.append(C_DOUBLE_QUOTE).append(methodName).append(C_DOUBLE_QUOTE).append(C_COMMA);
+    65				builder.append(count).append(S_NEWLINE);
+    66				
+    67				outputCount++;
+    68				
+    69				if (limitPerInvoke != 0 && outputCount == limitPerInvoke)
+    70				{
+    71					break;
+    72				}
+    73			}
+    74					
+    75			return builder.toString();
+    76		}
+    77	}
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.jarscan.invokecount.InvokeCountOperation","detection":false,"justification":"Inspected core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeCountOperation.java, core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/JarScan.java, core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/InvokeMethodCountMap.java, and core/src/main/java/org/adoptopenjdk/jitwatch/jarscan/invokecount/MethodCountMap.java. Repository search found only one incoming production use of InvokeCountOperation (JarScan imports it and instantiates it in the invokeCount mode at JarScan.java:29 and :363); no other references were found. The class’s fan-out is also small: it implements one interface and directly depends on only five external types plus one local helper, so it does not behave like a dependency hub."}
+tokens used
+24,985

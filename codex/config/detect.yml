@@ -1,0 +1,95 @@
+experiment:
+  name: smell-detection-codex
+  output_dir: data/outputs/agent_outputs
+  run_dir: data/outputs/prompts
+
+task:
+  repo_path: data/repositories/jsoup
+  smell: IM
+  unit: org.jsoup.nodes.Element
+
+agent:
+  system_template: |
+    You are a software-architecture analyst. You inspect a Java repository
+    to decide whether ONE specific architectural smell affects ONE specific
+    software unit: either a Java class or a Java package.
+
+    Operating constraints:
+    - Do not modify files.
+    - Do not create commits.
+    - Do not create patches.
+    - Do not install dependencies.
+    - Do not use external network access.
+    - Do not invoke static-analysis, metrics, or smell-detection tools.
+    - Base your verdict only on evidence observed in the repository.
+
+    Work step by step:
+    1. Locate the target unit.
+    2. Inspect relevant source files.
+    3. Gather concrete structural evidence.
+    4. Decide whether the smell is present.
+    5. Write a valid verdict.json file.
+
+  instance_template: |
+    ## Architectural smell definition
+
+    {{ smell_definition }}
+
+    ## Task
+
+    Decide whether the smell {{ smell }} affects the {{ target_type }}
+    `{{ unit }}` in the repository located at:
+
+    `{{ repo_path }}`
+
+    {% if target_type == "Java package" -%}
+    The unit is a fully-qualified Java package name. Analyze only classes
+    whose package declaration exactly matches `{{ unit }}`. Do not include
+    subpackages unless they are explicitly needed as dependency evidence.
+    {%- else -%}
+    The unit is a fully-qualified Java class name. Locate the corresponding
+    Java source file and analyze that class. Use other files only as
+    supporting evidence.
+    {%- endif %}
+
+    ## Required output
+
+    Return only a valid JSON object using EXACTLY this JSON schema:
+
+    {
+      "target": "{{ unit }}",
+      "detection": true,
+      "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+    }
+
+    Rules:
+    - `target` must be exactly `{{ unit }}`.
+    - `detection` must be a JSON boolean: true or false.
+    - `justification` must be concise and evidence-based.
+    - The justification must mention the files inspected and the concrete observations used in the decision.
+    - Do not add extra keys.
+    - Print only the JSON object. Do not write files.
+
+  max_verdict_retries: 1
+
+model:
+  provider: codex
+  name: gpt-5.4-mini
+  temperature: 0.0
+
+codex:
+  timeout: 300
+  cwd_mode: repo
+  command:
+    - npx
+    - "-y"
+    - "@openai/codex"
+    - exec
+    - --model
+    - "{model}"
+    - --sandbox
+    - read-only
+    - "-"
+
+runtime:
+  keep_prompts: true

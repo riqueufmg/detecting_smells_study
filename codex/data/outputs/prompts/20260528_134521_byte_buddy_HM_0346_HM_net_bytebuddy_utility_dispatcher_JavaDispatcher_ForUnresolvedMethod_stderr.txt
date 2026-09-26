@@ -1,0 +1,1151 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f79-fc91-7da0-b546-eb9ae303a2f3
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.utility.dispatcher.JavaDispatcher.ForUnresolvedMethod` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.utility.dispatcher.JavaDispatcher.ForUnresolvedMethod",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.utility.dispatcher.JavaDispatcher.ForUnresolvedMethod`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct dependencies and references so I can judge fan-in and fan-out from the repository evidence.
+exec
+/bin/bash -lc "rg --files | rg \"JavaDispatcher\\.java|JavaDispatcher\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc 'rg -n "class ForUnresolvedMethod|ForUnresolvedMethod" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 302ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:244:                            : new Dispatcher.ForUnresolvedMethod("Type not available on current VM: " + exception.getMessage()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:378:                            : new Dispatcher.ForUnresolvedMethod("Class not available on current VM: " + exception.getMessage()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:382:                            : new Dispatcher.ForUnresolvedMethod("Method not available on current VM: " + exception.getMessage()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:384:                    dispatchers.put(method, new Dispatcher.ForUnresolvedMethod("Unexpected error: " + throwable.getMessage()));
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:1082:        class ForUnresolvedMethod implements Dispatcher {
+./byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:1094:            protected ForUnresolvedMethod(String message) {
+
+ succeeded in 303ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/dispatcher/JavaDispatcherTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/utility/dispatcher/JavaDispatcherDefaultsTest.java
+
+codex
+I found the target as a nested class in `byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java`. Next I’m checking how many types it directly touches and whether other code depends on it beyond the enclosing dispatcher.
+exec
+/bin/bash -lc "sed -n '1040,1145p' byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"ForUnresolvedMethod\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java -S" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 197ms:
+             */
+            public Object invoke(Object[] argument) throws Throwable {
+                Object[] reduced;
+                if (argument.length == 1) {
+                    reduced = NO_ARGUMENTS;
+                } else {
+                    reduced = new Object[argument.length - 1];
+                    System.arraycopy(argument, 1, reduced, 0, reduced.length);
+                }
+                return INVOKER.invoke(method, argument[0], reduced);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public int apply(MethodVisitor methodVisitor, Method method) {
+                Class<?>[] source = method.getParameterTypes(), target = this.method.getParameterTypes();
+                int offset = 1;
+                for (int index = 0; index < source.length; index++) {
+                    Type type = Type.getType(source[index]);
+                    methodVisitor.visitVarInsn(type.getOpcode(Opcodes.ILOAD), offset);
+                    if (source[index] != (index == 0 ? this.method.getDeclaringClass() : target[index - 1])) {
+                        methodVisitor.visitTypeInsn(Opcodes.CHECKCAST, Type.getInternalName(index == 0
+                                ? this.method.getDeclaringClass()
+                                : target[index - 1]));
+                    }
+                    offset += type.getSize();
+                }
+                methodVisitor.visitMethodInsn(this.method.getDeclaringClass().isInterface() ? Opcodes.INVOKEINTERFACE : Opcodes.INVOKEVIRTUAL,
+                        Type.getInternalName(this.method.getDeclaringClass()),
+                        this.method.getName(),
+                        Type.getMethodDescriptor(this.method),
+                        this.method.getDeclaringClass().isInterface());
+                methodVisitor.visitInsn(Type.getReturnType(this.method).getOpcode(Opcodes.IRETURN));
+                return Math.max(offset - 1, Type.getReturnType(this.method).getSize());
+            }
+        }
+
+        /**
+         * A dispatcher for an unresolved method.
+         */
+        @HashCodeAndEqualsPlugin.Enhance
+        class ForUnresolvedMethod implements Dispatcher {
+
+            /**
+             * The message for describing the reason why the method could not be resolved.
+             */
+            private final String message;
+
+            /**
+             * Creates a dispatcher for an unresolved method.
+             *
+             * @param message The message for describing the reason why the method could not be resolved.
+             */
+            protected ForUnresolvedMethod(String message) {
+                this.message = message;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public Object invoke(Object[] argument) throws Throwable {
+                throw new IllegalStateException("Could not invoke proxy: " + message);
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public int apply(MethodVisitor methodVisitor, Method method) {
+                methodVisitor.visitTypeInsn(Opcodes.NEW, Type.getInternalName(IllegalStateException.class));
+                methodVisitor.visitInsn(Opcodes.DUP);
+                methodVisitor.visitLdcInsn(message);
+                methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL,
+                        Type.getInternalName(IllegalStateException.class),
+                        MethodDescription.CONSTRUCTOR_INTERNAL_NAME,
+                        Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class)),
+                        false);
+                methodVisitor.visitInsn(Opcodes.ATHROW);
+                return 3;
+            }
+        }
+    }
+
+    /**
+     * An invocation handler that invokes given dispatchers.
+     */
+    @HashCodeAndEqualsPlugin.Enhance
+    protected static class ProxiedInvocationHandler implements InvocationHandler {
+
+        /**
+         * Indicates that an invocation handler does not provide any arguments.
+         */
+        private static final Object[] NO_ARGUMENTS = new Object[0];
+
+        /**
+         * The proxied type's name.
+         */
+        private final String name;
+
+        /**
+         * A mapping of proxy type methods to their proxied dispatchers.
+         */
+        private final Map<Method, Dispatcher> targets;
+
+        /**
+         * Creates a new invocation handler for proxying a type.
+
+ succeeded in 207ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.utility.dispatcher;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.asm.AsmVisitorWrapper;
+import net.bytebuddy.build.AccessControllerPlugin;
+import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.dynamic.scaffold.TypeWriter;
+import net.bytebuddy.utility.GraalImageCode;
+import net.bytebuddy.utility.Invoker;
+import net.bytebuddy.utility.MethodComparator;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import net.bytebuddy.utility.privilege.GetSystemPropertyAction;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.lang.annotation.Annotation;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
+import java.security.Permission;
+import java.security.PrivilegedAction;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * <p>
+ * A dispatcher for creating a proxy that invokes methods of a type that is possibly unknown on the current VM. Dispatchers do not
+ * use any of Byte Buddy's regular infrastructure, to avoid bootstrapping issues as these dispatchers are used by Byte Buddy itself.
+ * </p>
+ * <p>
+ * By default, this dispatcher uses the Java {@link Proxy} for creating dispatchers. By setting {@code net.bytebuddy.generate} to
+ * {@code true}, Byte Buddy can generate proxies manually as byte code to mostly avoid reflection and boxing of arguments as arrays.
+ * </p>
+ * <p>
+ * If a security manager is active, the <i>net.bytebuddy.createJavaDispatcher</i> runtime permission is required. Any dispatching
+ * will be executed from a separate class loader and an unnamed module but with the {@link java.security.ProtectionDomain} of
+ * the {@link JavaDispatcher} class. It is not permitted to invoke methods of the {@code java.security.AccessController} class or
+ * to resolve a {@code java.lang.invoke.MethodHandle$Lookup}.
+ * </p>
+ *
+ * @param <T> The resolved type.
+ */
+@HashCodeAndEqualsPlugin.Enhance
+public class JavaDispatcher<T> implements PrivilegedAction<T> {
+
+    /**
+     * A property to determine, that if {@code true}, dispatcher classes will be generated natively and not by using a {@link Proxy}.
+     */
+    public static final String GENERATE_PROPERTY = "net.bytebuddy.generate";
+
+    /**
+     * If {@code true}, dispatcher classes will be generated natively and not by using a {@link Proxy}.
+     */
+    private static final boolean GENERATE = Boolean.parseBoolean(doPrivileged(new GetSystemPropertyAction(GENERATE_PROPERTY)));
+
+    /**
+     * A resolver to assure that a type's package and module are exported to the created class loader.
+     * This should normally always be the case, but if another library is shading Byte Buddy or otherwise
+     * manipulates the module graph, this might become necessary.
+     */
+    private static final DynamicClassLoader.Resolver RESOLVER = doPrivileged(DynamicClassLoader.Resolver.CreationAction.INSTANCE);
+
+    /**
+     * Contains an invoker that makes sure that reflective dispatchers make invocations from an isolated {@link ClassLoader} and
+     * not from within Byte Buddy's context. This way, no privilege context can be leaked by accident.
+     */
+    private static final Invoker INVOKER = doPrivileged(new InvokerCreationAction());
+
+    /**
+     * The proxy type.
+     */
+    private final Class<T> proxy;
+
+    /**
+     * The class loader to resolve the proxied type from or {@code null} if the bootstrap loader should be used.
+     */
+    @MaybeNull
+    @HashCodeAndEqualsPlugin.ValueHandling(HashCodeAndEqualsPlugin.ValueHandling.Sort.REVERSE_NULLABILITY)
+    private final ClassLoader classLoader;
+
+    /**
+     * {@code true} if a proxy class should be manually generated.
+     */
+    private final boolean generate;
+
+    /**
+     * Creates a new dispatcher.
+     *
+     * @param proxy       The proxy type.
+     * @param classLoader The class loader to resolve the proxied type from or {@code null} if the bootstrap loader should be used.
+     * @param generate    {@code true} if a proxy class should be manually generated.
+     */
+    protected JavaDispatcher(Class<T> proxy, @MaybeNull ClassLoader classLoader, boolean generate) {
+        this.proxy = proxy;
+        this.classLoader = classLoader;
+        this.generate = generate;
+    }
+
+    /**
+     * A proxy for {@code java.security.AccessController#doPrivileged} that is activated if available.
+     *
+     * @param action The action to execute from a privileged context.
+     * @param <T>    The type of the action's resolved value.
+     * @return The action's resolved value.
+     */
+    @AccessControllerPlugin.Enhance
+    private static <T> T doPrivileged(PrivilegedAction<T> action) {
+        return action.run();
+    }
+
+    /**
+     * Resolves an action for creating a dispatcher for the provided type where the proxied type is resolved from the bootstrap loader.
+     *
+     * @param type The type for which a dispatcher should be resolved.
+     * @param <T>  The resolved type.
+     * @return An action for creating an appropriate dispatcher.
+     */
+    public static <T> PrivilegedAction<T> of(Class<T> type) {
+        return of(type, null);
+    }
+
+    /**
+     * Resolves an action for creating a dispatcher for the provided type.
+     *
+     * @param type        The type for which a dispatcher should be resolved.
+     * @param classLoader The class loader to resolve the proxied type from.
+     * @param <T>         The resolved type.
+     * @return An action for creating an appropriate dispatcher.
+     */
+    public static <T> PrivilegedAction<T> of(Class<T> type, @MaybeNull ClassLoader classLoader) {
+        return of(type, classLoader, GENERATE);
+    }
+
+    /**
+     * Resolves an action for creating a dispatcher for the provided type.
+     *
+     * @param type        The type for which a dispatcher should be resolved.
+     * @param classLoader The class loader to resolve the proxied type from.
+     * @param generate    {@code true} if a proxy class should be manually generated.
+     * @param <T>         The resolved type.
+     * @return An action for creating an appropriate dispatcher.
+     */
+    protected static <T> PrivilegedAction<T> of(Class<T> type, @MaybeNull ClassLoader classLoader, boolean generate) {
+        if (!type.isInterface()) {
+            throw new IllegalArgumentException("Expected an interface instead of " + type);
+        } else if (!type.isAnnotationPresent(Proxied.class)) {
+            throw new IllegalArgumentException("Expected " + type.getName() + " to be annotated with " + Proxied.class.getName());
+        } else if (type.getAnnotation(Proxied.class).value().startsWith("java.security.")) {
+            throw new IllegalArgumentException("Classes related to Java security cannot be proxied: " + type.getName());
+        } else {
+            return new JavaDispatcher<T>(type, classLoader, generate);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @SuppressWarnings("unchecked")
+    public T run() {
+        try {
+            Object securityManager = System.class.getMethod("getSecurityManager").invoke(null);
+            if (securityManager != null) {
+                Object permission = Class.forName("java.lang.RuntimePermission")
+                        .getConstructor(String.class)
+                        .newInstance("net.bytebuddy.createJavaDispatcher");
+                Class.forName("java.lang.SecurityManager")
+                        .getMethod("checkPermission", Permission.class)
+                        .invoke(securityManager, permission);
+            }
+        } catch (NoSuchMethodException ignored) {
+            /* security manager not available on current VM */
+        } catch (ClassNotFoundException ignored) {
+            /* security manager not available on current VM */
+        } catch (InvocationTargetException exception) {
+            Throwable cause = exception.getTargetException();
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            } else {
+                throw new IllegalStateException("Failed to assert access rights using security manager", cause);
+            }
+        } catch (IllegalAccessException exception) {
+            throw new IllegalStateException("Failed to access security manager", exception);
+        } catch (InstantiationException exception) {
+            throw new IllegalStateException("Failed to instantiate runtime permission", exception);
+        }
+        Map<Method, Dispatcher> dispatchers = generate
+                ? new LinkedHashMap<Method, Dispatcher>()
+                : new HashMap<Method, Dispatcher>();
+
+ succeeded in 296ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:244:                            : new Dispatcher.ForUnresolvedMethod("Type not available on current VM: " + exception.getMessage()));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:378:                            : new Dispatcher.ForUnresolvedMethod("Class not available on current VM: " + exception.getMessage()));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:382:                            : new Dispatcher.ForUnresolvedMethod("Method not available on current VM: " + exception.getMessage()));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:384:                    dispatchers.put(method, new Dispatcher.ForUnresolvedMethod("Unexpected error: " + throwable.getMessage()));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:1094:            protected ForUnresolvedMethod(String message) {
+
+codex
+I’ve confirmed the target is private to `JavaDispatcher` and is only instantiated from inside that file. I’m checking tests and nearby code to make sure there isn’t wider fan-in hidden behind indirect references.
+exec
+/bin/bash -lc 'rg -n "Could not invoke proxy|Unexpected error:|Method not available on current VM|Class not available on current VM|Type not available on current VM" byte-buddy-dep/src/test/java byte-buddy-dep/src/main/java -S' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '220,420p' byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/test/java/net/bytebuddy/utility/dispatcher/JavaDispatcherTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 228ms:
+                : new HashMap<Method, Dispatcher>();
+        boolean defaults = proxy.isAnnotationPresent(Defaults.class);
+        String name = proxy.getAnnotation(Proxied.class).value();
+        Class<?> target;
+        try {
+            target = Class.forName(name, false, classLoader);
+        } catch (ClassNotFoundException exception) {
+            for (Method method : generate
+                    ? GraalImageCode.getCurrent().sorted(proxy.getMethods(), MethodComparator.INSTANCE)
+                    : proxy.getMethods()) {
+                if (method.getDeclaringClass() == Object.class) {
+                    continue;
+                }
+                if (method.isAnnotationPresent(Instance.class)) {
+                    if (method.getParameterTypes().length != 1 || method.getParameterTypes()[0].isPrimitive() || method.getParameterTypes()[0].isArray()) {
+                        throw new IllegalStateException("Instance check requires a single regular-typed argument: " + method);
+                    } else if (method.getReturnType() != boolean.class) {
+                        throw new IllegalStateException("Instance check requires a boolean return type: " + method);
+                    } else {
+                        dispatchers.put(method, Dispatcher.ForDefaultValue.BOOLEAN);
+                    }
+                } else {
+                    dispatchers.put(method, defaults || method.isAnnotationPresent(Defaults.class)
+                            ? Dispatcher.ForDefaultValue.of(method.getReturnType())
+                            : new Dispatcher.ForUnresolvedMethod("Type not available on current VM: " + exception.getMessage()));
+                }
+            }
+            if (generate) {
+                return (T) DynamicClassLoader.proxy(proxy, dispatchers);
+            } else {
+                return (T) Proxy.newProxyInstance(proxy.getClassLoader(),
+                        new Class<?>[]{proxy},
+                        new ProxiedInvocationHandler(name, dispatchers));
+            }
+        }
+        boolean generate = this.generate;
+        for (Method method : generate
+                ? GraalImageCode.getCurrent().sorted(proxy.getMethods(), MethodComparator.INSTANCE)
+                : proxy.getMethods()) {
+            if (method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+            if (method.isAnnotationPresent(Instance.class)) {
+                if (method.getParameterTypes().length != 1 || !method.getParameterTypes()[0].isAssignableFrom(target)) {
+                    throw new IllegalStateException("Instance check requires a single regular-typed argument: " + method);
+                } else if (method.getReturnType() != boolean.class) {
+                    throw new IllegalStateException("Instance check requires a boolean return type: " + method);
+                } else {
+                    dispatchers.put(method, new Dispatcher.ForInstanceCheck(target));
+                }
+            } else if (method.isAnnotationPresent(Container.class)) {
+                if (method.getParameterTypes().length != 1 || method.getParameterTypes()[0] != int.class) {
+                    throw new IllegalStateException("Container creation requires a single int-typed argument: " + method);
+                } else if (!method.getReturnType().isArray() || !method.getReturnType().getComponentType().isAssignableFrom(target)) {
+                    throw new IllegalStateException("Container creation requires an assignable array as return value: " + method);
+                } else {
+                    dispatchers.put(method, new Dispatcher.ForContainerCreation(target));
+                }
+            } else if (target.getName().equals("java.lang.invoke.MethodHandles") && method.getName().equals("lookup")) {
+                throw new UnsupportedOperationException("Cannot resolve Byte Buddy lookup via dispatcher");
+            } else {
+                try {
+                    Class<?>[] parameterType = method.getParameterTypes();
+                    int offset;
+                    if (method.isAnnotationPresent(IsStatic.class) || method.isAnnotationPresent(IsConstructor.class)) {
+                        offset = 0;
+                    } else {
+                        offset = 1;
+                        if (parameterType.length == 0) {
+                            throw new IllegalStateException("Expected self type: " + method);
+                        } else if (!parameterType[0].isAssignableFrom(target)) {
+                            throw new IllegalStateException("Cannot assign self type: " + target + " on " + method);
+                        }
+                        Class<?>[] adjusted = new Class<?>[parameterType.length - 1];
+                        System.arraycopy(parameterType, 1, adjusted, 0, adjusted.length);
+                        parameterType = adjusted;
+                    }
+                    Annotation[][] parameterAnnotation = method.getParameterAnnotations();
+                    for (int index = 0; index < parameterType.length; index++) {
+                        for (Annotation annotation : parameterAnnotation[index + offset]) {
+                            if (annotation instanceof Proxied) {
+                                int arity = 0;
+                                while (parameterType[index].isArray()) {
+                                    arity += 1;
+                                    parameterType[index] = parameterType[index].getComponentType();
+                                }
+                                if (arity > 0) {
+                                    if (parameterType[index].isPrimitive()) {
+                                        throw new IllegalStateException("Primitive values are not supposed to be proxied: " + index + " of " + method);
+                                    } else if (!parameterType[index].isAssignableFrom(Class.forName(((Proxied) annotation).value(), false, classLoader))) {
+                                        throw new IllegalStateException("Cannot resolve to component type: " + ((Proxied) annotation).value() + " at " + index + " of " + method);
+                                    }
+                                    StringBuilder stringBuilder = new StringBuilder();
+                                    while (arity-- > 0) {
+                                        stringBuilder.append('[');
+                                    }
+                                    parameterType[index] = Class.forName(stringBuilder.append('L')
+                                            .append(((Proxied) annotation).value())
+                                            .append(';')
+                                            .toString(), false, classLoader);
+                                } else {
+                                    Class<?> resolved = Class.forName(((Proxied) annotation).value(), false, classLoader);
+                                    if (!parameterType[index].isAssignableFrom(resolved)) {
+                                        throw new IllegalStateException("Cannot resolve to type: " + resolved.getName() + " at " + index + " of " + method);
+                                    }
+                                    parameterType[index] = resolved;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    if (method.isAnnotationPresent(IsConstructor.class)) {
+                        Constructor<?> resolved = target.getConstructor(parameterType);
+                        if (!method.getReturnType().isAssignableFrom(target)) {
+                            throw new IllegalStateException("Cannot assign " + resolved.getDeclaringClass().getName() + " to " + method);
+                        }
+                        if ((resolved.getModifiers() & Opcodes.ACC_PUBLIC) == 0 || (target.getModifiers() & Opcodes.ACC_PUBLIC) == 0) {
+                            resolved.setAccessible(true);
+                            generate = false;
+                        }
+                        dispatchers.put(method, new Dispatcher.ForConstructor(resolved));
+                    } else {
+                        Proxied proxied = method.getAnnotation(Proxied.class);
+                        Method resolved = target.getMethod(proxied == null ? method.getName() : proxied.value(), parameterType);
+                        if (!method.getReturnType().isAssignableFrom(resolved.getReturnType())) {
+                            throw new IllegalStateException("Cannot assign " + resolved.getReturnType().getName() + " to " + method);
+                        }
+                        exceptions:
+                        for (Class<?> type : resolved.getExceptionTypes()) {
+                            if (RuntimeException.class.isAssignableFrom(type) || Error.class.isAssignableFrom(type)) {
+                                continue;
+                            }
+                            for (Class<?> exception : method.getExceptionTypes()) {
+                                if (exception.isAssignableFrom(type)) {
+                                    continue exceptions;
+                                }
+                            }
+                            throw new IllegalStateException("Resolved method for " + method + " throws undeclared checked exception " + type.getName());
+                        }
+                        if ((resolved.getModifiers() & Opcodes.ACC_PUBLIC) == 0 || (resolved.getDeclaringClass().getModifiers() & Opcodes.ACC_PUBLIC) == 0) {
+                            resolved.setAccessible(true);
+                            generate = false;
+                        }
+                        if (Modifier.isStatic(resolved.getModifiers())) {
+                            if (!method.isAnnotationPresent(IsStatic.class)) {
+                                throw new IllegalStateException("Resolved method for " + method + " was expected to be static: " + resolved);
+                            }
+                            dispatchers.put(method, new Dispatcher.ForStaticMethod(resolved));
+                        } else {
+                            if (method.isAnnotationPresent(IsStatic.class)) {
+                                throw new IllegalStateException("Resolved method for " + method + " was expected to be virtual: " + resolved);
+                            }
+                            dispatchers.put(method, new Dispatcher.ForNonStaticMethod(resolved));
+                        }
+                    }
+                } catch (ClassNotFoundException exception) {
+                    dispatchers.put(method, defaults || method.isAnnotationPresent(Defaults.class)
+                            ? Dispatcher.ForDefaultValue.of(method.getReturnType())
+                            : new Dispatcher.ForUnresolvedMethod("Class not available on current VM: " + exception.getMessage()));
+                } catch (NoSuchMethodException exception) {
+                    dispatchers.put(method, defaults || method.isAnnotationPresent(Defaults.class)
+                            ? Dispatcher.ForDefaultValue.of(method.getReturnType())
+                            : new Dispatcher.ForUnresolvedMethod("Method not available on current VM: " + exception.getMessage()));
+                } catch (Throwable throwable) {
+                    dispatchers.put(method, new Dispatcher.ForUnresolvedMethod("Unexpected error: " + throwable.getMessage()));
+                }
+            }
+        }
+        if (generate) {
+            return (T) DynamicClassLoader.proxy(proxy, dispatchers);
+        } else {
+            return (T) Proxy.newProxyInstance(proxy.getClassLoader(),
+                    new Class<?>[]{proxy},
+                    new ProxiedInvocationHandler(target.getName(), dispatchers));
+        }
+    }
+
+    /**
+     * Indicates a proxied type's name. This annotation is mandatory for proxied types but can also be used on method's
+     * to describe the actual name of the proxied method or on parameters to indicate the parameter's (component) type.
+     */
+    @Documented
+    @Target({ElementType.TYPE, ElementType.METHOD, ElementType.PARAMETER})
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Proxied {
+
+        /**
+         * Returns the binary name of the proxied type.
+         *
+         * @return The binary name of the proxied type.
+         */
+        String value();
+    }
+
+    /**
+     * Indicates that a proxied method is static.
+     */
+    @Documented
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface IsStatic {
+
+ succeeded in 335ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:244:                            : new Dispatcher.ForUnresolvedMethod("Type not available on current VM: " + exception.getMessage()));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:378:                            : new Dispatcher.ForUnresolvedMethod("Class not available on current VM: " + exception.getMessage()));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:382:                            : new Dispatcher.ForUnresolvedMethod("Method not available on current VM: " + exception.getMessage()));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:384:                    dispatchers.put(method, new Dispatcher.ForUnresolvedMethod("Unexpected error: " + throwable.getMessage()));
+byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java:1102:                throw new IllegalStateException("Could not invoke proxy: " + message);
+
+ succeeded in 353ms:
+package net.bytebuddy.utility.dispatcher;
+
+import net.bytebuddy.ClassFileVersion;
+import net.bytebuddy.test.utility.JavaVersionRule;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.MethodRule;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.security.Permission;
+import java.security.PermissionCollection;
+import java.security.ProtectionDomain;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Enumeration;
+
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+@RunWith(Parameterized.class)
+public class JavaDispatcherTest {
+
+    @Rule
+    public MethodRule javaVersionRule = new JavaVersionRule();
+
+    private final boolean generate;
+
+    public JavaDispatcherTest(boolean generate) {
+        this.generate = generate;
+    }
+
+    @Parameterized.Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][]{
+                {true},
+                {false}
+        });
+    }
+
+    @Test
+    public void testConstructor() throws Exception {
+        assertThat(JavaDispatcher.of(Constructor.class, null, generate).run().make(), instanceOf(Object.class));
+    }
+
+    @Test
+    public void testStaticDispatcher() throws Exception {
+        assertThat(JavaDispatcher.of(StaticSample.class, null, generate).run().forName(Object.class.getName()), is((Object) Object.class));
+    }
+
+    @Test
+    public void testStaticAdjustedDispatcher() throws Exception {
+        assertThat(JavaDispatcher.of(StaticAdjustedSample.class, null, generate).run().forName(Object.class.getName()), is((Object) Object.class));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testStaticAdjustedIllegalDispatcher() throws Exception {
+        assertThat(JavaDispatcher.of(StaticAdjustedIllegalSample.class, null, generate).run().forName(null), is((Object) Object.class));
+    }
+
+    @Test
+    public void testNonStaticDispatcher() throws Exception {
+        assertThat(JavaDispatcher.of(NonStaticSample.class, null, generate).run().getName(Object.class), is(Object.class.getName()));
+    }
+
+    @Test
+    public void testNonStaticAdjustedDispatcher() throws Exception {
+        assertThat(JavaDispatcher.of(NonStaticAdjustedSample.class, null, generate).run().getMethod(Object.class, "equals", new Class<?>[]{Object.class}),
+                is(Object.class.getMethod("equals", Object.class)));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testNonStaticAdjustedIllegalDispatcher() throws Exception {
+        JavaDispatcher.of(NonStaticAdjustedIllegalSample.class, null, generate).run().getMethod(Object.class, "equals", null);
+    }
+
+    @Test
+    public void testNonStaticRenamedDispatcher() throws Exception {
+        assertThat(JavaDispatcher.of(NonStaticRenamedSample.class, null, generate).run().getNameRenamed(Object.class), is(Object.class.getName()));
+    }
+
+    @Test
+    public void testIsInstance() throws Exception {
+        IsInstanceSample sample = JavaDispatcher.of(IsInstanceSample.class, null, generate).run();
+        assertThat(sample.isInstance(Object.class), is(true));
+        assertThat(sample.isInstance(new Object()), is(false));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testIsInstanceIllegal() throws Exception {
+        JavaDispatcher.of(IsInstanceIllegalSample.class, null, generate).run().isInstance(null);
+    }
+
+    @Test
+    public void testContainer() throws Exception {
+        Class<?>[] array = JavaDispatcher.of(ContainerSample.class, null, generate).run().toArray(1);
+        assertThat(array.length, is(1));
+        assertThat(array[0], nullValue(Class.class));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testContainerIllegal() throws Exception {
+        JavaDispatcher.of(IllegalContainerSample.class, null, generate).run().toArray(null);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testNonExistentType() throws Exception {
+        JavaDispatcher.of(NonExistentTypeSample.class, null, generate).run().foo();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testNonExistentMethod() throws Exception {
+        JavaDispatcher.of(NonExistentMethodSample.class, null, generate).run().foo();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testNonInterface() throws Exception {
+        JavaDispatcher.of(Object.class, null, generate);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testNonAnnotated() throws Exception {
+        JavaDispatcher.of(Runnable.class, null, generate);
+    }
+
+    @Test(expected = IOException.class)
+    public void testDeclaredException() throws Exception {
+        File file = mock(File.class);
+        when(file.getCanonicalPath()).thenThrow(new IOException());
+        JavaDispatcher.of(DeclaredExceptionSample.class, null, generate).run().getCanonicalPath(file);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testUndeclaredException() throws Exception {
+        JavaDispatcher.of(UndeclaredExceptionSample.class, null, generate).run().getCanonicalPath(mock(File.class));
+    }
+
+    @Test
+    public void testProxy() {
+        assertThat(Proxy.isProxyClass(JavaDispatcher.of(StaticSample.class, null, generate).run().getClass()), is(!generate));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testJavaSecurity() {
+        JavaDispatcher.of(ProtectionDomain.class, null, generate);
+    }
+
+    @JavaVersionRule.Enforce(9)
+    @Test(expected = UnsupportedOperationException.class)
+    public void testMethodHandleLookup() {
+        JavaDispatcher.of(MethodHandles.class, null, generate).run().lookup();
+    }
+
+    @Test
+    @JavaVersionRule.Enforce(9)
+    public void testCallerSeparateClassLoader() throws Exception {
+        Class<?> caller = JavaDispatcher.of(JavaDispatcherCaller.class, JavaDispatcherTest.class.getClassLoader(), generate).run().caller();
+        assertThat(caller.getClassLoader(), not(sameInstance(JavaDispatcher.class.getClassLoader())));
+    }
+
+    @Test
+    @JavaVersionRule.Enforce(9)
+    public void testCallerInheritsPermissions() throws Exception {
+        Class<?> caller = JavaDispatcher.of(JavaDispatcherCaller.class, JavaDispatcherTest.class.getClassLoader(), generate).run().caller();
+        PermissionCollection permissions = caller.getProtectionDomain().getPermissions();
+        Enumeration<Permission> enumeration = JavaDispatcher.class.getProtectionDomain().getPermissions().elements();
+        while (enumeration.hasMoreElements()) {
+            assertThat(permissions.implies(enumeration.nextElement()), is(true));
+        }
+    }
+
+    @Test
+    @JavaVersionRule.Enforce(9)
+    public void testCallerDoesNotEscalatePermissions() throws Exception {
+        Class<?> caller = JavaDispatcher.of(JavaDispatcherCaller.class, JavaDispatcherTest.class.getClassLoader(), generate).run().caller();
+        PermissionCollection permissions = JavaDispatcher.class.getProtectionDomain().getPermissions();
+        Enumeration<Permission> enumeration = caller.getProtectionDomain().getPermissions().elements();
+        while (enumeration.hasMoreElements()) {
+            assertThat(permissions.implies(enumeration.nextElement()), is(true));
+        }
+    }
+
+    @Test
+    public void testDynamicClassLoaderResolverType() throws Exception {
+        Field resolver = JavaDispatcher.class.getDeclaredField("RESOLVER");
+        resolver.setAccessible(true);
+        assertThat(resolver.get(null), instanceOf(ClassFileVersion.ofThisVm().isAtLeast(ClassFileVersion.JAVA_V9)
+                ? JavaDispatcher.DynamicClassLoader.Resolver.ForModuleSystem.class
+                : JavaDispatcher.DynamicClassLoader.Resolver.NoOp.class));
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    public static Class<?> caller() throws Exception {
+        Class<?> type = Class.forName("java.lang.StackWalker");
+        Class<?> option = Class.forName("java.lang.StackWalker$Option");
+        return (Class<?>) type.getMethod("getCallerClass").invoke(type.getMethod("getInstance", option).invoke(
+                null,
+                Enum.valueOf((Class) option, "RETAIN_CLASS_REFERENCE")));
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Object")
+    public interface Constructor {
+
+        @JavaDispatcher.IsConstructor
+        Object make();
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface StaticSample {
+
+        @JavaDispatcher.IsStatic
+        Class<?> forName(String name) throws ClassNotFoundException;
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface StaticAdjustedSample {
+
+        @JavaDispatcher.IsStatic
+        Class<?> forName(@JavaDispatcher.Proxied("java.lang.String") Object name) throws ClassNotFoundException;
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface StaticAdjustedIllegalSample {
+
+        @JavaDispatcher.IsStatic
+        Class<?> forName(@JavaDispatcher.Proxied("java.lang.String") Void name);
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface NonStaticSample {
+
+        String getName(Class<?> target);
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface NonStaticAdjustedSample {
+
+        Method getMethod(Class<?> target,
+                         @JavaDispatcher.Proxied("java.lang.String") Object name,
+                         @JavaDispatcher.Proxied("java.lang.Class") Object[] argument) throws Exception;
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface NonStaticAdjustedIllegalSample {
+
+        Method getMethod(Class<?> target,
+                         @JavaDispatcher.Proxied("java.lang.String") Object name,
+                         @JavaDispatcher.Proxied("java.lang.Class") Void[] argument);
+    }
+
+exec
+/bin/bash -lc "rg -n \"interface .*Sample|class .*Sample|JavaDispatcher.of\\(\" byte-buddy-dep/src/test/java/net/bytebuddy/utility/dispatcher/JavaDispatcherTest.java -n -S" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '260,520p' byte-buddy-dep/src/test/java/net/bytebuddy/utility/dispatcher/JavaDispatcherTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '1,220p' byte-buddy-dep/src/test/java/net/bytebuddy/utility/dispatcher/JavaDispatcherDefaultsTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 203ms:
+54:        assertThat(JavaDispatcher.of(Constructor.class, null, generate).run().make(), instanceOf(Object.class));
+59:        assertThat(JavaDispatcher.of(StaticSample.class, null, generate).run().forName(Object.class.getName()), is((Object) Object.class));
+64:        assertThat(JavaDispatcher.of(StaticAdjustedSample.class, null, generate).run().forName(Object.class.getName()), is((Object) Object.class));
+69:        assertThat(JavaDispatcher.of(StaticAdjustedIllegalSample.class, null, generate).run().forName(null), is((Object) Object.class));
+74:        assertThat(JavaDispatcher.of(NonStaticSample.class, null, generate).run().getName(Object.class), is(Object.class.getName()));
+79:        assertThat(JavaDispatcher.of(NonStaticAdjustedSample.class, null, generate).run().getMethod(Object.class, "equals", new Class<?>[]{Object.class}),
+85:        JavaDispatcher.of(NonStaticAdjustedIllegalSample.class, null, generate).run().getMethod(Object.class, "equals", null);
+90:        assertThat(JavaDispatcher.of(NonStaticRenamedSample.class, null, generate).run().getNameRenamed(Object.class), is(Object.class.getName()));
+95:        IsInstanceSample sample = JavaDispatcher.of(IsInstanceSample.class, null, generate).run();
+102:        JavaDispatcher.of(IsInstanceIllegalSample.class, null, generate).run().isInstance(null);
+107:        Class<?>[] array = JavaDispatcher.of(ContainerSample.class, null, generate).run().toArray(1);
+114:        JavaDispatcher.of(IllegalContainerSample.class, null, generate).run().toArray(null);
+119:        JavaDispatcher.of(NonExistentTypeSample.class, null, generate).run().foo();
+124:        JavaDispatcher.of(NonExistentMethodSample.class, null, generate).run().foo();
+129:        JavaDispatcher.of(Object.class, null, generate);
+134:        JavaDispatcher.of(Runnable.class, null, generate);
+141:        JavaDispatcher.of(DeclaredExceptionSample.class, null, generate).run().getCanonicalPath(file);
+146:        JavaDispatcher.of(UndeclaredExceptionSample.class, null, generate).run().getCanonicalPath(mock(File.class));
+151:        assertThat(Proxy.isProxyClass(JavaDispatcher.of(StaticSample.class, null, generate).run().getClass()), is(!generate));
+156:        JavaDispatcher.of(ProtectionDomain.class, null, generate);
+162:        JavaDispatcher.of(MethodHandles.class, null, generate).run().lookup();
+168:        Class<?> caller = JavaDispatcher.of(JavaDispatcherCaller.class, JavaDispatcherTest.class.getClassLoader(), generate).run().caller();
+175:        Class<?> caller = JavaDispatcher.of(JavaDispatcherCaller.class, JavaDispatcherTest.class.getClassLoader(), generate).run().caller();
+186:        Class<?> caller = JavaDispatcher.of(JavaDispatcherCaller.class, JavaDispatcherTest.class.getClassLoader(), generate).run().caller();
+220:    public interface StaticSample {
+227:    public interface StaticAdjustedSample {
+234:    public interface StaticAdjustedIllegalSample {
+241:    public interface NonStaticSample {
+247:    public interface NonStaticAdjustedSample {
+255:    public interface NonStaticAdjustedIllegalSample {
+263:    public interface NonStaticRenamedSample {
+270:    public interface IsInstanceSample {
+277:    public interface IsInstanceIllegalSample {
+284:    public interface ContainerSample {
+291:    public interface IllegalContainerSample {
+298:    public interface NonExistentTypeSample {
+304:    public interface NonExistentMethodSample {
+310:    public interface DeclaredExceptionSample {
+316:    public interface UndeclaredExceptionSample {
+
+ succeeded in 294ms:
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface NonStaticRenamedSample {
+
+        @JavaDispatcher.Proxied("getName")
+        String getNameRenamed(Class<?> target);
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface IsInstanceSample {
+
+        @JavaDispatcher.Instance
+        boolean isInstance(Object target);
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface IsInstanceIllegalSample {
+
+        @JavaDispatcher.Instance
+        boolean isInstance(Void target);
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface ContainerSample {
+
+        @JavaDispatcher.Container
+        Class<?>[] toArray(int arity);
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Class")
+    public interface IllegalContainerSample {
+
+        @JavaDispatcher.Container
+        Class<?>[] toArray(Void arity);
+    }
+
+    @JavaDispatcher.Proxied("does.not.Exist")
+    public interface NonExistentTypeSample {
+
+        void foo();
+    }
+
+    @JavaDispatcher.Proxied("java.lang.Object")
+    public interface NonExistentMethodSample {
+
+        void foo();
+    }
+
+    @JavaDispatcher.Proxied("java.io.File")
+    public interface DeclaredExceptionSample {
+
+        String getCanonicalPath(Object target) throws IOException;
+    }
+
+    @JavaDispatcher.Proxied("java.io.File")
+    public interface UndeclaredExceptionSample {
+
+        String getCanonicalPath(Object target);
+    }
+
+    @JavaDispatcher.Proxied("java.lang.invoke.MethodHandles")
+    public interface MethodHandles {
+
+        @JavaDispatcher.IsStatic
+        Object lookup();
+    }
+
+    @JavaDispatcher.Proxied("net.bytebuddy.utility.dispatcher.JavaDispatcherTest")
+    public interface JavaDispatcherCaller {
+
+        @JavaDispatcher.IsStatic
+        Class<?> caller() throws Exception;
+    }
+}
+ succeeded in 283ms:
+package net.bytebuddy.utility.dispatcher;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import java.util.Arrays;
+import java.util.Collection;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+
+@RunWith(Parameterized.class)
+public class JavaDispatcherDefaultsTest {
+
+    @Parameterized.Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][]{
+                {"voidMethod", null},
+                {"booleanMethod", false},
+                {"byteMethod", (byte) 0},
+                {"shortMethod", (short) 0},
+                {"charMethod", (char) 0},
+                {"intMethod", 0},
+                {"longMethod", 0L},
+                {"floatMethod", 0f},
+                {"doubleMethod", 0d},
+                {"objectMethod", null},
+                {"booleanArrayMethod", new boolean[0]},
+                {"byteArrayMethod", new byte[0]},
+                {"shortArrayMethod", new short[0]},
+                {"charArrayMethod", new char[0]},
+                {"intArrayMethod", new int[0]},
+                {"longArrayMethod", new long[0]},
+                {"floatArrayMethod", new float[0]},
+                {"doubleArrayMethod", new double[0]},
+                {"objectArrayMethod", new Object[0]},
+                {"objectMultiArrayMethod", new Object[0][]}
+        });
+    }
+
+    private final String method;
+
+    private final Object value;
+
+    public JavaDispatcherDefaultsTest(String method, Object value) {
+        this.method = method;
+        this.value = value;
+    }
+
+    @Test
+    public void testReflection() throws Exception {
+        DefaultValueSample sample = JavaDispatcher.of(DefaultValueSample.class, null, false).run();
+        assertThat(sample.getClass().getMethod(method).invoke(sample), is(value));
+    }
+
+    @Test
+    public void testGeneration() throws Exception {
+        DefaultValueSample sample = JavaDispatcher.of(DefaultValueSample.class, null, true).run();
+        assertThat(sample.getClass().getMethod(method).invoke(sample), is(value));
+    }
+
+    @JavaDispatcher.Defaults
+    @JavaDispatcher.Proxied("net.bytebuddy.Inexistent")
+    @SuppressWarnings("unused")
+    public interface DefaultValueSample {
+
+        void voidMethod();
+
+        boolean booleanMethod();
+
+        byte byteMethod();
+
+        short shortMethod();
+
+        char charMethod();
+
+        int intMethod();
+
+        long longMethod();
+
+        float floatMethod();
+
+        double doubleMethod();
+
+        Object objectMethod();
+
+        boolean[] booleanArrayMethod();
+
+        byte[] byteArrayMethod();
+
+        char[] charArrayMethod();
+
+        short[] shortArrayMethod();
+
+        int[] intArrayMethod();
+
+        long[] longArrayMethod();
+
+        float[] floatArrayMethod();
+
+        double[] doubleArrayMethod();
+
+        Object[] objectArrayMethod();
+
+        Object[][] objectMultiArrayMethod();
+    }
+}
+
+codex
+{"target":"net.bytebuddy.utility.dispatcher.JavaDispatcher.ForUnresolvedMethod","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/utility/dispatcher/JavaDispatcher.java`, `byte-buddy-dep/src/test/java/net/bytebuddy/utility/dispatcher/JavaDispatcherTest.java`, and `byte-buddy-dep/src/test/java/net/bytebuddy/utility/dispatcher/JavaDispatcherDefaultsTest.java`. `Dispatcher.ForUnresolvedMethod` is a small nested helper with one field and two methods; `rg` found only 4 instantiations, all inside `JavaDispatcher.java` for local error paths (`Type/Class/Method not available` and `Unexpected error`). No other source or test files reference the nested class directly, so it has low fan-in, and its fan-out is limited to a few JDK/ASM types (`IllegalStateException`, `MethodVisitor`, `Method`, `Opcodes`, `Type`, `MethodDescription`)."}
+tokens used
+15,288

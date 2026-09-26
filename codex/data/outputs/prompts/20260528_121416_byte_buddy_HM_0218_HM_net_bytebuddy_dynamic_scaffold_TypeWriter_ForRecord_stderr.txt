@@ -1,0 +1,649 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f26-9ad4-72b1-a2f9-017fd2f81e9f
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.dynamic.scaffold.TypeWriter.ForRecord` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.dynamic.scaffold.TypeWriter.ForRecord",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.dynamic.scaffold.TypeWriter.ForRecord`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the `TypeWriter.ForRecord` source and then checking its direct dependencies and who depends on it, so I can judge fan-in/fan-out from the codebase rather than from a metric tool.
+exec
+/bin/bash -lc "rg -n \"TypeWriter\\.ForRecord|ForRecord\" -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"class ForRecord|interface ForRecord|ForRecord\" src -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 253ms:
+rg: src: IO error for operation on src: No such file or directory (os error 2)
+
+ succeeded in 320ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/LatentMatcher.java:235:    class ForRecordComponentToken implements LatentMatcher<RecordComponentDescription> {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/LatentMatcher.java:247:        public ForRecordComponentToken(RecordComponentDescription.Token token) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2472:                    constraints.add(Constraint.ForRecord.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:3294:                enum ForRecord implements Constraint {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7145:                                recordComponentRegistry.prepend(new LatentMatcher.ForRecordComponentToken(token),
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:3058:                    public static LazyTypeDescription.GenericTypeToken.Resolution.ForRecordComponent extract(@MaybeNull String genericSignature) {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:3085:                    protected LazyTypeDescription.GenericTypeToken.Resolution.ForRecordComponent resolve() {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:3086:                        return new LazyTypeDescription.GenericTypeToken.Resolution.ForRecordComponent.Tokenized(recordComponentType);
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4190:                    enum Raw implements ForType, ForField, ForMethod, ForRecordComponent {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4478:                    enum Malformed implements ForType, ForField, ForMethod, ForRecordComponent {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4870:                    interface ForRecordComponent {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4890:                        class Tokenized implements ForRecordComponent {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:6766:                private final GenericTypeToken.Resolution.ForRecordComponent signatureResolution;
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:8837:                private final GenericTypeToken.Resolution.ForRecordComponent signatureResolution;
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:8862:                                                       GenericTypeToken.Resolution.ForRecordComponent signatureResolution,
+
+codex
+I found the target as an inner enum in `TypeWriter.java`, not a top-level class. Next I’m checking how large its dependency surface is and how many call sites reference it, to see whether it really acts as a dependency hub or just a small specialization.
+exec
+/bin/bash -lc "rg -n \"Constraint\\.ForRecord|ForRecord\\.INSTANCE\" -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "rg -n \"Constraint\\.ForRecord|ForRecord\\.INSTANCE|enum ForRecord implements Constraint\" byte-buddy-dep/src/main/java -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '3240,3365p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 197ms:
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertHandleInConstantPool() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertInvokeDynamic() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertSubRoutine() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertDynamicValueInConstantPool() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertNestMate() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertRecord() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertPermittedSubclass() {
+                        /* do nothing */
+                    }
+                }
+
+                /**
+                 * Represents the constraint of a record type.
+                 */
+                enum ForRecord implements Constraint {
+
+                    /**
+                     * The singleton instance.
+                     */
+                    INSTANCE;
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertField(String name, boolean isPublic, boolean isStatic, boolean isFinal, boolean isGeneric) {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertMethod(String name,
+                                             boolean isAbstract,
+                                             boolean isPublic,
+                                             boolean isPrivate,
+                                             boolean isStatic,
+                                             boolean isVirtual,
+                                             boolean isConstructor,
+                                             boolean isDefaultValueIncompatible,
+                                             boolean isGeneric) {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertAnnotation() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertTypeAnnotation() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertDefaultValue(String name) {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertDefaultMethodCall() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertType(int modifier, @MaybeNull String superClassInternalName, boolean definesInterfaces, boolean isGeneric) {
+                        if ((modifier & Opcodes.ACC_ABSTRACT) != 0) {
+                            throw new IllegalStateException("Cannot define a record class as abstract");
+                        } else if (!"java/lang/Record".equals(superClassInternalName)) {
+                            throw new IllegalStateException("A record must inherit from java.lang.Record");
+                        }
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertTypeInConstantPool() {
+
+ succeeded in 239ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2472:                    constraints.add(Constraint.ForRecord.INSTANCE);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:3294:                enum ForRecord implements Constraint {
+
+ succeeded in 293ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:2472:                    constraints.add(Constraint.ForRecord.INSTANCE);
+
+codex
+I’ve confirmed one direct use so far: the enum is instantiated once inside `TypeWriter` when the writer builds its constraint set. I’m reading the surrounding interface and call chain now to verify whether this is a broadly reused hub or just one branch in a larger state machine.
+exec
+/bin/bash -lc "sed -n '3200,3298p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "sed -n '2360,2495p' byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+            /**
+             * Creates a new signature key.
+             *
+             * @param internalName The represented internal name.
+             * @param descriptor   The represented descriptor.
+             */
+            public SignatureKey(String internalName, String descriptor) {
+                this.internalName = internalName;
+                this.descriptor = descriptor;
+            }
+
+            @Override
+            public boolean equals(@MaybeNull Object other) {
+                if (this == other) return true;
+                if (other == null || getClass() != other.getClass()) return false;
+                SignatureKey that = (SignatureKey) other;
+                return internalName.equals(that.internalName) && descriptor.equals(that.descriptor);
+            }
+
+            @Override
+            public int hashCode() {
+                return 17 + internalName.hashCode() + 31 * descriptor.hashCode();
+            }
+        }
+
+        /**
+         * A class validator that validates that a class only defines members that are appropriate for the sort of the generated class.
+         */
+        protected static class ValidatingClassVisitor extends ClassVisitor {
+
+            /**
+             * Indicates that a method has no method parameters.
+             */
+            private static final String NO_PARAMETERS = "()";
+
+            /**
+             * Indicates that a method returns void.
+             */
+            private static final String RETURNS_VOID = "V";
+
+            /**
+             * The descriptor of the {@link String} type.
+             */
+            private static final String STRING_DESCRIPTOR = "Ljava/lang/String;";
+
+            /**
+             * Indicates that a field is ignored.
+             */
+            @AlwaysNull
+            private static final FieldVisitor IGNORE_FIELD = null;
+
+            /**
+             * Indicates that a method is ignored.
+             */
+            @AlwaysNull
+            private static final MethodVisitor IGNORE_METHOD = null;
+
+            /**
+             * The constraint to assert the members against. The constraint is first defined when the general class information is visited.
+             */
+            @UnknownNull
+            private Constraint constraint;
+
+            /**
+             * Creates a validating class visitor.
+             *
+             * @param classVisitor The class visitor to which any calls are delegated to.
+             */
+            protected ValidatingClassVisitor(ClassVisitor classVisitor) {
+                super(OpenedClassReader.ASM_API, classVisitor);
+            }
+
+            /**
+             * Adds a validating visitor if type validation is enabled.
+             *
+             * @param classVisitor   The original class visitor.
+             * @param typeValidation The type validation state.
+             * @return A class visitor that applies type validation if this is required.
+             */
+            protected static ClassVisitor of(ClassVisitor classVisitor, TypeValidation typeValidation) {
+                return typeValidation.isEnabled()
+                        ? new ValidatingClassVisitor(classVisitor)
+                        : classVisitor;
+            }
+
+            @Override
+            public void visit(int version, int modifiers, String name, @MaybeNull String signature, @MaybeNull String superName, @MaybeNull String[] interfaceInternalName) {
+                ClassFileVersion classFileVersion = ClassFileVersion.ofMinorMajor(version);
+                List<Constraint> constraints = new ArrayList<Constraint>();
+                constraints.add(new Constraint.ForClassFileVersion(classFileVersion));
+                if (name.equals(ModuleDescription.MODULE_CLASS_NAME)) {
+                    constraints.add(Constraint.ForModuleType.INSTANCE);
+                } else if (name.endsWith('/' + PackageDescription.PACKAGE_CLASS_NAME)) {
+                    constraints.add(Constraint.ForPackageType.INSTANCE);
+                } else if ((modifiers & Opcodes.ACC_ANNOTATION) != 0) {
+                    if (!classFileVersion.isAtLeast(ClassFileVersion.JAVA_V5)) {
+                        throw new IllegalStateException("Cannot define an annotation type for class file version " + classFileVersion);
+                    }
+                    constraints.add(classFileVersion.isAtLeast(ClassFileVersion.JAVA_V8)
+                            ? Constraint.ForAnnotation.JAVA_8
+                            : Constraint.ForAnnotation.CLASSIC);
+                } else if ((modifiers & Opcodes.ACC_INTERFACE) != 0) {
+                    constraints.add(classFileVersion.isAtLeast(ClassFileVersion.JAVA_V8)
+                            ? Constraint.ForInterface.JAVA_8
+                            : Constraint.ForInterface.CLASSIC);
+                } else if ((modifiers & Opcodes.ACC_ABSTRACT) != 0) {
+                    constraints.add(Constraint.ForClass.ABSTRACT);
+                } else {
+                    constraints.add(Constraint.ForClass.MANIFEST);
+                }
+                boolean record;
+                if ((modifiers & Opcodes.ACC_RECORD) != 0) {
+                    constraints.add(Constraint.ForRecord.INSTANCE);
+                    record = true;
+                } else {
+                    record = false;
+                }
+                constraint = new Constraint.Compound(constraints);
+                constraint.assertType(modifiers,
+                        superName,
+                        interfaceInternalName != null,
+                        signature != null);
+                if (record) {
+                    constraint.assertRecord();
+                }
+                super.visit(version, modifiers, name, signature, superName, interfaceInternalName);
+            }
+
+            @Override
+            public void visitPermittedSubclass(String permittedSubclass) {
+                constraint.assertPermittedSubclass();
+                super.visitPermittedSubclass(permittedSubclass);
+            }
+
+            @Override
+            @MaybeNull
+
+exec
+/bin/bash -lc 'rg -n "interface Constraint|enum For.*implements Constraint|class For.*implements Constraint" byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 132ms:
+2607:            protected interface Constraint {
+2723:                enum ForClass implements Constraint {
+2875:                enum ForModuleType implements Constraint {
+2993:                enum ForPackageType implements Constraint {
+3130:                enum ForInterface implements Constraint {
+3294:                enum ForRecord implements Constraint {
+3429:                enum ForAnnotation implements Constraint {
+3592:                class ForClassFileVersion implements Constraint {
+
+ succeeded in 182ms:
+                    public void assertTypeAnnotation() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertDefaultValue(String name) {
+                        throw new IllegalStateException("Cannot define default value for '" + name + "' for non-annotation type");
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertDefaultMethodCall() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertType(int modifier, @MaybeNull String superClassInternalName, boolean definesInterfaces, boolean isGeneric) {
+                        if (!Type.getInternalName(Object.class).equals(superClassInternalName)) {
+                            throw new IllegalStateException("An interface must inherit from java.lang.Object");
+                        }
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertTypeInConstantPool() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertMethodTypeInConstantPool() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertHandleInConstantPool() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertInvokeDynamic() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertSubRoutine() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertDynamicValueInConstantPool() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertNestMate() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertRecord() {
+                        /* do nothing */
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public void assertPermittedSubclass() {
+                        /* do nothing */
+                    }
+                }
+
+                /**
+                 * Represents the constraint of a record type.
+                 */
+                enum ForRecord implements Constraint {
+
+                    /**
+                     * The singleton instance.
+                     */
+
+codex
+I have enough to make the architectural call, but I’m grabbing line numbers now so the justification can point to exact evidence: one call site, one enum definition, and the surrounding validation path in `TypeWriter.java`.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java | sed -n '3288,3348p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java | sed -n '2607,2660p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java | sed -n '2460,2480p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 235ms:
+  3288	                    }
+  3289	                }
+  3290	
+  3291	                /**
+  3292	                 * Represents the constraint of a record type.
+  3293	                 */
+  3294	                enum ForRecord implements Constraint {
+  3295	
+  3296	                    /**
+  3297	                     * The singleton instance.
+  3298	                     */
+  3299	                    INSTANCE;
+  3300	
+  3301	                    /**
+  3302	                     * {@inheritDoc}
+  3303	                     */
+  3304	                    public void assertField(String name, boolean isPublic, boolean isStatic, boolean isFinal, boolean isGeneric) {
+  3305	                        /* do nothing */
+  3306	                    }
+  3307	
+  3308	                    /**
+  3309	                     * {@inheritDoc}
+  3310	                     */
+  3311	                    public void assertMethod(String name,
+  3312	                                             boolean isAbstract,
+  3313	                                             boolean isPublic,
+  3314	                                             boolean isPrivate,
+  3315	                                             boolean isStatic,
+  3316	                                             boolean isVirtual,
+  3317	                                             boolean isConstructor,
+  3318	                                             boolean isDefaultValueIncompatible,
+  3319	                                             boolean isGeneric) {
+  3320	                        /* do nothing */
+  3321	                    }
+  3322	
+  3323	                    /**
+  3324	                     * {@inheritDoc}
+  3325	                     */
+  3326	                    public void assertAnnotation() {
+  3327	                        /* do nothing */
+  3328	                    }
+  3329	
+  3330	                    /**
+  3331	                     * {@inheritDoc}
+  3332	                     */
+  3333	                    public void assertTypeAnnotation() {
+  3334	                        /* do nothing */
+  3335	                    }
+  3336	
+  3337	                    /**
+  3338	                     * {@inheritDoc}
+  3339	                     */
+  3340	                    public void assertDefaultValue(String name) {
+  3341	                        /* do nothing */
+  3342	                    }
+  3343	
+  3344	                    /**
+  3345	                     * {@inheritDoc}
+  3346	                     */
+  3347	                    public void assertDefaultMethodCall() {
+  3348	                        /* do nothing */
+
+ succeeded in 256ms:
+  2460	                            : Constraint.ForAnnotation.CLASSIC);
+  2461	                } else if ((modifiers & Opcodes.ACC_INTERFACE) != 0) {
+  2462	                    constraints.add(classFileVersion.isAtLeast(ClassFileVersion.JAVA_V8)
+  2463	                            ? Constraint.ForInterface.JAVA_8
+  2464	                            : Constraint.ForInterface.CLASSIC);
+  2465	                } else if ((modifiers & Opcodes.ACC_ABSTRACT) != 0) {
+  2466	                    constraints.add(Constraint.ForClass.ABSTRACT);
+  2467	                } else {
+  2468	                    constraints.add(Constraint.ForClass.MANIFEST);
+  2469	                }
+  2470	                boolean record;
+  2471	                if ((modifiers & Opcodes.ACC_RECORD) != 0) {
+  2472	                    constraints.add(Constraint.ForRecord.INSTANCE);
+  2473	                    record = true;
+  2474	                } else {
+  2475	                    record = false;
+  2476	                }
+  2477	                constraint = new Constraint.Compound(constraints);
+  2478	                constraint.assertType(modifiers,
+  2479	                        superName,
+  2480	                        interfaceInternalName != null,
+
+ succeeded in 282ms:
+  2607	            protected interface Constraint {
+  2608	
+  2609	                /**
+  2610	                 * Asserts if the type can legally represent a package description.
+  2611	                 *
+  2612	                 * @param modifier               The modifier that is to be written to the type.
+  2613	                 * @param superClassInternalName The internal name of the super class or {@code null} if none.
+  2614	                 * @param definesInterfaces      {@code true} if this type implements at least one interface.
+  2615	                 * @param isGeneric              {@code true} if this type defines a generic type signature.
+  2616	                 */
+  2617	                void assertType(int modifier, @MaybeNull String superClassInternalName, boolean definesInterfaces, boolean isGeneric);
+  2618	
+  2619	                /**
+  2620	                 * Asserts a field for being valid.
+  2621	                 *
+  2622	                 * @param name      The name of the field.
+  2623	                 * @param isPublic  {@code true} if this field is public.
+  2624	                 * @param isStatic  {@code true} if this field is static.
+  2625	                 * @param isFinal   {@code true} if this field is final.
+  2626	                 * @param isGeneric {@code true} if this field defines a generic signature.
+  2627	                 */
+  2628	                void assertField(String name, boolean isPublic, boolean isStatic, boolean isFinal, boolean isGeneric);
+  2629	
+  2630	                /**
+  2631	                 * Asserts a method for being valid.
+  2632	                 *
+  2633	                 * @param name                       The name of the method.
+  2634	                 * @param isAbstract                 {@code true} if the method is abstract.
+  2635	                 * @param isPublic                   {@code true} if this method is public.
+  2636	                 * @param isPrivate                  {@code true} if this method is private.
+  2637	                 * @param isStatic                   {@code true} if this method is static.
+  2638	                 * @param isVirtual                  {@code true} if this method is virtual.
+  2639	                 * @param isConstructor              {@code true} if this method is a constructor.
+  2640	                 * @param isDefaultValueIncompatible {@code true} if a method's signature cannot describe an annotation property method.
+  2641	                 * @param isGeneric                  {@code true} if this method defines a generic signature.
+  2642	                 */
+  2643	                void assertMethod(String name,
+  2644	                                  boolean isAbstract,
+  2645	                                  boolean isPublic,
+  2646	                                  boolean isPrivate,
+  2647	                                  boolean isStatic,
+  2648	                                  boolean isVirtual,
+  2649	                                  boolean isConstructor,
+  2650	                                  boolean isDefaultValueIncompatible,
+  2651	                                  boolean isGeneric);
+  2652	
+  2653	                /**
+  2654	                 * Asserts the legitimacy of an annotation for the instrumented type.
+  2655	                 */
+  2656	                void assertAnnotation();
+  2657	
+  2658	                /**
+  2659	                 * Asserts the legitimacy of a type annotation for the instrumented type.
+  2660	                 */
+
+codex
+{"target":"net.bytebuddy.dynamic.scaffold.TypeWriter.ForRecord","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java`. `ForRecord` is a small nested enum at lines 3291-3348, and the only direct use found in the repo is at line 2472 where `ValidatingClassVisitor.visit(...)` adds `Constraint.ForRecord.INSTANCE` when `ACC_RECORD` is set. A repo-wide `rg` search for `Constraint.ForRecord` / `ForRecord.INSTANCE` found no other Java references. The enum’s behavior is also narrow: most `Constraint` methods are no-ops, and its only substantive check is that a record does not use `ACC_ABSTRACT` and inherits from `java/lang/Record`. This shows low fan-in and low fan-out, not a dependency hub."}
+tokens used
+14,149

@@ -1,0 +1,2209 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f51-b606-7691-985d-768bd487e186
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.gson.JsonArray` in the repository located at:
+
+`data/repositories/google/gson`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.gson.JsonArray",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.gson.JsonArray`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `com.google.gson.JsonArray` and tracing its direct dependencies and dependents to judge fan-in/fan-out from source evidence only.
+exec
+/bin/bash -lc "rg --files -g 'JsonArray.java' -g '*.java' src test" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "rg -n \"class JsonArray|interface JsonArray|new JsonArray\\(|JsonArray\" src test -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ exited 2 in 275ms:
+rg: src: No such file or directory (os error 2)
+rg: test: No such file or directory (os error 2)
+
+ exited 2 in 312ms:
+rg: src: No such file or directory (os error 2)
+rg: test: No such file or directory (os error 2)
+
+codex
+The repository layout is different from a standard `src/test` tree, so I’m identifying the actual Java source roots first and then I’ll trace `JsonArray` usage from there.
+exec
+/bin/bash -lc "rg --files -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc 'pwd && ls -la' in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 231ms:
+/data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+total 216
+drwxrwxr-x 12 henrique henrique  4096 May 26 19:29 .
+drwxrwxr-x  6 henrique henrique  4096 May 26 19:41 ..
+drwxrwxr-x  8 henrique henrique  4096 May 26 19:29 .git
+-rw-rw-r--  1 henrique henrique   184 May 26 19:29 .git-blame-ignore-revs
+drwxrwxr-x  4 henrique henrique  4096 May 26 19:29 .github
+-rw-rw-r--  1 henrique henrique   162 May 26 19:29 .gitignore
+drwxrwxr-x  2 henrique henrique  4096 May 26 19:29 .mvn
+-rw-rw-r--  1 henrique henrique 23605 May 26 19:29 CHANGELOG.md
+-rw-rw-r--  1 henrique henrique  6912 May 26 19:29 GsonDesignDocument.md
+-rw-rw-r--  1 henrique henrique 11358 May 26 19:29 LICENSE
+-rw-rw-r--  1 henrique henrique  7269 May 26 19:29 README.md
+-rw-rw-r--  1 henrique henrique  6458 May 26 19:29 ReleaseProcess.md
+-rw-rw-r--  1 henrique henrique 34978 May 26 19:29 Troubleshooting.md
+-rw-rw-r--  1 henrique henrique 34815 May 26 19:29 UserGuide.md
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 extras
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 gson
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 metrics
+-rw-rw-r--  1 henrique henrique 27295 May 26 19:29 pom.xml
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 proto
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 test-graal-native-image
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 test-jpms
+drwxrwxr-x  3 henrique henrique  4096 May 26 19:29 test-shrinker
+
+ succeeded in 285ms:
+proto/src/test/java/com/google/gson/protobuf/functional/ProtosWithAnnotationsAndJsonNamesTest.java
+proto/src/test/java/com/google/gson/protobuf/functional/ProtosWithComplexAndRepeatedFieldsTest.java
+proto/src/test/java/com/google/gson/protobuf/functional/ProtosWithPrimitiveTypesTest.java
+proto/src/test/java/com/google/gson/protobuf/functional/ProtosWithAnnotationsTest.java
+proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java
+test-shrinker/src/test/java/com/google/gson/it/ShrinkingIT.java
+test-shrinker/src/main/java/com/example/ClassWithHasArgsConstructor.java
+test-shrinker/src/main/java/com/example/Main.java
+test-shrinker/src/main/java/com/example/InterfaceWithImplementation.java
+test-shrinker/src/main/java/com/example/ClassWithAdapter.java
+test-shrinker/src/main/java/com/example/ClassWithNamedFields.java
+test-shrinker/src/main/java/com/example/UnusedClass.java
+test-shrinker/src/main/java/com/example/ClassWithVersionAnnotations.java
+test-shrinker/src/main/java/com/example/ClassWithNoArgsConstructor.java
+test-shrinker/src/main/java/com/example/ClassWithUnreferencedNoArgsConstructor.java
+test-shrinker/src/main/java/com/example/ClassWithUnreferencedHasArgsConstructor.java
+test-shrinker/src/main/java/com/example/TestExecutor.java
+test-shrinker/src/main/java/com/example/NoSerializedNameMain.java
+test-shrinker/src/main/java/com/example/ClassWithExposeAnnotation.java
+test-shrinker/src/main/java/com/example/EnumClass.java
+test-shrinker/src/main/java/com/example/GenericClasses.java
+test-shrinker/src/main/java/com/example/ClassWithSerializedName.java
+test-shrinker/src/main/java/com/example/ClassWithJsonAdapterAnnotation.java
+test-shrinker/src/main/java/com/example/EnumClassWithSerializedName.java
+test-graal-native-image/src/test/java/com/google/gson/native_test/Java17RecordReflectionTest.java
+test-graal-native-image/src/test/java/com/google/gson/native_test/ReflectionTest.java
+test-jpms/src/test/java/module-info.java
+test-jpms/src/test/java/com/google/gson/jpms_test/opened/ReflectionTest.java
+test-jpms/src/test/java/com/google/gson/jpms_test/ReflectionInaccessibleTest.java
+test-jpms/src/test/java/com/google/gson/jpms_test/ModuleTest.java
+test-jpms/src/test/java/com/google/gson/jpms_test/ExportedPackagesTest.java
+test-jpms/src/main/java/module-info.java
+metrics/src/main/java/com/google/gson/metrics/BagOfPrimitives.java
+metrics/src/main/java/com/google/gson/metrics/CollectionsDeserializationBenchmark.java
+metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java
+metrics/src/main/java/com/google/gson/metrics/BagOfPrimitivesDeserializationBenchmark.java
+metrics/src/main/java/com/google/gson/metrics/NonUploadingCaliperRunner.java
+metrics/src/main/java/com/google/gson/metrics/SerializationBenchmark.java
+gson/src/test/java/com/google/gson/GenericArrayTypeTest.java
+gson/src/test/java/com/google/gson/VersionExclusionStrategyTest.java
+gson/src/test/java/com/google/gson/LongSerializationPolicyTest.java
+gson/src/test/java/com/google/gson/OverrideCoreTypeAdaptersTest.java
+gson/src/test/java/com/google/gson/GsonBuilderTest.java
+gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java
+gson/src/test/java/com/google/gson/GsonTypeAdapterTest.java
+gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java
+gson/src/test/java/com/google/gson/MixedStreamTest.java
+gson/src/test/java/com/google/gson/SubsetTest.java
+gson/src/test/java/com/google/gson/InnerClassExclusionStrategyTest.java
+gson/src/test/java/com/google/gson/JsonParserParameterizedTest.java
+extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java
+extras/src/test/java/com/google/gson/interceptors/InterceptorTest.java
+gson/src/test/java/com/google/gson/functional/NamingPolicyTest.java
+extras/src/test/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactoryTest.java
+extras/src/test/java/com/google/gson/typeadapters/PostConstructAdapterFactoryTest.java
+extras/src/test/java/com/google/gson/typeadapters/UtcDateTypeAdapterTest.java
+extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java
+gson/src/test/java/com/google/gson/functional/TypeAdapterRuntimeTypeWrapperTest.java
+gson/src/test/java/com/google/gson/functional/FieldNamingTest.java
+gson/src/test/java/com/google/gson/functional/EnumWithObfuscatedTest.java
+gson/src/test/java/com/google/gson/functional/TypeVariableTest.java
+gson/src/test/java/com/google/gson/functional/UncategorizedTest.java
+gson/src/test/java/com/google/gson/functional/ReflectionAccessFilterTest.java
+gson/src/test/java/com/google/gson/functional/ReusedTypeVariablesFullyResolveTest.java
+gson/src/test/java/com/google/gson/functional/MapAsArrayTypeAdapterTest.java
+gson/src/test/java/com/google/gson/functional/TypeAdapterPrecedenceTest.java
+gson/src/test/java/com/google/gson/functional/CustomSerializerTest.java
+gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnClassesTest.java
+gson/src/test/java/com/google/gson/functional/RuntimeTypeAdapterFactoryFunctionalTest.java
+gson/src/test/java/com/google/gson/functional/ArrayTest.java
+gson/src/test/java/com/google/gson/functional/StringTest.java
+gson/src/test/java/com/google/gson/functional/ReflectionAccessTest.java
+gson/src/test/java/com/google/gson/functional/PrintFormattingTest.java
+gson/src/test/java/com/google/gson/functional/CustomDeserializerTest.java
+gson/src/test/java/com/google/gson/functional/SecurityTest.java
+gson/src/test/java/com/google/gson/functional/MapTest.java
+gson/src/test/java/com/google/gson/functional/SerializedNameTest.java
+gson/src/test/java/com/google/gson/functional/PrimitiveCharacterTest.java
+gson/src/test/java/com/google/gson/functional/PrimitiveTest.java
+gson/src/test/java/com/google/gson/functional/EnumTest.java
+gson/src/test/java/com/google/gson/functional/CustomTypeAdaptersTest.java
+gson/src/test/java/com/google/gson/functional/PrettyPrintingTest.java
+gson/src/test/java/com/google/gson/functional/MoreSpecificTypeSerializationTest.java
+gson/src/test/java/com/google/gson/functional/ParameterizedTypesTest.java
+gson/src/test/java/com/google/gson/functional/ReadersWritersTest.java
+gson/src/test/java/com/google/gson/functional/NumberLimitsTest.java
+gson/src/test/java/com/google/gson/functional/EscapingTest.java
+gson/src/test/java/com/google/gson/functional/InterfaceTest.java
+gson/src/test/java/com/google/gson/functional/FieldExclusionTest.java
+gson/src/test/java/com/google/gson/functional/FormattingStyleTest.java
+gson/src/test/java/com/google/gson/functional/JavaUtilTest.java
+gson/src/test/java/com/google/gson/functional/GsonVersionDiagnosticsTest.java
+gson/src/test/java/com/google/gson/functional/JsonTreeTest.java
+gson/src/test/java/com/google/gson/functional/CollectionTest.java
+gson/src/test/java/com/google/gson/functional/JsonAdapterSerializerDeserializerTest.java
+gson/src/test/java/com/google/gson/functional/JavaUtilConcurrentAtomicTest.java
+gson/src/test/java/com/google/gson/functional/StreamingTypeAdaptersTest.java
+gson/src/test/java/com/google/gson/functional/ExposeFieldsTest.java
+gson/src/test/java/com/google/gson/functional/CircularReferenceTest.java
+gson/src/test/java/com/google/gson/functional/LeniencyTest.java
+gson/src/test/java/com/google/gson/functional/InstanceCreatorTest.java
+gson/src/test/java/com/google/gson/functional/Java17RecordTest.java
+gson/src/test/java/com/google/gson/functional/InternationalizationTest.java
+gson/src/test/java/com/google/gson/functional/DelegateTypeAdapterTest.java
+gson/src/test/java/com/google/gson/functional/TreeTypeAdaptersTest.java
+gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnFieldsTest.java
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java
+gson/src/test/java/com/google/gson/functional/RawSerializationTest.java
+gson/src/test/java/com/google/gson/functional/InheritanceTest.java
+gson/src/test/java/com/google/gson/functional/VersioningTest.java
+gson/src/test/java/com/google/gson/functional/ObjectTest.java
+gson/src/test/java/com/google/gson/functional/ExclusionStrategyFunctionalTest.java
+gson/src/test/java/com/google/gson/functional/NullObjectAndFieldTest.java
+gson/src/test/java/com/google/gson/functional/ConcurrencyTest.java
+gson/src/test/java/com/google/gson/functional/ToNumberPolicyFunctionalTest.java
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java
+gson/src/test/java/com/google/gson/functional/TypeHierarchyAdapterTest.java
+extras/src/main/java/com/google/gson/extras/examples/rawcollections/RawCollectionsExample.java
+gson/src/test/java/com/google/gson/integration/OSGiManifestIT.java
+gson/src/test/java/com/google/gson/CommentsTest.java
+gson/src/test/java/com/google/gson/JsonPrimitiveTest.java
+gson/src/test/java/com/google/gson/ParameterizedTypeTest.java
+gson/src/test/java/com/google/gson/TypeAdapterTest.java
+gson/src/test/java/com/google/gson/JsonObjectTest.java
+gson/src/test/java/com/google/gson/JsonStreamParserTest.java
+gson/src/test/java/com/google/gson/DefaultMapJsonSerializerTest.java
+gson/src/test/java/com/google/gson/PrimitiveTypeAdapter.java
+gson/src/test/java/com/google/gson/DefaultInetAddressTypeAdapterTest.java
+gson/src/test/java/com/google/gson/ExposeAnnotationExclusionStrategyTest.java
+gson/src/test/java/com/google/gson/JsonObjectAsMapSuiteTest.java
+gson/src/test/java/com/google/gson/ToNumberPolicyTest.java
+gson/src/test/java/com/google/gson/FieldAttributesTest.java
+gson/src/test/java/com/google/gson/common/TestTypes.java
+gson/src/test/java/com/google/gson/common/MoreAsserts.java
+gson/src/test/java/com/google/gson/stream/JsonWriterTest.java
+gson/src/test/java/com/google/gson/stream/JsonReaderPathTest.java
+gson/src/test/java/com/google/gson/stream/JsonReaderTest.java
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java
+gson/src/test/java/com/google/gson/JsonArrayTest.java
+gson/src/test/java/com/google/gson/ObjectTypeAdapterTest.java
+gson/src/test/java/com/google/gson/GsonTest.java
+gson/src/test/java/com/google/gson/JsonNullTest.java
+gson/src/test/java/com/google/gson/JavaSerializationTest.java
+gson/src/test/java/com/google/gson/metrics/PerformanceTest.java
+gson/src/test/java/com/google/gson/ObjectTypeAdapterParameterizedTest.java
+extras/src/main/java/com/google/gson/interceptors/JsonPostDeserializer.java
+extras/src/main/java/com/google/gson/interceptors/Intercept.java
+extras/src/main/java/com/google/gson/interceptors/InterceptorFactory.java
+gson/src/test/java/com/google/gson/internal/bind/RecursiveTypesResolveTest.java
+gson/src/test/java/com/google/gson/internal/bind/Java17ReflectiveTypeAdapterFactoryTest.java
+gson/src/test/java/com/google/gson/internal/bind/JsonTreeWriterTest.java
+extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java
+extras/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java
+extras/src/main/java/com/google/gson/typeadapters/UtcDateTypeAdapter.java
+gson/src/test/java/com/google/gson/internal/bind/util/ISO8601UtilsTest.java
+gson/src/test/java/com/google/gson/internal/bind/JsonElementReaderTest.java
+gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java
+gson/src/test/java/com/google/gson/internal/bind/DefaultDateTypeAdapterTest.java
+gson/src/test/java/com/google/gson/internal/LazilyParsedNumberTest.java
+gson/src/test/java/com/google/gson/internal/ConstructorConstructorTest.java
+gson/src/test/java/com/google/gson/internal/GsonBuildConfigTest.java
+gson/src/test/java/com/google/gson/internal/LinkedTreeMapTest.java
+gson/src/test/java/com/google/gson/internal/UnsafeAllocatorInstantiationTest.java
+gson/src/test/java/com/google/gson/FieldNamingPolicyTest.java
+gson/src/test/java/com/google/gson/ParameterizedTypeFixtures.java
+gson/src/test/java/com/google/gson/JsonParserTest.java
+gson/src/test/java/com/google/gson/JsonObjectAsMapTest.java
+gson/src/test/java/com/google/gson/internal/sql/SqlTypesSupportTest.java
+gson/src/test/java/com/google/gson/internal/sql/SqlTypesGsonTest.java
+gson/src/test/java/com/google/gson/internal/reflect/Java17ReflectionHelperTest.java
+gson/src/test/java/com/google/gson/internal/LinkedTreeMapSuiteTest.java
+gson/src/test/java/com/google/gson/internal/JavaVersionTest.java
+gson/src/test/java/com/google/gson/internal/GsonTypesTest.java
+gson/src/test/java/com/google/gson/internal/StreamsTest.java
+gson/src/main/java-templates/com/google/gson/internal/GsonBuildConfig.java
+gson/src/main/java/module-info.java
+gson/src/main/java/com/google/gson/TypeAdapterFactory.java
+gson/src/main/java/com/google/gson/GsonBuilder.java
+gson/src/main/java/com/google/gson/JsonSyntaxException.java
+gson/src/main/java/com/google/gson/JsonNull.java
+gson/src/main/java/com/google/gson/JsonSerializationContext.java
+gson/src/main/java/com/google/gson/reflect/TypeToken.java
+gson/src/main/java/com/google/gson/reflect/package-info.java
+gson/src/main/java/com/google/gson/LongSerializationPolicy.java
+gson/src/main/java/com/google/gson/Strictness.java
+gson/src/main/java/com/google/gson/FieldNamingStrategy.java
+gson/src/main/java/com/google/gson/annotations/Expose.java
+gson/src/main/java/com/google/gson/annotations/JsonAdapter.java
+gson/src/main/java/com/google/gson/annotations/Since.java
+gson/src/main/java/com/google/gson/annotations/Until.java
+gson/src/main/java/com/google/gson/annotations/SerializedName.java
+gson/src/main/java/com/google/gson/annotations/package-info.java
+gson/src/main/java/com/google/gson/JsonParseException.java
+gson/src/main/java/com/google/gson/FieldNamingPolicy.java
+gson/src/main/java/com/google/gson/Gson.java
+gson/src/main/java/com/google/gson/JsonDeserializationContext.java
+gson/src/main/java/com/google/gson/ExclusionStrategy.java
+gson/src/main/java/com/google/gson/FieldAttributes.java
+gson/src/main/java/com/google/gson/JsonPrimitive.java
+gson/src/main/java/com/google/gson/ToNumberPolicy.java
+gson/src/main/java/com/google/gson/TypeAdapter.java
+gson/src/main/java/com/google/gson/JsonElement.java
+gson/src/main/java/com/google/gson/stream/JsonWriter.java
+gson/src/main/java/com/google/gson/stream/MalformedJsonException.java
+gson/src/main/java/com/google/gson/stream/JsonScope.java
+gson/src/main/java/com/google/gson/stream/JsonReader.java
+gson/src/main/java/com/google/gson/stream/package-info.java
+gson/src/main/java/com/google/gson/stream/JsonToken.java
+gson/src/main/java/com/google/gson/ToNumberStrategy.java
+gson/src/main/java/com/google/gson/JsonDeserializer.java
+gson/src/main/java/com/google/gson/InstanceCreator.java
+gson/src/main/java/com/google/gson/JsonStreamParser.java
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java
+gson/src/main/java/com/google/gson/package-info.java
+gson/src/main/java/com/google/gson/JsonParser.java
+gson/src/main/java/com/google/gson/internal/PreJava9DateFormatProvider.java
+gson/src/main/java/com/google/gson/internal/bind/JavaTimeTypeAdapters.java
+gson/src/main/java/com/google/gson/internal/bind/IgnoreJRERequirement.java
+gson/src/main/java/com/google/gson/internal/bind/ObjectTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/bind/JsonElementTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java
+gson/src/main/java/com/google/gson/internal/bind/JsonAdapterAnnotationTypeAdapterFactory.java
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java
+gson/src/main/java/com/google/gson/internal/bind/TypeAdapterRuntimeTypeWrapper.java
+gson/src/main/java/com/google/gson/internal/bind/DefaultDateTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/bind/NumberTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/bind/SerializationDelegatingTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/bind/util/ISO8601Utils.java
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java
+gson/src/main/java/com/google/gson/internal/bind/TreeTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java
+gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java
+gson/src/main/java/com/google/gson/internal/bind/ArrayTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/bind/EnumTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/LazilyParsedNumber.java
+gson/src/main/java/com/google/gson/internal/TroubleshootingGuide.java
+gson/src/main/java/com/google/gson/internal/sql/SqlTimeTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/sql/SqlTimestampTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/sql/SqlDateTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/sql/SqlTypesSupport.java
+gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java
+gson/src/main/java/com/google/gson/internal/NonNullElementWrapperList.java
+gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java
+gson/src/main/java/com/google/gson/internal/Streams.java
+gson/src/main/java/com/google/gson/internal/Excluder.java
+gson/src/main/java/com/google/gson/internal/NumberLimits.java
+gson/src/main/java/com/google/gson/internal/JavaVersion.java
+gson/src/main/java/com/google/gson/internal/Primitives.java
+gson/src/main/java/com/google/gson/internal/UnsafeAllocator.java
+gson/src/main/java/com/google/gson/internal/JsonReaderInternalAccess.java
+gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java
+gson/src/main/java/com/google/gson/internal/GsonTypes.java
+gson/src/main/java/com/google/gson/internal/package-info.java
+gson/src/main/java/com/google/gson/internal/ObjectConstructor.java
+gson/src/main/java/com/google/gson/internal/LinkedTreeMap.java
+gson/src/main/java/com/google/gson/FormattingStyle.java
+gson/src/main/java/com/google/gson/JsonArray.java
+gson/src/main/java/com/google/gson/JsonSerializer.java
+gson/src/main/java/com/google/gson/JsonIOException.java
+gson/src/main/java/com/google/gson/JsonObject.java
+
+codex
+I’ve found the class under `gson/src/main/java/com/google/gson/JsonArray.java`. Next I’m reading the class itself plus direct references in production code and tests to estimate both outgoing and incoming dependency pressure.
+exec
+/bin/bash -lc "sed -n '1,260p' gson/src/main/java/com/google/gson/JsonArray.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "rg -n \"\\bJsonArray\\b\" gson/src/main/java gson/src/test/java extras/src/main/java extras/src/test/java proto/src/main/java proto/src/test/java test-graal-native-image/src test-jpms/src test-shrinker/src -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 185ms:
+/*
+ * Copyright (C) 2008 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson;
+
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.gson.internal.NonNullElementWrapperList;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+/**
+ * A class representing an array type in JSON. An array is a list of {@link JsonElement}s each of
+ * which can be of a different type. This is an ordered list, meaning that the order in which
+ * elements are added is preserved. This class does not support {@code null} values. If {@code null}
+ * is provided as element argument to any of the methods, it is converted to a {@link JsonNull}.
+ *
+ * <p>{@code JsonArray} only implements the {@link Iterable} interface but not the {@link List}
+ * interface. A {@code List} view of it can be obtained with {@link #asList()}.
+ *
+ * <p>See the {@link JsonElement} documentation for details on how to convert {@code JsonArray} and
+ * generally any {@code JsonElement} from and to JSON.
+ *
+ * @author Inderjeet Singh
+ * @author Joel Leitch
+ */
+public final class JsonArray extends JsonElement implements Iterable<JsonElement> {
+  private final ArrayList<JsonElement> elements;
+
+  /** Creates an empty JsonArray. */
+  @SuppressWarnings("deprecation") // superclass constructor
+  public JsonArray() {
+    elements = new ArrayList<>();
+  }
+
+  /**
+   * Creates an empty JsonArray with the desired initial capacity.
+   *
+   * @param capacity initial capacity.
+   * @throws IllegalArgumentException if the {@code capacity} is negative
+   * @since 2.8.1
+   */
+  @SuppressWarnings("deprecation") // superclass constructor
+  public JsonArray(int capacity) {
+    elements = new ArrayList<>(capacity);
+  }
+
+  /**
+   * Creates a deep copy of this element and all its children.
+   *
+   * @since 2.8.2
+   */
+  @Override
+  public JsonArray deepCopy() {
+    if (!elements.isEmpty()) {
+      JsonArray result = new JsonArray(elements.size());
+      for (JsonElement element : elements) {
+        result.add(element.deepCopy());
+      }
+      return result;
+    }
+    return new JsonArray();
+  }
+
+  /**
+   * Adds the specified boolean to self.
+   *
+   * @param bool the boolean that needs to be added to the array.
+   * @since 2.4
+   */
+  public void add(Boolean bool) {
+    elements.add(bool == null ? JsonNull.INSTANCE : new JsonPrimitive(bool));
+  }
+
+  /**
+   * Adds the specified character to self.
+   *
+   * @param character the character that needs to be added to the array.
+   * @since 2.4
+   */
+  public void add(Character character) {
+    elements.add(character == null ? JsonNull.INSTANCE : new JsonPrimitive(character));
+  }
+
+  /**
+   * Adds the specified number to self.
+   *
+   * @param number the number that needs to be added to the array.
+   * @since 2.4
+   */
+  public void add(Number number) {
+    elements.add(number == null ? JsonNull.INSTANCE : new JsonPrimitive(number));
+  }
+
+  /**
+   * Adds the specified string to self.
+   *
+   * @param string the string that needs to be added to the array.
+   * @since 2.4
+   */
+  public void add(String string) {
+    elements.add(string == null ? JsonNull.INSTANCE : new JsonPrimitive(string));
+  }
+
+  /**
+   * Adds the specified element to self.
+   *
+   * @param element the element that needs to be added to the array.
+   */
+  public void add(JsonElement element) {
+    if (element == null) {
+      element = JsonNull.INSTANCE;
+    }
+    elements.add(element);
+  }
+
+  /**
+   * Adds all the elements of the specified array to self.
+   *
+   * @param array the array whose elements need to be added to the array.
+   */
+  public void addAll(JsonArray array) {
+    elements.addAll(array.elements);
+  }
+
+  /**
+   * Replaces the element at the specified position in this array with the specified element.
+   *
+   * @param index index of the element to replace
+   * @param element element to be stored at the specified position
+   * @return the element previously at the specified position
+   * @throws IndexOutOfBoundsException if the specified index is outside the array bounds
+   */
+  @CanIgnoreReturnValue
+  public JsonElement set(int index, JsonElement element) {
+    return elements.set(index, element == null ? JsonNull.INSTANCE : element);
+  }
+
+  /**
+   * Removes the first occurrence of the specified element from this array, if it is present. If the
+   * array does not contain the element, it is unchanged.
+   *
+   * @param element element to be removed from this array, if present
+   * @return true if this array contained the specified element, false otherwise
+   * @since 2.3
+   */
+  @CanIgnoreReturnValue
+  public boolean remove(JsonElement element) {
+    return elements.remove(element);
+  }
+
+  /**
+   * Removes the element at the specified position in this array. Shifts any subsequent elements to
+   * the left (subtracts one from their indices). Returns the element that was removed from the
+   * array.
+   *
+   * @param index index the index of the element to be removed
+   * @return the element previously at the specified position
+   * @throws IndexOutOfBoundsException if the specified index is outside the array bounds
+   * @since 2.3
+   */
+  @CanIgnoreReturnValue
+  public JsonElement remove(int index) {
+    return elements.remove(index);
+  }
+
+  /**
+   * Returns true if this array contains the specified element.
+   *
+   * @return true if this array contains the specified element.
+   * @param element whose presence in this array is to be tested
+   * @since 2.3
+   */
+  public boolean contains(JsonElement element) {
+    return elements.contains(element);
+  }
+
+  /**
+   * Returns the number of elements in the array.
+   *
+   * @return the number of elements in the array.
+   */
+  public int size() {
+    return elements.size();
+  }
+
+  /**
+   * Returns true if the array is empty.
+   *
+   * @return true if the array is empty.
+   * @since 2.8.7
+   */
+  public boolean isEmpty() {
+    return elements.isEmpty();
+  }
+
+  /**
+   * Returns an iterator to navigate the elements of the array. Since the array is an ordered list,
+   * the iterator navigates the elements in the order they were inserted.
+   *
+   * @return an iterator to navigate the elements of the array.
+   */
+  @Override
+  public Iterator<JsonElement> iterator() {
+    return elements.iterator();
+  }
+
+  /**
+   * Returns the i-th element of the array.
+   *
+   * @param i the index of the element that is being sought.
+   * @return the element present at the i-th index.
+   * @throws IndexOutOfBoundsException if {@code i} is negative or greater than or equal to the
+   *     {@link #size()} of the array.
+   */
+  public JsonElement get(int i) {
+    return elements.get(i);
+  }
+
+  private JsonElement getAsSingleElement() {
+    int size = elements.size();
+    if (size == 1) {
+      return elements.get(0);
+    }
+    throw new IllegalStateException("Array must have size 1, but has size " + size);
+  }
+
+  /**
+   * Convenience method to get this array as a {@link Number} if it contains a single element. This
+   * method calls {@link JsonElement#getAsNumber()} on the element, therefore any of the exceptions
+   * declared by that method can occur.
+   *
+   * @return this element as a number if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   */
+  @Override
+  public Number getAsNumber() {
+    return getAsSingleElement().getAsNumber();
+  }
+
+  /**
+   * Convenience method to get this array as a {@link String} if it contains a single element. This
+   * method calls {@link JsonElement#getAsString()} on the element, therefore any of the exceptions
+   * declared by that method can occur.
+   *
+
+ succeeded in 284ms:
+extras/src/main/java/com/google/gson/extras/examples/rawcollections/RawCollectionsExample.java:19:import com.google.gson.JsonArray;
+extras/src/main/java/com/google/gson/extras/examples/rawcollections/RawCollectionsExample.java:50:    JsonArray array = JsonParser.parseString(json).getAsJsonArray();
+gson/src/test/java/com/google/gson/JsonParserTest.java:91:    JsonArray array = e.getAsJsonArray();
+gson/src/test/java/com/google/gson/JsonParserTest.java:107:    JsonArray current = JsonParser.parseReader(jsonReader).getAsJsonArray();
+gson/src/test/java/com/google/gson/JsonObjectAsMapSuiteTest.java:30:          Map.entry("four", new JsonArray()),
+gson/src/test/java/com/google/gson/GsonBuilderTest.java:272:      // JsonElement.class, JsonArray.class,
+gson/src/test/java/com/google/gson/GsonBuilderTest.java:290:    Gson gson = new GsonBuilder().registerTypeAdapter(JsonArray.class, NULL_TYPE_ADAPTER).create();
+gson/src/test/java/com/google/gson/GsonBuilderTest.java:291:    TypeAdapter<JsonArray> adapter = gson.getAdapter(JsonArray.class);
+gson/src/test/java/com/google/gson/GsonBuilderTest.java:294:    assertThat(adapter.toJson(new JsonArray())).isEqualTo("[]");
+gson/src/test/java/com/google/gson/GsonBuilderTest.java:318:      JsonElement.class, JsonArray.class,
+gson/src/test/java/com/google/gson/GsonBuilderTest.java:340:        new GsonBuilder().registerTypeHierarchyAdapter(JsonArray.class, NULL_TYPE_ADAPTER).create();
+gson/src/test/java/com/google/gson/GsonBuilderTest.java:341:    TypeAdapter<JsonArray> adapter = gson.getAdapter(JsonArray.class);
+gson/src/test/java/com/google/gson/GsonBuilderTest.java:344:    assertThat(adapter.toJson(new JsonArray())).isEqualTo("[]");
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:32:/** Tests for {@link JsonArray#asList()}. */
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:36:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:51:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:62:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:80:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:111:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:135:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:148:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:162:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:173:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:188:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:213:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:224:    list = new JsonArray().asList();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:230:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:250:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:270:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:291:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:300:  /** Verify that {@code JsonArray} updates are visible to view and vice versa */
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java:303:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/functional/CustomSerializerTest.java:23:import com.google.gson.JsonArray;
+gson/src/test/java/com/google/gson/functional/CustomSerializerTest.java:78:    JsonArray array = json.get("base").getAsJsonArray();
+gson/src/test/java/com/google/gson/functional/MapTest.java:26:import com.google.gson.JsonArray;
+gson/src/test/java/com/google/gson/functional/MapTest.java:378:                      JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:36:    MoreAsserts.assertEqualsAndHashCode(new JsonArray(), new JsonArray());
+gson/src/test/java/com/google/gson/JsonArrayTest.java:41:    JsonArray a = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:42:    JsonArray b = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:64:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:80:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:103:    JsonArray original = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:104:    JsonArray firstEntry = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:107:    JsonArray copy = original.deepCopy();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:119:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:132:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:171:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:183:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:197:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:221:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:244:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:258:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:274:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:296:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:317:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:324:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:343:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayTest.java:349:    JsonArray nestedArray = new JsonArray();
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:24:import com.google.gson.JsonArray;
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:697:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:706:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java:713:    assertThat(gson.fromJson(json, JsonArray.class)).isEqualTo(array);
+gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java:15: * Dynamic {@link ListTestSuiteBuilder List test suite} for {@link JsonArray#asList()}. This
+gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java:17: * e.g. making sure changes in the {@code List} view are visible in the {@code JsonArray}.
+gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java:28:          new JsonArray(),
+gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java:44:      JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java:45:      // This is not completely accurate: Because there is no way to directly construct JsonArray or
+gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java:67:        .named("JsonArray#asList")
+gson/src/test/java/com/google/gson/functional/InheritanceTest.java:22:import com.google.gson.JsonArray;
+gson/src/test/java/com/google/gson/functional/InheritanceTest.java:91:    JsonArray bases = json.get(ClassWithBaseArrayField.FIELD_KEY).getAsJsonArray();
+gson/src/test/java/com/google/gson/functional/InheritanceTest.java:105:    JsonArray bases = json.get(ClassWithBaseArrayField.FIELD_KEY).getAsJsonArray();
+gson/src/test/java/com/google/gson/SubsetTest.java:24:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/JsonObjectTest.java:231:    JsonArray firstEntry = new JsonArray();
+gson/src/test/java/com/google/gson/JsonObjectTest.java:247:    a.add("foo", new JsonArray());
+gson/src/test/java/com/google/gson/JsonObjectTest.java:349:    JsonArray nestedArray = new JsonArray();
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java:23:import com.google.gson.JsonArray;
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java:76:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java:84:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java:97:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/functional/StreamingTypeAdaptersTest.java:25:import com.google.gson.JsonArray;
+gson/src/test/java/com/google/gson/functional/StreamingTypeAdaptersTest.java:241:    JsonArray passengersArray = new JsonArray();
+gson/src/main/java/com/google/gson/JsonElement.java:28: * JsonArray}, a {@link JsonPrimitive} or a {@link JsonNull}.
+gson/src/main/java/com/google/gson/JsonElement.java:116:   * @return true if this element is of type {@link JsonArray}, false otherwise.
+gson/src/main/java/com/google/gson/JsonElement.java:119:    return this instanceof JsonArray;
+gson/src/main/java/com/google/gson/JsonElement.java:167:   * Convenience method to get this element as a {@link JsonArray}. If this element is of some other
+gson/src/main/java/com/google/gson/JsonElement.java:171:   * @return this element as a {@link JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:174:  public JsonArray getAsJsonArray() {
+gson/src/main/java/com/google/gson/JsonElement.java:176:      return (JsonArray) this;
+gson/src/main/java/com/google/gson/JsonElement.java:219:   *     JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:220:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:232:   *     JsonArray}, or cannot be converted to a number.
+gson/src/main/java/com/google/gson/JsonElement.java:233:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:245:   *     JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:246:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:258:   *     JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:260:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:272:   *     JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:274:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:286:   *     JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:288:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:300:   *     JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:302:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:314:   *     JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:316:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:329:   *     JsonArray}, or if its string value is empty.
+gson/src/main/java/com/google/gson/JsonElement.java:330:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:346:   *     JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:348:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:361:   *     JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:363:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:376:   *     JsonArray}.
+gson/src/main/java/com/google/gson/JsonElement.java:378:   * @throws IllegalStateException if this element is of the type {@link JsonArray} but contains
+gson/src/main/java/com/google/gson/JsonElement.java:393:   * JsonArray array = new JsonArray();
+gson/src/main/java/com/google/gson/JsonArray.java:33: * <p>{@code JsonArray} only implements the {@link Iterable} interface but not the {@link List}
+gson/src/main/java/com/google/gson/JsonArray.java:36: * <p>See the {@link JsonElement} documentation for details on how to convert {@code JsonArray} and
+gson/src/main/java/com/google/gson/JsonArray.java:42:public final class JsonArray extends JsonElement implements Iterable<JsonElement> {
+gson/src/main/java/com/google/gson/JsonArray.java:45:  /** Creates an empty JsonArray. */
+gson/src/main/java/com/google/gson/JsonArray.java:47:  public JsonArray() {
+gson/src/main/java/com/google/gson/JsonArray.java:52:   * Creates an empty JsonArray with the desired initial capacity.
+gson/src/main/java/com/google/gson/JsonArray.java:59:  public JsonArray(int capacity) {
+gson/src/main/java/com/google/gson/JsonArray.java:69:  public JsonArray deepCopy() {
+gson/src/main/java/com/google/gson/JsonArray.java:71:      JsonArray result = new JsonArray(elements.size());
+gson/src/main/java/com/google/gson/JsonArray.java:77:    return new JsonArray();
+gson/src/main/java/com/google/gson/JsonArray.java:137:  public void addAll(JsonArray array) {
+gson/src/main/java/com/google/gson/JsonArray.java:405:   * Returns a mutable {@link List} view of this {@code JsonArray}. Changes to the {@code List} are
+gson/src/main/java/com/google/gson/JsonArray.java:406:   * visible in this {@code JsonArray} and the other way around.
+gson/src/main/java/com/google/gson/JsonArray.java:408:   * <p>The {@code List} does not permit {@code null} elements. Unlike {@code JsonArray}'s {@code
+gson/src/main/java/com/google/gson/JsonArray.java:421:   * to be equal if it is an instance of {@code JsonArray} and has equal elements in the same order.
+gson/src/main/java/com/google/gson/JsonArray.java:425:    return (o == this) || (o instanceof JsonArray && ((JsonArray) o).elements.equals(elements));
+gson/src/main/java/com/google/gson/internal/bind/JsonElementTypeAdapter.java:19:import com.google.gson.JsonArray;
+gson/src/main/java/com/google/gson/internal/bind/JsonElementTypeAdapter.java:48:        return new JsonArray();
+gson/src/main/java/com/google/gson/internal/bind/JsonElementTypeAdapter.java:83:    // Either JsonArray or JsonObject
+gson/src/main/java/com/google/gson/internal/bind/JsonElementTypeAdapter.java:110:        if (current instanceof JsonArray) {
+gson/src/main/java/com/google/gson/internal/bind/JsonElementTypeAdapter.java:111:          ((JsonArray) current).add(value);
+gson/src/main/java/com/google/gson/internal/bind/JsonElementTypeAdapter.java:123:      if (current instanceof JsonArray) {
+gson/src/main/java/com/google/gson/JsonObject.java:203:   * Convenience method to get the specified member as a {@link JsonArray}.
+gson/src/main/java/com/google/gson/JsonObject.java:206:   * @return the {@code JsonArray} corresponding to the specified member, or {@code null} if no
+gson/src/main/java/com/google/gson/JsonObject.java:208:   * @throws ClassCastException if the member is not of type {@code JsonArray}.
+gson/src/main/java/com/google/gson/JsonObject.java:210:  public JsonArray getAsJsonArray(String memberName) {
+gson/src/main/java/com/google/gson/JsonObject.java:211:    return (JsonArray) members.get(memberName);
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java:20:import com.google.gson.JsonArray;
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java:91:      if (element instanceof JsonArray) {
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java:92:        ((JsonArray) element).add(value);
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java:102:    JsonArray array = new JsonArray();
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java:115:    if (element instanceof JsonArray) {
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java:20:import com.google.gson.JsonArray;
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java:60:   * contains temporary additional objects, for example for a JsonArray it contains the JsonArray
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java:84:    JsonArray array = (JsonArray) peekStack();
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java:147:    } else if (o instanceof JsonArray) {
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java:355:      if (stack[i] instanceof JsonArray) {
+gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java:21:import com.google.gson.JsonArray;
+gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java:48:    JsonArray jsonArray = new JsonArray();
+gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java:92:    JsonTreeReader reader = new JsonTreeReader(new JsonArray());
+gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java:126:    JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java:158:    JsonArray json = new JsonArray();
+gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java:159:    JsonArray current = json;
+gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java:162:      JsonArray nested = new JsonArray();
+proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java:25:import com.google.gson.JsonArray;
+proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java:267:          JsonArray array = new JsonArray();
+gson/src/test/java/com/google/gson/functional/ParameterizedTypesTest.java:24:import com.google.gson.JsonArray;
+gson/src/test/java/com/google/gson/functional/ParameterizedTypesTest.java:524:      JsonArray jsonArray = new JsonArray();
+
+codex
+I have enough to see broad usage, but I still need the class body to confirm whether `JsonArray` itself is a dependency hub or just a commonly used leaf type. I’m checking its full implementation and the main production callers next.
+exec
+/bin/bash -lc "sed -n '260,520p' gson/src/main/java/com/google/gson/JsonArray.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "sed -n '1,220p' gson/src/main/java/com/google/gson/internal/bind/JsonElementTypeAdapter.java && printf '\\n---\\n' && sed -n '1,220p' gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java && printf '\\n---\\n' && sed -n '1,220p' gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "sed -n '240,310p' proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java && printf '\\n---\\n' && sed -n '1,120p' extras/src/main/java/com/google/gson/extras/examples/rawcollections/RawCollectionsExample.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 226ms:
+   *
+   * @return this element as a String if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   */
+  @Override
+  public String getAsString() {
+    return getAsSingleElement().getAsString();
+  }
+
+  /**
+   * Convenience method to get this array as a double if it contains a single element. This method
+   * calls {@link JsonElement#getAsDouble()} on the element, therefore any of the exceptions
+   * declared by that method can occur.
+   *
+   * @return this element as a double if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   */
+  @Override
+  public double getAsDouble() {
+    return getAsSingleElement().getAsDouble();
+  }
+
+  /**
+   * Convenience method to get this array as a {@link BigDecimal} if it contains a single element.
+   * This method calls {@link JsonElement#getAsBigDecimal()} on the element, therefore any of the
+   * exceptions declared by that method can occur.
+   *
+   * @return this element as a {@link BigDecimal} if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   * @since 1.2
+   */
+  @Override
+  public BigDecimal getAsBigDecimal() {
+    return getAsSingleElement().getAsBigDecimal();
+  }
+
+  /**
+   * Convenience method to get this array as a {@link BigInteger} if it contains a single element.
+   * This method calls {@link JsonElement#getAsBigInteger()} on the element, therefore any of the
+   * exceptions declared by that method can occur.
+   *
+   * @return this element as a {@link BigInteger} if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   * @since 1.2
+   */
+  @Override
+  public BigInteger getAsBigInteger() {
+    return getAsSingleElement().getAsBigInteger();
+  }
+
+  /**
+   * Convenience method to get this array as a float if it contains a single element. This method
+   * calls {@link JsonElement#getAsFloat()} on the element, therefore any of the exceptions declared
+   * by that method can occur.
+   *
+   * @return this element as a float if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   */
+  @Override
+  public float getAsFloat() {
+    return getAsSingleElement().getAsFloat();
+  }
+
+  /**
+   * Convenience method to get this array as a long if it contains a single element. This method
+   * calls {@link JsonElement#getAsLong()} on the element, therefore any of the exceptions declared
+   * by that method can occur.
+   *
+   * @return this element as a long if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   */
+  @Override
+  public long getAsLong() {
+    return getAsSingleElement().getAsLong();
+  }
+
+  /**
+   * Convenience method to get this array as an integer if it contains a single element. This method
+   * calls {@link JsonElement#getAsInt()} on the element, therefore any of the exceptions declared
+   * by that method can occur.
+   *
+   * @return this element as an integer if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   */
+  @Override
+  public int getAsInt() {
+    return getAsSingleElement().getAsInt();
+  }
+
+  /**
+   * Convenience method to get this array as a primitive byte if it contains a single element. This
+   * method calls {@link JsonElement#getAsByte()} on the element, therefore any of the exceptions
+   * declared by that method can occur.
+   *
+   * @return this element as a primitive byte if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   */
+  @Override
+  public byte getAsByte() {
+    return getAsSingleElement().getAsByte();
+  }
+
+  /**
+   * Convenience method to get this array as a character if it contains a single element. This
+   * method calls {@link JsonElement#getAsCharacter()} on the element, therefore any of the
+   * exceptions declared by that method can occur.
+   *
+   * @return this element as a primitive short if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   * @deprecated This method is misleading, as it does not get this element as a char but rather as
+   *     a string's first character.
+   */
+  @Deprecated
+  @Override
+  public char getAsCharacter() {
+    return getAsSingleElement().getAsCharacter();
+  }
+
+  /**
+   * Convenience method to get this array as a primitive short if it contains a single element. This
+   * method calls {@link JsonElement#getAsShort()} on the element, therefore any of the exceptions
+   * declared by that method can occur.
+   *
+   * @return this element as a primitive short if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   */
+  @Override
+  public short getAsShort() {
+    return getAsSingleElement().getAsShort();
+  }
+
+  /**
+   * Convenience method to get this array as a boolean if it contains a single element. This method
+   * calls {@link JsonElement#getAsBoolean()} on the element, therefore any of the exceptions
+   * declared by that method can occur.
+   *
+   * @return this element as a boolean if it is single element array.
+   * @throws IllegalStateException if the array is empty or has more than one element.
+   */
+  @Override
+  public boolean getAsBoolean() {
+    return getAsSingleElement().getAsBoolean();
+  }
+
+  /**
+   * Returns a mutable {@link List} view of this {@code JsonArray}. Changes to the {@code List} are
+   * visible in this {@code JsonArray} and the other way around.
+   *
+   * <p>The {@code List} does not permit {@code null} elements. Unlike {@code JsonArray}'s {@code
+   * null} handling, a {@link NullPointerException} is thrown when trying to add {@code null}. Use
+   * {@link JsonNull} for JSON null values.
+   *
+   * @return mutable {@code List} view
+   * @since 2.10
+   */
+  public List<JsonElement> asList() {
+    return new NonNullElementWrapperList<>(elements);
+  }
+
+  /**
+   * Returns whether the other object is equal to this. This method only considers the other object
+   * to be equal if it is an instance of {@code JsonArray} and has equal elements in the same order.
+   */
+  @Override
+  public boolean equals(Object o) {
+    return (o == this) || (o instanceof JsonArray && ((JsonArray) o).elements.equals(elements));
+  }
+
+  /**
+   * Returns the hash code of this array. This method calculates the hash code based on the elements
+   * of this array.
+   */
+  @Override
+  public int hashCode() {
+    return elements.hashCode();
+  }
+}
+
+ succeeded in 228ms:
+      EnumSerialization enumSerialization,
+      CaseFormat protoFormat,
+      CaseFormat jsonFormat,
+      Set<Extension<FieldOptions, String>> serializedNameExtensions,
+      Set<Extension<EnumValueOptions, String>> serializedEnumValueExtensions,
+      boolean shouldUseJsonNameFieldOption) {
+    this.enumSerialization = enumSerialization;
+    this.protoFormat = protoFormat;
+    this.jsonFormat = jsonFormat;
+    this.serializedNameExtensions = serializedNameExtensions;
+    this.serializedEnumValueExtensions = serializedEnumValueExtensions;
+    this.shouldUseJsonNameFieldOption = shouldUseJsonNameFieldOption;
+  }
+
+  @Override
+  public JsonElement serialize(Message src, Type typeOfSrc, JsonSerializationContext context) {
+    JsonObject ret = new JsonObject();
+    Map<FieldDescriptor, Object> fields = src.getAllFields();
+
+    for (Map.Entry<FieldDescriptor, Object> fieldPair : fields.entrySet()) {
+      FieldDescriptor desc = fieldPair.getKey();
+      String name = getCustSerializedName(desc);
+
+      if (desc.getType() == ENUM_TYPE) {
+        // Enum collections are also returned as ENUM_TYPE
+        if (fieldPair.getValue() instanceof Collection) {
+          // Build the array to avoid infinite loop
+          JsonArray array = new JsonArray();
+          @SuppressWarnings("unchecked")
+          Collection<EnumValueDescriptor> enumDescs =
+              (Collection<EnumValueDescriptor>) fieldPair.getValue();
+          for (EnumValueDescriptor enumDesc : enumDescs) {
+            array.add(context.serialize(getEnumValue(enumDesc)));
+            ret.add(name, array);
+          }
+        } else {
+          EnumValueDescriptor enumDesc = ((EnumValueDescriptor) fieldPair.getValue());
+          ret.add(name, context.serialize(getEnumValue(enumDesc)));
+        }
+      } else {
+        ret.add(name, context.serialize(fieldPair.getValue()));
+      }
+    }
+    return ret;
+  }
+
+  @Override
+  public Message deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+      throws JsonParseException {
+    try {
+      JsonObject jsonObject = json.getAsJsonObject();
+      @SuppressWarnings("unchecked")
+      Class<? extends Message> protoClass = (Class<? extends Message>) typeOfT;
+
+      if (DynamicMessage.class.isAssignableFrom(protoClass)) {
+        throw new IllegalStateException("only generated messages are supported");
+      }
+
+      // Invoke the ProtoClass.newBuilder() method
+      Message.Builder protoBuilder =
+          (Message.Builder) getCachedMethod(protoClass, "newBuilder").invoke(null);
+
+      Message defaultInstance =
+          (Message) getCachedMethod(protoClass, "getDefaultInstance").invoke(null);
+
+      Descriptor protoDescriptor =
+          (Descriptor) getCachedMethod(protoClass, "getDescriptor").invoke(null);
+      // Call setters on all of the available fields
+      for (FieldDescriptor fieldDescriptor : protoDescriptor.getFields()) {
+        String jsonFieldName = getCustSerializedName(fieldDescriptor);
+
+
+---
+/*
+ * Copyright (C) 2011 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.google.gson.extras.examples.rawcollections;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonParser;
+import java.util.ArrayList;
+import java.util.Collection;
+
+@SuppressWarnings({"PrivateConstructorForUtilityClass", "SystemOut"})
+public class RawCollectionsExample {
+  static class Event {
+    private String name;
+    private String source;
+
+    private Event(String name, String source) {
+      this.name = name;
+      this.source = source;
+    }
+
+    @Override
+    public String toString() {
+      return String.format("(name=%s, source=%s)", name, source);
+    }
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public static void main(String[] args) {
+    Gson gson = new Gson();
+    Collection collection = new ArrayList();
+    collection.add("hello");
+    collection.add(5);
+    collection.add(new Event("GREETINGS", "guest"));
+    String json = gson.toJson(collection);
+    System.out.println("Using Gson.toJson() on a raw collection: " + json);
+    JsonArray array = JsonParser.parseString(json).getAsJsonArray();
+    String message = gson.fromJson(array.get(0), String.class);
+    int number = gson.fromJson(array.get(1), int.class);
+    Event event = gson.fromJson(array.get(2), Event.class);
+    System.out.printf("Using Gson.fromJson() to get: %s, %d, %s", message, number, event);
+  }
+}
+
+ succeeded in 295ms:
+/*
+ * Copyright (C) 2024 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson.internal.bind;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.TypeAdapter;
+import com.google.gson.internal.LazilyParsedNumber;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Map;
+
+/** Adapter for {@link JsonElement} and subclasses. */
+public class JsonElementTypeAdapter extends TypeAdapter<JsonElement> {
+  public static final JsonElementTypeAdapter ADAPTER = new JsonElementTypeAdapter();
+
+  private JsonElementTypeAdapter() {}
+
+  /**
+   * Tries to begin reading a JSON array or JSON object, returning {@code null} if the next element
+   * is neither of those.
+   */
+  private JsonElement tryBeginNesting(JsonReader in, JsonToken peeked) throws IOException {
+    switch (peeked) {
+      case BEGIN_ARRAY:
+        in.beginArray();
+        return new JsonArray();
+      case BEGIN_OBJECT:
+        in.beginObject();
+        return new JsonObject();
+      default:
+        return null;
+    }
+  }
+
+  /** Reads a {@link JsonElement} which cannot have any nested elements */
+  private JsonElement readTerminal(JsonReader in, JsonToken peeked) throws IOException {
+    switch (peeked) {
+      case STRING:
+        return new JsonPrimitive(in.nextString());
+      case NUMBER:
+        String number = in.nextString();
+        return new JsonPrimitive(new LazilyParsedNumber(number));
+      case BOOLEAN:
+        return new JsonPrimitive(in.nextBoolean());
+      case NULL:
+        in.nextNull();
+        return JsonNull.INSTANCE;
+      default:
+        // When read(JsonReader) is called with JsonReader in invalid state
+        throw new IllegalStateException("Unexpected token: " + peeked);
+    }
+  }
+
+  @Override
+  public JsonElement read(JsonReader in) throws IOException {
+    // Optimization if value already exists as JsonElement
+    if (in instanceof JsonTreeReader) {
+      return ((JsonTreeReader) in).nextJsonElement();
+    }
+
+    // Either JsonArray or JsonObject
+    JsonElement current;
+    JsonToken peeked = in.peek();
+
+    current = tryBeginNesting(in, peeked);
+    if (current == null) {
+      return readTerminal(in, peeked);
+    }
+
+    Deque<JsonElement> stack = new ArrayDeque<>();
+
+    while (true) {
+      while (in.hasNext()) {
+        String name = null;
+        // Name is only used for JSON object members
+        if (current instanceof JsonObject) {
+          name = in.nextName();
+        }
+
+        peeked = in.peek();
+        JsonElement value = tryBeginNesting(in, peeked);
+        boolean isNesting = value != null;
+
+        if (value == null) {
+          value = readTerminal(in, peeked);
+        }
+
+        if (current instanceof JsonArray) {
+          ((JsonArray) current).add(value);
+        } else {
+          ((JsonObject) current).add(name, value);
+        }
+
+        if (isNesting) {
+          stack.addLast(current);
+          current = value;
+        }
+      }
+
+      // End current element
+      if (current instanceof JsonArray) {
+        in.endArray();
+      } else {
+        in.endObject();
+      }
+
+      if (stack.isEmpty()) {
+        return current;
+      } else {
+        // Continue with enclosing element
+        current = stack.removeLast();
+      }
+    }
+  }
+
+  @Override
+  public void write(JsonWriter out, JsonElement value) throws IOException {
+    if (value == null || value.isJsonNull()) {
+      out.nullValue();
+    } else if (value.isJsonPrimitive()) {
+      JsonPrimitive primitive = value.getAsJsonPrimitive();
+      if (primitive.isNumber()) {
+        out.value(primitive.getAsNumber());
+      } else if (primitive.isBoolean()) {
+        out.value(primitive.getAsBoolean());
+      } else {
+        out.value(primitive.getAsString());
+      }
+
+    } else if (value.isJsonArray()) {
+      out.beginArray();
+      for (JsonElement e : value.getAsJsonArray()) {
+        write(out, e);
+      }
+      out.endArray();
+
+    } else if (value.isJsonObject()) {
+      out.beginObject();
+      for (Map.Entry<String, JsonElement> e : value.getAsJsonObject().entrySet()) {
+        out.name(e.getKey());
+        write(out, e.getValue());
+      }
+      out.endObject();
+
+    } else {
+      throw new IllegalArgumentException("Couldn't write " + value.getClass());
+    }
+  }
+}
+
+---
+/*
+ * Copyright (C) 2011 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson.internal.bind;
+
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+/** This writer creates a JsonElement. */
+public final class JsonTreeWriter extends JsonWriter {
+  private static final Writer UNWRITABLE_WRITER =
+      new Writer() {
+        @Override
+        public void write(char[] buffer, int offset, int counter) {
+          throw new AssertionError();
+        }
+
+        @Override
+        public void flush() {
+          throw new AssertionError();
+        }
+
+        @Override
+        public void close() {
+          throw new AssertionError();
+        }
+      };
+
+  /** Added to the top of the stack when this writer is closed to cause following ops to fail. */
+  private static final JsonPrimitive SENTINEL_CLOSED = new JsonPrimitive("closed");
+
+  /** The JsonElements and JsonArrays under modification, outermost to innermost. */
+  private final List<JsonElement> stack = new ArrayList<>();
+
+  /** The name for the next JSON object value. If non-null, the top of the stack is a JsonObject. */
+  private String pendingName;
+
+  /** the JSON element constructed by this writer. */
+  private JsonElement product = JsonNull.INSTANCE; // TODO: is this really what we want?;
+
+  public JsonTreeWriter() {
+    super(UNWRITABLE_WRITER);
+  }
+
+  /** Returns the top level object produced by this writer. */
+  public JsonElement get() {
+    if (!stack.isEmpty()) {
+      throw new IllegalStateException("Expected one JSON element but was " + stack);
+    }
+    return product;
+  }
+
+  private JsonElement peek() {
+    return stack.get(stack.size() - 1);
+  }
+
+  private void put(JsonElement value) {
+    if (pendingName != null) {
+      if (!value.isJsonNull() || getSerializeNulls()) {
+        JsonObject object = (JsonObject) peek();
+        object.add(pendingName, value);
+      }
+      pendingName = null;
+    } else if (stack.isEmpty()) {
+      product = value;
+    } else {
+      JsonElement element = peek();
+      if (element instanceof JsonArray) {
+        ((JsonArray) element).add(value);
+      } else {
+        throw new IllegalStateException();
+      }
+    }
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter beginArray() throws IOException {
+    JsonArray array = new JsonArray();
+    put(array);
+    stack.add(array);
+    return this;
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter endArray() throws IOException {
+    if (stack.isEmpty() || pendingName != null) {
+      throw new IllegalStateException();
+    }
+    JsonElement element = peek();
+    if (element instanceof JsonArray) {
+      stack.remove(stack.size() - 1);
+      return this;
+    }
+    throw new IllegalStateException();
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter beginObject() throws IOException {
+    JsonObject object = new JsonObject();
+    put(object);
+    stack.add(object);
+    return this;
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter endObject() throws IOException {
+    if (stack.isEmpty() || pendingName != null) {
+      throw new IllegalStateException();
+    }
+    JsonElement element = peek();
+    if (element instanceof JsonObject) {
+      stack.remove(stack.size() - 1);
+      return this;
+    }
+    throw new IllegalStateException();
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter name(String name) throws IOException {
+    Objects.requireNonNull(name, "name == null");
+    if (stack.isEmpty() || pendingName != null) {
+      throw new IllegalStateException("Did not expect a name");
+    }
+    JsonElement element = peek();
+    if (element instanceof JsonObject) {
+      pendingName = name;
+      return this;
+    }
+    throw new IllegalStateException("Please begin an object before writing a name.");
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter value(String value) throws IOException {
+    if (value == null) {
+      return nullValue();
+    }
+    put(new JsonPrimitive(value));
+    return this;
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter value(boolean value) throws IOException {
+    put(new JsonPrimitive(value));
+    return this;
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter value(Boolean value) throws IOException {
+    if (value == null) {
+      return nullValue();
+    }
+    put(new JsonPrimitive(value));
+    return this;
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter value(float value) throws IOException {
+    if (!isLenient() && (Float.isNaN(value) || Float.isInfinite(value))) {
+      throw new IllegalArgumentException("JSON forbids NaN and infinities: " + value);
+    }
+    put(new JsonPrimitive(value));
+    return this;
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter value(double value) throws IOException {
+    if (!isLenient() && (Double.isNaN(value) || Double.isInfinite(value))) {
+      throw new IllegalArgumentException("JSON forbids NaN and infinities: " + value);
+    }
+    put(new JsonPrimitive(value));
+    return this;
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter value(long value) throws IOException {
+    put(new JsonPrimitive(value));
+    return this;
+  }
+
+  @CanIgnoreReturnValue
+  @Override
+  public JsonWriter value(Number value) throws IOException {
+    if (value == null) {
+      return nullValue();
+    }
+
+
+---
+/*
+ * Copyright (C) 2011 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson.internal.bind;
+
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.MalformedJsonException;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Map;
+
+/**
+ * This reader walks the elements of a JsonElement as if it was coming from a character stream.
+ *
+ * @author Jesse Wilson
+ */
+public final class JsonTreeReader extends JsonReader {
+  private static final Reader UNREADABLE_READER =
+      new Reader() {
+        @Override
+        public int read(char[] buffer, int offset, int count) {
+          throw new AssertionError();
+        }
+
+        @Override
+        public void close() {
+          throw new AssertionError();
+        }
+      };
+  private static final Object SENTINEL_CLOSED = new Object();
+
+  /** The nesting stack. Using a manual array rather than an ArrayList saves 20%. */
+  private Object[] stack = new Object[32];
+
+  /**
+   * The used size of {@link #stack}; the value at {@code stackSize - 1} is the value last placed on
+   * the stack. {@code stackSize} might differ from the nesting depth, because the stack also
+   * contains temporary additional objects, for example for a JsonArray it contains the JsonArray
+   * object as well as the corresponding iterator.
+   */
+  private int stackSize = 0;
+
+  /*
+   * The path members. It corresponds directly to stack: At indices where the
+   * stack contains an object (EMPTY_OBJECT, DANGLING_NAME or NONEMPTY_OBJECT),
+   * pathNames contains the name at this scope. Where it contains an array
+   * (EMPTY_ARRAY, NONEMPTY_ARRAY) pathIndices contains the current index in
+   * that array. Otherwise the value is undefined, and we take advantage of that
+   * by incrementing pathIndices when doing so isn't useful.
+   */
+  private String[] pathNames = new String[32];
+  private int[] pathIndices = new int[32];
+
+  public JsonTreeReader(JsonElement element) {
+    super(UNREADABLE_READER);
+    push(element);
+  }
+
+  @Override
+  public void beginArray() throws IOException {
+    expect(JsonToken.BEGIN_ARRAY);
+    JsonArray array = (JsonArray) peekStack();
+    push(array.iterator());
+    pathIndices[stackSize - 1] = 0;
+  }
+
+  @Override
+  public void endArray() throws IOException {
+    expect(JsonToken.END_ARRAY);
+    popStack(); // empty iterator
+    popStack(); // array
+    if (stackSize > 0) {
+      pathIndices[stackSize - 1]++;
+    }
+  }
+
+  @Override
+  public void beginObject() throws IOException {
+    expect(JsonToken.BEGIN_OBJECT);
+    JsonObject object = (JsonObject) peekStack();
+    push(object.entrySet().iterator());
+  }
+
+  @Override
+  public void endObject() throws IOException {
+    expect(JsonToken.END_OBJECT);
+    pathNames[stackSize - 1] = null; // Free the last path name so that it can be garbage collected
+    popStack(); // empty iterator
+    popStack(); // object
+    if (stackSize > 0) {
+      pathIndices[stackSize - 1]++;
+    }
+  }
+
+  @Override
+  public boolean hasNext() throws IOException {
+    JsonToken token = peek();
+    return token != JsonToken.END_OBJECT
+        && token != JsonToken.END_ARRAY
+        && token != JsonToken.END_DOCUMENT;
+  }
+
+  @Override
+  public JsonToken peek() throws IOException {
+    if (stackSize == 0) {
+      return JsonToken.END_DOCUMENT;
+    }
+
+    Object o = peekStack();
+    if (o instanceof Iterator) {
+      boolean isObject = stack[stackSize - 2] instanceof JsonObject;
+      Iterator<?> iterator = (Iterator<?>) o;
+      if (iterator.hasNext()) {
+        if (isObject) {
+          return JsonToken.NAME;
+        } else {
+          push(iterator.next());
+          return peek();
+        }
+      } else {
+        return isObject ? JsonToken.END_OBJECT : JsonToken.END_ARRAY;
+      }
+    } else if (o instanceof JsonObject) {
+      return JsonToken.BEGIN_OBJECT;
+    } else if (o instanceof JsonArray) {
+      return JsonToken.BEGIN_ARRAY;
+    } else if (o instanceof JsonPrimitive) {
+      JsonPrimitive primitive = (JsonPrimitive) o;
+      if (primitive.isString()) {
+        return JsonToken.STRING;
+      } else if (primitive.isBoolean()) {
+        return JsonToken.BOOLEAN;
+      } else if (primitive.isNumber()) {
+        return JsonToken.NUMBER;
+      } else {
+        throw new AssertionError();
+      }
+    } else if (o instanceof JsonNull) {
+      return JsonToken.NULL;
+    } else if (o == SENTINEL_CLOSED) {
+      throw new IllegalStateException("JsonReader is closed");
+    } else {
+      throw new MalformedJsonException(
+          "Custom JsonElement subclass " + o.getClass().getName() + " is not supported");
+    }
+  }
+
+  private Object peekStack() {
+    return stack[stackSize - 1];
+  }
+
+  @CanIgnoreReturnValue
+  private Object popStack() {
+    Object result = stack[--stackSize];
+    stack[stackSize] = null;
+    return result;
+  }
+
+  private void expect(JsonToken expected) throws IOException {
+    if (peek() != expected) {
+      throw new IllegalStateException(
+          "Expected " + expected + " but was " + peek() + locationString());
+    }
+  }
+
+  private String nextName(boolean skipName) throws IOException {
+    expect(JsonToken.NAME);
+    Iterator<?> i = (Iterator<?>) peekStack();
+    Map.Entry<?, ?> entry = (Map.Entry<?, ?>) i.next();
+    String result = (String) entry.getKey();
+    pathNames[stackSize - 1] = skipName ? "<skipped>" : result;
+    push(entry.getValue());
+    return result;
+  }
+
+  @Override
+  public String nextName() throws IOException {
+    return nextName(false);
+  }
+
+  @Override
+  public String nextString() throws IOException {
+    JsonToken token = peek();
+    if (token != JsonToken.STRING && token != JsonToken.NUMBER) {
+      throw new IllegalStateException(
+          "Expected " + JsonToken.STRING + " but was " + token + locationString());
+    }
+    String result = ((JsonPrimitive) popStack()).getAsString();
+    if (stackSize > 0) {
+      pathIndices[stackSize - 1]++;
+    }
+    return result;
+  }
+
+  @Override
+  public boolean nextBoolean() throws IOException {
+    expect(JsonToken.BOOLEAN);
+    boolean result = ((JsonPrimitive) popStack()).getAsBoolean();
+
+codex
+I’ve confirmed the class is a thin JSON container, not a coordinator. I’m now quantifying how many distinct production files depend on it versus how many types it itself depends on, so the final verdict is grounded in concrete fan-in/fan-out evidence.
+exec
+/bin/bash -lc "printf 'production files: '; rg -l \"\\bJsonArray\\b\" gson/src/main/java proto/src/main/java extras/src/main/java | wc -l; printf 'test/example files: '; rg -l \"\\bJsonArray\\b\" gson/src/test/java proto/src/test/java extras/src/test/java test-graal-native-image/src/test/java test-jpms/src/test/java test-shrinker/src/main/java | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "printf 'JsonArray direct project deps in source: '; rg -n \"import com\\.google\\.gson\\.|extends JsonElement|implements Iterable|new NonNullElementWrapperList|JsonNull|JsonPrimitive|BigDecimal|BigInteger|ArrayList|Iterator|List<\" gson/src/main/java/com/google/gson/JsonArray.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "sed -n '1,120p' gson/src/main/java/com/google/gson/JsonElement.java && printf '\\n---\\n' && sed -n '1,260p' gson/src/main/java/com/google/gson/JsonObject.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 194ms:
+/*
+ * Copyright (C) 2008 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson;
+
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.gson.internal.Streams;
+import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
+/**
+ * A class representing an element of JSON. It could either be a {@link JsonObject}, a {@link
+ * JsonArray}, a {@link JsonPrimitive} or a {@link JsonNull}.
+ *
+ * <p>This class provides multiple {@code getAs} methods which allow
+ *
+ * <ul>
+ *   <li>obtaining the represented primitive value, for example {@link #getAsString()}
+ *   <li>casting to the {@code JsonElement} subclasses in a convenient way, for example {@link
+ *       #getAsJsonObject()}
+ * </ul>
+ *
+ * <h2>Converting {@code JsonElement} from / to JSON</h2>
+ *
+ * There are two ways to parse JSON data as a {@link JsonElement}:
+ *
+ * <ul>
+ *   <li>{@link JsonParser}, for example:
+ *       <pre>
+ * JsonObject jsonObject = JsonParser.parseString("{}").getAsJsonObject();
+ * </pre>
+ *   <li>{@link Gson#fromJson(java.io.Reader, Class) Gson.fromJson(..., JsonElement.class)}<br>
+ *       It is possible to directly specify a {@code JsonElement} subclass, for example:
+ *       <pre>
+ * JsonObject jsonObject = gson.fromJson("{}", JsonObject.class);
+ * </pre>
+ * </ul>
+ *
+ * To convert a {@code JsonElement} to JSON either {@link #toString() JsonElement.toString()} or the
+ * method {@link Gson#toJson(JsonElement)} and its overloads can be used.
+ *
+ * <p>It is also possible to obtain the {@link TypeAdapter} for {@code JsonElement} from a {@link
+ * Gson} instance and then use it for conversion from and to JSON:
+ *
+ * <pre>{@code
+ * TypeAdapter<JsonElement> adapter = gson.getAdapter(JsonElement.class);
+ *
+ * JsonElement value = adapter.fromJson("{}");
+ * String json = adapter.toJson(value);
+ * }</pre>
+ *
+ * <h2>{@code JsonElement} as JSON data</h2>
+ *
+ * {@code JsonElement} can also be treated as JSON data, allowing to deserialize from a {@code
+ * JsonElement} and serializing to a {@code JsonElement}. The {@link Gson} class offers these
+ * methods for this:
+ *
+ * <ul>
+ *   <li>{@link Gson#fromJson(JsonElement, Class) Gson.fromJson(JsonElement, ...)}, for example:
+ *       <pre>
+ * JsonObject jsonObject = ...;
+ * MyClass myObj = gson.fromJson(jsonObject, MyClass.class);
+ * </pre>
+ *   <li>{@link Gson#toJsonTree(Object)}, for example:
+ *       <pre>
+ * MyClass myObj = ...;
+ * JsonElement json = gson.toJsonTree(myObj);
+ * </pre>
+ * </ul>
+ *
+ * The {@link TypeAdapter} class provides corresponding methods as well:
+ *
+ * <ul>
+ *   <li>{@link TypeAdapter#fromJsonTree(JsonElement)}
+ *   <li>{@link TypeAdapter#toJsonTree(Object)}
+ * </ul>
+ *
+ * @author Inderjeet Singh
+ * @author Joel Leitch
+ */
+public abstract class JsonElement {
+  /**
+   * @deprecated Creating custom {@code JsonElement} subclasses is highly discouraged and can lead
+   *     to undefined behavior.<br>
+   *     This constructor is only kept for backward compatibility.
+   */
+  @Deprecated
+  public JsonElement() {}
+
+  /**
+   * Returns a deep copy of this element. Immutable elements like primitives and nulls are not
+   * copied.
+   *
+   * @since 2.8.2
+   */
+  public abstract JsonElement deepCopy();
+
+  /**
+   * Provides a check for verifying if this element is a JSON array or not.
+   *
+   * @return true if this element is of type {@link JsonArray}, false otherwise.
+   */
+  public boolean isJsonArray() {
+    return this instanceof JsonArray;
+  }
+
+---
+/*
+ * Copyright (C) 2008 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson;
+
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.gson.internal.LinkedTreeMap;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * A class representing an object type in JSON. An object consists of name-value pairs where names
+ * are strings, and values are any other type of {@link JsonElement}. This allows for a creating a
+ * tree of JsonElements. The member elements of this object are maintained in order they were added.
+ * This class does not support {@code null} values. If {@code null} is provided as value argument to
+ * any of the methods, it is converted to a {@link JsonNull}.
+ *
+ * <p>{@code JsonObject} does not implement the {@link Map} interface, but a {@code Map} view of it
+ * can be obtained with {@link #asMap()}.
+ *
+ * <p>See the {@link JsonElement} documentation for details on how to convert {@code JsonObject} and
+ * generally any {@code JsonElement} from and to JSON.
+ *
+ * @author Inderjeet Singh
+ * @author Joel Leitch
+ */
+public final class JsonObject extends JsonElement {
+  private final LinkedTreeMap<String, JsonElement> members = new LinkedTreeMap<>(false);
+
+  /** Creates an empty JsonObject. */
+  @SuppressWarnings("deprecation") // superclass constructor
+  public JsonObject() {}
+
+  /**
+   * Creates a deep copy of this element and all its children.
+   *
+   * @since 2.8.2
+   */
+  @Override
+  public JsonObject deepCopy() {
+    JsonObject result = new JsonObject();
+    for (Map.Entry<String, JsonElement> entry : members.entrySet()) {
+      result.add(entry.getKey(), entry.getValue().deepCopy());
+    }
+    return result;
+  }
+
+  /**
+   * Adds a member, which is a name-value pair, to self. The name must be a String, but the value
+   * can be an arbitrary {@link JsonElement}, thereby allowing you to build a full tree of
+   * JsonElements rooted at this node.
+   *
+   * @param property name of the member.
+   * @param value the member object.
+   */
+  public void add(String property, JsonElement value) {
+    members.put(property, value == null ? JsonNull.INSTANCE : value);
+  }
+
+  /**
+   * Removes the {@code property} from this object.
+   *
+   * @param property name of the member that should be removed.
+   * @return the {@link JsonElement} object that is being removed, or {@code null} if no member with
+   *     this name exists.
+   * @since 1.3
+   */
+  @CanIgnoreReturnValue
+  public JsonElement remove(String property) {
+    return members.remove(property);
+  }
+
+  /**
+   * Convenience method to add a string member. The specified value is converted to a {@link
+   * JsonPrimitive} of String.
+   *
+   * @param property name of the member.
+   * @param value the string value associated with the member.
+   */
+  public void addProperty(String property, String value) {
+    add(property, value == null ? JsonNull.INSTANCE : new JsonPrimitive(value));
+  }
+
+  /**
+   * Convenience method to add a number member. The specified value is converted to a {@link
+   * JsonPrimitive} of Number.
+   *
+   * @param property name of the member.
+   * @param value the number value associated with the member.
+   */
+  public void addProperty(String property, Number value) {
+    add(property, value == null ? JsonNull.INSTANCE : new JsonPrimitive(value));
+  }
+
+  /**
+   * Convenience method to add a boolean member. The specified value is converted to a {@link
+   * JsonPrimitive} of Boolean.
+   *
+   * @param property name of the member.
+   * @param value the boolean value associated with the member.
+   */
+  public void addProperty(String property, Boolean value) {
+    add(property, value == null ? JsonNull.INSTANCE : new JsonPrimitive(value));
+  }
+
+  /**
+   * Convenience method to add a char member. The specified value is converted to a {@link
+   * JsonPrimitive} of Character.
+   *
+   * @param property name of the member.
+   * @param value the char value associated with the member.
+   */
+  public void addProperty(String property, Character value) {
+    add(property, value == null ? JsonNull.INSTANCE : new JsonPrimitive(value));
+  }
+
+  /**
+   * Returns a set of members of this object. The set is ordered, and the order is in which the
+   * elements were added.
+   *
+   * @return a set of members of this object.
+   */
+  public Set<Map.Entry<String, JsonElement>> entrySet() {
+    return members.entrySet();
+  }
+
+  /**
+   * Returns a set of members key values.
+   *
+   * @return a set of member keys as Strings
+   * @since 2.8.1
+   */
+  public Set<String> keySet() {
+    return members.keySet();
+  }
+
+  /**
+   * Returns the number of key/value pairs in the object.
+   *
+   * @return the number of key/value pairs in the object.
+   * @since 2.7
+   */
+  public int size() {
+    return members.size();
+  }
+
+  /**
+   * Returns true if the number of key/value pairs in the object is zero.
+   *
+   * @return true if the number of key/value pairs in the object is zero.
+   * @since 2.10.1
+   */
+  public boolean isEmpty() {
+    return members.isEmpty();
+  }
+
+  /**
+   * Convenience method to check if a member with the specified name is present in this object.
+   *
+   * @param memberName name of the member that is being checked for presence.
+   * @return true if there is a member with the specified name, false otherwise.
+   */
+  public boolean has(String memberName) {
+    return members.containsKey(memberName);
+  }
+
+  /**
+   * Returns the member with the specified name.
+   *
+   * @param memberName name of the member that is being requested.
+   * @return the member matching the name, or {@code null} if no such member exists.
+   */
+  public JsonElement get(String memberName) {
+    return members.get(memberName);
+  }
+
+  /**
+   * Convenience method to get the specified member as a {@link JsonPrimitive}.
+   *
+   * @param memberName name of the member being requested.
+   * @return the {@code JsonPrimitive} corresponding to the specified member, or {@code null} if no
+   *     member with this name exists.
+   * @throws ClassCastException if the member is not of type {@code JsonPrimitive}.
+   */
+  public JsonPrimitive getAsJsonPrimitive(String memberName) {
+    return (JsonPrimitive) members.get(memberName);
+  }
+
+  /**
+   * Convenience method to get the specified member as a {@link JsonArray}.
+   *
+   * @param memberName name of the member being requested.
+   * @return the {@code JsonArray} corresponding to the specified member, or {@code null} if no
+   *     member with this name exists.
+   * @throws ClassCastException if the member is not of type {@code JsonArray}.
+   */
+  public JsonArray getAsJsonArray(String memberName) {
+    return (JsonArray) members.get(memberName);
+  }
+
+  /**
+   * Convenience method to get the specified member as a {@link JsonObject}.
+   *
+   * @param memberName name of the member being requested.
+   * @return the {@code JsonObject} corresponding to the specified member, or {@code null} if no
+   *     member with this name exists.
+   * @throws ClassCastException if the member is not of type {@code JsonObject}.
+   */
+  public JsonObject getAsJsonObject(String memberName) {
+    return (JsonObject) members.get(memberName);
+  }
+
+  /**
+   * Returns a mutable {@link Map} view of this {@code JsonObject}. Changes to the {@code Map} are
+   * visible in this {@code JsonObject} and the other way around.
+   *
+   * <p>The {@code Map} does not permit {@code null} keys or values. Unlike {@code JsonObject}'s
+   * {@code null} handling, a {@link NullPointerException} is thrown when trying to add {@code
+   * null}. Use {@link JsonNull} for JSON null values.
+   *
+   * @return mutable {@code Map} view
+   * @since 2.10
+   */
+  public Map<String, JsonElement> asMap() {
+    // It is safe to expose the underlying map because it disallows null keys and values
+    return members;
+  }
+
+  /**
+   * Returns whether the other object is equal to this. This method only considers the other object
+   * to be equal if it is an instance of {@code JsonObject} and has equal members, ignoring order.
+   */
+  @Override
+  public boolean equals(Object o) {
+    return (o == this) || (o instanceof JsonObject && ((JsonObject) o).members.equals(members));
+  }
+
+  /**
+   * Returns the hash code of this object. This method calculates the hash code based on the members
+   * of this object, ignoring order.
+   */
+  @Override
+  public int hashCode() {
+    return members.hashCode();
+  }
+}
+
+ succeeded in 262ms:
+JsonArray direct project deps in source: 20:import com.google.gson.internal.NonNullElementWrapperList;
+21:import java.math.BigDecimal;
+22:import java.math.BigInteger;
+23:import java.util.ArrayList;
+24:import java.util.Iterator;
+31: * is provided as element argument to any of the methods, it is converted to a {@link JsonNull}.
+42:public final class JsonArray extends JsonElement implements Iterable<JsonElement> {
+43:  private final ArrayList<JsonElement> elements;
+48:    elements = new ArrayList<>();
+60:    elements = new ArrayList<>(capacity);
+87:    elements.add(bool == null ? JsonNull.INSTANCE : new JsonPrimitive(bool));
+97:    elements.add(character == null ? JsonNull.INSTANCE : new JsonPrimitive(character));
+107:    elements.add(number == null ? JsonNull.INSTANCE : new JsonPrimitive(number));
+117:    elements.add(string == null ? JsonNull.INSTANCE : new JsonPrimitive(string));
+127:      element = JsonNull.INSTANCE;
+151:    return elements.set(index, element == null ? JsonNull.INSTANCE : element);
+219:  public Iterator<JsonElement> iterator() {
+283:   * Convenience method to get this array as a {@link BigDecimal} if it contains a single element.
+284:   * This method calls {@link JsonElement#getAsBigDecimal()} on the element, therefore any of the
+287:   * @return this element as a {@link BigDecimal} if it is single element array.
+292:  public BigDecimal getAsBigDecimal() {
+293:    return getAsSingleElement().getAsBigDecimal();
+297:   * Convenience method to get this array as a {@link BigInteger} if it contains a single element.
+298:   * This method calls {@link JsonElement#getAsBigInteger()} on the element, therefore any of the
+301:   * @return this element as a {@link BigInteger} if it is single element array.
+306:  public BigInteger getAsBigInteger() {
+307:    return getAsSingleElement().getAsBigInteger();
+410:   * {@link JsonNull} for JSON null values.
+415:  public List<JsonElement> asList() {
+416:    return new NonNullElementWrapperList<>(elements);
+
+ succeeded in 437ms:
+production files: 8
+test/example files: 16
+
+codex
+The structure looks like a shared JSON tree node rather than a hub. I’m listing the exact depending files now so the final justification can cite concrete fan-in, not just a raw count.
+exec
+/bin/bash -lc "rg -l \"\\bJsonArray\\b\" gson/src/main/java proto/src/main/java extras/src/main/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+exec
+/bin/bash -lc "rg -l \"\\bJsonArray\\b\" gson/src/test/java proto/src/test/java extras/src/test/java test-graal-native-image/src/test/java test-jpms/src/test/java test-shrinker/src/main/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 259ms:
+extras/src/main/java/com/google/gson/extras/examples/rawcollections/RawCollectionsExample.java
+proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/bind/JsonElementTypeAdapter.java
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java
+gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java
+gson/src/main/java/com/google/gson/JsonArray.java
+gson/src/main/java/com/google/gson/JsonObject.java
+gson/src/main/java/com/google/gson/JsonElement.java
+
+ succeeded in 242ms:
+gson/src/test/java/com/google/gson/GsonBuilderTest.java
+gson/src/test/java/com/google/gson/JsonObjectAsMapSuiteTest.java
+gson/src/test/java/com/google/gson/JsonObjectTest.java
+gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java
+gson/src/test/java/com/google/gson/JsonArrayAsListTest.java
+gson/src/test/java/com/google/gson/SubsetTest.java
+gson/src/test/java/com/google/gson/JsonArrayTest.java
+gson/src/test/java/com/google/gson/JsonParserTest.java
+gson/src/test/java/com/google/gson/functional/JsonParserTest.java
+gson/src/test/java/com/google/gson/internal/bind/JsonTreeReaderTest.java
+gson/src/test/java/com/google/gson/functional/DefaultTypeAdaptersTest.java
+gson/src/test/java/com/google/gson/functional/InheritanceTest.java
+gson/src/test/java/com/google/gson/functional/CustomSerializerTest.java
+gson/src/test/java/com/google/gson/functional/ParameterizedTypesTest.java
+gson/src/test/java/com/google/gson/functional/MapTest.java
+gson/src/test/java/com/google/gson/functional/StreamingTypeAdaptersTest.java
+
+codex
+{"target":"com.google.gson.JsonArray","detection":false,"justification":"Inspected gson/src/main/java/com/google/gson/JsonArray.java and its direct callers in gson/src/main/java/com/google/gson/JsonElement.java, JsonObject.java, internal/bind/JsonElementTypeAdapter.java, JsonTreeWriter.java, JsonTreeReader.java, plus proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java and extras/src/main/java/com/google/gson/extras/examples/rawcollections/RawCollectionsExample.java. JsonArray is a thin container around one ArrayList and only directly depends on JsonElement, JsonNull, JsonPrimitive, NonNullElementWrapperList, and basic JDK collection/numeric types; most methods just add to the list or delegate to contained elements. It has several incoming references (8 production files and 16 test/example files mention it), but the outgoing dependency set is small and localized, so it does not show hub-like modularization."}
+tokens used
+29,218

@@ -1,0 +1,632 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f2b-ccf0-7ab0-b48a-5007edebcbc4
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.resolution.types.ResolvedWildcard` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.resolution.types.ResolvedWildcard",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.resolution.types.ResolvedWildcard`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `ResolvedWildcard` and tracing who depends on it and what it depends on so I can judge fan-in/fan-out directly from the repository.
+exec
+/bin/bash -lc "rg --files | rg 'ResolvedWildcard\\.java"'$|ResolvedWildcard'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"class ResolvedWildcard|interface ResolvedWildcard|ResolvedWildcard\" src test -g'*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ exited 2 in 227ms:
+rg: src: No such file or directory (os error 2)
+rg: test: No such file or directory (os error 2)
+
+ succeeded in 362ms:
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java
+
+codex
+I found the class file in `javaparser-core`. Next I’m reading the class and the repository-wide references to it so I can measure both dependencies and usage without relying on tools outside the codebase.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"\\bResolvedWildcard\\b\" . -g'*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 234ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.resolution.types;
+
+import com.github.javaparser.resolution.Context;
+import com.github.javaparser.resolution.declarations.ResolvedTypeParameterDeclaration;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * A wildcard can be:
+ * - unbounded (?)
+ * - have a lower bound (? super Number)
+ * - have an upper bound (? extends Number)
+ * It is not possible to have both a lower and an upper bound at the same time.
+ *
+ * @author Federico Tomassetti
+ */
+public class ResolvedWildcard implements ResolvedType {
+
+    public static ResolvedWildcard UNBOUNDED = new ResolvedWildcard(null, null);
+
+    private BoundType type;
+
+    private ResolvedType boundedType;
+
+    private ResolvedWildcard(BoundType type, ResolvedType boundedType) {
+        if (type == null && boundedType != null) {
+            throw new IllegalArgumentException();
+        }
+        if (type != null && boundedType == null) {
+            throw new IllegalArgumentException();
+        }
+        this.type = type;
+        this.boundedType = boundedType;
+    }
+
+    public static ResolvedWildcard superBound(ResolvedType type) {
+        return new ResolvedWildcard(BoundType.SUPER, type);
+    }
+
+    public static ResolvedWildcard extendsBound(ResolvedType type) {
+        return new ResolvedWildcard(BoundType.EXTENDS, type);
+    }
+
+    @Override
+    public String toString() {
+        return "WildcardUsage{" + "type=" + type + ", boundedType=" + boundedType + '}';
+    }
+
+    @Override
+    public boolean isWildcard() {
+        return true;
+    }
+
+    @Override
+    public ResolvedWildcard asWildcard() {
+        return this;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ResolvedWildcard)) return false;
+        ResolvedWildcard that = (ResolvedWildcard) o;
+        if (boundedType != null ? !boundedType.equals(that.boundedType) : that.boundedType != null) return false;
+        if (type != that.type) return false;
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = type != null ? type.hashCode() : 0;
+        result = 31 * result + (boundedType != null ? boundedType.hashCode() : 0);
+        return result;
+    }
+
+    @Override
+    public String describe() {
+        if (type == null) {
+            return "?";
+        }
+        if (type == BoundType.SUPER) {
+            return "? super " + boundedType.describe();
+        }
+        if (type == BoundType.EXTENDS) {
+            return "? extends " + boundedType.describe();
+        }
+        throw new UnsupportedOperationException();
+    }
+
+    public boolean isSuper() {
+        return type == BoundType.SUPER;
+    }
+
+    public boolean isExtends() {
+        return type == BoundType.EXTENDS;
+    }
+
+    public boolean isBounded() {
+        return isSuper() || isExtends();
+    }
+
+    public ResolvedType getBoundedType() {
+        if (boundedType == null) {
+            throw new IllegalStateException();
+        }
+        return boundedType;
+    }
+
+    @Override
+    public boolean isAssignableBy(ResolvedType other) {
+        if (boundedType == null) {
+            // return other.isReferenceType() &&
+            // other.asReferenceType().getQualifiedName().equals(Object.class.getCanonicalName());
+            return false;
+        }
+        if (type == BoundType.SUPER) {
+            return boundedType.isAssignableBy(other);
+        }
+        if (type == BoundType.EXTENDS) {
+            return false;
+        }
+        throw new RuntimeException();
+    }
+
+    @Override
+    public ResolvedType replaceTypeVariables(
+            ResolvedTypeParameterDeclaration tpToReplace,
+            ResolvedType replaced,
+            Map<ResolvedTypeParameterDeclaration, ResolvedType> inferredTypes) {
+        if (replaced == null) {
+            throw new IllegalArgumentException();
+        }
+        if (boundedType == null) {
+            return this;
+        }
+        ResolvedType boundedTypeReplaced = boundedType.replaceTypeVariables(tpToReplace, replaced, inferredTypes);
+        if (boundedTypeReplaced == null) {
+            throw new RuntimeException();
+        }
+        if (boundedTypeReplaced != boundedType) {
+            return new ResolvedWildcard(type, boundedTypeReplaced);
+        }
+        return this;
+    }
+
+    @Override
+    public boolean mention(List<ResolvedTypeParameterDeclaration> typeParameters) {
+        return boundedType != null && boundedType.mention(typeParameters);
+    }
+
+    public boolean isUpperBounded() {
+        return isExtends();
+    }
+
+    public boolean isLowerBounded() {
+        return isSuper();
+    }
+
+    public enum BoundType {
+        SUPER,
+        EXTENDS
+    }
+
+    /*
+     * Returns the bounded resolved type.
+     */
+    @Override
+    public ResolvedType solveGenericTypes(Context context) {
+        if (isExtends() || isSuper()) {
+            ResolvedType boundResolved = getBoundedType().solveGenericTypes(context);
+            if (isExtends()) {
+                return ResolvedWildcard.extendsBound(boundResolved);
+            }
+            return ResolvedWildcard.superBound(boundResolved);
+        }
+        return this;
+    }
+
+    //
+    // Erasure
+    //
+    // The erasure of a type variable (§4.4) is the erasure of its leftmost bound.
+    // This method returns null if no bound is declared. This is probably a limitation.
+    //
+    @Override
+    public ResolvedType erasure() {
+        return boundedType;
+    }
+}
+
+ succeeded in 377ms:
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistInterfaceDeclarationTest.java:34:import com.github.javaparser.resolution.types.ResolvedWildcard;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistInterfaceDeclarationTest.java:214:            ResolvedWildcard wildCard = ResolvedWildcard.extendsBound(javaLangObject);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:99:                ImmutableList.of(ResolvedWildcard.extendsBound(string)));
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:102:                ImmutableList.of(ResolvedWildcard.superBound(string)));
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:395:                                ImmutableList.of(ResolvedWildcard.extendsBound(foo), bar))
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:405:                                ImmutableList.of(foo, ResolvedWildcard.extendsBound(bar)))
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:416:                                        ResolvedWildcard.extendsBound(foo), ResolvedWildcard.extendsBound(foo)))
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java:424:                ImmutableList.of(ResolvedWildcard.extendsBound(foo), ResolvedWildcard.extendsBound(foo)));
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:35:import com.github.javaparser.resolution.types.ResolvedWildcard;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:55:    private ResolvedWildcard unbounded = ResolvedWildcard.UNBOUNDED;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:56:    private ResolvedWildcard superFoo;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:57:    private ResolvedWildcard superBar;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:58:    private ResolvedWildcard extendsFoo;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:59:    private ResolvedWildcard extendsBar;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:60:    private ResolvedWildcard superA;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:61:    private ResolvedWildcard extendsA;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:62:    private ResolvedWildcard superString;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:63:    private ResolvedWildcard extendsString;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:73:        superFoo = ResolvedWildcard.superBound(foo);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:74:        superBar = ResolvedWildcard.superBound(bar);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:75:        extendsFoo = ResolvedWildcard.extendsBound(foo);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:76:        extendsBar = ResolvedWildcard.extendsBound(bar);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:78:        superA = ResolvedWildcard.superBound(a);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:79:        extendsA = ResolvedWildcard.extendsBound(a);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:80:        superString = ResolvedWildcard.superBound(string);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:81:        extendsString = ResolvedWildcard.extendsBound(string);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:459:                genericType(Collection.class.getCanonicalName(), ResolvedWildcard.UNBOUNDED);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:529:                genericType(Collection.class.getCanonicalName(), ResolvedWildcard.UNBOUNDED);
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:613:        return ResolvedWildcard.extendsBound(type(type));
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java:617:        return ResolvedWildcard.superBound(type(type));
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:33:import com.github.javaparser.resolution.types.ResolvedWildcard;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:363:        return ResolvedWildcard.superBound(type(type));
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java:367:        return ResolvedWildcard.extendsBound(type(qualifiedName));
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistUtils.java:224:                return ResolvedWildcard.UNBOUNDED;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistUtils.java:227:                return ResolvedWildcard.extendsBound(
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistUtils.java:231:                return ResolvedWildcard.superBound(
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typeinference/bounds/SubtypeOfBoundTest.java:33:import com.github.javaparser.resolution.types.ResolvedWildcard;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typeinference/bounds/SubtypeOfBoundTest.java:107:                iterableType.getTypeDeclaration().get(), Arrays.asList(ResolvedWildcard.UNBOUNDED));
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundTest.java:36:import com.github.javaparser.resolution.types.ResolvedWildcard;
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundTest.java:395:        return ResolvedWildcard.extendsBound(type(type));
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundTest.java:399:        return ResolvedWildcard.superBound(type(type));
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundTest.java:403:        return ResolvedWildcard.UNBOUNDED;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/TypeHelper.java:64:        if (type instanceof ResolvedWildcard) {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/TypeHelper.java:65:            ResolvedWildcard wildcard = (ResolvedWildcard) type;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundLogic.java:30:import com.github.javaparser.resolution.types.ResolvedWildcard;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundLogic.java:31:import com.github.javaparser.resolution.types.ResolvedWildcard.BoundType;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundLogic.java:499:            ResolvedWildcard wildcardType = (ResolvedWildcard) (isWildcard1 ? type1 : type2);
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundLogic.java:516:    private ResolvedType lctaOneWildcard(ResolvedType rawType, ResolvedWildcard wildcardType) {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundLogic.java:525:    private ResolvedType lctaBothWildcards(ResolvedWildcard type1, ResolvedWildcard type2) {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundLogic.java:540:        return ResolvedWildcard.UNBOUNDED;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundLogic.java:552:                ? ResolvedWildcard.extendsBound(type)
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundLogic.java:553:                : ResolvedWildcard.superBound(type);
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:117:                return ResolvedWildcard.superBound(typeUsageFor(wildcardType.getLowerBounds()[0], typeSolver));
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:125:                    return ResolvedWildcard.UNBOUNDED;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:127:                return ResolvedWildcard.extendsBound(typeUsageFor(wildcardType.getUpperBounds()[0], typeSolver));
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:129:            return ResolvedWildcard.UNBOUNDED;
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/MethodCallExprContext.java:233:            if (returnType != methodUsage.returnType() && !(returnType == ResolvedWildcard.UNBOUNDED)) {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/MethodCallExprContext.java:518:        if (type instanceof ResolvedWildcard) {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/MethodCallExprContext.java:519:            ResolvedWildcard wildcardUsage = (ResolvedWildcard) type;
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:618:                            ResolvedWildcard.extendsBound(
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:627:                                tp, ResolvedWildcard.extendsBound(bound.getType()));
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:632:                                tp, ResolvedWildcard.superBound(bound.getType()));
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:801:            ResolvedWildcard wildcard = type.asWildcard();
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:816:                        return ResolvedWildcard.superBound(substitutedBound);
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:819:                        return ResolvedWildcard.extendsBound(substitutedBound);
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceVariableType.java:29:import com.github.javaparser.resolution.types.ResolvedWildcard;
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceVariableType.java:150:            ResolvedWildcard wildcardType = type.asWildcard();
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:148:                ResolvedWildcard formalWildcard = formalType.asWildcard();
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:149:                ResolvedWildcard actualWildcard = actualType.asWildcard();
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:211:                return ResolvedWildcard.extendsBound(
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:215:                return ResolvedWildcard.superBound(
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:259:                return ResolvedWildcard.extendsBound(resolve(type.asWildcard().getBoundedType()));
+./javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:262:                return ResolvedWildcard.superBound(resolve(type.asWildcard().getBoundedType()));
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java:25:import com.github.javaparser.resolution.types.ResolvedWildcard;
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java:53:                            && (!resolvedTypeParam.asWildcard().equals(ResolvedWildcard.UNBOUNDED)
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java:64:                return ResolvedWildcard.extendsBound(
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java:67:            return ResolvedWildcard.superBound(
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:37:public class ResolvedWildcard implements ResolvedType {
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:39:    public static ResolvedWildcard UNBOUNDED = new ResolvedWildcard(null, null);
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:45:    private ResolvedWildcard(BoundType type, ResolvedType boundedType) {
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:56:    public static ResolvedWildcard superBound(ResolvedType type) {
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:57:        return new ResolvedWildcard(BoundType.SUPER, type);
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:60:    public static ResolvedWildcard extendsBound(ResolvedType type) {
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:61:        return new ResolvedWildcard(BoundType.EXTENDS, type);
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:75:    public ResolvedWildcard asWildcard() {
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:82:        if (!(o instanceof ResolvedWildcard)) return false;
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:83:        ResolvedWildcard that = (ResolvedWildcard) o;
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:161:            return new ResolvedWildcard(type, boundedTypeReplaced);
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:192:                return ResolvedWildcard.extendsBound(boundResolved);
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:194:            return ResolvedWildcard.superBound(boundResolved);
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedReferenceType.java:487:                    if (thisParam instanceof ResolvedWildcard) {
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedReferenceType.java:488:                        ResolvedWildcard thisParamAsWildcard = (ResolvedWildcard) thisParam;
+./javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedType.java:155:    default ResolvedWildcard asWildcard() {
+./javaparser-core/src/main/java/com/github/javaparser/resolution/model/typesystem/LazyType.java:116:    public ResolvedWildcard asWildcard() {
+./javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:39:import com.github.javaparser.resolution.types.ResolvedWildcard;
+./javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:255:    public ResolvedWildcard resolve() {
+./javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:256:        return getSymbolResolver().toResolvedType(this, ResolvedWildcard.class);
+./javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:277:            return ResolvedWildcard.extendsBound(getExtendedType().get().convertToUsage(context));
+./javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:281:            return ResolvedWildcard.superBound(getSuperType().get().convertToUsage(context));
+./javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:284:            return ResolvedWildcard.UNBOUNDED;
+
+codex
+I have the class body and the broad reference set. I’m now separating production uses from tests and counting distinct files so the verdict is based on actual fan-in, not just repeated mentions in one or two places.
+exec
+/bin/bash -lc "rg -l \"\\bResolvedWildcard\\b\" javaparser-core/src/main/java javaparser-symbol-solver-core/src/main/java javaparser-core/src/test/java javaparser-symbol-solver-testing/src/test/java javaparser-symbol-solver-testing/src/main/java javaparser-core/src/main/java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -n \"\\bResolvedWildcard\\b\" javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceVariableType.java javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedReferenceType.java javaparser-core/src/main/java/com/github/javaparser/resolution/model/typesystem/LazyType.java javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/MethodCallExprContext.java javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistUtils.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 324ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:117:                return ResolvedWildcard.superBound(typeUsageFor(wildcardType.getLowerBounds()[0], typeSolver));
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:125:                    return ResolvedWildcard.UNBOUNDED;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:127:                return ResolvedWildcard.extendsBound(typeUsageFor(wildcardType.getUpperBounds()[0], typeSolver));
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java:129:            return ResolvedWildcard.UNBOUNDED;
+javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:39:import com.github.javaparser.resolution.types.ResolvedWildcard;
+javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:255:    public ResolvedWildcard resolve() {
+javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:256:        return getSymbolResolver().toResolvedType(this, ResolvedWildcard.class);
+javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:277:            return ResolvedWildcard.extendsBound(getExtendedType().get().convertToUsage(context));
+javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:281:            return ResolvedWildcard.superBound(getSuperType().get().convertToUsage(context));
+javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java:284:            return ResolvedWildcard.UNBOUNDED;
+javaparser-core/src/main/java/com/github/javaparser/resolution/model/typesystem/LazyType.java:116:    public ResolvedWildcard asWildcard() {
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedReferenceType.java:487:                    if (thisParam instanceof ResolvedWildcard) {
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedReferenceType.java:488:                        ResolvedWildcard thisParamAsWildcard = (ResolvedWildcard) thisParam;
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java:25:import com.github.javaparser.resolution.types.ResolvedWildcard;
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java:53:                            && (!resolvedTypeParam.asWildcard().equals(ResolvedWildcard.UNBOUNDED)
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java:64:                return ResolvedWildcard.extendsBound(
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java:67:            return ResolvedWildcard.superBound(
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceVariableType.java:29:import com.github.javaparser.resolution.types.ResolvedWildcard;
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceVariableType.java:150:            ResolvedWildcard wildcardType = type.asWildcard();
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:148:                ResolvedWildcard formalWildcard = formalType.asWildcard();
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:149:                ResolvedWildcard actualWildcard = actualType.asWildcard();
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:211:                return ResolvedWildcard.extendsBound(
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:215:                return ResolvedWildcard.superBound(
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:259:                return ResolvedWildcard.extendsBound(resolve(type.asWildcard().getBoundedType()));
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java:262:                return ResolvedWildcard.superBound(resolve(type.asWildcard().getBoundedType()));
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:618:                            ResolvedWildcard.extendsBound(
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:627:                                tp, ResolvedWildcard.extendsBound(bound.getType()));
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:632:                                tp, ResolvedWildcard.superBound(bound.getType()));
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:801:            ResolvedWildcard wildcard = type.asWildcard();
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:816:                        return ResolvedWildcard.superBound(substitutedBound);
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java:819:                        return ResolvedWildcard.extendsBound(substitutedBound);
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:37:public class ResolvedWildcard implements ResolvedType {
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:39:    public static ResolvedWildcard UNBOUNDED = new ResolvedWildcard(null, null);
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:45:    private ResolvedWildcard(BoundType type, ResolvedType boundedType) {
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:56:    public static ResolvedWildcard superBound(ResolvedType type) {
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:57:        return new ResolvedWildcard(BoundType.SUPER, type);
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:60:    public static ResolvedWildcard extendsBound(ResolvedType type) {
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:61:        return new ResolvedWildcard(BoundType.EXTENDS, type);
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:75:    public ResolvedWildcard asWildcard() {
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:82:        if (!(o instanceof ResolvedWildcard)) return false;
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:83:        ResolvedWildcard that = (ResolvedWildcard) o;
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:161:            return new ResolvedWildcard(type, boundedTypeReplaced);
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:192:                return ResolvedWildcard.extendsBound(boundResolved);
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java:194:            return ResolvedWildcard.superBound(boundResolved);
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistUtils.java:224:                return ResolvedWildcard.UNBOUNDED;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistUtils.java:227:                return ResolvedWildcard.extendsBound(
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistUtils.java:231:                return ResolvedWildcard.superBound(
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/MethodCallExprContext.java:233:            if (returnType != methodUsage.returnType() && !(returnType == ResolvedWildcard.UNBOUNDED)) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/MethodCallExprContext.java:518:        if (type instanceof ResolvedWildcard) {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/MethodCallExprContext.java:519:            ResolvedWildcard wildcardUsage = (ResolvedWildcard) type;
+
+ exited 2 in 423ms:
+rg: javaparser-core/src/test/java: No such file or directory (os error 2)
+rg: javaparser-symbol-solver-testing/src/main/java: No such file or directory (os error 2)
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceVariableType.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedReferenceType.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedType.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/model/typesystem/LazyType.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistUtils.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceVariableType.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/logic/InferenceContext.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/contexts/MethodCallExprContext.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/parametrization/ResolvedTypeParameterValueProvider.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/TypeHelper.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundLogic.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedReferenceType.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedType.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/model/typesystem/LazyType.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory.java
+javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistInterfaceDeclarationTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typeinference/bounds/SubtypeOfBoundTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/MethodsResolutionLogicTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/WildcardUsageTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeTest.java
+javaparser-core/src/main/java/com/github/javaparser/ast/type/WildcardType.java
+
+codex
+I’ve got enough to see the usage pattern; I’m confirming the file counts and the class’s own dependency footprint so the verdict can explicitly distinguish “widely used” from “hub-like.”
+exec
+/bin/bash -lc "rg -l \"\\bResolvedWildcard\\b\" javaparser-core/src/main/java javaparser-symbol-solver-core/src/main/java javaparser-symbol-solver-testing/src/test/java | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg -l \"\\bResolvedWildcard\\b\" javaparser-core/src/main/java javaparser-symbol-solver-core/src/main/java | wc -l" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,120p' javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedType.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 207ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.resolution.types;
+
+import com.github.javaparser.resolution.Context;
+import com.github.javaparser.resolution.declarations.ResolvedTypeParameterDeclaration;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * <p>A resolved type. </p>
+ * <ul>
+ *     <li>
+ *         It could be a primitive type or a reference type (enum, class, interface).
+ *         In the latter case, it could take type typeParametersValues (other {@code TypeUsages}).</p>
+ *     </li>
+ *     <li>
+ *         It could also be a {@code TypeVariable}, like in: {@code class A<B> {} } where {@code B} is a {@code TypeVariable}.
+ *     </li>
+ *     <li>
+ *         It could also be {@code Wildcard} Type, possibly with constraints.
+ *     </li>
+ *     <li>
+ *         It could also be a {@code TypeVariable}, like in: {@code class A<B> {}}.
+ *     </li>
+ * </ul>
+ *
+ * @author Federico Tomassetti
+ */
+public interface ResolvedType {
+
+    // /
+    // / Relation with other types
+    // /
+    /**
+     * @return true, if this type represent an array - otherwise false.
+     */
+    default boolean isArray() {
+        return false;
+    }
+
+    /**
+     * @return The level of nesting that this type is present at.
+     * For example, int[][] would have an array level of 2, and int would have an array level of 0 (not an array).
+     */
+    default int arrayLevel() {
+        if (isArray()) {
+            return 1 + this.asArrayType().getComponentType().arrayLevel();
+        }
+        return 0;
+    }
+
+    /**
+     * Is this a primitive type?
+     */
+    default boolean isPrimitive() {
+        return false;
+    }
+
+    /**
+     * Is this the null type?
+     */
+    default boolean isNull() {
+        return false;
+    }
+
+    /**
+     * Is this a union type (as the ones used in multi catch clauses)?
+     */
+    default boolean isUnionType() {
+        return false;
+    }
+
+    /**
+     * Is this a non primitive value?
+     */
+    default boolean isReference() {
+        return isReferenceType() || isArray() || isTypeVariable() || isNull() || isWildcard() || isUnionType();
+    }
+
+    /**
+     * Is this a lambda constraint type?
+     */
+    default boolean isConstraint() {
+        return false;
+    }
+
+    /**
+     * Can this be seen as a ReferenceTypeUsage?
+     * In other words: is this a reference to a class, an interface or an enum?
+     */
+    default boolean isReferenceType() {
+        return false;
+    }
+
+    default boolean isVoid() {
+        return false;
+    }
+
+    default boolean isTypeVariable() {
+
+ succeeded in 305ms:
+20
+
+ succeeded in 290ms:
+14
+
+codex
+{"target":"com.github.javaparser.resolution.types.ResolvedWildcard","detection":false,"justification":"Inspected javaparser-core/src/main/java/com/github/javaparser/resolution/types/ResolvedWildcard.java plus its main callers in javaparser-core/src/main/java/com/github/javaparser/resolution/logic/MethodResolutionLogic.java, InferenceContext.java, InferenceVariableType.java, ResolvedTypeParameterValueProvider.java, ResolvedReferenceType.java, LazyType.java, WildcardType.java, and javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/{reflectionmodel/ReflectionFactory.java,javassistmodel/JavassistUtils.java,javaparsermodel/contexts/MethodCallExprContext.java}. The class has fan-in from 14 production files and 6 test files mentioning it, but its own fan-out is small: it only imports Context, ResolvedTypeParameterDeclaration, List, and Map, and its methods mainly delegate to the boundedType or return constants. That is shared utility usage, not a dependency hub with strong incoming and outgoing connectivity."}
+tokens used
+14,181

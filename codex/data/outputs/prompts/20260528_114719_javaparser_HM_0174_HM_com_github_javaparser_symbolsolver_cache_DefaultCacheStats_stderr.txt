@@ -1,0 +1,1391 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f0d-e123-7f50-ac05-34d9cf6acf7e
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.symbolsolver.cache.DefaultCacheStats` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.symbolsolver.cache.DefaultCacheStats",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.symbolsolver.cache.DefaultCacheStats`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `DefaultCacheStats` and mapping its incoming and outgoing dependencies, then I’ll decide whether the class is acting as a dependency hub based on what the repository shows.
+exec
+/bin/bash -lc 'rg -n "class DefaultCacheStats|interface CacheStats|DefaultCacheStats" .' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+./javaparser-core/src/main/java/com/github/javaparser/resolution/cache/CacheStats.java:22:public interface CacheStats {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java:56:public class DefaultCacheStats implements CacheStats {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java:70:    public DefaultCacheStats() {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java:83:    public DefaultCacheStats(
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java:255:        return new DefaultCacheStats(
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java:276:        return new DefaultCacheStats(
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/GuavaCache.java:96:        return new DefaultCacheStats(
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/NoCache.java:85:        return new DefaultCacheStats();
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java:96:        return new DefaultCacheStats();
+
+exec
+/bin/bash -lc "rg --files | rg 'DefaultCacheStats\\.java|CacheStats|DefaultCache'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/cache/CacheStats.java
+
+codex
+I found the implementation and the main callers. Next I’m reading the class, its interface, and the cache implementations that construct it to see whether it has broad fan-in/fan-out or is just a value object.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/resolution/cache/CacheStats.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.resolution.cache;
+
+public interface CacheStats {
+
+    /**
+     * Returns the number of times lookup methods have returned either a cached or
+     * uncached value. This is defined as {@code hitCount + missCount}.
+     *
+     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+     * guaranteed not to throw an exception). If you require specific handling, we recommend
+     * implementing your own stats collector.
+     */
+    long requestCount();
+
+    /**
+     * Returns the number of times lookup methods have returned a cached value.
+     */
+    long hitCount();
+
+    /**
+     * Returns the ratio of cache requests which were hits. This is defined as {@code hitCount /
+     * requestCount}, or {@code 1.0} when {@code requestCount == 0}. Note that {@code hitRate +
+     * missRate =~ 1.0}.
+     */
+    double hitRate();
+
+    /**
+     * Returns the number of times lookup methods have returned an uncached (newly
+     * loaded) value, or null. Multiple concurrent calls to lookup methods on an absent
+     * value can result in multiple misses, all returning the results of a single cache load
+     * operation.
+     */
+    long missCount();
+
+    /**
+     * Returns the ratio of cache requests which were misses. This is defined as {@code missCount /
+     * requestCount}, or {@code 0.0} when {@code requestCount == 0}. Note that {@code hitRate +
+     * missRate =~ 1.0}. Cache misses include all requests which weren't cache hits, including
+     * requests which resulted in either successful or failed loading attempts, and requests which
+     * waited for other threads to finish loading. It is thus the case that {@code missCount &gt;=
+     * loadSuccessCount + loadExceptionCount}. Multiple concurrent misses for the same key will result
+     * in a single load operation.
+     */
+    double missRate();
+
+    /**
+     * Returns the total number of times that lookup methods attempted to load new
+     * values. This includes both successful load operations and those that threw exceptions. This is
+     * defined as {@code loadSuccessCount + loadExceptionCount}.
+     *
+     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+     * guaranteed not to throw an exception). If you require specific handling, we recommend
+     * implementing your own stats collector.
+     */
+    long loadCount();
+
+    /**
+     * Returns the number of times lookup methods have successfully loaded a new value.
+     * This is usually incremented in conjunction with {@link #missCount}, though {@code missCount} is
+     * also incremented when an exception is encountered during cache loading (see {@link
+     * #loadExceptionCount}). Multiple concurrent misses for the same key will result in a single load
+     * operation. This may be incremented not in conjunction with {@code missCount} if the load occurs
+     * as a result of a refresh or if the cache loader returned more items than was requested. {@code
+     * missCount} may also be incremented not in conjunction with this (nor {@link
+     * #loadExceptionCount}) on calls to {@code getIfPresent}.
+     */
+    long loadSuccessCount();
+
+    /**
+     * Returns the number of times lookup methods threw an exception while loading a new
+     * value. This is usually incremented in conjunction with {@code missCount}, though {@code
+     * missCount} is also incremented when cache loading completes successfully (see {@link
+     * #loadSuccessCount}). Multiple concurrent misses for the same key will result in a single load
+     * operation. This may be incremented not in conjunction with {@code missCount} if the load occurs
+     * as a result of a refresh or if the cache loader returned more items than was requested. {@code
+     * missCount} may also be incremented not in conjunction with this (nor {@link #loadSuccessCount})
+     * on calls to {@code getIfPresent}.
+     */
+    long loadExceptionCount();
+
+    /**
+     * Returns the ratio of cache loading attempts which threw exceptions. This is defined as {@code
+     * loadExceptionCount / (loadSuccessCount + loadExceptionCount)}, or {@code 0.0} when {@code
+     * loadSuccessCount + loadExceptionCount == 0}.
+     *
+     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+     * guaranteed not to throw an exception). If you require specific handling, we recommend
+     * implementing your own stats collector.
+     */
+    double loadExceptionRate();
+
+    /**
+     * Returns the total number of nanoseconds the cache has spent loading new values. This can be
+     * used to calculate the miss penalty. This value is increased every time {@code loadSuccessCount}
+     * or {@code loadExceptionCount} is incremented.
+     */
+    long totalLoadTime();
+
+    /**
+     * Returns the average time spent loading new values. This is defined as {@code totalLoadTime /
+     * (loadSuccessCount + loadExceptionCount)}.
+     *
+     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+     * guaranteed not to throw an exception). If you require specific handling, we recommend
+     * implementing your own stats collector.
+     */
+    double averageLoadPenalty();
+
+    /**
+     * Returns the number of times an entry has been evicted. This count does not include manual
+     * invalidations.
+     */
+    long evictionCount();
+
+    /**
+     * Returns a new {@code ICacheStats} representing the difference between this {@code ICacheStats}
+     * and {@code other}. Negative values, which aren't supported by {@code ICacheStats} will be
+     * rounded up to zero.
+     */
+    CacheStats minus(CacheStats other);
+
+    /**
+     * Returns a new {@code ICacheStats} representing the sum of this {@code ICacheStats} and {@code
+     * other}.
+     *
+     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+     * guaranteed not to throw an exception). If you require specific handling, we recommend
+     * implementing your own stats collector.
+     */
+    CacheStats plus(CacheStats other);
+}
+
+exec
+/bin/bash -lc "sed -n '1,340p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.cache;
+
+import static com.google.common.math.LongMath.saturatedAdd;
+import static com.google.common.math.LongMath.saturatedSubtract;
+
+import com.github.javaparser.resolution.cache.Cache;
+import com.github.javaparser.resolution.cache.CacheStats;
+import java.util.Arrays;
+
+/**
+ * Statistics about the performance of a {@link Cache}. Instances of this class are immutable.
+ *
+ * <p>Cache statistics are incremented according to the following rules:
+ *
+ * <ul>
+ *   <li>When a cache lookup encounters an existing cache entry {@code hitCount} is incremented.
+ *   <li>When a cache lookup first encounters a missing cache entry, a new entry is loaded.
+ *       <ul>
+ *         <li>After successfully loading an entry {@code missCount} and {@code loadSuccessCount}
+ *             are incremented, and the total loading time, in nanoseconds, is added to {@code
+ *             totalLoadTime}.
+ *         <li>When an exception is thrown while loading an entry, {@code missCount} and {@code
+ *             loadExceptionCount} are incremented, and the total loading time, in nanoseconds, is
+ *             added to {@code totalLoadTime}.
+ *         <li>Cache lookups that encounter a missing cache entry that is still loading will wait
+ *             for loading to complete (whether successful or not) and then increment {@code
+ *             missCount}.
+ *       </ul>
+ *   <li>When an entry is evicted from the cache, {@code evictionCount} is incremented.
+ *   <li>No stats are modified when a cache entry is invalidated or manually removed.
+ *   <li>No stats are modified by operations invoked on the {@linkplain Cache#asMap asMap} view of
+ *       the cache.
+ * </ul>
+ *
+ */
+public class DefaultCacheStats implements CacheStats {
+    private final long hitCount;
+    private final long missCount;
+    private final long loadSuccessCount;
+    private final long loadExceptionCount;
+
+    private final long totalLoadTime;
+
+    private final long evictionCount;
+
+    /**
+     * Constructs a new {@code ICacheStats} instance.
+     *
+     */
+    public DefaultCacheStats() {
+        this.hitCount = 0;
+        this.missCount = 0;
+        this.loadSuccessCount = 0;
+        this.loadExceptionCount = 0;
+        this.totalLoadTime = 0;
+        this.evictionCount = 0;
+    }
+
+    /**
+     * Constructs a new {@code ICacheStats} instance.
+     *
+     */
+    public DefaultCacheStats(
+            long hitCount,
+            long missCount,
+            long loadSuccessCount,
+            long loadExceptionCount,
+            long totalLoadTime,
+            long evictionCount) {
+
+        this.hitCount = hitCount;
+        this.missCount = missCount;
+        this.loadSuccessCount = loadSuccessCount;
+        this.loadExceptionCount = loadExceptionCount;
+        this.totalLoadTime = totalLoadTime;
+        this.evictionCount = evictionCount;
+    }
+
+    /**
+     * Returns the number of times {@link Cache} lookup methods have returned either a cached or
+     * uncached value. This is defined as {@code hitCount + missCount}.
+     *
+     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+     * guaranteed not to throw an exception). If you require specific handling, we recommend
+     * implementing your own stats collector.
+     */
+    @Override
+    public long requestCount() {
+        return saturatedAdd(hitCount, missCount);
+    }
+
+    /** Returns the number of times {@link Cache} lookup methods have returned a cached value. */
+    @Override
+    public long hitCount() {
+        return hitCount;
+    }
+
+    /**
+     * Returns the ratio of cache requests which were hits. This is defined as {@code hitCount /
+     * requestCount}, or {@code 1.0} when {@code requestCount == 0}. Note that {@code hitRate +
+     * missRate =~ 1.0}.
+     */
+    @Override
+    public double hitRate() {
+        long requestCount = requestCount();
+        return (requestCount == 0) ? 1.0 : (double) hitCount / requestCount;
+    }
+
+    /**
+     * Returns the number of times {@link Cache} lookup methods have returned an uncached (newly
+     * loaded) value, or null. Multiple concurrent calls to {@link Cache} lookup methods on an absent
+     * value can result in multiple misses, all returning the results of a single cache load
+     * operation.
+     */
+    @Override
+    public long missCount() {
+        return missCount;
+    }
+
+    /**
+     * Returns the ratio of cache requests which were misses. This is defined as {@code missCount /
+     * requestCount}, or {@code 0.0} when {@code requestCount == 0}. Note that {@code hitRate +
+     * missRate =~ 1.0}. Cache misses include all requests which weren't cache hits, including
+     * requests which resulted in either successful or failed loading attempts, and requests which
+     * waited for other threads to finish loading. It is thus the case that {@code missCount &gt;=
+     * loadSuccessCount + loadExceptionCount}. Multiple concurrent misses for the same key will result
+     * in a single load operation.
+     */
+    @Override
+    public double missRate() {
+        long requestCount = requestCount();
+        return (requestCount == 0) ? 0.0 : (double) missCount / requestCount;
+    }
+
+    /**
+     * Returns the total number of times that {@link Cache} lookup methods attempted to load new
+     * values. This includes both successful load operations and those that threw exceptions. This is
+     * defined as {@code loadSuccessCount + loadExceptionCount}.
+     *
+     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+     * guaranteed not to throw an exception). If you require specific handling, we recommend
+     * implementing your own stats collector.
+     */
+    @Override
+    public long loadCount() {
+        return saturatedAdd(loadSuccessCount, loadExceptionCount);
+    }
+
+    /**
+     * Returns the number of times {@link Cache} lookup methods have successfully loaded a new value.
+     * This is usually incremented in conjunction with {@link #missCount}, though {@code missCount} is
+     * also incremented when an exception is encountered during cache loading (see {@link
+     * #loadExceptionCount}). Multiple concurrent misses for the same key will result in a single load
+     * operation. This may be incremented not in conjunction with {@code missCount} if the load occurs
+     * as a result of a refresh or if the cache loader returned more items than was requested. {@code
+     * missCount} may also be incremented not in conjunction with this (nor {@link
+     * #loadExceptionCount}) on calls to {@code getIfPresent}.
+     */
+    @Override
+    public long loadSuccessCount() {
+        return loadSuccessCount;
+    }
+
+    /**
+     * Returns the number of times {@link Cache} lookup methods threw an exception while loading a new
+     * value. This is usually incremented in conjunction with {@code missCount}, though {@code
+     * missCount} is also incremented when cache loading completes successfully (see {@link
+     * #loadSuccessCount}). Multiple concurrent misses for the same key will result in a single load
+     * operation. This may be incremented not in conjunction with {@code missCount} if the load occurs
+     * as a result of a refresh or if the cache loader returned more items than was requested. {@code
+     * missCount} may also be incremented not in conjunction with this (nor {@link #loadSuccessCount})
+     * on calls to {@code getIfPresent}.
+     */
+    @Override
+    public long loadExceptionCount() {
+        return loadExceptionCount;
+    }
+
+    /**
+     * Returns the ratio of cache loading attempts which threw exceptions. This is defined as {@code
+     * loadExceptionCount / (loadSuccessCount + loadExceptionCount)}, or {@code 0.0} when {@code
+     * loadSuccessCount + loadExceptionCount == 0}.
+     *
+     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+     * guaranteed not to throw an exception). If you require specific handling, we recommend
+     * implementing your own stats collector.
+     */
+    @Override
+    public double loadExceptionRate() {
+        long totalLoadCount = saturatedAdd(loadSuccessCount, loadExceptionCount);
+        return (totalLoadCount == 0) ? 0.0 : (double) loadExceptionCount / totalLoadCount;
+    }
+
+    /**
+     * Returns the total number of nanoseconds the cache has spent loading new values. This can be
+     * used to calculate the miss penalty. This value is increased every time {@code loadSuccessCount}
+     * or {@code loadExceptionCount} is incremented.
+     */
+    @Override
+    @SuppressWarnings("GoodTime") // should return a java.time.Duration
+    public long totalLoadTime() {
+        return totalLoadTime;
+    }
+
+    /**
+     * Returns the average time spent loading new values. This is defined as {@code totalLoadTime /
+     * (loadSuccessCount + loadExceptionCount)}.
+     *
+     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+     * guaranteed not to throw an exception). If you require specific handling, we recommend
+     * implementing your own stats collector.
+     */
+    @Override
+    public double averageLoadPenalty() {
+        long totalLoadCount = saturatedAdd(loadSuccessCount, loadExceptionCount);
+        return (totalLoadCount == 0) ? 0.0 : (double) totalLoadTime / totalLoadCount;
+    }
+
+    /**
+     * Returns the number of times an entry has been evicted. This count does not include manual
+     * {@linkplain Cache#invalidate invalidations}.
+     */
+    @Override
+    public long evictionCount() {
+        return evictionCount;
+    }
+
+    /**
+     * Returns a new {@code ICacheStats} representing the difference between this {@code ICacheStats}
+     * and {@code other}. Negative values, which aren't supported by {@code ICacheStats} will be
+     * rounded up to zero.
+     */
+    @Override
+    public CacheStats minus(CacheStats other) {
+        return new DefaultCacheStats(
+                Math.max(0, saturatedSubtract(hitCount, other.hitCount())),
+                Math.max(0, saturatedSubtract(missCount, other.missCount())),
+                Math.max(0, saturatedSubtract(loadSuccessCount, other.loadSuccessCount())),
+                Math.max(0, saturatedSubtract(loadExceptionCount, other.loadExceptionCount())),
+                Math.max(0, saturatedSubtract(totalLoadTime, other.totalLoadTime())),
+                Math.max(0, saturatedSubtract(evictionCount, other.evictionCount())));
+    }
+
+    /**
+     * Returns a new {@code ICacheStats} representing the sum of this {@code ICacheStats} and {@code
+     * other}.
+     *
+     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+     * guaranteed not to throw an exception). If you require specific handling, we recommend
+     * implementing your own stats collector.
+     *
+     * @since 11.0
+     */
+    @Override
+    public CacheStats plus(CacheStats other) {
+        return new DefaultCacheStats(
+                saturatedAdd(hitCount, other.hitCount()),
+                saturatedAdd(missCount, other.missCount()),
+                saturatedAdd(loadSuccessCount, other.loadSuccessCount()),
+                saturatedAdd(loadExceptionCount, other.loadExceptionCount()),
+                saturatedAdd(totalLoadTime, other.totalLoadTime()),
+                saturatedAdd(evictionCount, other.evictionCount()));
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(
+                new long[] {hitCount, missCount, loadSuccessCount, loadExceptionCount, totalLoadTime, evictionCount});
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object instanceof CacheStats) {
+            CacheStats other = (CacheStats) object;
+            return hitCount == other.hitCount()
+                    && missCount == other.missCount()
+                    && loadSuccessCount == other.loadSuccessCount()
+                    && loadExceptionCount == other.loadExceptionCount()
+                    && totalLoadTime == other.totalLoadTime()
+                    && evictionCount == other.evictionCount();
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder(this.getClass().getSimpleName()).append(": ");
+        return sb.append("hitCount")
+                .append(hitCount)
+                .append(",")
+                .append("missCount")
+                .append(missCount)
+                .append(",")
+                .append("loadSuccessCount")
+                .append(loadSuccessCount)
+                .append(",")
+                .append("loadExceptionCount")
+                .append(loadExceptionCount)
+                .append(",")
+                .append("totalLoadTime")
+                .append(totalLoadTime)
+                .append(",")
+                .append("evictionCount")
+                .append(evictionCount)
+                .append(",")
+                .toString();
+    }
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/GuavaCache.java && printf '\\n---\\n' && sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/NoCache.java && printf '\\n---\\n' && sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.cache;
+
+import com.github.javaparser.resolution.cache.Cache;
+import com.github.javaparser.resolution.cache.CacheStats;
+import java.util.Objects;
+import java.util.Optional;
+
+/**
+ * This class is used to wrap a Guava {@link com.google.common.cache.Cache}.
+ *
+ * @param <K> The type of the key.
+ * @param <V> The type of the value.
+ */
+public class GuavaCache<K, V> implements Cache<K, V> {
+
+    /**
+     * Wrap a Guava cache with a custom cache.
+     *
+     * @param guavaCache The guava cache to be wrapped-
+     *
+     * @param <expectedK> The expected type for the key.
+     * @param <expectedV> The expected type for the value.
+     *
+     * @return A newly created instance of {@link NoCache}.
+     */
+    public static <expectedK, expectedV> GuavaCache<expectedK, expectedV> create(
+            com.google.common.cache.Cache<expectedK, expectedV> guavaCache) {
+        return new GuavaCache<>(guavaCache);
+    }
+
+    private final com.google.common.cache.Cache<K, V> guavaCache;
+
+    public GuavaCache(com.google.common.cache.Cache<K, V> guavaCache) {
+        this.guavaCache = Objects.requireNonNull(guavaCache, "The argument GuavaCache can't be null.");
+    }
+
+    @Override
+    public void put(K key, V value) {
+        guavaCache.put(key, value);
+    }
+
+    @Override
+    public Optional<V> get(K key) {
+        return Optional.ofNullable(guavaCache.getIfPresent(key));
+    }
+
+    @Override
+    public void remove(K key) {
+        guavaCache.invalidate(key);
+    }
+
+    @Override
+    public void removeAll() {
+        guavaCache.invalidateAll();
+    }
+
+    @Override
+    public boolean contains(K key) {
+        return get(key).isPresent();
+    }
+
+    @Override
+    public long size() {
+        return guavaCache.size();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return size() == 0;
+    }
+
+    @Override
+    public CacheStats stats() {
+        com.google.common.cache.CacheStats stats = guavaCache.stats();
+        return new DefaultCacheStats(
+                stats.hitCount(),
+                stats.missCount(),
+                stats.loadSuccessCount(),
+                stats.loadExceptionCount(),
+                stats.totalLoadTime(),
+                stats.evictionCount());
+    }
+}
+
+---
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.cache;
+
+import com.github.javaparser.resolution.cache.Cache;
+import com.github.javaparser.resolution.cache.CacheStats;
+import java.util.Optional;
+
+/**
+ * A cache implementation that does not store any information.
+ *
+ * @param <K> The key type.
+ * @param <V> The value type.
+ */
+public class NoCache<K, V> implements Cache<K, V> {
+
+    /**
+     * Create a new instance.
+     *
+     * @param <expectedK> The expected type for the key.
+     * @param <expectedV> The expected type for the value.
+     *
+     * @return A newly created instance of {@link NoCache}.
+     */
+    public static <expectedK, expectedV> NoCache<expectedK, expectedV> create() {
+        return new NoCache<>();
+    }
+
+    @Override
+    public void put(K key, V value) {
+        // Nothing to do here.
+    }
+
+    @Override
+    public Optional<V> get(K key) {
+        return Optional.empty();
+    }
+
+    @Override
+    public void remove(K key) {
+        // Nothing to do here.
+    }
+
+    @Override
+    public void removeAll() {
+        // Nothing to do here.
+    }
+
+    @Override
+    public boolean contains(K key) {
+        return false;
+    }
+
+    @Override
+    public long size() {
+        return 0;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return true;
+    }
+
+    @Override
+    public CacheStats stats() {
+        return new DefaultCacheStats();
+    }
+}
+
+---
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.cache;
+
+import com.github.javaparser.resolution.cache.Cache;
+import com.github.javaparser.resolution.cache.CacheStats;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.WeakHashMap;
+
+/**
+ * A cache implementation that stores the information in memory.
+ * <br>
+ * The current implementation stores the values in memory in a {@link WeakHashMap}.
+ *
+ * @param <K> The type of the key.
+ * @param <V> The type of the value.
+ */
+public class InMemoryCache<K, V> implements Cache<K, V> {
+
+    /**
+     * Create a new instance for a cache in memory.
+     *
+     * @param <expectedK> The expected type for the key.
+     * @param <expectedV> The expected type for the value.
+     *
+     * @return A newly created instance of {@link InMemoryCache}.
+     */
+    public static <expectedK, expectedV> InMemoryCache<expectedK, expectedV> create() {
+        return new InMemoryCache<>();
+    }
+
+    private final Map<K, V> mappedValues;
+
+    private InMemoryCache() {
+        mappedValues = Collections.synchronizedMap(new WeakHashMap<>());
+    }
+
+    @Override
+    public void put(K key, V value) {
+        mappedValues.put(key, value);
+    }
+
+    @Override
+    public Optional<V> get(K key) {
+        return Optional.ofNullable(mappedValues.get(key));
+    }
+
+    @Override
+    public void remove(K key) {
+        mappedValues.remove(key);
+    }
+
+    @Override
+    public void removeAll() {
+        mappedValues.clear();
+    }
+
+    @Override
+    public boolean contains(K key) {
+        return mappedValues.containsKey(key);
+    }
+
+    @Override
+    public long size() {
+        return mappedValues.size();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return mappedValues.isEmpty();
+    }
+
+    @Override
+    public CacheStats stats() {
+        return new DefaultCacheStats();
+    }
+}
+
+codex
+The class looks like a small immutable stats holder, but I need the actual repository-level fan-in before I conclude. I’m checking who imports or instantiates `DefaultCacheStats` and whether the class itself reaches outward to many other types.
+exec
+/bin/bash -lc "rg -n \"import com\\.github\\.javaparser\\.symbolsolver\\.cache\\.DefaultCacheStats|com\\.github\\.javaparser\\.symbolsolver\\.cache\\.DefaultCacheStats\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ exited 1 in 0ms:
+exec
+/bin/bash -lc "rg -n \"new DefaultCacheStats\\(|DefaultCacheStats\\b\" javaparser-core javaparser-symbol-solver-core" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java:56:public class DefaultCacheStats implements CacheStats {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java:70:    public DefaultCacheStats() {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java:83:    public DefaultCacheStats(
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java:255:        return new DefaultCacheStats(
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java:276:        return new DefaultCacheStats(
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/GuavaCache.java:96:        return new DefaultCacheStats(
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/NoCache.java:85:        return new DefaultCacheStats();
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java:96:        return new DefaultCacheStats();
+
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/resolution/cache/Cache.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.resolution.cache;
+
+import java.util.Optional;
+
+/**
+ * A contract that defines a semi-persistent mapping of keys and values.
+ * <br>
+ * Cache entries are manually added using put({@link K}, {@link V}),
+ * and are stored in the cache until either evicted or manually removed.
+ * After storing a value, it can be accessed using get({@link K}).
+ *
+ * @param <K> The type of the key.
+ * @param <V> The type of the value.
+ */
+public interface Cache<K, V> {
+
+    /**
+     * Associates value with key in this cache.
+     * <br>
+     * If the cache previously contained a value associated with key,
+     * the old value is replaced by value.
+     *
+     * @param key   The key to be used as index.
+     * @param value The value to be stored.
+     */
+    void put(K key, V value);
+
+    /**
+     * Returns the value associated with {@code key} in this cache,
+     * or empty if there is no cached value for {@code key}.
+     *
+     * @param key The key to look for.
+     *
+     * @return The value stored in cache if present.
+     */
+    Optional<V> get(K key);
+
+    /**
+     * Discards any cached value for this key.
+     *
+     * @param key The key to be discarded.
+     */
+    void remove(K key);
+
+    /**
+     * Discards all entries in the cache.
+     */
+    void removeAll();
+
+    /**
+     * Returns {@code True} if the cache contains a entry with the key,
+     * or {@code False} if there is none.
+     *
+     * @param key The key to be verified.
+     *
+     * @return {@code True} if the key is present.
+     */
+    boolean contains(K key);
+
+    /**
+     * Returns the number of entries in this cache.
+     *
+     * @return The cache size.
+     */
+    long size();
+
+    /**
+     * Returns {@code True} if the cache is empty, or {@code False}
+     * if there's at least a entry stored in cache.
+     *
+     * @return {@code True} if is empty.
+     */
+    boolean isEmpty();
+
+    /**
+     * Returns a current snapshot of this cache's cumulative statistics, or a set of default values if
+     * the cache is not recording statistics. All statistics begin at zero and never decrease over the
+     * lifetime of the cache.
+     */
+    CacheStats stats();
+}
+
+codex
+I have enough to make the call, but I’m grabbing line numbers for the constructor and the only external call sites so the verdict is grounded in concrete repository evidence.
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java | sed -n '1,320p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2013-2024 The JavaParser Team.
+     3	 *
+     4	 * This file is part of JavaParser.
+     5	 *
+     6	 * JavaParser can be used either under the terms of
+     7	 * a) the GNU Lesser General Public License as published by
+     8	 *     the Free Software Foundation, either version 3 of the License, or
+     9	 *     (at your option) any later version.
+    10	 * b) the terms of the Apache License
+    11	 *
+    12	 * You should have received a copy of both licenses in LICENCE.LGPL and
+    13	 * LICENCE.APACHE. Please refer to those files for details.
+    14	 *
+    15	 * JavaParser is distributed in the hope that it will be useful,
+    16	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+    17	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    18	 * GNU Lesser General Public License for more details.
+    19	 */
+    20	
+    21	package com.github.javaparser.symbolsolver.cache;
+    22	
+    23	import static com.google.common.math.LongMath.saturatedAdd;
+    24	import static com.google.common.math.LongMath.saturatedSubtract;
+    25	
+    26	import com.github.javaparser.resolution.cache.Cache;
+    27	import com.github.javaparser.resolution.cache.CacheStats;
+    28	import java.util.Arrays;
+    29	
+    30	/**
+    31	 * Statistics about the performance of a {@link Cache}. Instances of this class are immutable.
+    32	 *
+    33	 * <p>Cache statistics are incremented according to the following rules:
+    34	 *
+    35	 * <ul>
+    36	 *   <li>When a cache lookup encounters an existing cache entry {@code hitCount} is incremented.
+    37	 *   <li>When a cache lookup first encounters a missing cache entry, a new entry is loaded.
+    38	 *       <ul>
+    39	 *         <li>After successfully loading an entry {@code missCount} and {@code loadSuccessCount}
+    40	 *             are incremented, and the total loading time, in nanoseconds, is added to {@code
+    41	 *             totalLoadTime}.
+    42	 *         <li>When an exception is thrown while loading an entry, {@code missCount} and {@code
+    43	 *             loadExceptionCount} are incremented, and the total loading time, in nanoseconds, is
+    44	 *             added to {@code totalLoadTime}.
+    45	 *         <li>Cache lookups that encounter a missing cache entry that is still loading will wait
+    46	 *             for loading to complete (whether successful or not) and then increment {@code
+    47	 *             missCount}.
+    48	 *       </ul>
+    49	 *   <li>When an entry is evicted from the cache, {@code evictionCount} is incremented.
+    50	 *   <li>No stats are modified when a cache entry is invalidated or manually removed.
+    51	 *   <li>No stats are modified by operations invoked on the {@linkplain Cache#asMap asMap} view of
+    52	 *       the cache.
+    53	 * </ul>
+    54	 *
+    55	 */
+    56	public class DefaultCacheStats implements CacheStats {
+    57	    private final long hitCount;
+    58	    private final long missCount;
+    59	    private final long loadSuccessCount;
+    60	    private final long loadExceptionCount;
+    61	
+    62	    private final long totalLoadTime;
+    63	
+    64	    private final long evictionCount;
+    65	
+    66	    /**
+    67	     * Constructs a new {@code ICacheStats} instance.
+    68	     *
+    69	     */
+    70	    public DefaultCacheStats() {
+    71	        this.hitCount = 0;
+    72	        this.missCount = 0;
+    73	        this.loadSuccessCount = 0;
+    74	        this.loadExceptionCount = 0;
+    75	        this.totalLoadTime = 0;
+    76	        this.evictionCount = 0;
+    77	    }
+    78	
+    79	    /**
+    80	     * Constructs a new {@code ICacheStats} instance.
+    81	     *
+    82	     */
+    83	    public DefaultCacheStats(
+    84	            long hitCount,
+    85	            long missCount,
+    86	            long loadSuccessCount,
+    87	            long loadExceptionCount,
+    88	            long totalLoadTime,
+    89	            long evictionCount) {
+    90	
+    91	        this.hitCount = hitCount;
+    92	        this.missCount = missCount;
+    93	        this.loadSuccessCount = loadSuccessCount;
+    94	        this.loadExceptionCount = loadExceptionCount;
+    95	        this.totalLoadTime = totalLoadTime;
+    96	        this.evictionCount = evictionCount;
+    97	    }
+    98	
+    99	    /**
+   100	     * Returns the number of times {@link Cache} lookup methods have returned either a cached or
+   101	     * uncached value. This is defined as {@code hitCount + missCount}.
+   102	     *
+   103	     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+   104	     * guaranteed not to throw an exception). If you require specific handling, we recommend
+   105	     * implementing your own stats collector.
+   106	     */
+   107	    @Override
+   108	    public long requestCount() {
+   109	        return saturatedAdd(hitCount, missCount);
+   110	    }
+   111	
+   112	    /** Returns the number of times {@link Cache} lookup methods have returned a cached value. */
+   113	    @Override
+   114	    public long hitCount() {
+   115	        return hitCount;
+   116	    }
+   117	
+   118	    /**
+   119	     * Returns the ratio of cache requests which were hits. This is defined as {@code hitCount /
+   120	     * requestCount}, or {@code 1.0} when {@code requestCount == 0}. Note that {@code hitRate +
+   121	     * missRate =~ 1.0}.
+   122	     */
+   123	    @Override
+   124	    public double hitRate() {
+   125	        long requestCount = requestCount();
+   126	        return (requestCount == 0) ? 1.0 : (double) hitCount / requestCount;
+   127	    }
+   128	
+   129	    /**
+   130	     * Returns the number of times {@link Cache} lookup methods have returned an uncached (newly
+   131	     * loaded) value, or null. Multiple concurrent calls to {@link Cache} lookup methods on an absent
+   132	     * value can result in multiple misses, all returning the results of a single cache load
+   133	     * operation.
+   134	     */
+   135	    @Override
+   136	    public long missCount() {
+   137	        return missCount;
+   138	    }
+   139	
+   140	    /**
+   141	     * Returns the ratio of cache requests which were misses. This is defined as {@code missCount /
+   142	     * requestCount}, or {@code 0.0} when {@code requestCount == 0}. Note that {@code hitRate +
+   143	     * missRate =~ 1.0}. Cache misses include all requests which weren't cache hits, including
+   144	     * requests which resulted in either successful or failed loading attempts, and requests which
+   145	     * waited for other threads to finish loading. It is thus the case that {@code missCount &gt;=
+   146	     * loadSuccessCount + loadExceptionCount}. Multiple concurrent misses for the same key will result
+   147	     * in a single load operation.
+   148	     */
+   149	    @Override
+   150	    public double missRate() {
+   151	        long requestCount = requestCount();
+   152	        return (requestCount == 0) ? 0.0 : (double) missCount / requestCount;
+   153	    }
+   154	
+   155	    /**
+   156	     * Returns the total number of times that {@link Cache} lookup methods attempted to load new
+   157	     * values. This includes both successful load operations and those that threw exceptions. This is
+   158	     * defined as {@code loadSuccessCount + loadExceptionCount}.
+   159	     *
+   160	     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+   161	     * guaranteed not to throw an exception). If you require specific handling, we recommend
+   162	     * implementing your own stats collector.
+   163	     */
+   164	    @Override
+   165	    public long loadCount() {
+   166	        return saturatedAdd(loadSuccessCount, loadExceptionCount);
+   167	    }
+   168	
+   169	    /**
+   170	     * Returns the number of times {@link Cache} lookup methods have successfully loaded a new value.
+   171	     * This is usually incremented in conjunction with {@link #missCount}, though {@code missCount} is
+   172	     * also incremented when an exception is encountered during cache loading (see {@link
+   173	     * #loadExceptionCount}). Multiple concurrent misses for the same key will result in a single load
+   174	     * operation. This may be incremented not in conjunction with {@code missCount} if the load occurs
+   175	     * as a result of a refresh or if the cache loader returned more items than was requested. {@code
+   176	     * missCount} may also be incremented not in conjunction with this (nor {@link
+   177	     * #loadExceptionCount}) on calls to {@code getIfPresent}.
+   178	     */
+   179	    @Override
+   180	    public long loadSuccessCount() {
+   181	        return loadSuccessCount;
+   182	    }
+   183	
+   184	    /**
+   185	     * Returns the number of times {@link Cache} lookup methods threw an exception while loading a new
+   186	     * value. This is usually incremented in conjunction with {@code missCount}, though {@code
+   187	     * missCount} is also incremented when cache loading completes successfully (see {@link
+   188	     * #loadSuccessCount}). Multiple concurrent misses for the same key will result in a single load
+   189	     * operation. This may be incremented not in conjunction with {@code missCount} if the load occurs
+   190	     * as a result of a refresh or if the cache loader returned more items than was requested. {@code
+   191	     * missCount} may also be incremented not in conjunction with this (nor {@link #loadSuccessCount})
+   192	     * on calls to {@code getIfPresent}.
+   193	     */
+   194	    @Override
+   195	    public long loadExceptionCount() {
+   196	        return loadExceptionCount;
+   197	    }
+   198	
+   199	    /**
+   200	     * Returns the ratio of cache loading attempts which threw exceptions. This is defined as {@code
+   201	     * loadExceptionCount / (loadSuccessCount + loadExceptionCount)}, or {@code 0.0} when {@code
+   202	     * loadSuccessCount + loadExceptionCount == 0}.
+   203	     *
+   204	     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+   205	     * guaranteed not to throw an exception). If you require specific handling, we recommend
+   206	     * implementing your own stats collector.
+   207	     */
+   208	    @Override
+   209	    public double loadExceptionRate() {
+   210	        long totalLoadCount = saturatedAdd(loadSuccessCount, loadExceptionCount);
+   211	        return (totalLoadCount == 0) ? 0.0 : (double) loadExceptionCount / totalLoadCount;
+   212	    }
+   213	
+   214	    /**
+   215	     * Returns the total number of nanoseconds the cache has spent loading new values. This can be
+   216	     * used to calculate the miss penalty. This value is increased every time {@code loadSuccessCount}
+   217	     * or {@code loadExceptionCount} is incremented.
+   218	     */
+   219	    @Override
+   220	    @SuppressWarnings("GoodTime") // should return a java.time.Duration
+   221	    public long totalLoadTime() {
+   222	        return totalLoadTime;
+   223	    }
+   224	
+   225	    /**
+   226	     * Returns the average time spent loading new values. This is defined as {@code totalLoadTime /
+   227	     * (loadSuccessCount + loadExceptionCount)}.
+   228	     *
+   229	     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+   230	     * guaranteed not to throw an exception). If you require specific handling, we recommend
+   231	     * implementing your own stats collector.
+   232	     */
+   233	    @Override
+   234	    public double averageLoadPenalty() {
+   235	        long totalLoadCount = saturatedAdd(loadSuccessCount, loadExceptionCount);
+   236	        return (totalLoadCount == 0) ? 0.0 : (double) totalLoadTime / totalLoadCount;
+   237	    }
+   238	
+   239	    /**
+   240	     * Returns the number of times an entry has been evicted. This count does not include manual
+   241	     * {@linkplain Cache#invalidate invalidations}.
+   242	     */
+   243	    @Override
+   244	    public long evictionCount() {
+   245	        return evictionCount;
+   246	    }
+   247	
+   248	    /**
+   249	     * Returns a new {@code ICacheStats} representing the difference between this {@code ICacheStats}
+   250	     * and {@code other}. Negative values, which aren't supported by {@code ICacheStats} will be
+   251	     * rounded up to zero.
+   252	     */
+   253	    @Override
+   254	    public CacheStats minus(CacheStats other) {
+   255	        return new DefaultCacheStats(
+   256	                Math.max(0, saturatedSubtract(hitCount, other.hitCount())),
+   257	                Math.max(0, saturatedSubtract(missCount, other.missCount())),
+   258	                Math.max(0, saturatedSubtract(loadSuccessCount, other.loadSuccessCount())),
+   259	                Math.max(0, saturatedSubtract(loadExceptionCount, other.loadExceptionCount())),
+   260	                Math.max(0, saturatedSubtract(totalLoadTime, other.totalLoadTime())),
+   261	                Math.max(0, saturatedSubtract(evictionCount, other.evictionCount())));
+   262	    }
+   263	
+   264	    /**
+   265	     * Returns a new {@code ICacheStats} representing the sum of this {@code ICacheStats} and {@code
+   266	     * other}.
+   267	     *
+   268	     * <p><b>Note:</b> the values of the metrics are undefined in case of overflow (though it is
+   269	     * guaranteed not to throw an exception). If you require specific handling, we recommend
+   270	     * implementing your own stats collector.
+   271	     *
+   272	     * @since 11.0
+   273	     */
+   274	    @Override
+   275	    public CacheStats plus(CacheStats other) {
+   276	        return new DefaultCacheStats(
+   277	                saturatedAdd(hitCount, other.hitCount()),
+   278	                saturatedAdd(missCount, other.missCount()),
+   279	                saturatedAdd(loadSuccessCount, other.loadSuccessCount()),
+   280	                saturatedAdd(loadExceptionCount, other.loadExceptionCount()),
+   281	                saturatedAdd(totalLoadTime, other.totalLoadTime()),
+   282	                saturatedAdd(evictionCount, other.evictionCount()));
+   283	    }
+   284	
+   285	    @Override
+   286	    public int hashCode() {
+   287	        return Arrays.hashCode(
+   288	                new long[] {hitCount, missCount, loadSuccessCount, loadExceptionCount, totalLoadTime, evictionCount});
+   289	    }
+   290	
+   291	    @Override
+   292	    public boolean equals(Object object) {
+   293	        if (object instanceof CacheStats) {
+   294	            CacheStats other = (CacheStats) object;
+   295	            return hitCount == other.hitCount()
+   296	                    && missCount == other.missCount()
+   297	                    && loadSuccessCount == other.loadSuccessCount()
+   298	                    && loadExceptionCount == other.loadExceptionCount()
+   299	                    && totalLoadTime == other.totalLoadTime()
+   300	                    && evictionCount == other.evictionCount();
+   301	        }
+   302	        return false;
+   303	    }
+   304	
+   305	    @Override
+   306	    public String toString() {
+   307	        StringBuilder sb = new StringBuilder(this.getClass().getSimpleName()).append(": ");
+   308	        return sb.append("hitCount")
+   309	                .append(hitCount)
+   310	                .append(",")
+   311	                .append("missCount")
+   312	                .append(missCount)
+   313	                .append(",")
+   314	                .append("loadSuccessCount")
+   315	                .append(loadSuccessCount)
+   316	                .append(",")
+   317	                .append("loadExceptionCount")
+   318	                .append(loadExceptionCount)
+   319	                .append(",")
+   320	                .append("totalLoadTime")
+
+exec
+/bin/bash -lc "nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/GuavaCache.java | sed -n '80,110p' && printf '\\n---\\n' && nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/NoCache.java | sed -n '70,95p' && printf '\\n---\\n' && nl -ba javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java | sed -n '85,105p'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+    80	        return get(key).isPresent();
+    81	    }
+    82	
+    83	    @Override
+    84	    public long size() {
+    85	        return guavaCache.size();
+    86	    }
+    87	
+    88	    @Override
+    89	    public boolean isEmpty() {
+    90	        return size() == 0;
+    91	    }
+    92	
+    93	    @Override
+    94	    public CacheStats stats() {
+    95	        com.google.common.cache.CacheStats stats = guavaCache.stats();
+    96	        return new DefaultCacheStats(
+    97	                stats.hitCount(),
+    98	                stats.missCount(),
+    99	                stats.loadSuccessCount(),
+   100	                stats.loadExceptionCount(),
+   101	                stats.totalLoadTime(),
+   102	                stats.evictionCount());
+   103	    }
+   104	}
+
+---
+    70	        return false;
+    71	    }
+    72	
+    73	    @Override
+    74	    public long size() {
+    75	        return 0;
+    76	    }
+    77	
+    78	    @Override
+    79	    public boolean isEmpty() {
+    80	        return true;
+    81	    }
+    82	
+    83	    @Override
+    84	    public CacheStats stats() {
+    85	        return new DefaultCacheStats();
+    86	    }
+    87	}
+
+---
+    85	    public long size() {
+    86	        return mappedValues.size();
+    87	    }
+    88	
+    89	    @Override
+    90	    public boolean isEmpty() {
+    91	        return mappedValues.isEmpty();
+    92	    }
+    93	
+    94	    @Override
+    95	    public CacheStats stats() {
+    96	        return new DefaultCacheStats();
+    97	    }
+    98	}
+
+codex
+{"target":"com.github.javaparser.symbolsolver.cache.DefaultCacheStats","detection":false,"justification":"Inspected javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java, javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/GuavaCache.java, javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/NoCache.java, and javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java. DefaultCacheStats is a small immutable value object with limited fan-out (it only uses Cache, CacheStats, Arrays, and Guava LongMath helpers, plus self-construction in plus/minus). Repository-wide search found only three external instantiation sites, all in cache implementations, and no other classes reference it; that is not strong hub-like fan-in/fan-out evidence."}
+tokens used
+16,960

@@ -1,0 +1,955 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f53-9bcf-73a1-844a-a5d659c537b8
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.github.javaparser.symbolsolver.cache.InMemoryCache` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.github.javaparser.symbolsolver.cache.InMemoryCache",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.github.javaparser.symbolsolver.cache.InMemoryCache`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct callers and dependencies so I can judge fan-in and fan-out from the repository itself.
+exec
+/bin/bash -lc "rg -n \"class InMemoryCache|interface Cache|new InMemoryCache\\(|InMemoryCache<\" -S ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "rg --files | rg 'InMemoryCache\\.java"'$|Cache'"\\.java"'$|symbolsolver/cache'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 245ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/TypeInferenceCache.java
+javaparser-core/src/main/java/com/github/javaparser/resolution/cache/Cache.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/DefaultCacheStats.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/GuavaCache.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/NoCache.java
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/cache/NoCacheTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/cache/InMemoryCacheTest.java
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/cache/GuavaCacheAdapterTest.java
+
+ succeeded in 344ms:
+./javaparser-core/src/main/java/com/github/javaparser/resolution/cache/Cache.java:34:public interface Cache<K, V> {
+./javaparser-core/src/main/java/com/github/javaparser/resolution/cache/CacheStats.java:22:public interface CacheStats {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java:39:public class InMemoryCache<K, V> implements Cache<K, V> {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java:49:    public static <expectedK, expectedV> InMemoryCache<expectedK, expectedV> create() {
+./javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java:50:        return new InMemoryCache<>();
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/cache/InMemoryCacheTest.java:30:class InMemoryCacheTest {
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/cache/InMemoryCacheTest.java:32:    private InMemoryCache<Object, Object> memoryCache;
+
+codex
+I’ve found the class and the immediate evidence sources. Next I’m reading the implementation, the cache interface, and the classes/tests that reference it to quantify how central it is.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/cache/InMemoryCacheTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-core/src/main/java/com/github/javaparser/resolution/cache/Cache.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 174ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.cache;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+class InMemoryCacheTest {
+
+    private InMemoryCache<Object, Object> memoryCache;
+
+    @BeforeEach
+    void beforeEach() {
+        memoryCache = InMemoryCache.create();
+    }
+
+    @Test
+    void put_ShouldStoreTheValue() {
+        assertTrue(memoryCache.isEmpty());
+        assertFalse(memoryCache.contains("key"));
+
+        memoryCache.put("key", "");
+        assertFalse(memoryCache.isEmpty());
+        assertTrue(memoryCache.contains("key"));
+    }
+
+    @Test
+    void get_ShouldReturnTheCachedValue() {
+        memoryCache.put("foo", "bar");
+        memoryCache.put("rab", "oof");
+
+        String key = "key";
+        String value = "value";
+
+        assertFalse(memoryCache.get(key).isPresent(), "No value expected at the moment");
+
+        memoryCache.put(key, value);
+        Optional<Object> cachedValue = memoryCache.get(key);
+        assertTrue(cachedValue.isPresent(), "No value expected at the moment");
+        assertEquals(value, cachedValue.get(), "The values seem to be different");
+
+        memoryCache.remove(key);
+        assertFalse(memoryCache.get(key).isPresent(), "No value expected at the moment");
+    }
+
+    @Test
+    void remove_ShouldOnlyRemoveTheKey() {
+
+        // Prepare the values
+        String key1 = "key1";
+        String key2 = "key2";
+        String key3 = "key3";
+
+        memoryCache.put(key1, "");
+        memoryCache.put(key2, "");
+        memoryCache.put(key3, "");
+
+        assertEquals(3, memoryCache.size());
+        assertTrue(memoryCache.contains(key1));
+        assertTrue(memoryCache.contains(key2));
+        assertTrue(memoryCache.contains(key3));
+
+        // Remove second element
+        memoryCache.remove(key2);
+        assertEquals(2, memoryCache.size());
+        assertTrue(memoryCache.contains(key1));
+        assertFalse(memoryCache.contains(key2));
+        assertTrue(memoryCache.contains(key3));
+
+        // Remove the third element
+        memoryCache.remove(key3);
+        assertEquals(1, memoryCache.size());
+        assertTrue(memoryCache.contains(key1));
+        assertFalse(memoryCache.contains(key3));
+
+        // Remove first element
+        memoryCache.remove(key1);
+        assertEquals(0, memoryCache.size());
+        assertFalse(memoryCache.contains(key2));
+    }
+
+    @Test
+    void removeAll_ShouldRemoveAllTheKeys() {
+        memoryCache.put("key1", "");
+        memoryCache.put("key2", "");
+        memoryCache.put("key3", "");
+
+        assertFalse(memoryCache.isEmpty());
+        memoryCache.removeAll();
+        assertTrue(memoryCache.isEmpty());
+    }
+
+    @Test
+    void contains_ShouldOnlyReturnTrue_WhenTheKeyExists() {
+        String key = "key";
+
+        assertFalse(memoryCache.contains(key), "At this moment, the key should not exists.");
+        memoryCache.put(key, "value");
+        assertTrue(memoryCache.contains(key), "At this moment, the key should be registered.");
+        memoryCache.remove(key);
+        assertFalse(memoryCache.contains(key), "At this moment, the key should not exists.");
+    }
+
+    @Test
+    void isEmpty_ShouldOnlyReturnTrue_WhenTheSizeIsZero() {
+        String key = "key";
+
+        assertTrue(memoryCache.isEmpty());
+
+        memoryCache.put(key, "value");
+        assertFalse(memoryCache.isEmpty());
+
+        memoryCache.remove(key);
+        assertTrue(memoryCache.isEmpty());
+    }
+}
+
+ succeeded in 316ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.cache;
+
+import com.github.javaparser.resolution.cache.Cache;
+import com.github.javaparser.resolution.cache.CacheStats;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.WeakHashMap;
+
+/**
+ * A cache implementation that stores the information in memory.
+ * <br>
+ * The current implementation stores the values in memory in a {@link WeakHashMap}.
+ *
+ * @param <K> The type of the key.
+ * @param <V> The type of the value.
+ */
+public class InMemoryCache<K, V> implements Cache<K, V> {
+
+    /**
+     * Create a new instance for a cache in memory.
+     *
+     * @param <expectedK> The expected type for the key.
+     * @param <expectedV> The expected type for the value.
+     *
+     * @return A newly created instance of {@link InMemoryCache}.
+     */
+    public static <expectedK, expectedV> InMemoryCache<expectedK, expectedV> create() {
+        return new InMemoryCache<>();
+    }
+
+    private final Map<K, V> mappedValues;
+
+    private InMemoryCache() {
+        mappedValues = Collections.synchronizedMap(new WeakHashMap<>());
+    }
+
+    @Override
+    public void put(K key, V value) {
+        mappedValues.put(key, value);
+    }
+
+    @Override
+    public Optional<V> get(K key) {
+        return Optional.ofNullable(mappedValues.get(key));
+    }
+
+    @Override
+    public void remove(K key) {
+        mappedValues.remove(key);
+    }
+
+    @Override
+    public void removeAll() {
+        mappedValues.clear();
+    }
+
+    @Override
+    public boolean contains(K key) {
+        return mappedValues.containsKey(key);
+    }
+
+    @Override
+    public long size() {
+        return mappedValues.size();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return mappedValues.isEmpty();
+    }
+
+    @Override
+    public CacheStats stats() {
+        return new DefaultCacheStats();
+    }
+}
+
+ succeeded in 291ms:
+/*
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+package com.github.javaparser.resolution.cache;
+
+import java.util.Optional;
+
+/**
+ * A contract that defines a semi-persistent mapping of keys and values.
+ * <br>
+ * Cache entries are manually added using put({@link K}, {@link V}),
+ * and are stored in the cache until either evicted or manually removed.
+ * After storing a value, it can be accessed using get({@link K}).
+ *
+ * @param <K> The type of the key.
+ * @param <V> The type of the value.
+ */
+public interface Cache<K, V> {
+
+    /**
+     * Associates value with key in this cache.
+     * <br>
+     * If the cache previously contained a value associated with key,
+     * the old value is replaced by value.
+     *
+     * @param key   The key to be used as index.
+     * @param value The value to be stored.
+     */
+    void put(K key, V value);
+
+    /**
+     * Returns the value associated with {@code key} in this cache,
+     * or empty if there is no cached value for {@code key}.
+     *
+     * @param key The key to look for.
+     *
+     * @return The value stored in cache if present.
+     */
+    Optional<V> get(K key);
+
+    /**
+     * Discards any cached value for this key.
+     *
+     * @param key The key to be discarded.
+     */
+    void remove(K key);
+
+    /**
+     * Discards all entries in the cache.
+     */
+    void removeAll();
+
+    /**
+     * Returns {@code True} if the cache contains a entry with the key,
+     * or {@code False} if there is none.
+     *
+     * @param key The key to be verified.
+     *
+     * @return {@code True} if the key is present.
+     */
+    boolean contains(K key);
+
+    /**
+     * Returns the number of entries in this cache.
+     *
+     * @return The cache size.
+     */
+    long size();
+
+    /**
+     * Returns {@code True} if the cache is empty, or {@code False}
+     * if there's at least a entry stored in cache.
+     *
+     * @return {@code True} if is empty.
+     */
+    boolean isEmpty();
+
+    /**
+     * Returns a current snapshot of this cache's cumulative statistics, or a set of default values if
+     * the cache is not recording statistics. All statistics begin at zero and never decrease over the
+     * lifetime of the cache.
+     */
+    CacheStats stats();
+}
+
+codex
+I have the implementation now. I’m checking whether this class is a common dependency or just a small utility with isolated usage, because hub-like modularization needs strong evidence in both directions.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/GuavaCache.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg -n "InMemoryCache" javaparser-* -S' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/NoCache.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 210ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.cache;
+
+import com.github.javaparser.resolution.cache.Cache;
+import com.github.javaparser.resolution.cache.CacheStats;
+import java.util.Objects;
+import java.util.Optional;
+
+/**
+ * This class is used to wrap a Guava {@link com.google.common.cache.Cache}.
+ *
+ * @param <K> The type of the key.
+ * @param <V> The type of the value.
+ */
+public class GuavaCache<K, V> implements Cache<K, V> {
+
+    /**
+     * Wrap a Guava cache with a custom cache.
+     *
+     * @param guavaCache The guava cache to be wrapped-
+     *
+     * @param <expectedK> The expected type for the key.
+     * @param <expectedV> The expected type for the value.
+     *
+     * @return A newly created instance of {@link NoCache}.
+     */
+    public static <expectedK, expectedV> GuavaCache<expectedK, expectedV> create(
+            com.google.common.cache.Cache<expectedK, expectedV> guavaCache) {
+        return new GuavaCache<>(guavaCache);
+    }
+
+    private final com.google.common.cache.Cache<K, V> guavaCache;
+
+    public GuavaCache(com.google.common.cache.Cache<K, V> guavaCache) {
+        this.guavaCache = Objects.requireNonNull(guavaCache, "The argument GuavaCache can't be null.");
+    }
+
+    @Override
+    public void put(K key, V value) {
+        guavaCache.put(key, value);
+    }
+
+    @Override
+    public Optional<V> get(K key) {
+        return Optional.ofNullable(guavaCache.getIfPresent(key));
+    }
+
+    @Override
+    public void remove(K key) {
+        guavaCache.invalidate(key);
+    }
+
+    @Override
+    public void removeAll() {
+        guavaCache.invalidateAll();
+    }
+
+    @Override
+    public boolean contains(K key) {
+        return get(key).isPresent();
+    }
+
+    @Override
+    public long size() {
+        return guavaCache.size();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return size() == 0;
+    }
+
+    @Override
+    public CacheStats stats() {
+        com.google.common.cache.CacheStats stats = guavaCache.stats();
+        return new DefaultCacheStats(
+                stats.hitCount(),
+                stats.missCount(),
+                stats.loadSuccessCount(),
+                stats.loadExceptionCount(),
+                stats.totalLoadTime(),
+                stats.evictionCount());
+    }
+}
+
+ succeeded in 260ms:
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.cache;
+
+import com.github.javaparser.resolution.cache.Cache;
+import com.github.javaparser.resolution.cache.CacheStats;
+import java.util.Optional;
+
+/**
+ * A cache implementation that does not store any information.
+ *
+ * @param <K> The key type.
+ * @param <V> The value type.
+ */
+public class NoCache<K, V> implements Cache<K, V> {
+
+    /**
+     * Create a new instance.
+     *
+     * @param <expectedK> The expected type for the key.
+     * @param <expectedV> The expected type for the value.
+     *
+     * @return A newly created instance of {@link NoCache}.
+     */
+    public static <expectedK, expectedV> NoCache<expectedK, expectedV> create() {
+        return new NoCache<>();
+    }
+
+    @Override
+    public void put(K key, V value) {
+        // Nothing to do here.
+    }
+
+    @Override
+    public Optional<V> get(K key) {
+        return Optional.empty();
+    }
+
+    @Override
+    public void remove(K key) {
+        // Nothing to do here.
+    }
+
+    @Override
+    public void removeAll() {
+        // Nothing to do here.
+    }
+
+    @Override
+    public boolean contains(K key) {
+        return false;
+    }
+
+    @Override
+    public long size() {
+        return 0;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return true;
+    }
+
+    @Override
+    public CacheStats stats() {
+        return new DefaultCacheStats();
+    }
+}
+
+ succeeded in 374ms:
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typesolvers/CombinedTypeSolver.java:29:import com.github.javaparser.symbolsolver.cache.InMemoryCache;
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typesolvers/CombinedTypeSolver.java:74:        this(exceptionHandler, elements, InMemoryCache.create());
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java:39:public class InMemoryCache<K, V> implements Cache<K, V> {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java:47:     * @return A newly created instance of {@link InMemoryCache}.
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java:49:    public static <expectedK, expectedV> InMemoryCache<expectedK, expectedV> create() {
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java:50:        return new InMemoryCache<>();
+javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java:55:    private InMemoryCache() {
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/cache/InMemoryCacheTest.java:30:class InMemoryCacheTest {
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/cache/InMemoryCacheTest.java:32:    private InMemoryCache<Object, Object> memoryCache;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/cache/InMemoryCacheTest.java:36:        memoryCache = InMemoryCache.create();
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typesolvers/CombinedTypeSolverTest.java:31:import com.github.javaparser.symbolsolver.cache.InMemoryCache;
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typesolvers/CombinedTypeSolverTest.java:140:        Cache<String, SymbolReference<ResolvedReferenceTypeDeclaration>> cache = spy(InMemoryCache.create());
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typesolvers/CombinedTypeSolverTest.java:169:        Cache<String, SymbolReference<ResolvedReferenceTypeDeclaration>> cache = spy(InMemoryCache.create());
+
+codex
+The usage pattern is looking narrow so far, but I want the constructor context before deciding. I’m reading the type solver that instantiates it to see whether this cache is a shared hub or just a default local helper.
+exec
+/bin/bash -lc "sed -n '1,220p' javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typesolvers/CombinedTypeSolver.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc "sed -n '120,210p' javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typesolvers/CombinedTypeSolverTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 137ms:
+    }
+
+    @Test
+    void testConstructorWithNullCache_ShouldThrowNPE() {
+        List<TypeSolver> childSolvers = Collections.singletonList(new ReflectionTypeSolver());
+        assertThrows(
+                NullPointerException.class,
+                () -> new CombinedTypeSolver(ExceptionHandlers.IGNORE_NONE, childSolvers, null));
+    }
+
+    /**
+     * 1. Given a fresh combined type solver, a type is searched in cache and since it doesn't
+     *    exist, a new entry should be registered.
+     *
+     * 2. Given a cache with a cached value, that values should be used.
+     */
+    @Test
+    void testCacheIsUsed_WhenTypeIsRequested() {
+
+        List<TypeSolver> childSolvers = Collections.singletonList(new ReflectionTypeSolver());
+        Cache<String, SymbolReference<ResolvedReferenceTypeDeclaration>> cache = spy(InMemoryCache.create());
+        CombinedTypeSolver combinedSolver = new CombinedTypeSolver(ExceptionHandlers.IGNORE_NONE, childSolvers, cache);
+        SymbolReference<ResolvedReferenceTypeDeclaration> reference;
+
+        // 1.
+        reference = combinedSolver.tryToSolveType("java.lang.String");
+        assertTrue(reference.isSolved());
+
+        verify(cache).get("java.lang.String");
+        verify(cache).put("java.lang.String", reference);
+        verifyNoMoreInteractions(cache);
+
+        // Reset the interaction counter for the mock, keeping the
+        // cached data unchanged.
+        Mockito.reset((Object) cache);
+
+        // 2.
+        reference = combinedSolver.tryToSolveType("java.lang.String");
+        assertTrue(reference.isSolved());
+        verify(cache).get("java.lang.String");
+        verifyNoMoreInteractions(cache);
+    }
+
+    /**
+     * 1. When a new type solver is registered, the cache should be reset.
+     */
+    @Test
+    void testUserAddsNewTypeSolver_CacheShouldBeReset() {
+        List<TypeSolver> childSolvers = Collections.singletonList(new ReflectionTypeSolver());
+        Cache<String, SymbolReference<ResolvedReferenceTypeDeclaration>> cache = spy(InMemoryCache.create());
+        CombinedTypeSolver combinedSolver = new CombinedTypeSolver(ExceptionHandlers.IGNORE_NONE, childSolvers, cache);
+
+        // Try to solve it
+        combinedSolver.add(new ReflectionTypeSolver());
+        verify(cache).removeAll();
+        verifyNoMoreInteractions(cache);
+    }
+}
+
+ succeeded in 181ms:
+/*
+ * Copyright (C) 2015-2016 Federico Tomassetti
+ * Copyright (C) 2017-2024 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.symbolsolver.resolution.typesolvers;
+
+import com.github.javaparser.resolution.TypeSolver;
+import com.github.javaparser.resolution.UnsolvedSymbolException;
+import com.github.javaparser.resolution.cache.Cache;
+import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
+import com.github.javaparser.resolution.model.SymbolReference;
+import com.github.javaparser.symbolsolver.cache.InMemoryCache;
+import java.util.*;
+import java.util.function.Predicate;
+
+/**
+ * A container for type solvers. All solving is done by the contained type solvers.
+ * This helps you when an API asks for a single type solver, but you need several.
+ *
+ * @author Federico Tomassetti
+ */
+public class CombinedTypeSolver implements TypeSolver {
+
+    private final Cache<String, SymbolReference<ResolvedReferenceTypeDeclaration>> typeCache;
+
+    private TypeSolver parent;
+    private List<TypeSolver> elements = new ArrayList<>();
+
+    /**
+     * A predicate which determines what to do if an exception is raised during the parsing process.
+     * If it returns {@code true} the exception will be ignored, and solving will continue using the next solver in line.
+     * If it returns {@code false} the exception will be thrown, stopping the solving process.
+     *
+     * Main use case for this is to circumvent bugs or missing functionality in some type solvers.
+     * If for example solver A has a bug resulting in a {@link NullPointerException}, you could use a {@link ExceptionHandlers#getTypeBasedWhitelist(Class...) whitelist} to ignore that type of exception.
+     * A secondary solver would then be able to step in when such an error occurs.
+     *
+     * @see #CombinedTypeSolver(Predicate, TypeSolver...)
+     * @see #setExceptionHandler(Predicate)
+     */
+    private Predicate<Exception> exceptionHandler;
+
+    public CombinedTypeSolver(TypeSolver... elements) {
+        this(Arrays.asList(elements));
+    }
+
+    public CombinedTypeSolver(Predicate<Exception> exceptionHandler, TypeSolver... elements) {
+        this(exceptionHandler, Arrays.asList(elements));
+    }
+
+    public CombinedTypeSolver(Iterable<TypeSolver> elements) {
+        this(ExceptionHandlers.IGNORE_NONE, elements);
+    }
+
+    /** @see #exceptionHandler */
+    public CombinedTypeSolver(Predicate<Exception> exceptionHandler, Iterable<TypeSolver> elements) {
+        this(exceptionHandler, elements, InMemoryCache.create());
+    }
+
+    /**
+     * Create a new instance of {@link CombinedTypeSolver} with a custom symbol cache.
+     *
+     * @param exceptionHandler  How exception should be handled.
+     * @param elements          The list of elements to include by default.
+     * @param typeCache       The cache to be used to store symbols.
+     *
+     * @see #exceptionHandler
+     */
+    public CombinedTypeSolver(
+            Predicate<Exception> exceptionHandler,
+            Iterable<TypeSolver> elements,
+            Cache<String, SymbolReference<ResolvedReferenceTypeDeclaration>> typeCache) {
+        Objects.requireNonNull(typeCache, "The typeCache can't be null.");
+
+        setExceptionHandler(exceptionHandler);
+        this.typeCache = typeCache;
+
+        for (TypeSolver el : elements) {
+            add(el, false);
+        }
+    }
+
+    /** @see #exceptionHandler */
+    public void setExceptionHandler(Predicate<Exception> exceptionHandler) {
+        this.exceptionHandler = exceptionHandler;
+    }
+
+    @Override
+    public TypeSolver getParent() {
+        return parent;
+    }
+
+    @Override
+    public void setParent(TypeSolver parent) {
+        Objects.requireNonNull(parent);
+        if (this.parent != null) {
+            throw new IllegalStateException("This TypeSolver already has a parent.");
+        }
+        if (parent == this) {
+            throw new IllegalStateException("The parent of this TypeSolver cannot be itself.");
+        }
+        this.parent = parent;
+    }
+
+    /**
+     * Append a type solver to the current solver.
+     *
+     * @param typeSolver The type solver to be appended.
+     * @param resetCache If should reset the cache when the solver is inserted.
+     */
+    public void add(TypeSolver typeSolver, boolean resetCache) {
+        Objects.requireNonNull(typeSolver, "The type solver can't be null");
+
+        this.elements.add(typeSolver);
+        typeSolver.setParent(this);
+
+        // Check if the cache should be reset after inserting
+        if (resetCache) {
+            typeCache.removeAll();
+        }
+    }
+
+    /**
+     * Append a type solver to the current solver.
+     * <br>
+     * By default the cached values will be removed.
+     *
+     * @param typeSolver The type solver to be appended.
+     */
+    public void add(TypeSolver typeSolver) {
+        add(typeSolver, true);
+    }
+
+    @Override
+    public SymbolReference<ResolvedReferenceTypeDeclaration> tryToSolveType(String name) {
+        Optional<SymbolReference<ResolvedReferenceTypeDeclaration>> cachedSymbol = typeCache.get(name);
+        if (cachedSymbol.isPresent()) {
+            return cachedSymbol.get();
+        }
+
+        // If the symbol is not cached
+        for (TypeSolver ts : elements) {
+            try {
+                SymbolReference<ResolvedReferenceTypeDeclaration> res = ts.tryToSolveType(name);
+                if (res.isSolved()) {
+                    typeCache.put(name, res);
+                    return res;
+                }
+            } catch (Exception e) {
+                if (!exceptionHandler.test(e)) { // we shouldn't ignore this exception
+                    throw e;
+                }
+            }
+        }
+
+        // When unable to solve, cache the value with unsolved symbol
+        SymbolReference<ResolvedReferenceTypeDeclaration> unsolvedSymbol = SymbolReference.unsolved();
+        typeCache.put(name, unsolvedSymbol);
+        return unsolvedSymbol;
+    }
+
+    /**
+     * Create the key that should be used for module cache lookups.
+     */
+    public static String createModuleTypeName(String moduleQualifiedName, String simpleTypeName) {
+        return String.format("<%s>.%s", moduleQualifiedName, simpleTypeName);
+    }
+
+    @Override
+    public SymbolReference<ResolvedReferenceTypeDeclaration> tryToSolveTypeInModule(
+            String moduleQualifiedName, String simpleTypeName) {
+        String cacheName = createModuleTypeName(moduleQualifiedName, simpleTypeName);
+
+        Optional<SymbolReference<ResolvedReferenceTypeDeclaration>> cachedType = typeCache.get(cacheName);
+        if (cachedType.isPresent()) {
+            return cachedType.get();
+        }
+
+        for (TypeSolver ts : elements) {
+            try {
+                SymbolReference<ResolvedReferenceTypeDeclaration> res =
+                        ts.tryToSolveTypeInModule(moduleQualifiedName, simpleTypeName);
+                if (res.isSolved()) {
+                    typeCache.put(cacheName, res);
+                    return res;
+                }
+            } catch (Exception e) {
+                if (!exceptionHandler.test(e)) { // we shouldn't ignore this exception
+                    throw e;
+                }
+            }
+        }
+
+        // When unable to solve, cache the value with unsolved symbol
+        SymbolReference<ResolvedReferenceTypeDeclaration> unsolvedSymbol = SymbolReference.unsolved();
+        typeCache.put(cacheName, unsolvedSymbol);
+        return unsolvedSymbol;
+    }
+
+    @Override
+    public ResolvedReferenceTypeDeclaration solveType(String name) throws UnsolvedSymbolException {
+        SymbolReference<ResolvedReferenceTypeDeclaration> res = tryToSolveType(name);
+        if (res.isSolved()) {
+
+codex
+{"target":"com.github.javaparser.symbolsolver.cache.InMemoryCache","detection":false,"justification":"Inspected [InMemoryCache.java](.../javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/cache/InMemoryCache.java), [CombinedTypeSolver.java](.../javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typesolvers/CombinedTypeSolver.java), [InMemoryCacheTest.java](.../javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/cache/InMemoryCacheTest.java), and [CombinedTypeSolverTest.java](.../javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/typesolvers/CombinedTypeSolverTest.java). The class has very low fan-in: `rg` found only one production caller (`CombinedTypeSolver` uses `InMemoryCache.create()` in its default constructor) and tests. Its fan-out is also small: it implements one interface and delegates to `WeakHashMap`/`Collections.synchronizedMap` plus a `DefaultCacheStats` instance, with no broad dependency web. This does not fit a dependency-hub pattern."}
+tokens used
+10,748

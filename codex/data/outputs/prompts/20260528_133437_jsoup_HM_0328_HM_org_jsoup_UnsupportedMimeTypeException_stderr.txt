@@ -1,0 +1,525 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f70-2a7b-7180-9427-f7f2b37f971d
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.jsoup.UnsupportedMimeTypeException` in the repository located at:
+
+`data/repositories/jhy/jsoup`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.jsoup.UnsupportedMimeTypeException",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.jsoup.UnsupportedMimeTypeException`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the class and tracing its incoming and outgoing dependencies so I can judge whether it behaves like a hub rather than a small exception type.
+exec
+/bin/bash -lc "rg --files src | rg 'UnsupportedMimeTypeException|Exception|Response|Connection|Jsoup'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "rg -n \"class UnsupportedMimeTypeException|UnsupportedMimeTypeException\" src -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 200ms:
+src/main/java/org/jsoup/Connection.java:471:     * @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+src/main/java/org/jsoup/Connection.java:482:     * @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+src/main/java/org/jsoup/Connection.java:493:     * @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+src/test/java/org/jsoup/integration/ConnectTest.java:8:import org.jsoup.UnsupportedMimeTypeException;
+src/test/java/org/jsoup/integration/ConnectTest.java:607:        } catch (UnsupportedMimeTypeException e) {
+src/main/java/org/jsoup/helper/HttpConnection.java:6:import org.jsoup.UnsupportedMimeTypeException;
+src/main/java/org/jsoup/helper/HttpConnection.java:922:                    throw new UnsupportedMimeTypeException("Unhandled content type. Must be text/*, */xml, or */*+xml",
+src/main/java/org/jsoup/UnsupportedMimeTypeException.java:8:public class UnsupportedMimeTypeException extends IOException {
+src/main/java/org/jsoup/UnsupportedMimeTypeException.java:12:    public UnsupportedMimeTypeException(String message, String mimeType, String url) {
+src/main/java/org/jsoup/Jsoup.java:323:     @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+
+ succeeded in 244ms:
+src/test/java/org/jsoup/SerializationExceptionTest.java
+src/test/java/org/jsoup/JsoupTest.java
+src/test/java/org/jsoup/helper/HttpConnectionTest.java
+src/main/java/org/jsoup/SerializationException.java
+src/main/java/org/jsoup/Connection.java
+src/main/java/org/jsoup/HttpStatusException.java
+src/main/java/org/jsoup/Jsoup.java
+src/main/java/org/jsoup/UnsupportedMimeTypeException.java
+src/main/java/org/jsoup/helper/HttpConnection.java
+src/main/java/org/jsoup/helper/ValidationException.java
+src/main/java/org/jsoup/helper/UrlConnectionExecutor.java
+
+codex
+I found the class and the main call sites. Next I’m checking the source and the surrounding API/docs to see whether the dependency count is actually high enough to support a hub-like classification.
+exec
+/bin/bash -lc "sed -n '1,200p' src/main/java/org/jsoup/UnsupportedMimeTypeException.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '300,340p' src/main/java/org/jsoup/Jsoup.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '450,520p' src/main/java/org/jsoup/Connection.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '580,630p' src/test/java/org/jsoup/integration/ConnectTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '880,950p' src/main/java/org/jsoup/helper/HttpConnection.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 151ms:
+    /**
+     Parse a fragment of HTML, with the assumption that it forms the {@code body} of the HTML.
+
+     @param bodyHtml body HTML fragment
+     @return sane HTML document
+
+     @see Document#body()
+     */
+    public static Document parseBodyFragment(String bodyHtml) {
+        return Parser.parseBodyFragment(bodyHtml, "");
+    }
+
+    /**
+     Fetch a URL, and parse it as HTML. Provided for compatibility; in most cases use {@link #connect(String)} instead.
+     <p>
+     The encoding character set is determined by the content-type header or http-equiv meta tag, or falls back to {@code UTF-8}.
+
+     @param url           URL to fetch (with a GET). The protocol must be {@code http} or {@code https}.
+     @param timeoutMillis Connection and read timeout, in milliseconds. If exceeded, IOException is thrown.
+     @return The parsed HTML.
+
+     @throws java.net.MalformedURLException if the request URL is not a HTTP or HTTPS URL, or is otherwise malformed
+     @throws HttpStatusException if the response is not OK and HTTP response errors are not ignored
+     @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+     @throws java.net.SocketTimeoutException if the connection times out
+     @throws IOException if a connection or read error occurs
+
+     @see #connect(String)
+     */
+    public static Document parse(URL url, int timeoutMillis) throws IOException {
+        Connection con = HttpConnection.connect(url);
+        con.timeout(timeoutMillis);
+        return con.get();
+    }
+
+    /**
+     Get safe HTML from untrusted input HTML, by parsing input HTML and filtering it through an allow-list of safe
+     tags and attributes.
+
+     @param bodyHtml  input untrusted HTML (body fragment)
+     @param baseUri   URL to resolve relative URLs against
+
+ succeeded in 181ms:
+                Validate.isFalse(hasBody, "Cannot set a request body for HTTP method " + req.method());
+
+            // set up the request for execution
+            if (!req.data().isEmpty() && (!supportsBody || hasBody))
+                serialiseRequestUrl(req);
+            else if (supportsBody)
+                setOutputContentType(req);
+
+            long startTime = System.nanoTime();
+            RequestExecutor executor = RequestDispatch.get(req, prevRes);
+            Response res = null;
+            try {
+                res = executor.execute();
+
+                // redirect if there's a location header (from 3xx, or 201 etc)
+                if (res.hasHeader(LOCATION) && req.followRedirects()) {
+                    if (res.statusCode != HTTP_TEMP_REDIR) {
+                        req.method(Method.GET); // always redirect with a get. any data param from original req are dropped.
+                        req.data().clear();
+                        req.requestBody(null);
+                        req.removeHeader(CONTENT_TYPE);
+                    }
+
+                    String location = res.header(LOCATION);
+                    Validate.notNull(location);
+                    if (location.startsWith("http:/") && location.charAt(6) != '/') // fix broken Location: http:/temp/AAG_New/en/index.php
+                        location = location.substring(6);
+                    URL redir = StringUtil.resolve(req.url(), location);
+                    req.url(redir);
+
+                    return execute(req, res);
+                }
+                if ((res.statusCode < 200 || res.statusCode >= 400) && !req.ignoreHttpErrors())
+                        throw new HttpStatusException("HTTP error fetching URL", res.statusCode, req.url().toString());
+
+                // check that we can handle the returned content type; if not, abort before fetching it
+                String contentType = res.contentType();
+                if (contentType != null
+                        && !req.ignoreContentType()
+                        && !contentType.startsWith("text/")
+                        && !xmlContentTypeRxp.matcher(contentType).matches()
+                        )
+                    throw new UnsupportedMimeTypeException("Unhandled content type. Must be text/*, */xml, or */*+xml",
+                            contentType, req.url().toString());
+
+                // switch to the XML parser if content type is xml and not parser not explicitly set
+                if (contentType != null && xmlContentTypeRxp.matcher(contentType).matches()) {
+                    if (!req.parserDefined) req.parser(Parser.xmlParser());
+                }
+
+                res.charset = DataUtil.getCharsetFromContentType(res.contentType); // may be null, readInputStream deals with it
+                if (res.contentLength != 0 && req.method() != HEAD) { // -1 means unknown, chunked. sun throws an IO exception on 500 response with no content when trying to read body
+                    InputStream stream = executor.responseBody();
+                    if (res.hasHeaderWithValue(CONTENT_ENCODING, "gzip"))
+                        stream = new GZIPInputStream(stream);
+                    else if (res.hasHeaderWithValue(CONTENT_ENCODING, "deflate"))
+                        stream = new InflaterInputStream(stream, new Inflater(true));
+                    
+                    res.bodyStream = ControllableInputStream.wrap(
+                        stream, DefaultBufferSize, req.maxBodySize())
+                        .timeout(startTime, req.timeout());
+
+                    if (req.responseProgress != null) // set response progress listener
+                        res.bodyStream.onProgress(res.contentLength, req.responseProgress, res);
+                } else {
+                    res.byteData = DataUtil.emptyByteBuffer();
+                }
+            } catch (IOException e) {
+                if (res != null) res.safeClose(); // will be non-null if got to conn
+                throw e;
+            } finally {
+
+ succeeded in 215ms:
+     {@code jdk.http.auth.tunneling.disabledSchemes} system property to {@code ""}.
+     This must be executed prior to any authorization attempts. E.g.:
+     <code><pre>
+     static {
+        System.setProperty("jdk.http.auth.tunneling.disabledSchemes", "");
+        // removes Basic, which is otherwise excluded from auth for CONNECT tunnels
+     }</pre></code>
+     </p>
+     * @param authenticator the authenticator to use in this connection
+     * @return this Connection, for chaining
+     * @since 1.17.1
+     */
+    default Connection auth(@Nullable RequestAuthenticator authenticator) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Execute the request as a GET, and parse the result.
+     * @return parsed Document
+     * @throws java.net.MalformedURLException if the request URL is not an HTTP or HTTPS URL, or is otherwise malformed
+     * @throws HttpStatusException if the response is not OK and HTTP response errors are not ignored
+     * @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+     * @throws java.net.SocketTimeoutException if the connection times out
+     * @throws IOException on error
+     */
+    Document get() throws IOException;
+
+    /**
+     * Execute the request as a POST, and parse the result.
+     * @return parsed Document
+     * @throws java.net.MalformedURLException if the request URL is not a HTTP or HTTPS URL, or is otherwise malformed
+     * @throws HttpStatusException if the response is not OK and HTTP response errors are not ignored
+     * @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+     * @throws java.net.SocketTimeoutException if the connection times out
+     * @throws IOException on error
+     */
+    Document post() throws IOException;
+
+    /**
+     * Execute the request.
+     * @return the executed {@link Response}
+     * @throws java.net.MalformedURLException if the request URL is not a HTTP or HTTPS URL, or is otherwise malformed
+     * @throws HttpStatusException if the response is not OK and HTTP response errors are not ignored
+     * @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+     * @throws java.net.SocketTimeoutException if the connection times out
+     * @throws IOException on error
+     */
+    Response execute() throws IOException;
+
+    /**
+     * Get the request object associated with this connection
+     * @return request
+     */
+    Request request();
+
+    /**
+     * Set the connection's request
+     * @param request new request object
+     * @return this Connection, for chaining
+     */
+    Connection request(Request request);
+
+    /**
+     * Get the response, once the request has been executed.
+     * @return response
+     * @throws IllegalArgumentException if called before the response has been executed.
+     */
+    Response response();
+
+    /**
+     * Set the connection's response
+
+ succeeded in 276ms:
+package org.jsoup;
+
+import java.io.IOException;
+
+/**
+ * Signals that a HTTP response returned a mime type that is not supported.
+ */
+public class UnsupportedMimeTypeException extends IOException {
+    private final String mimeType;
+    private final String url;
+
+    public UnsupportedMimeTypeException(String message, String mimeType, String url) {
+        super(message);
+        this.mimeType = mimeType;
+        this.url = url;
+    }
+
+    public String getMimeType() {
+        return mimeType;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + ". Mimetype=" + mimeType + ", URL="+url;
+    }
+}
+
+ succeeded in 391ms:
+    }
+
+    @Test public void getUtf8Bom() throws IOException {
+        Connection con = Jsoup.connect(FileServlet.urlTo("/bomtests/bom_utf8.html"));
+        Document doc = con.get();
+
+        assertEquals("UTF-8", con.response().charset());
+        assertEquals("OK", doc.title());
+    }
+
+    @Test public void streamerGetUtf8Bom() throws IOException {
+        Connection con = Jsoup.connect(FileServlet.urlTo("/bomtests/bom_utf8.html"));
+        Document doc = con.execute().streamParser().complete();
+
+        assertEquals("UTF-8", con.response().charset());
+        assertEquals("OK", doc.title());
+    }
+
+    @Test
+    public void testBinaryContentTypeThrowsException() throws IOException {
+        Connection con = Jsoup.connect(FileServlet.urlTo("/htmltests/thumb.jpg"));
+        con.data(FileServlet.ContentTypeParam, "image/jpeg");
+
+        boolean threw = false;
+        try {
+            con.execute();
+            Document doc = con.response().parse();
+        } catch (UnsupportedMimeTypeException e) {
+            threw = true;
+            assertEquals("Unhandled content type. Must be text/*, */xml, or */*+xml", e.getMessage());
+        }
+        assertTrue(threw);
+    }
+
+    @Test public void testParseRss() throws IOException {
+        // test that we switch automatically to xml, and we support application/rss+xml
+        Connection con = Jsoup.connect(FileServlet.urlTo("/htmltests/test-rss.xml"));
+        con.data(FileServlet.ContentTypeParam, "application/rss+xml");
+        Document doc = con.get();
+        Element title = doc.selectFirst("title");
+        assertNotNull(title);
+        assertEquals("jsoup RSS news", title.text());
+        assertEquals("channel", title.parent().nodeName());
+        assertEquals("", doc.title()); // the document title is unset, this tag is channel>title, not html>head>title
+        assertEquals(3, doc.select("link").size());
+        assertEquals("application/rss+xml", con.response().contentType());
+        assertTrue(doc.parser().getTreeBuilder() instanceof XmlTreeBuilder);
+        assertEquals(Document.OutputSettings.Syntax.xml, doc.outputSettings().syntax());
+    }
+
+    @Test
+
+codex
+The class itself is tiny and only carries two fields. I’m now counting actual source-level users to check fan-in, because a hub smell needs more than just Javadoc mentions or a single throw site.
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/jsoup/SerializationException.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "rg -n \"UnsupportedMimeTypeException\" src/main/java src/test/java -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/jsoup/HttpStatusException.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/jsoup/helper/ValidationException.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 131ms:
+package org.jsoup;
+
+import java.io.IOException;
+
+/**
+ * Signals that a HTTP request resulted in a not OK HTTP response.
+ */
+public class HttpStatusException extends IOException {
+    private final int statusCode;
+    private final String url;
+
+    public HttpStatusException(String message, int statusCode, String url) {
+        super(message + ". Status=" + statusCode + ", URL=[" + url + "]");
+        this.statusCode = statusCode;
+        this.url = url;
+    }
+
+    public int getStatusCode() {
+        return statusCode;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+}
+
+ succeeded in 188ms:
+package org.jsoup;
+
+/**
+ * A SerializationException is raised whenever serialization of a DOM element fails. This exception usually wraps an
+ * {@link java.io.IOException} that may be thrown due to an inaccessible output stream.
+ */
+public final class SerializationException extends RuntimeException {
+	/**
+	 * Creates and initializes a new serialization exception with no error message and cause.
+	 */
+	public SerializationException() {
+		super();
+	}
+
+	/**
+	 * Creates and initializes a new serialization exception with the given error message and no cause.
+	 * 
+	 * @param message
+	 *            the error message of the new serialization exception (may be <code>null</code>).
+	 */
+	public SerializationException(String message) {
+		super(message);
+	}
+
+	/**
+	 * Creates and initializes a new serialization exception with the specified cause and an error message of
+     * <code>(cause==null ? null : cause.toString())</code> (which typically contains the class and error message of
+     * <code>cause</code>).
+	 * 
+	 * @param cause
+	 *            the cause of the new serialization exception (may be <code>null</code>).
+	 */
+	public SerializationException(Throwable cause) {
+		super(cause);
+	}
+
+	/**
+	 * Creates and initializes a new serialization exception with the given error message and cause.
+	 * 
+	 * @param message
+	 *            the error message of the new serialization exception.
+	 * @param cause
+	 *            the cause of the new serialization exception.
+	 */
+	public SerializationException(String message, Throwable cause) {
+		super(message, cause);
+	}
+}
+
+ succeeded in 260ms:
+package org.jsoup.helper;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ Validation exceptions, as thrown by the methods in {@link Validate}.
+ */
+public class ValidationException extends IllegalArgumentException {
+
+    public static final String Validator = Validate.class.getName();
+
+    public ValidationException(String msg) {
+        super(msg);
+    }
+
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+        // Filters out the Validate class from the stacktrace, to more clearly point at the root-cause.
+
+        super.fillInStackTrace();
+
+        StackTraceElement[] stackTrace = getStackTrace();
+        List<StackTraceElement> filteredTrace = new ArrayList<>();
+        for (StackTraceElement trace : stackTrace) {
+            if (trace.getClassName().equals(Validator)) continue;
+            filteredTrace.add(trace);
+        }
+
+        setStackTrace(filteredTrace.toArray(new StackTraceElement[0]));
+
+        return this;
+    }
+}
+
+ succeeded in 335ms:
+src/main/java/org/jsoup/Connection.java:471:     * @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+src/main/java/org/jsoup/Connection.java:482:     * @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+src/main/java/org/jsoup/Connection.java:493:     * @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+src/test/java/org/jsoup/integration/ConnectTest.java:8:import org.jsoup.UnsupportedMimeTypeException;
+src/test/java/org/jsoup/integration/ConnectTest.java:607:        } catch (UnsupportedMimeTypeException e) {
+src/main/java/org/jsoup/UnsupportedMimeTypeException.java:8:public class UnsupportedMimeTypeException extends IOException {
+src/main/java/org/jsoup/UnsupportedMimeTypeException.java:12:    public UnsupportedMimeTypeException(String message, String mimeType, String url) {
+src/main/java/org/jsoup/helper/HttpConnection.java:6:import org.jsoup.UnsupportedMimeTypeException;
+src/main/java/org/jsoup/helper/HttpConnection.java:922:                    throw new UnsupportedMimeTypeException("Unhandled content type. Must be text/*, */xml, or */*+xml",
+src/main/java/org/jsoup/Jsoup.java:323:     @throws UnsupportedMimeTypeException if the response mime type is not supported and those errors are not ignored
+
+codex
+{"target":"org.jsoup.UnsupportedMimeTypeException","detection":false,"justification":"Inspected src/main/java/org/jsoup/UnsupportedMimeTypeException.java, src/main/java/org/jsoup/helper/HttpConnection.java, src/main/java/org/jsoup/Connection.java, src/main/java/org/jsoup/Jsoup.java, and src/test/java/org/jsoup/integration/ConnectTest.java. The class is a small exception with only two fields and one constructor, extending IOException. Structural fan-in/fan-out is low: only one production instantiation site in HttpConnection.java, one test catch/import in ConnectTest.java, and Javadoc references in Connection.java/Jsoup.java. This is not enough to characterize the class as a dependency hub."}
+tokens used
+7,318

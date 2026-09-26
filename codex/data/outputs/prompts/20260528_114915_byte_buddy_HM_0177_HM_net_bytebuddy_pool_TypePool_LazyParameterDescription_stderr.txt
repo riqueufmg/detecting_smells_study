@@ -1,0 +1,558 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f0f-a3aa-70b3-8c32-fdb590a0837c
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.pool.TypePool.LazyParameterDescription` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.pool.TypePool.LazyParameterDescription",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.pool.TypePool.LazyParameterDescription`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing its direct dependencies and usage sites to judge fan-in and fan-out from the source itself.
+exec
+/bin/bash -lc "rg --files . | rg \"TypePool\\.java|TypePool/|LazyParameterDescription\"" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java
+
+exec
+/bin/bash -lc 'rg -n "class LazyParameterDescription|LazyParameterDescription" .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:8471:                        return new LazyParameterDescription(index);
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:8504:                private class LazyParameterDescription extends ParameterDescription.InDefinedShape.AbstractBase {
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:8516:                    protected LazyParameterDescription(int index) {
+
+codex
+I found the target as a private nested class inside `TypePool.java`. Next I’m reading the surrounding code to see how many collaborators it reaches and whether other code depends on it directly or indirectly.
+exec
+/bin/bash -lc "sed -n '8420,8545p' byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+
+                /**
+                 * {@inheritDoc}
+                 */
+                @MaybeNull
+                public AnnotationValue<?, ?> getDefaultValue() {
+                    return defaultValue;
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                @MaybeNull
+                public Generic getReceiverType() {
+                    if (isStatic()) {
+                        return Generic.UNDEFINED;
+                    } else if (isConstructor()) {
+                        TypeDescription declaringType = getDeclaringType(), enclosingDeclaringType = declaringType.getEnclosingType();
+                        if (enclosingDeclaringType == null) {
+                            return declaringType.isGenerified()
+                                    ? new LazyParameterizedReceiverType(declaringType)
+                                    : new LazyNonGenericReceiverType(declaringType);
+                        } else {
+                            return !declaringType.isStatic() && declaringType.isGenerified()
+                                    ? new LazyParameterizedReceiverType(enclosingDeclaringType)
+                                    : new LazyNonGenericReceiverType(enclosingDeclaringType);
+                        }
+                    } else {
+                        return LazyTypeDescription.this.isGenerified()
+                                ? new LazyParameterizedReceiverType()
+                                : new LazyNonGenericReceiverType();
+                    }
+                }
+
+                /**
+                 * {@inheritDoc}
+                 */
+                @MaybeNull
+                public String getGenericSignature() {
+                    return genericSignature;
+                }
+
+                /**
+                 * A lazy list of parameter descriptions for the enclosing method description.
+                 */
+                private class LazyParameterList extends ParameterList.AbstractBase<ParameterDescription.InDefinedShape> {
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public ParameterDescription.InDefinedShape get(int index) {
+                        return new LazyParameterDescription(index);
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public boolean hasExplicitMetaData() {
+                        for (int i = 0; i < size(); i++) {
+                            if (parameterNames[i] == null || parameterModifiers[i] == null) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public int size() {
+                        return parameterTypeDescriptors.size();
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public TypeList.Generic asTypeList() {
+                        return signatureResolution.resolveParameterTypes(parameterTypeDescriptors, typePool, parameterTypeAnnotationTokens, LazyMethodDescription.this);
+                    }
+                }
+
+                /**
+                 * A lazy description of a parameters of the enclosing method.
+                 */
+                private class LazyParameterDescription extends ParameterDescription.InDefinedShape.AbstractBase {
+
+                    /**
+                     * The index of the described parameter.
+                     */
+                    private final int index;
+
+                    /**
+                     * Creates a new description for a given parameter of the enclosing method.
+                     *
+                     * @param index The index of the described parameter.
+                     */
+                    protected LazyParameterDescription(int index) {
+                        this.index = index;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public MethodDescription.InDefinedShape getDeclaringMethod() {
+                        return LazyMethodDescription.this;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public int getIndex() {
+                        return index;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public boolean isNamed() {
+                        return parameterNames[index] != null;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public boolean hasModifiers() {
+                        return parameterModifiers[index] != null;
+
+exec
+/bin/bash -lc "rg -n \"LazyParameterDescription\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test || true" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:8471:                        return new LazyParameterDescription(index);
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:8516:                    protected LazyParameterDescription(int index) {
+
+exec
+/bin/bash -lc "rg -n \"implements ParameterDescription|extends ParameterDescription|ParameterDescription\\.InDefinedShape\\.AbstractBase\" byte-buddy-dep/src/main/java | head -n 50" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:39:public interface ParameterList<T extends ParameterDescription> extends FilterableList<T, ParameterList<T>> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:76:    abstract class AbstractBase<S extends ParameterDescription> extends FilterableList.AbstractBase<S, ParameterList<S>> implements ParameterList<S> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:426:    class Explicit<S extends ParameterDescription> extends AbstractBase<S> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:535:        private final List<? extends ParameterDescription.Token> tokens;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:543:        public ForTokens(MethodDescription.InDefinedShape declaringMethod, List<? extends ParameterDescription.Token> tokens) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:580:        private final List<? extends ParameterDescription> parameterDescriptions;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:602:                                List<? extends ParameterDescription> parameterDescriptions,
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterList.java:634:    class Empty<S extends ParameterDescription> extends FilterableList.Empty<S, ParameterList<S>> implements ParameterList<S> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java:100:    interface InGenericShape extends ParameterDescription {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java:111:    interface InDefinedShape extends ParameterDescription {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java:121:        abstract class AbstractBase extends ParameterDescription.AbstractBase implements InDefinedShape {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/ParameterDescription.java:135:    abstract class AbstractBase extends ModifierReviewable.AbstractBase implements ParameterDescription {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1068:    class ForLoadedConstructor extends InDefinedShape.AbstractBase.ForLoadedExecutable<Constructor<?>> implements ParameterDescription.ForLoadedParameter.ParameterAnnotationSource {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1207:    class ForLoadedMethod extends InDefinedShape.AbstractBase.ForLoadedExecutable<Method> implements ParameterDescription.ForLoadedParameter.ParameterAnnotationSource {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1405:        private final List<? extends ParameterDescription.Token> parameterTokens;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1467:                      List<? extends ParameterDescription.Token> parameterTokens,
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1812:        private final List<? extends ParameterDescription.Token> parameterTokens;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/method/MethodDescription.java:1895:                     List<? extends ParameterDescription.Token> parameterTokens,
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/MethodCall.java:3571:            Iterator<? extends ParameterDescription> parameterIterator = parameters.iterator();
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:8504:                private class LazyParameterDescription extends ParameterDescription.InDefinedShape.AbstractBase {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/MethodParameterTypeMatcher.java:28:public class MethodParameterTypeMatcher<T extends ParameterDescription> extends ElementMatcher.Junction.ForNonNullValues<T> {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:216:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> is(ParameterDescription.InDefinedShape parameter) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:227:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> definedParameter(ElementMatcher<? super ParameterDescription.InDefinedShape> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:238:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> hasType(ElementMatcher<? super TypeDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:249:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> hasGenericType(ElementMatcher<? super TypeDescription.Generic> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:259:    public static <T extends ParameterDescription> ElementMatcher.Junction<T> isMandated() {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/ElementMatchers.java:1358:            ElementMatcher<? super Iterable<? extends ParameterDescription>> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/MethodParametersMatcher.java:41:    public MethodParametersMatcher(ElementMatcher<? super ParameterList<? extends ParameterDescription>> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/Transformer.java:492:            protected class TransformedParameter extends ParameterDescription.AbstractBase {
+
+exec
+/bin/bash -lc "sed -n '8545,8625p' byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+                        return parameterModifiers[index] != null;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public String getName() {
+                        return isNamed()
+                                ? parameterNames[index]
+                                : super.getName();
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public int getModifiers() {
+                        return hasModifiers()
+                                ? parameterModifiers[index]
+                                : super.getModifiers();
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public Generic getType() {
+                        return signatureResolution.resolveParameterTypes(parameterTypeDescriptors, typePool, parameterTypeAnnotationTokens, LazyMethodDescription.this).get(index);
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public AnnotationList getDeclaredAnnotations() {
+                        return LazyAnnotationDescription.asListOfNullable(typePool, parameterAnnotationTokens.get(index));
+                    }
+                }
+
+                /**
+                 * A lazy description of a parameterized receiver type.
+                 */
+                private class LazyParameterizedReceiverType extends Generic.OfParameterizedType {
+
+                    /**
+                     * The erasure of the type to be represented as a parameterized receiver type.
+                     */
+                    private final TypeDescription typeDescription;
+
+                    /**
+                     * Creates a new lazy parameterized receiver type of the method's declaring type.
+                     */
+                    protected LazyParameterizedReceiverType() {
+                        this(LazyTypeDescription.this);
+                    }
+
+                    /**
+                     * Creates a new lazy parameterized receiver type of the supplied receiver type.
+                     *
+                     * @param typeDescription The erasure of the type to be represented as a parameterized receiver type.
+                     */
+                    protected LazyParameterizedReceiverType(TypeDescription typeDescription) {
+                        this.typeDescription = typeDescription;
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    public TypeList.Generic getTypeArguments() {
+                        return new TypeArgumentList(typeDescription.getTypeVariables());
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    @MaybeNull
+                    public Generic getOwnerType() {
+                        TypeDescription declaringType = typeDescription.getDeclaringType();
+                        if (declaringType == null) {
+                            return Generic.UNDEFINED;
+                        } else {
+                            return !typeDescription.isStatic() && declaringType.isGenerified()
+                                    ? new LazyParameterizedReceiverType(declaringType)
+                                    : new LazyNonGenericReceiverType(declaringType);
+
+codex
+I’ve confirmed the parameter description is private and only instantiated from its sibling `LazyParameterList`. I’m checking line numbers and the enclosing structure so the final verdict can cite concrete evidence, not just a general impression.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java | sed -n '8460,8575p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+  8460	                }
+  8461	
+  8462	                /**
+  8463	                 * A lazy list of parameter descriptions for the enclosing method description.
+  8464	                 */
+  8465	                private class LazyParameterList extends ParameterList.AbstractBase<ParameterDescription.InDefinedShape> {
+  8466	
+  8467	                    /**
+  8468	                     * {@inheritDoc}
+  8469	                     */
+  8470	                    public ParameterDescription.InDefinedShape get(int index) {
+  8471	                        return new LazyParameterDescription(index);
+  8472	                    }
+  8473	
+  8474	                    /**
+  8475	                     * {@inheritDoc}
+  8476	                     */
+  8477	                    public boolean hasExplicitMetaData() {
+  8478	                        for (int i = 0; i < size(); i++) {
+  8479	                            if (parameterNames[i] == null || parameterModifiers[i] == null) {
+  8480	                                return false;
+  8481	                            }
+  8482	                        }
+  8483	                        return true;
+  8484	                    }
+  8485	
+  8486	                    /**
+  8487	                     * {@inheritDoc}
+  8488	                     */
+  8489	                    public int size() {
+  8490	                        return parameterTypeDescriptors.size();
+  8491	                    }
+  8492	
+  8493	                    /**
+  8494	                     * {@inheritDoc}
+  8495	                     */
+  8496	                    public TypeList.Generic asTypeList() {
+  8497	                        return signatureResolution.resolveParameterTypes(parameterTypeDescriptors, typePool, parameterTypeAnnotationTokens, LazyMethodDescription.this);
+  8498	                    }
+  8499	                }
+  8500	
+  8501	                /**
+  8502	                 * A lazy description of a parameters of the enclosing method.
+  8503	                 */
+  8504	                private class LazyParameterDescription extends ParameterDescription.InDefinedShape.AbstractBase {
+  8505	
+  8506	                    /**
+  8507	                     * The index of the described parameter.
+  8508	                     */
+  8509	                    private final int index;
+  8510	
+  8511	                    /**
+  8512	                     * Creates a new description for a given parameter of the enclosing method.
+  8513	                     *
+  8514	                     * @param index The index of the described parameter.
+  8515	                     */
+  8516	                    protected LazyParameterDescription(int index) {
+  8517	                        this.index = index;
+  8518	                    }
+  8519	
+  8520	                    /**
+  8521	                     * {@inheritDoc}
+  8522	                     */
+  8523	                    public MethodDescription.InDefinedShape getDeclaringMethod() {
+  8524	                        return LazyMethodDescription.this;
+  8525	                    }
+  8526	
+  8527	                    /**
+  8528	                     * {@inheritDoc}
+  8529	                     */
+  8530	                    public int getIndex() {
+  8531	                        return index;
+  8532	                    }
+  8533	
+  8534	                    /**
+  8535	                     * {@inheritDoc}
+  8536	                     */
+  8537	                    public boolean isNamed() {
+  8538	                        return parameterNames[index] != null;
+  8539	                    }
+  8540	
+  8541	                    /**
+  8542	                     * {@inheritDoc}
+  8543	                     */
+  8544	                    public boolean hasModifiers() {
+  8545	                        return parameterModifiers[index] != null;
+  8546	                    }
+  8547	
+  8548	                    /**
+  8549	                     * {@inheritDoc}
+  8550	                     */
+  8551	                    public String getName() {
+  8552	                        return isNamed()
+  8553	                                ? parameterNames[index]
+  8554	                                : super.getName();
+  8555	                    }
+  8556	
+  8557	                    /**
+  8558	                     * {@inheritDoc}
+  8559	                     */
+  8560	                    public int getModifiers() {
+  8561	                        return hasModifiers()
+  8562	                                ? parameterModifiers[index]
+  8563	                                : super.getModifiers();
+  8564	                    }
+  8565	
+  8566	                    /**
+  8567	                     * {@inheritDoc}
+  8568	                     */
+  8569	                    public Generic getType() {
+  8570	                        return signatureResolution.resolveParameterTypes(parameterTypeDescriptors, typePool, parameterTypeAnnotationTokens, LazyMethodDescription.this).get(index);
+  8571	                    }
+  8572	
+  8573	                    /**
+  8574	                     * {@inheritDoc}
+  8575	                     */
+
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java | sed -n '8380,8468p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+  8380	                 */
+  8381	                public ParameterList<ParameterDescription.InDefinedShape> getParameters() {
+  8382	                    return new LazyParameterList();
+  8383	                }
+  8384	
+  8385	                /**
+  8386	                 * {@inheritDoc}
+  8387	                 */
+  8388	                public AnnotationList getDeclaredAnnotations() {
+  8389	                    return LazyAnnotationDescription.asList(typePool, annotationTokens);
+  8390	                }
+  8391	
+  8392	                /**
+  8393	                 * {@inheritDoc}
+  8394	                 */
+  8395	                public String getInternalName() {
+  8396	                    return internalName;
+  8397	                }
+  8398	
+  8399	                /**
+  8400	                 * {@inheritDoc}
+  8401	                 */
+  8402	                @Nonnull
+  8403	                public TypeDescription getDeclaringType() {
+  8404	                    return LazyTypeDescription.this;
+  8405	                }
+  8406	
+  8407	                /**
+  8408	                 * {@inheritDoc}
+  8409	                 */
+  8410	                public int getModifiers() {
+  8411	                    return modifiers;
+  8412	                }
+  8413	
+  8414	                /**
+  8415	                 * {@inheritDoc}
+  8416	                 */
+  8417	                public TypeList.Generic getTypeVariables() {
+  8418	                    return signatureResolution.resolveTypeVariables(typePool, this, typeVariableAnnotationTokens, typeVariableBoundAnnotationTokens);
+  8419	                }
+  8420	
+  8421	                /**
+  8422	                 * {@inheritDoc}
+  8423	                 */
+  8424	                @MaybeNull
+  8425	                public AnnotationValue<?, ?> getDefaultValue() {
+  8426	                    return defaultValue;
+  8427	                }
+  8428	
+  8429	                /**
+  8430	                 * {@inheritDoc}
+  8431	                 */
+  8432	                @MaybeNull
+  8433	                public Generic getReceiverType() {
+  8434	                    if (isStatic()) {
+  8435	                        return Generic.UNDEFINED;
+  8436	                    } else if (isConstructor()) {
+  8437	                        TypeDescription declaringType = getDeclaringType(), enclosingDeclaringType = declaringType.getEnclosingType();
+  8438	                        if (enclosingDeclaringType == null) {
+  8439	                            return declaringType.isGenerified()
+  8440	                                    ? new LazyParameterizedReceiverType(declaringType)
+  8441	                                    : new LazyNonGenericReceiverType(declaringType);
+  8442	                        } else {
+  8443	                            return !declaringType.isStatic() && declaringType.isGenerified()
+  8444	                                    ? new LazyParameterizedReceiverType(enclosingDeclaringType)
+  8445	                                    : new LazyNonGenericReceiverType(enclosingDeclaringType);
+  8446	                        }
+  8447	                    } else {
+  8448	                        return LazyTypeDescription.this.isGenerified()
+  8449	                                ? new LazyParameterizedReceiverType()
+  8450	                                : new LazyNonGenericReceiverType();
+  8451	                    }
+  8452	                }
+  8453	
+  8454	                /**
+  8455	                 * {@inheritDoc}
+  8456	                 */
+  8457	                @MaybeNull
+  8458	                public String getGenericSignature() {
+  8459	                    return genericSignature;
+  8460	                }
+  8461	
+  8462	                /**
+  8463	                 * A lazy list of parameter descriptions for the enclosing method description.
+  8464	                 */
+  8465	                private class LazyParameterList extends ParameterList.AbstractBase<ParameterDescription.InDefinedShape> {
+  8466	
+  8467	                    /**
+  8468	                     * {@inheritDoc}
+
+codex
+{"target":"net.bytebuddy.pool.TypePool.LazyParameterDescription","detection":false,"justification":"Inspected byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java and searched the repo for LazyParameterDescription. The class is a private nested type inside LazyMethodDescription, and the only instantiation found is in LazyParameterList.get(int) at lines 8465-8472; no references exist outside TypePool.java. Its dependencies are confined to the enclosing method state and a few local helpers (parameterNames, parameterModifiers, parameterTypeDescriptors, parameterTypeAnnotationTokens, parameterAnnotationTokens, signatureResolution, typePool), so it does not show the high fan-in/high fan-out pattern of a hub-like modularization smell."}
+tokens used
+7,727

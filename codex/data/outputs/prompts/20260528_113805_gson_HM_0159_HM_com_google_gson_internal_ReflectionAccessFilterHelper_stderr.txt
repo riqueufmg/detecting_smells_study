@@ -1,0 +1,1192 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f05-6d0f-7df2-8eb2-1695ca2a62ec
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`com.google.gson.internal.ReflectionAccessFilterHelper` in the repository located at:
+
+`data/repositories/google/gson`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "com.google.gson.internal.ReflectionAccessFilterHelper",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `com.google.gson.internal.ReflectionAccessFilterHelper`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing both its outbound references and who calls it, then I’ll decide whether the dependency pattern is hub-like enough to count as HM.
+exec
+/bin/bash -lc "rg -n \"ReflectionAccessFilterHelper\" -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java:19:import com.google.gson.internal.ReflectionAccessFilterHelper;
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java:116:          return ReflectionAccessFilterHelper.isJavaType(rawClass)
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java:147:          return ReflectionAccessFilterHelper.isJavaType(rawClass)
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java:178:          return ReflectionAccessFilterHelper.isAndroidType(rawClass)
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java:210:          return ReflectionAccessFilterHelper.isAnyPlatformType(rawClass)
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:35:import com.google.gson.internal.ReflectionAccessFilterHelper;
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:143:        ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:170:    if (!ReflectionAccessFilterHelper.canAccess(
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:335:            ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
+gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java:26:public class ReflectionAccessFilterHelper {
+gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java:27:  private ReflectionAccessFilterHelper() {}
+gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java:131:        ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, rawType);
+gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java:233:            || (ReflectionAccessFilterHelper.canAccess(constructor, null)
+
+exec
+/bin/bash -lc "rg --files | rg 'ReflectionAccessFilterHelper\\.java"'$|ReflectionAccessFilterHelper'"'" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java
+
+codex
+I found the target file and the obvious direct callers. Next I’m checking the helper’s own imports and the surrounding call sites to see whether this is a small utility with a few focused uses or a true dependency hub.
+exec
+/bin/bash -lc "sed -n '1,260p' gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2011 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson.internal.bind;
+
+import com.google.gson.FieldNamingStrategy;
+import com.google.gson.Gson;
+import com.google.gson.JsonIOException;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.ReflectionAccessFilter;
+import com.google.gson.ReflectionAccessFilter.FilterResult;
+import com.google.gson.TypeAdapter;
+import com.google.gson.TypeAdapterFactory;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.annotations.SerializedName;
+import com.google.gson.internal.ConstructorConstructor;
+import com.google.gson.internal.Excluder;
+import com.google.gson.internal.GsonTypes;
+import com.google.gson.internal.ObjectConstructor;
+import com.google.gson.internal.Primitives;
+import com.google.gson.internal.ReflectionAccessFilterHelper;
+import com.google.gson.internal.TroubleshootingGuide;
+import com.google.gson.internal.reflect.ReflectionHelper;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
+import java.io.IOException;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/** Type adapter that reflects over the fields and methods of a class. */
+public final class ReflectiveTypeAdapterFactory implements TypeAdapterFactory {
+  private final ConstructorConstructor constructorConstructor;
+  private final FieldNamingStrategy fieldNamingPolicy;
+  private final Excluder excluder;
+  private final JsonAdapterAnnotationTypeAdapterFactory jsonAdapterFactory;
+  private final List<ReflectionAccessFilter> reflectionFilters;
+
+  public ReflectiveTypeAdapterFactory(
+      ConstructorConstructor constructorConstructor,
+      FieldNamingStrategy fieldNamingPolicy,
+      Excluder excluder,
+      JsonAdapterAnnotationTypeAdapterFactory jsonAdapterFactory,
+      List<ReflectionAccessFilter> reflectionFilters) {
+    this.constructorConstructor = constructorConstructor;
+    this.fieldNamingPolicy = fieldNamingPolicy;
+    this.excluder = excluder;
+    this.jsonAdapterFactory = jsonAdapterFactory;
+    this.reflectionFilters = reflectionFilters;
+  }
+
+  private boolean includeField(Field f, boolean serialize) {
+    return !excluder.excludeField(f, serialize);
+  }
+
+  /** first element holds the default name */
+  @SuppressWarnings("MixedMutabilityReturnType")
+  private List<String> getFieldNames(Field f) {
+
+    String fieldName;
+    List<String> alternates;
+    SerializedName annotation = f.getAnnotation(SerializedName.class);
+    if (annotation == null) {
+      fieldName = fieldNamingPolicy.translateName(f);
+      alternates = fieldNamingPolicy.alternateNames(f);
+    } else {
+      fieldName = annotation.value();
+      alternates = Arrays.asList(annotation.alternate());
+    }
+
+    if (alternates.isEmpty()) {
+      return Collections.singletonList(fieldName);
+    }
+
+    List<String> fieldNames = new ArrayList<>(alternates.size() + 1);
+    fieldNames.add(fieldName);
+    fieldNames.addAll(alternates);
+    return fieldNames;
+  }
+
+  @Override
+  public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
+    Class<? super T> raw = type.getRawType();
+
+    if (!Object.class.isAssignableFrom(raw)) {
+      return null; // it's a primitive!
+    }
+
+    // Don't allow using reflection on anonymous and local classes because synthetic fields for
+    // captured enclosing values make this unreliable
+    if (ReflectionHelper.isAnonymousOrNonStaticLocal(raw)) {
+      // This adapter just serializes and deserializes null, ignoring the actual values
+      // This is done for backward compatibility; troubleshooting-wise it might be better to throw
+      // exceptions
+      return new TypeAdapter<T>() {
+        @Override
+        public T read(JsonReader in) throws IOException {
+          in.skipValue();
+          return null;
+        }
+
+        @Override
+        public void write(JsonWriter out, T value) throws IOException {
+          out.nullValue();
+        }
+
+        @Override
+        public String toString() {
+          return "AnonymousOrNonStaticLocalClassAdapter";
+        }
+      };
+    }
+
+    FilterResult filterResult =
+        ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
+    if (filterResult == FilterResult.BLOCK_ALL) {
+      throw new JsonIOException(
+          "ReflectionAccessFilter does not permit using reflection for "
+              + raw
+              + ". Register a TypeAdapter for this type or adjust the access filter.");
+    }
+    boolean blockInaccessible = filterResult == FilterResult.BLOCK_INACCESSIBLE;
+
+    // If the type is actually a Java Record, we need to use the RecordAdapter instead. This will
+    // always be false on JVMs that do not support records.
+    if (ReflectionHelper.isRecord(raw)) {
+      @SuppressWarnings("unchecked")
+      TypeAdapter<T> adapter =
+          (TypeAdapter<T>)
+              new RecordAdapter<>(
+                  raw, getBoundFields(gson, type, raw, blockInaccessible, true), blockInaccessible);
+      return adapter;
+    }
+
+    ObjectConstructor<T> constructor = constructorConstructor.get(type, true);
+    return new FieldReflectionAdapter<>(
+        constructor, getBoundFields(gson, type, raw, blockInaccessible, false));
+  }
+
+  private static <M extends AccessibleObject & Member> void checkAccessible(
+      Object object, M member) {
+    if (!ReflectionAccessFilterHelper.canAccess(
+        member, Modifier.isStatic(member.getModifiers()) ? null : object)) {
+      String memberDescription = ReflectionHelper.getAccessibleObjectDescription(member, true);
+      throw new JsonIOException(
+          memberDescription
+              + " is not accessible and ReflectionAccessFilter does not permit making it"
+              + " accessible. Register a TypeAdapter for the declaring type, adjust the access"
+              + " filter or increase the visibility of the element and its declaring type.");
+    }
+  }
+
+  private BoundField createBoundField(
+      Gson context,
+      Field field,
+      Method accessor,
+      String serializedName,
+      TypeToken<?> fieldType,
+      boolean serialize,
+      boolean blockInaccessible) {
+
+    boolean isPrimitive = Primitives.isPrimitive(fieldType.getRawType());
+
+    int modifiers = field.getModifiers();
+    boolean isStaticFinalField = Modifier.isStatic(modifiers) && Modifier.isFinal(modifiers);
+
+    JsonAdapter annotation = field.getAnnotation(JsonAdapter.class);
+    TypeAdapter<?> mapped = null;
+    if (annotation != null) {
+      // This is not safe; requires that user has specified correct adapter class for @JsonAdapter
+      mapped =
+          jsonAdapterFactory.getTypeAdapter(
+              constructorConstructor, context, fieldType, annotation, false);
+    }
+    boolean jsonAdapterPresent = mapped != null;
+    if (mapped == null) {
+      mapped = context.getAdapter(fieldType);
+    }
+
+    @SuppressWarnings("unchecked")
+    TypeAdapter<Object> typeAdapter = (TypeAdapter<Object>) mapped;
+    TypeAdapter<Object> writeTypeAdapter;
+    if (serialize) {
+      writeTypeAdapter =
+          jsonAdapterPresent
+              ? typeAdapter
+              : new TypeAdapterRuntimeTypeWrapper<>(context, typeAdapter, fieldType.getType());
+    } else {
+      // Will never actually be used, but we set it to avoid confusing nullness-analysis tools
+      writeTypeAdapter = typeAdapter;
+    }
+    return new BoundField(serializedName, field) {
+      @Override
+      void write(JsonWriter writer, Object source) throws IOException, IllegalAccessException {
+        if (blockInaccessible) {
+          if (accessor == null) {
+            checkAccessible(source, field);
+          } else {
+            // Note: This check might actually be redundant because access check for canonical
+            // constructor should have failed already
+            checkAccessible(source, accessor);
+          }
+        }
+
+        Object fieldValue;
+        if (accessor != null) {
+          try {
+            fieldValue = accessor.invoke(source);
+          } catch (InvocationTargetException e) {
+            String accessorDescription =
+                ReflectionHelper.getAccessibleObjectDescription(accessor, false);
+            throw new JsonIOException(
+                "Accessor " + accessorDescription + " threw exception", e.getCause());
+          }
+        } else {
+          fieldValue = field.get(source);
+        }
+        if (fieldValue == source) {
+          // avoid direct recursion
+          return;
+        }
+        writer.name(serializedName);
+        writeTypeAdapter.write(writer, fieldValue);
+      }
+
+      @Override
+      void readIntoArray(JsonReader reader, int index, Object[] target)
+          throws IOException, JsonParseException {
+        Object fieldValue = typeAdapter.read(reader);
+        if (fieldValue == null && isPrimitive) {
+          throw new JsonParseException(
+              "null is not allowed as value for record component '"
+
+exec
+/bin/bash -lc "sed -n '1,240p' gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2022 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson.internal;
+
+import com.google.gson.ReflectionAccessFilter;
+import com.google.gson.ReflectionAccessFilter.FilterResult;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Method;
+import java.util.List;
+
+/** Internal helper class for {@link ReflectionAccessFilter}. */
+public class ReflectionAccessFilterHelper {
+  private ReflectionAccessFilterHelper() {}
+
+  // Platform type detection is based on Moshi's Util.isPlatformType(Class)
+  // See
+  // https://github.com/square/moshi/blob/3c108919ee1cce88a433ffda04eeeddc0341eae7/moshi/src/main/java/com/squareup/moshi/internal/Util.java#L141
+
+  public static boolean isJavaType(Class<?> c) {
+    return isJavaType(c.getName());
+  }
+
+  private static boolean isJavaType(String className) {
+    return className.startsWith("java.") || className.startsWith("javax.");
+  }
+
+  public static boolean isAndroidType(Class<?> c) {
+    return isAndroidType(c.getName());
+  }
+
+  private static boolean isAndroidType(String className) {
+    return className.startsWith("android.")
+        || className.startsWith("androidx.")
+        || isJavaType(className);
+  }
+
+  public static boolean isAnyPlatformType(Class<?> c) {
+    String className = c.getName();
+    return isAndroidType(className) // Covers Android and Java
+        || className.startsWith("kotlin.")
+        || className.startsWith("kotlinx.")
+        || className.startsWith("scala.");
+  }
+
+  /**
+   * Gets the result of applying all filters until the first one returns a result other than {@link
+   * FilterResult#INDECISIVE}, or {@link FilterResult#ALLOW} if the list of filters is empty or all
+   * returned {@code INDECISIVE}.
+   */
+  public static FilterResult getFilterResult(
+      List<ReflectionAccessFilter> reflectionFilters, Class<?> c) {
+    for (ReflectionAccessFilter filter : reflectionFilters) {
+      FilterResult result = filter.check(c);
+      if (result != FilterResult.INDECISIVE) {
+        return result;
+      }
+    }
+    return FilterResult.ALLOW;
+  }
+
+  /** See {@link AccessibleObject#canAccess(Object)} (Java >= 9) */
+  public static boolean canAccess(AccessibleObject accessibleObject, Object object) {
+    return AccessChecker.INSTANCE.canAccess(accessibleObject, object);
+  }
+
+  private abstract static class AccessChecker {
+    static final AccessChecker INSTANCE;
+
+    static {
+      AccessChecker accessChecker = null;
+      // TODO: Ideally should use Multi-Release JAR for this version specific code
+      if (JavaVersion.isJava9OrLater()) {
+        try {
+          Method canAccessMethod =
+              AccessibleObject.class.getDeclaredMethod("canAccess", Object.class);
+          accessChecker =
+              new AccessChecker() {
+                @Override
+                public boolean canAccess(AccessibleObject accessibleObject, Object object) {
+                  try {
+                    return (Boolean) canAccessMethod.invoke(accessibleObject, object);
+                  } catch (Exception e) {
+                    throw new RuntimeException("Failed invoking canAccess", e);
+                  }
+                }
+              };
+        } catch (NoSuchMethodException ignored) {
+          // OK: will assume everything is accessible
+        }
+      }
+
+      if (accessChecker == null) {
+        accessChecker =
+            new AccessChecker() {
+              @Override
+              public boolean canAccess(AccessibleObject accessibleObject, Object object) {
+                // Cannot determine whether object can be accessed, so assume it can be accessed
+                return true;
+              }
+            };
+      }
+      INSTANCE = accessChecker;
+    }
+
+    abstract boolean canAccess(AccessibleObject accessibleObject, Object object);
+  }
+}
+
+exec
+/bin/bash -lc "sed -n '1,260p' gson/src/main/java/com/google/gson/ReflectionAccessFilter.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2022 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson;
+
+import com.google.gson.internal.ReflectionAccessFilterHelper;
+import java.lang.reflect.AccessibleObject;
+
+/**
+ * Filter for determining whether reflection based serialization and deserialization is allowed for
+ * a class.
+ *
+ * <p>A filter can be useful in multiple scenarios, for example when upgrading to newer Java
+ * versions which use the Java Platform Module System (JPMS). A filter then allows to {@linkplain
+ * FilterResult#BLOCK_INACCESSIBLE prevent making inaccessible members accessible}, even if the used
+ * Java version might still allow illegal access (but logs a warning), or if {@code java} command
+ * line arguments are used to open the inaccessible packages to other parts of the application. This
+ * interface defines some convenience filters for this task, such as {@link
+ * #BLOCK_INACCESSIBLE_JAVA}.
+ *
+ * <p>A filter can also be useful to prevent mixing model classes of a project with other non-model
+ * classes; the filter could {@linkplain FilterResult#BLOCK_ALL block all reflective access} to
+ * non-model classes.
+ *
+ * <p>A reflection access filter is similar to an {@link ExclusionStrategy} with the major
+ * difference that a filter will cause an exception to be thrown when access is disallowed while an
+ * exclusion strategy just skips fields and classes.
+ *
+ * @see GsonBuilder#addReflectionAccessFilter(ReflectionAccessFilter)
+ * @since 2.9.1
+ */
+public interface ReflectionAccessFilter {
+  /**
+   * Result of a filter check.
+   *
+   * @since 2.9.1
+   */
+  enum FilterResult {
+    /**
+     * Reflection access for the class is allowed.
+     *
+     * <p>Note that this does not affect the Java access checks in any way, it only permits Gson to
+     * try using reflection for a class. The Java runtime might still deny such access.
+     */
+    ALLOW,
+    /**
+     * The filter is indecisive whether reflection access should be allowed. The next registered
+     * filter will be consulted to get the result. If there is no next filter, this result acts like
+     * {@link #ALLOW}.
+     */
+    INDECISIVE,
+    /**
+     * Blocks reflection access if a member of the class is not accessible by default and would have
+     * to be made accessible. This is unaffected by any {@code java} command line arguments being
+     * used to make packages accessible, or by module declaration directives which <i>open</i> the
+     * complete module or certain packages for reflection and will consider such packages
+     * inaccessible.
+     *
+     * <p>Note that this <b>only works for Java 9 and higher</b>, for older Java versions its
+     * functionality will be limited and it might behave like {@link #ALLOW}. Access checks are only
+     * performed as defined by the Java Language Specification (<a
+     * href="https://docs.oracle.com/javase/specs/jls/se11/html/jls-6.html#jls-6.6">JLS 11
+     * &sect;6.6</a>), restrictions imposed by a {@link SecurityManager} are not considered.
+     *
+     * <p>This result type is mainly intended to help enforce the access checks of the Java Platform
+     * Module System. It allows detecting illegal access, even if the used Java version would only
+     * log a warning, or is configured to open packages for reflection using command line arguments.
+     *
+     * @see AccessibleObject#canAccess(Object)
+     */
+    BLOCK_INACCESSIBLE,
+    /**
+     * Blocks all reflection access for the class. Other means for serializing and deserializing the
+     * class, such as a {@link TypeAdapter}, have to be used.
+     */
+    BLOCK_ALL
+  }
+
+  /**
+   * Blocks all reflection access to members of standard Java classes which are not accessible by
+   * default. However, reflection access is still allowed for classes for which all fields are
+   * accessible and which have an accessible no-args constructor (or for which an {@link
+   * InstanceCreator} has been registered).
+   *
+   * <p>If this filter encounters a class other than a standard Java class it returns {@link
+   * FilterResult#INDECISIVE}.
+   *
+   * <p>This filter is mainly intended to help enforcing the access checks of Java Platform Module
+   * System. It allows detecting illegal access, even if the used Java version would only log a
+   * warning, or is configured to open packages for reflection. However, this filter <b>only works
+   * for Java 9 and higher</b>, when using an older Java version its functionality will be limited.
+   *
+   * <p>Note that this filter might not cover all standard Java classes. Currently only classes in a
+   * {@code java.*} or {@code javax.*} package are considered. The set of detected classes might be
+   * expanded in the future without prior notice.
+   *
+   * @see FilterResult#BLOCK_INACCESSIBLE
+   */
+  ReflectionAccessFilter BLOCK_INACCESSIBLE_JAVA =
+      new ReflectionAccessFilter() {
+        @Override
+        public FilterResult check(Class<?> rawClass) {
+          return ReflectionAccessFilterHelper.isJavaType(rawClass)
+              ? FilterResult.BLOCK_INACCESSIBLE
+              : FilterResult.INDECISIVE;
+        }
+
+        @Override
+        public String toString() {
+          return "ReflectionAccessFilter#BLOCK_INACCESSIBLE_JAVA";
+        }
+      };
+
+  /**
+   * Blocks all reflection access to members of standard Java classes.
+   *
+   * <p>If this filter encounters a class other than a standard Java class it returns {@link
+   * FilterResult#INDECISIVE}.
+   *
+   * <p>This filter is mainly intended to prevent depending on implementation details of the Java
+   * platform and to help applications prepare for upgrading to the Java Platform Module System.
+   *
+   * <p>Note that this filter might not cover all standard Java classes. Currently only classes in a
+   * {@code java.*} or {@code javax.*} package are considered. The set of detected classes might be
+   * expanded in the future without prior notice.
+   *
+   * @see #BLOCK_INACCESSIBLE_JAVA
+   * @see FilterResult#BLOCK_ALL
+   */
+  ReflectionAccessFilter BLOCK_ALL_JAVA =
+      new ReflectionAccessFilter() {
+        @Override
+        public FilterResult check(Class<?> rawClass) {
+          return ReflectionAccessFilterHelper.isJavaType(rawClass)
+              ? FilterResult.BLOCK_ALL
+              : FilterResult.INDECISIVE;
+        }
+
+        @Override
+        public String toString() {
+          return "ReflectionAccessFilter#BLOCK_ALL_JAVA";
+        }
+      };
+
+  /**
+   * Blocks all reflection access to members of standard Android classes.
+   *
+   * <p>If this filter encounters a class other than a standard Android class it returns {@link
+   * FilterResult#INDECISIVE}.
+   *
+   * <p>This filter is mainly intended to prevent depending on implementation details of the Android
+   * platform.
+   *
+   * <p>Note that this filter might not cover all standard Android classes. Currently only classes
+   * in an {@code android.*} or {@code androidx.*} package, and standard Java classes in a {@code
+   * java.*} or {@code javax.*} package are considered. The set of detected classes might be
+   * expanded in the future without prior notice.
+   *
+   * @see FilterResult#BLOCK_ALL
+   */
+  ReflectionAccessFilter BLOCK_ALL_ANDROID =
+      new ReflectionAccessFilter() {
+        @Override
+        public FilterResult check(Class<?> rawClass) {
+          return ReflectionAccessFilterHelper.isAndroidType(rawClass)
+              ? FilterResult.BLOCK_ALL
+              : FilterResult.INDECISIVE;
+        }
+
+        @Override
+        public String toString() {
+          return "ReflectionAccessFilter#BLOCK_ALL_ANDROID";
+        }
+      };
+
+  /**
+   * Blocks all reflection access to members of classes belonging to programming language platforms,
+   * such as Java, Android, Kotlin or Scala.
+   *
+   * <p>If this filter encounters a class other than a standard platform class it returns {@link
+   * FilterResult#INDECISIVE}.
+   *
+   * <p>This filter is mainly intended to prevent depending on implementation details of the
+   * platform classes.
+   *
+   * <p>Note that this filter might not cover all platform classes. Currently it combines the
+   * filters {@link #BLOCK_ALL_JAVA} and {@link #BLOCK_ALL_ANDROID}, and checks for other
+   * language-specific platform classes like {@code kotlin.*}. The set of detected classes might be
+   * expanded in the future without prior notice.
+   *
+   * @see FilterResult#BLOCK_ALL
+   */
+  ReflectionAccessFilter BLOCK_ALL_PLATFORM =
+      new ReflectionAccessFilter() {
+        @Override
+        public FilterResult check(Class<?> rawClass) {
+          return ReflectionAccessFilterHelper.isAnyPlatformType(rawClass)
+              ? FilterResult.BLOCK_ALL
+              : FilterResult.INDECISIVE;
+        }
+
+        @Override
+        public String toString() {
+          return "ReflectionAccessFilter#BLOCK_ALL_PLATFORM";
+        }
+      };
+
+  /**
+   * Checks if reflection access should be allowed for a class.
+   *
+   * @param rawClass Class to check
+   * @return Result indicating whether reflection access is allowed
+   */
+  FilterResult check(Class<?> rawClass);
+}
+
+exec
+/bin/bash -lc "sed -n '1,320p' gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+/*
+ * Copyright (C) 2011 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.gson.internal;
+
+import com.google.gson.InstanceCreator;
+import com.google.gson.JsonIOException;
+import com.google.gson.ReflectionAccessFilter;
+import com.google.gson.ReflectionAccessFilter.FilterResult;
+import com.google.gson.internal.reflect.ReflectionHelper;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+
+/** Returns a function that can construct an instance of a requested type. */
+public final class ConstructorConstructor {
+  private final Map<Type, InstanceCreator<?>> instanceCreators;
+  private final boolean useJdkUnsafe;
+  private final List<ReflectionAccessFilter> reflectionFilters;
+
+  public ConstructorConstructor(
+      Map<Type, InstanceCreator<?>> instanceCreators,
+      boolean useJdkUnsafe,
+      List<ReflectionAccessFilter> reflectionFilters) {
+    this.instanceCreators = instanceCreators;
+    this.useJdkUnsafe = useJdkUnsafe;
+    this.reflectionFilters = reflectionFilters;
+  }
+
+  /**
+   * Check if the class can be instantiated by Unsafe allocator. If the instance has interface or
+   * abstract modifiers return an exception message.
+   *
+   * @param c instance of the class to be checked
+   * @return if instantiable {@code null}, else a non-{@code null} exception message
+   */
+  static String checkInstantiable(Class<?> c) {
+    int modifiers = c.getModifiers();
+    if (Modifier.isInterface(modifiers)) {
+      return "Interfaces can't be instantiated! Register an InstanceCreator"
+          + " or a TypeAdapter for this type. Interface name: "
+          + c.getName();
+    }
+    if (Modifier.isAbstract(modifiers)) {
+      // R8 performs aggressive optimizations where it removes the default constructor of a class
+      // and makes the class `abstract`; check for that here explicitly
+      /*
+       * Note: Ideally should only show this R8-specific message when it is clear that R8 was
+       * used (e.g. when `c.getDeclaredConstructors().length == 0`), but on Android where this
+       * issue with R8 occurs most, R8 seems to keep some constructors for some reason while
+       * still making the class abstract
+       */
+      return "Abstract classes can't be instantiated! Adjust the R8 configuration or register"
+          + " an InstanceCreator or a TypeAdapter for this type. Class name: "
+          + c.getName()
+          + "\nSee "
+          + TroubleshootingGuide.createUrl("r8-abstract-class");
+    }
+    return null;
+  }
+
+  /** Calls {@link #get(TypeToken, boolean)}, and allows usage of JDK Unsafe. */
+  public <T> ObjectConstructor<T> get(TypeToken<T> typeToken) {
+    return get(typeToken, true);
+  }
+
+  /**
+   * Retrieves an object constructor for the given type.
+   *
+   * @param typeToken type for which a constructor should be retrieved
+   * @param allowUnsafe whether to allow usage of JDK Unsafe; has no effect if {@link #useJdkUnsafe}
+   *     is false
+   */
+  public <T> ObjectConstructor<T> get(TypeToken<T> typeToken, boolean allowUnsafe) {
+    Type type = typeToken.getType();
+    Class<? super T> rawType = typeToken.getRawType();
+
+    // first try an instance creator
+
+    @SuppressWarnings("unchecked") // types must agree
+    InstanceCreator<T> typeCreator = (InstanceCreator<T>) instanceCreators.get(type);
+    if (typeCreator != null) {
+      return new InstanceCreatorConstructor<>(typeCreator, type);
+    }
+
+    // Next try raw type match for instance creators
+    @SuppressWarnings("unchecked") // types must agree
+    InstanceCreator<T> rawTypeCreator = (InstanceCreator<T>) instanceCreators.get(rawType);
+    if (rawTypeCreator != null) {
+      return new InstanceCreatorConstructor<>(rawTypeCreator, type);
+    }
+
+    // First consider special constructors before checking for no-args constructors
+    // below to avoid matching internal no-args constructors which might be added in
+    // future JDK versions
+    ObjectConstructor<T> specialConstructor = newSpecialCollectionConstructor(type, rawType);
+    if (specialConstructor != null) {
+      return specialConstructor;
+    }
+
+    FilterResult filterResult =
+        ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, rawType);
+    ObjectConstructor<T> defaultConstructor = newDefaultConstructor(rawType, filterResult);
+    if (defaultConstructor != null) {
+      return defaultConstructor;
+    }
+
+    ObjectConstructor<T> defaultImplementation = newDefaultImplementationConstructor(type, rawType);
+    if (defaultImplementation != null) {
+      return defaultImplementation;
+    }
+
+    // Check whether type is instantiable; otherwise ReflectionAccessFilter recommendation
+    // of adjusting filter suggested below is irrelevant since it would not solve the problem
+    String exceptionMessage = checkInstantiable(rawType);
+    if (exceptionMessage != null) {
+      return new ThrowingObjectConstructor<>(exceptionMessage);
+    }
+
+    if (!allowUnsafe) {
+      String message =
+          "Unable to create instance of "
+              + rawType
+              + "; Register an InstanceCreator or a TypeAdapter for this type.";
+      return new ThrowingObjectConstructor<>(message);
+    }
+
+    // Consider usage of Unsafe as reflection, so don't use if BLOCK_ALL
+    // Additionally, since it is not calling any constructor at all, don't use if BLOCK_INACCESSIBLE
+    if (filterResult != FilterResult.ALLOW) {
+      String message =
+          "Unable to create instance of "
+              + rawType
+              + "; ReflectionAccessFilter does not permit using reflection or Unsafe. Register an"
+              + " InstanceCreator or a TypeAdapter for this type or adjust the access filter to"
+              + " allow using reflection.";
+      return new ThrowingObjectConstructor<>(message);
+    }
+
+    // finally try unsafe
+    return newUnsafeAllocator(rawType);
+  }
+
+  /**
+   * Creates constructors for special JDK collection types which do not have a public no-args
+   * constructor.
+   */
+  private static <T> ObjectConstructor<T> newSpecialCollectionConstructor(
+      Type type, Class<? super T> rawType) {
+    if (EnumSet.class.isAssignableFrom(rawType)) {
+      return () -> {
+        if (type instanceof ParameterizedType) {
+          Type elementType = ((ParameterizedType) type).getActualTypeArguments()[0];
+          if (elementType instanceof Class) {
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            T set = (T) EnumSet.noneOf((Class) elementType);
+            return set;
+          } else {
+            throw new JsonIOException("Invalid EnumSet type: " + type);
+          }
+        } else {
+          throw new JsonIOException("Invalid EnumSet type: " + type);
+        }
+      };
+    }
+    // Only support creation of EnumMap, but not of custom subtypes; for them type parameters
+    // and constructor parameter might have completely different meaning
+    else if (rawType == EnumMap.class) {
+      return () -> {
+        if (type instanceof ParameterizedType) {
+          Type elementType = ((ParameterizedType) type).getActualTypeArguments()[0];
+          if (elementType instanceof Class) {
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            T map = (T) new EnumMap((Class) elementType);
+            return map;
+          } else {
+            throw new JsonIOException("Invalid EnumMap type: " + type);
+          }
+        } else {
+          throw new JsonIOException("Invalid EnumMap type: " + type);
+        }
+      };
+    }
+
+    return null;
+  }
+
+  private static <T> ObjectConstructor<T> newDefaultConstructor(
+      Class<? super T> rawType, FilterResult filterResult) {
+    // Cannot invoke constructor of abstract class
+    if (Modifier.isAbstract(rawType.getModifiers())) {
+      return null;
+    }
+
+    Constructor<? super T> constructor;
+    try {
+      constructor = rawType.getDeclaredConstructor();
+    } catch (NoSuchMethodException e) {
+      return null;
+    }
+
+    boolean canAccess =
+        filterResult == FilterResult.ALLOW
+            || (ReflectionAccessFilterHelper.canAccess(constructor, null)
+                // Be a bit more lenient here for BLOCK_ALL; if constructor is accessible and public
+                // then allow calling it
+                && (filterResult != FilterResult.BLOCK_ALL
+                    || Modifier.isPublic(constructor.getModifiers())));
+
+    if (!canAccess) {
+      String message =
+          "Unable to invoke no-args constructor of "
+              + rawType
+              + ";"
+              + " constructor is not accessible and ReflectionAccessFilter does not permit making"
+              + " it accessible. Register an InstanceCreator or a TypeAdapter for this type, change"
+              + " the visibility of the constructor or adjust the access filter.";
+      return new ThrowingObjectConstructor<>(message);
+    }
+
+    // Only try to make accessible if allowed; in all other cases checks above should
+    // have verified that constructor is accessible
+    if (filterResult == FilterResult.ALLOW) {
+      String exceptionMessage = ReflectionHelper.tryMakeAccessible(constructor);
+      if (exceptionMessage != null) {
+        return new ThrowingObjectConstructor<>(exceptionMessage);
+      }
+    }
+
+    return () -> {
+      try {
+        @SuppressWarnings("unchecked") // T is the same raw type as is requested
+        T newInstance = (T) constructor.newInstance();
+        return newInstance;
+      }
+      // Note: InstantiationException should be impossible because check at start of method made
+      // sure that class is not abstract
+      catch (InstantiationException e) {
+        throw new RuntimeException(
+            "Failed to invoke constructor '"
+                + ReflectionHelper.constructorToString(constructor)
+                + "' with no args",
+            e);
+      } catch (InvocationTargetException e) {
+        // TODO: don't wrap if cause is unchecked?
+        // TODO: JsonParseException ?
+        throw new RuntimeException(
+            "Failed to invoke constructor '"
+                + ReflectionHelper.constructorToString(constructor)
+                + "' with no args",
+            e.getCause());
+      } catch (IllegalAccessException e) {
+        throw ReflectionHelper.createExceptionForUnexpectedIllegalAccess(e);
+      }
+    };
+  }
+
+  /** Constructors for common interface types like Map and List and their subtypes. */
+  private static <T> ObjectConstructor<T> newDefaultImplementationConstructor(
+      Type type, Class<? super T> rawType) {
+
+    /*
+     * IMPORTANT: Must only create instances for classes with public no-args constructor.
+     * For classes with special constructors / factory methods (e.g. EnumSet)
+     * `newSpecialCollectionConstructor` defined above must be used, to avoid no-args
+     * constructor check (which is called before this method) detecting internal no-args
+     * constructors which might be added in a future JDK version
+     */
+
+    if (Collection.class.isAssignableFrom(rawType)) {
+      @SuppressWarnings("unchecked")
+      ObjectConstructor<T> constructor = (ObjectConstructor<T>) newCollectionConstructor(rawType);
+      return constructor;
+    }
+
+    if (Map.class.isAssignableFrom(rawType)) {
+      @SuppressWarnings("unchecked")
+      ObjectConstructor<T> constructor = (ObjectConstructor<T>) newMapConstructor(type, rawType);
+      return constructor;
+    }
+
+    // Unsupported type; try other means of creating constructor
+    return null;
+  }
+
+  private static ObjectConstructor<? extends Collection<?>> newCollectionConstructor(
+      Class<?> rawType) {
+
+    // First try List implementation
+    if (rawType.isAssignableFrom(ArrayList.class)) {
+      return ArrayList::new;
+
+codex
+I’ve confirmed the helper is a narrow utility class so far. I’m now counting its real inbound uses across production and tests to see whether the fan-in is large enough to justify a hub smell.
+exec
+/bin/bash -lc 'rg -l "ReflectionAccessFilterHelper" gson/src/main/java gson/src/test/java' in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java
+gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java
+gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java
+
+exec
+/bin/bash -lc "sed -n '1,240p' gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java | nl -ba" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (C) 2022 Google Inc.
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 * http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	
+    17	package com.google.gson.internal;
+    18	
+    19	import com.google.gson.ReflectionAccessFilter;
+    20	import com.google.gson.ReflectionAccessFilter.FilterResult;
+    21	import java.lang.reflect.AccessibleObject;
+    22	import java.lang.reflect.Method;
+    23	import java.util.List;
+    24	
+    25	/** Internal helper class for {@link ReflectionAccessFilter}. */
+    26	public class ReflectionAccessFilterHelper {
+    27	  private ReflectionAccessFilterHelper() {}
+    28	
+    29	  // Platform type detection is based on Moshi's Util.isPlatformType(Class)
+    30	  // See
+    31	  // https://github.com/square/moshi/blob/3c108919ee1cce88a433ffda04eeeddc0341eae7/moshi/src/main/java/com/squareup/moshi/internal/Util.java#L141
+    32	
+    33	  public static boolean isJavaType(Class<?> c) {
+    34	    return isJavaType(c.getName());
+    35	  }
+    36	
+    37	  private static boolean isJavaType(String className) {
+    38	    return className.startsWith("java.") || className.startsWith("javax.");
+    39	  }
+    40	
+    41	  public static boolean isAndroidType(Class<?> c) {
+    42	    return isAndroidType(c.getName());
+    43	  }
+    44	
+    45	  private static boolean isAndroidType(String className) {
+    46	    return className.startsWith("android.")
+    47	        || className.startsWith("androidx.")
+    48	        || isJavaType(className);
+    49	  }
+    50	
+    51	  public static boolean isAnyPlatformType(Class<?> c) {
+    52	    String className = c.getName();
+    53	    return isAndroidType(className) // Covers Android and Java
+    54	        || className.startsWith("kotlin.")
+    55	        || className.startsWith("kotlinx.")
+    56	        || className.startsWith("scala.");
+    57	  }
+    58	
+    59	  /**
+    60	   * Gets the result of applying all filters until the first one returns a result other than {@link
+    61	   * FilterResult#INDECISIVE}, or {@link FilterResult#ALLOW} if the list of filters is empty or all
+    62	   * returned {@code INDECISIVE}.
+    63	   */
+    64	  public static FilterResult getFilterResult(
+    65	      List<ReflectionAccessFilter> reflectionFilters, Class<?> c) {
+    66	    for (ReflectionAccessFilter filter : reflectionFilters) {
+    67	      FilterResult result = filter.check(c);
+    68	      if (result != FilterResult.INDECISIVE) {
+    69	        return result;
+    70	      }
+    71	    }
+    72	    return FilterResult.ALLOW;
+    73	  }
+    74	
+    75	  /** See {@link AccessibleObject#canAccess(Object)} (Java >= 9) */
+    76	  public static boolean canAccess(AccessibleObject accessibleObject, Object object) {
+    77	    return AccessChecker.INSTANCE.canAccess(accessibleObject, object);
+    78	  }
+    79	
+    80	  private abstract static class AccessChecker {
+    81	    static final AccessChecker INSTANCE;
+    82	
+    83	    static {
+    84	      AccessChecker accessChecker = null;
+    85	      // TODO: Ideally should use Multi-Release JAR for this version specific code
+    86	      if (JavaVersion.isJava9OrLater()) {
+    87	        try {
+    88	          Method canAccessMethod =
+    89	              AccessibleObject.class.getDeclaredMethod("canAccess", Object.class);
+    90	          accessChecker =
+    91	              new AccessChecker() {
+    92	                @Override
+    93	                public boolean canAccess(AccessibleObject accessibleObject, Object object) {
+    94	                  try {
+    95	                    return (Boolean) canAccessMethod.invoke(accessibleObject, object);
+    96	                  } catch (Exception e) {
+    97	                    throw new RuntimeException("Failed invoking canAccess", e);
+    98	                  }
+    99	                }
+   100	              };
+   101	        } catch (NoSuchMethodException ignored) {
+   102	          // OK: will assume everything is accessible
+   103	        }
+   104	      }
+   105	
+   106	      if (accessChecker == null) {
+   107	        accessChecker =
+   108	            new AccessChecker() {
+   109	              @Override
+   110	              public boolean canAccess(AccessibleObject accessibleObject, Object object) {
+   111	                // Cannot determine whether object can be accessed, so assume it can be accessed
+   112	                return true;
+   113	              }
+   114	            };
+   115	      }
+   116	      INSTANCE = accessChecker;
+   117	    }
+   118	
+   119	    abstract boolean canAccess(AccessibleObject accessibleObject, Object object);
+   120	  }
+   121	}
+
+exec
+/bin/bash -lc "rg -n \"ReflectionAccessFilterHelper\\.(isJavaType|isAndroidType|isAnyPlatformType|getFilterResult|canAccess)\" gson/src/main/java gson/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/google/gson
+ succeeded in 0ms:
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java:116:          return ReflectionAccessFilterHelper.isJavaType(rawClass)
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java:147:          return ReflectionAccessFilterHelper.isJavaType(rawClass)
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java:178:          return ReflectionAccessFilterHelper.isAndroidType(rawClass)
+gson/src/main/java/com/google/gson/ReflectionAccessFilter.java:210:          return ReflectionAccessFilterHelper.isAnyPlatformType(rawClass)
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:143:        ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:170:    if (!ReflectionAccessFilterHelper.canAccess(
+gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java:335:            ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, raw);
+gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java:131:        ReflectionAccessFilterHelper.getFilterResult(reflectionFilters, rawType);
+gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java:233:            || (ReflectionAccessFilterHelper.canAccess(constructor, null)
+
+codex
+{"target":"com.google.gson.internal.ReflectionAccessFilterHelper","detection":false,"justification":"Inspected gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java, gson/src/main/java/com/google/gson/ReflectionAccessFilter.java, gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java, and gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java. The helper is a small static utility with 5 public methods and one nested AccessChecker, and rg found only 3 production callers plus no test callers; its outbound dependencies are limited to a few JDK/Gson types (ReflectionAccessFilter/FilterResult, AccessibleObject, Method, List, JavaVersion). This is not the high fan-in/high fan-out pattern expected for hub-like modularization."}
+tokens used
+13,641

@@ -1,0 +1,792 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6eb2-9a3c-7c21-952e-9cc36bf3da61
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.implementation.attribute.AnnotationAppender.OnField` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.implementation.attribute.AnnotationAppender.OnField",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.implementation.attribute.AnnotationAppender.OnField`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’ll locate the target class, inspect its source and direct references, and then decide based on concrete fan-in/fan-out evidence.
+exec
+/bin/bash -lc 'rg -n "class OnField|interface OnField|OnField" -S .' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:50:    public void testOnField() throws Exception {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:51:        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true);
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:85:    public void testTypeAnnotationOnField() throws Exception {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:86:        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true, BAR, TYPE_PATH);
+./byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceCustomAnnotationOnFieldTest.java:20:public class AdviceCustomAnnotationOnFieldTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/asm/AdviceCustomAnnotationOnFieldTest.java:43:    public AdviceCustomAnnotationOnFieldTest(Class<?> target, Object expected) {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:360:    public void testOnFieldUsingMatcher() throws Exception {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:361:        DynamicType.Loaded<MethodCallOnField> loaded = new ByteBuddy()
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:362:                .subclass(MethodCallOnField.class)
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:366:                .load(MethodCallOnField.class.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER);
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:372:        MethodCallOnField instance = loaded.getLoaded().getDeclaredConstructor().newInstance();
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:374:        assertThat(instance, instanceOf(MethodCallOnField.class));
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:1485:    public static class MethodCallOnField {
+./byte-buddy-dep/src/test/java/net/bytebuddy/asm/AnnotationRemovalTest.java:53:    public void testRemovalOnField() throws Exception {
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterDefaultTest.java:374:    public void testAnnotationOnFieldPreJava5() throws Exception {
+./byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/AbstractDynamicTypeBuilderTest.java:666:    public void testAnnotationTypeOnFieldType() throws Exception {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java:144:            AnnotationAppender annotationAppender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java:184:            AnnotationAppender appender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java:138:        class OnField implements Target {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java:150:            public OnField(FieldVisitor fieldVisitor) {
+
+exec
+/bin/bash -lc "rg -n \"AnnotationAppender\\.OnField|OnField\\b\" -S byte-buddy* src ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ exited 2 in 0ms:
+rg: src: No such file or directory (os error 2)
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:50:    public void testOnField() throws Exception {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:51:        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true);
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:85:    public void testTypeAnnotationOnField() throws Exception {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:86:        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true, BAR, TYPE_PATH);
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:361:        DynamicType.Loaded<MethodCallOnField> loaded = new ByteBuddy()
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:362:                .subclass(MethodCallOnField.class)
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:366:                .load(MethodCallOnField.class.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER);
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:372:        MethodCallOnField instance = loaded.getLoaded().getDeclaredConstructor().newInstance();
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:374:        assertThat(instance, instanceOf(MethodCallOnField.class));
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:1485:    public static class MethodCallOnField {
+./byte-buddy-dep/src/test/java/net/bytebuddy/asm/AnnotationRemovalTest.java:53:    public void testRemovalOnField() throws Exception {
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AnnotationRemovalTest.java:53:    public void testRemovalOnField() throws Exception {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:50:    public void testOnField() throws Exception {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:51:        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:85:    public void testTypeAnnotationOnField() throws Exception {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:86:        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true, BAR, TYPE_PATH);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:361:        DynamicType.Loaded<MethodCallOnField> loaded = new ByteBuddy()
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:362:                .subclass(MethodCallOnField.class)
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:366:                .load(MethodCallOnField.class.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:372:        MethodCallOnField instance = loaded.getLoaded().getDeclaredConstructor().newInstance();
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:374:        assertThat(instance, instanceOf(MethodCallOnField.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/MethodCallTest.java:1485:    public static class MethodCallOnField {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java:144:            AnnotationAppender annotationAppender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java:184:            AnnotationAppender appender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java:138:        class OnField implements Target {
+./byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java:150:            public OnField(FieldVisitor fieldVisitor) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java:144:            AnnotationAppender annotationAppender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java:184:            AnnotationAppender appender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java:138:        class OnField implements Target {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java:150:            public OnField(FieldVisitor fieldVisitor) {
+
+codex
+I found the target in `byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java` and the first evidence of use in `FieldAttributeAppender`. I’m opening those files to check how central `OnField` actually is and whether the dependency count is substantial or just a small adapter.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java | sed -n '1,260p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java | sed -n '1,280p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy.implementation.attribute;
+    17	
+    18	import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+    19	import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+    20	import net.bytebuddy.description.annotation.AnnotationDescription;
+    21	import net.bytebuddy.description.enumeration.EnumerationDescription;
+    22	import net.bytebuddy.description.method.MethodDescription;
+    23	import net.bytebuddy.description.type.TypeDescription;
+    24	import net.bytebuddy.description.type.TypeList;
+    25	import net.bytebuddy.utility.nullability.AlwaysNull;
+    26	import net.bytebuddy.utility.nullability.MaybeNull;
+    27	import org.objectweb.asm.AnnotationVisitor;
+    28	import org.objectweb.asm.ClassVisitor;
+    29	import org.objectweb.asm.FieldVisitor;
+    30	import org.objectweb.asm.MethodVisitor;
+    31	import org.objectweb.asm.RecordComponentVisitor;
+    32	import org.objectweb.asm.Type;
+    33	import org.objectweb.asm.TypePath;
+    34	import org.objectweb.asm.TypeReference;
+    35	
+    36	import java.lang.reflect.Array;
+    37	import java.util.List;
+    38	
+    39	/**
+    40	 * Annotation appenders are capable of writing annotations to a specified target.
+    41	 */
+    42	public interface AnnotationAppender {
+    43	
+    44	    /**
+    45	     * A constant for informing ASM over ignoring a given name.
+    46	     */
+    47	    @AlwaysNull
+    48	    String NO_NAME = null;
+    49	
+    50	    /**
+    51	     * Writes the given annotation to the target that this appender represents.
+    52	     *
+    53	     * @param annotationDescription The annotation to be written.
+    54	     * @param annotationValueFilter The annotation value filter to use.
+    55	     * @return Usually {@code this} or any other annotation appender capable of writing another annotation to the specified target.
+    56	     */
+    57	    AnnotationAppender append(AnnotationDescription annotationDescription, AnnotationValueFilter annotationValueFilter);
+    58	
+    59	    /**
+    60	     * Writes the given type annotation to the target that this appender represents.
+    61	     *
+    62	     * @param annotationDescription The annotation to be written.
+    63	     * @param annotationValueFilter The annotation value filter to use.
+    64	     * @param typeReference         The type variable's type reference.
+    65	     * @param typePath              The type variable's type path.
+    66	     * @return Usually {@code this} or any other annotation appender capable of writing another annotation to the specified target.
+    67	     */
+    68	    AnnotationAppender append(AnnotationDescription annotationDescription, AnnotationValueFilter annotationValueFilter, int typeReference, String typePath);
+    69	
+    70	    /**
+    71	     * Represents a target for an annotation writing process.
+    72	     */
+    73	    interface Target {
+    74	
+    75	        /**
+    76	         * Creates an annotation visitor for writing the specified annotation.
+    77	         *
+    78	         * @param annotationTypeDescriptor The type descriptor for the annotation to be written.
+    79	         * @param visible                  {@code true} if the annotation is to be visible at runtime.
+    80	         * @return An annotation visitor for consuming the specified annotation.
+    81	         */
+    82	        @MaybeNull
+    83	        AnnotationVisitor visit(String annotationTypeDescriptor, boolean visible);
+    84	
+    85	        /**
+    86	         * Creates an annotation visitor for writing the specified type annotation.
+    87	         *
+    88	         * @param annotationTypeDescriptor The type descriptor for the annotation to be written.
+    89	         * @param visible                  {@code true} if the annotation is to be visible at runtime.
+    90	         * @param typeReference            The type annotation's type reference.
+    91	         * @param typePath                 The type annotation's type path.
+    92	         * @return An annotation visitor for consuming the specified annotation.
+    93	         */
+    94	        @MaybeNull
+    95	        AnnotationVisitor visit(String annotationTypeDescriptor, boolean visible, int typeReference, String typePath);
+    96	
+    97	        /**
+    98	         * Target for an annotation that is written to a Java type.
+    99	         */
+   100	        @HashCodeAndEqualsPlugin.Enhance
+   101	        class OnType implements Target {
+   102	
+   103	            /**
+   104	             * The class visitor to write the annotation to.
+   105	             */
+   106	            private final ClassVisitor classVisitor;
+   107	
+   108	            /**
+   109	             * Creates a new wrapper for a Java type.
+   110	             *
+   111	             * @param classVisitor The ASM class visitor to which the annotations are appended to.
+   112	             */
+   113	            public OnType(ClassVisitor classVisitor) {
+   114	                this.classVisitor = classVisitor;
+   115	            }
+   116	
+   117	            /**
+   118	             * {@inheritDoc}
+   119	             */
+   120	            @MaybeNull
+   121	            public AnnotationVisitor visit(String annotationTypeDescriptor, boolean visible) {
+   122	                return classVisitor.visitAnnotation(annotationTypeDescriptor, visible);
+   123	            }
+   124	
+   125	            /**
+   126	             * {@inheritDoc}
+   127	             */
+   128	            @MaybeNull
+   129	            public AnnotationVisitor visit(String annotationTypeDescriptor, boolean visible, int typeReference, String typePath) {
+   130	                return classVisitor.visitTypeAnnotation(typeReference, TypePath.fromString(typePath), annotationTypeDescriptor, visible);
+   131	            }
+   132	        }
+   133	
+   134	        /**
+   135	         * Target for an annotation that is written to a Java field.
+   136	         */
+   137	        @HashCodeAndEqualsPlugin.Enhance
+   138	        class OnField implements Target {
+   139	
+   140	            /**
+   141	             * The field visitor to write the annotation to.
+   142	             */
+   143	            private final FieldVisitor fieldVisitor;
+   144	
+   145	            /**
+   146	             * Creates a new wrapper for a Java field.
+   147	             *
+   148	             * @param fieldVisitor The ASM field visitor to which the annotations are appended to.
+   149	             */
+   150	            public OnField(FieldVisitor fieldVisitor) {
+   151	                this.fieldVisitor = fieldVisitor;
+   152	            }
+   153	
+   154	            /**
+   155	             * {@inheritDoc}
+   156	             */
+   157	            @MaybeNull
+   158	            public AnnotationVisitor visit(String annotationTypeDescriptor, boolean visible) {
+   159	                return fieldVisitor.visitAnnotation(annotationTypeDescriptor, visible);
+   160	            }
+   161	
+   162	            /**
+   163	             * {@inheritDoc}
+   164	             */
+   165	            @MaybeNull
+   166	            public AnnotationVisitor visit(String annotationTypeDescriptor, boolean visible, int typeReference, String typePath) {
+   167	                return fieldVisitor.visitTypeAnnotation(typeReference, TypePath.fromString(typePath), annotationTypeDescriptor, visible);
+   168	            }
+   169	        }
+   170	
+   171	        /**
+   172	         * Target for an annotation that is written to a Java method or constructor.
+   173	         */
+   174	        @HashCodeAndEqualsPlugin.Enhance
+   175	        class OnMethod implements Target {
+   176	
+   177	            /**
+   178	             * The method visitor to write the annotation to.
+   179	             */
+   180	            private final MethodVisitor methodVisitor;
+   181	
+   182	            /**
+   183	             * Creates a new wrapper for a Java method or constructor.
+   184	             *
+   185	             * @param methodVisitor The ASM method visitor to which the annotations are appended to.
+   186	             */
+   187	            public OnMethod(MethodVisitor methodVisitor) {
+   188	                this.methodVisitor = methodVisitor;
+   189	            }
+   190	
+   191	            /**
+   192	             * {@inheritDoc}
+   193	             */
+   194	            @MaybeNull
+   195	            public AnnotationVisitor visit(String annotationTypeDescriptor, boolean visible) {
+   196	                return methodVisitor.visitAnnotation(annotationTypeDescriptor, visible);
+   197	            }
+   198	
+   199	            /**
+   200	             * {@inheritDoc}
+   201	             */
+   202	            @MaybeNull
+   203	            public AnnotationVisitor visit(String annotationTypeDescriptor, boolean visible, int typeReference, String typePath) {
+   204	                return methodVisitor.visitTypeAnnotation(typeReference, TypePath.fromString(typePath), annotationTypeDescriptor, visible);
+   205	            }
+   206	        }
+   207	
+   208	        /**
+   209	         * Target for an annotation that is written to a Java method or constructor parameter.
+   210	         */
+   211	        @HashCodeAndEqualsPlugin.Enhance
+   212	        class OnMethodParameter implements Target {
+   213	
+   214	            /**
+   215	             * The method visitor to write the annotation to.
+   216	             */
+   217	            private final MethodVisitor methodVisitor;
+   218	
+   219	            /**
+   220	             * The method parameter index to write the annotation to.
+   221	             */
+   222	            private final int parameterIndex;
+   223	
+   224	            /**
+   225	             * Creates a new wrapper for a Java method or constructor.
+   226	             *
+   227	             * @param methodVisitor  The ASM method visitor to which the annotations are appended to.
+   228	             * @param parameterIndex The index of the method parameter.
+   229	             */
+   230	            public OnMethodParameter(MethodVisitor methodVisitor, int parameterIndex) {
+   231	                this.methodVisitor = methodVisitor;
+   232	                this.parameterIndex = parameterIndex;
+   233	            }
+   234	
+   235	            /**
+   236	             * {@inheritDoc}
+   237	             */
+   238	            @MaybeNull
+   239	            public AnnotationVisitor visit(String annotationTypeDescriptor, boolean visible) {
+   240	                return methodVisitor.visitParameterAnnotation(parameterIndex, annotationTypeDescriptor, visible);
+   241	            }
+   242	
+   243	            /**
+   244	             * {@inheritDoc}
+   245	             */
+   246	            @MaybeNull
+   247	            public AnnotationVisitor visit(String annotationTypeDescriptor, boolean visible, int typeReference, String typePath) {
+   248	                return methodVisitor.visitTypeAnnotation(typeReference, TypePath.fromString(typePath), annotationTypeDescriptor, visible);
+   249	            }
+   250	        }
+   251	
+   252	        /**
+   253	         * Target for an annotation that is written to a Java record component.
+   254	         */
+   255	        @HashCodeAndEqualsPlugin.Enhance
+   256	        class OnRecordComponent implements Target {
+   257	
+   258	            /**
+   259	             * The record component visitor to write the annotation to.
+   260	             */
+
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright 2014 - Present Rafael Winterhalter
+     3	 *
+     4	 * Licensed under the Apache License, Version 2.0 (the "License");
+     5	 * you may not use this file except in compliance with the License.
+     6	 * You may obtain a copy of the License at
+     7	 *
+     8	 *     http://www.apache.org/licenses/LICENSE-2.0
+     9	 *
+    10	 * Unless required by applicable law or agreed to in writing, software
+    11	 * distributed under the License is distributed on an "AS IS" BASIS,
+    12	 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    13	 * See the License for the specific language governing permissions and
+    14	 * limitations under the License.
+    15	 */
+    16	package net.bytebuddy.implementation.attribute;
+    17	
+    18	import net.bytebuddy.build.HashCodeAndEqualsPlugin;
+    19	import net.bytebuddy.description.annotation.AnnotationDescription;
+    20	import net.bytebuddy.description.field.FieldDescription;
+    21	import net.bytebuddy.description.type.TypeDescription;
+    22	import org.objectweb.asm.FieldVisitor;
+    23	
+    24	import java.util.ArrayList;
+    25	import java.util.Arrays;
+    26	import java.util.List;
+    27	
+    28	/**
+    29	 * An appender that writes attributes or annotations to a given ASM {@link org.objectweb.asm.FieldVisitor}.
+    30	 */
+    31	public interface FieldAttributeAppender {
+    32	
+    33	    /**
+    34	     * Applies this attribute appender to a given field visitor.
+    35	     *
+    36	     * @param fieldVisitor          The field visitor to which the attributes that are represented by this attribute appender are written to.
+    37	     * @param fieldDescription      The description of the field to which the field visitor belongs to.
+    38	     * @param annotationValueFilter The annotation value filter to apply when writing annotations.
+    39	     */
+    40	    void apply(FieldVisitor fieldVisitor, FieldDescription fieldDescription, AnnotationValueFilter annotationValueFilter);
+    41	
+    42	    /**
+    43	     * A field attribute appender that does not append any attributes.
+    44	     */
+    45	    enum NoOp implements FieldAttributeAppender, Factory {
+    46	
+    47	        /**
+    48	         * The singleton instance.
+    49	         */
+    50	        INSTANCE;
+    51	
+    52	        /**
+    53	         * {@inheritDoc}
+    54	         */
+    55	        public FieldAttributeAppender make(TypeDescription typeDescription) {
+    56	            return this;
+    57	        }
+    58	
+    59	        /**
+    60	         * {@inheritDoc}
+    61	         */
+    62	        public void apply(FieldVisitor fieldVisitor, FieldDescription fieldDescription, AnnotationValueFilter annotationValueFilter) {
+    63	            /* do nothing */
+    64	        }
+    65	    }
+    66	
+    67	    /**
+    68	     * A factory that creates field attribute appenders for a given type.
+    69	     */
+    70	    interface Factory {
+    71	
+    72	        /**
+    73	         * Returns a field attribute appender that is applicable for a given type description.
+    74	         *
+    75	         * @param typeDescription The type for which a field attribute appender is to be applied for.
+    76	         * @return The field attribute appender which should be applied for the given type.
+    77	         */
+    78	        FieldAttributeAppender make(TypeDescription typeDescription);
+    79	
+    80	        /**
+    81	         * A field attribute appender factory that combines several field attribute appender factories to be
+    82	         * represented as a single factory.
+    83	         */
+    84	        @HashCodeAndEqualsPlugin.Enhance
+    85	        class Compound implements Factory {
+    86	
+    87	            /**
+    88	             * The factories that this compound factory represents in their application order.
+    89	             */
+    90	            private final List<Factory> factories;
+    91	
+    92	            /**
+    93	             * Creates a new compound field attribute appender factory.
+    94	             *
+    95	             * @param factory The factories to represent in the order of their application.
+    96	             */
+    97	            public Compound(Factory... factory) {
+    98	                this(Arrays.asList(factory));
+    99	            }
+   100	
+   101	            /**
+   102	             * Creates a new compound field attribute appender factory.
+   103	             *
+   104	             * @param factories The factories to represent in the order of their application.
+   105	             */
+   106	            public Compound(List<? extends Factory> factories) {
+   107	                this.factories = new ArrayList<Factory>();
+   108	                for (Factory factory : factories) {
+   109	                    if (factory instanceof Compound) {
+   110	                        this.factories.addAll(((Compound) factory).factories);
+   111	                    } else if (!(factory instanceof NoOp)) {
+   112	                        this.factories.add(factory);
+   113	                    }
+   114	                }
+   115	            }
+   116	
+   117	            /**
+   118	             * {@inheritDoc}
+   119	             */
+   120	            public FieldAttributeAppender make(TypeDescription typeDescription) {
+   121	                List<FieldAttributeAppender> fieldAttributeAppenders = new ArrayList<FieldAttributeAppender>(factories.size());
+   122	                for (Factory factory : factories) {
+   123	                    fieldAttributeAppenders.add(factory.make(typeDescription));
+   124	                }
+   125	                return new FieldAttributeAppender.Compound(fieldAttributeAppenders);
+   126	            }
+   127	        }
+   128	    }
+   129	
+   130	    /**
+   131	     * An attribute appender that writes all annotations that are declared on a field.
+   132	     */
+   133	    enum ForInstrumentedField implements FieldAttributeAppender, Factory {
+   134	
+   135	        /**
+   136	         * The singleton instance.
+   137	         */
+   138	        INSTANCE;
+   139	
+   140	        /**
+   141	         * {@inheritDoc}
+   142	         */
+   143	        public void apply(FieldVisitor fieldVisitor, FieldDescription fieldDescription, AnnotationValueFilter annotationValueFilter) {
+   144	            AnnotationAppender annotationAppender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+   145	            annotationAppender = fieldDescription.getType().accept(AnnotationAppender.ForTypeAnnotations.ofFieldType(annotationAppender, annotationValueFilter));
+   146	            for (AnnotationDescription annotation : fieldDescription.getDeclaredAnnotations()) {
+   147	                annotationAppender = annotationAppender.append(annotation, annotationValueFilter);
+   148	            }
+   149	        }
+   150	
+   151	        /**
+   152	         * {@inheritDoc}
+   153	         */
+   154	        public FieldAttributeAppender make(TypeDescription typeDescription) {
+   155	            return this;
+   156	        }
+   157	    }
+   158	
+   159	    /**
+   160	     * Appends an annotation to a field. The visibility of the annotation is determined by the annotation type's
+   161	     * {@link java.lang.annotation.RetentionPolicy} annotation.
+   162	     */
+   163	    @HashCodeAndEqualsPlugin.Enhance
+   164	    class Explicit implements FieldAttributeAppender, Factory {
+   165	
+   166	        /**
+   167	         * The annotations that this appender appends.
+   168	         */
+   169	        private final List<? extends AnnotationDescription> annotations;
+   170	
+   171	        /**
+   172	         * Creates a new annotation attribute appender for explicit annotation values. All values, including default values, are copied.
+   173	         *
+   174	         * @param annotations The annotations to be appended to the field.
+   175	         */
+   176	        public Explicit(List<? extends AnnotationDescription> annotations) {
+   177	            this.annotations = annotations;
+   178	        }
+   179	
+   180	        /**
+   181	         * {@inheritDoc}
+   182	         */
+   183	        public void apply(FieldVisitor fieldVisitor, FieldDescription fieldDescription, AnnotationValueFilter annotationValueFilter) {
+   184	            AnnotationAppender appender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+   185	            for (AnnotationDescription annotation : annotations) {
+   186	                appender = appender.append(annotation, annotationValueFilter);
+   187	            }
+   188	        }
+   189	
+   190	        /**
+   191	         * {@inheritDoc}
+   192	         */
+   193	        public FieldAttributeAppender make(TypeDescription typeDescription) {
+   194	            return this;
+   195	        }
+   196	    }
+   197	
+   198	    /**
+   199	     * A field attribute appender that combines several method attribute appenders to be represented as a single
+   200	     * field attribute appender.
+   201	     */
+   202	    @HashCodeAndEqualsPlugin.Enhance
+   203	    class Compound implements FieldAttributeAppender {
+   204	
+   205	        /**
+   206	         * The field attribute appenders this appender represents in their application order.
+   207	         */
+   208	        private final List<FieldAttributeAppender> fieldAttributeAppenders;
+   209	
+   210	        /**
+   211	         * Creates a new compound field attribute appender.
+   212	         *
+   213	         * @param fieldAttributeAppender The field attribute appenders that are to be combined by this compound appender
+   214	         *                               in the order of their application.
+   215	         */
+   216	        public Compound(FieldAttributeAppender... fieldAttributeAppender) {
+   217	            this(Arrays.asList(fieldAttributeAppender));
+   218	        }
+   219	
+   220	        /**
+   221	         * Creates a new compound field attribute appender.
+   222	         *
+   223	         * @param fieldAttributeAppenders The field attribute appenders that are to be combined by this compound appender
+   224	         *                                in the order of their application.
+   225	         */
+   226	        public Compound(List<? extends FieldAttributeAppender> fieldAttributeAppenders) {
+   227	            this.fieldAttributeAppenders = new ArrayList<FieldAttributeAppender>();
+   228	            for (FieldAttributeAppender fieldAttributeAppender : fieldAttributeAppenders) {
+   229	                if (fieldAttributeAppender instanceof Compound) {
+   230	                    this.fieldAttributeAppenders.addAll(((Compound) fieldAttributeAppender).fieldAttributeAppenders);
+   231	                } else if (!(fieldAttributeAppender instanceof NoOp)) {
+   232	                    this.fieldAttributeAppenders.add(fieldAttributeAppender);
+   233	                }
+   234	            }
+   235	        }
+   236	
+   237	        /**
+   238	         * {@inheritDoc}
+   239	         */
+   240	        public void apply(FieldVisitor fieldVisitor, FieldDescription fieldDescription, AnnotationValueFilter annotationValueFilter) {
+   241	            for (FieldAttributeAppender fieldAttributeAppender : fieldAttributeAppenders) {
+   242	                fieldAttributeAppender.apply(fieldVisitor, fieldDescription, annotationValueFilter);
+   243	            }
+   244	        }
+   245	    }
+   246	}
+
+exec
+/bin/bash -lc "rg -n \"AnnotationAppender\\.Target\\.OnField|new AnnotationAppender\\.Target\\.OnField|OnField\\(\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AnnotationRemovalTest.java:53:    public void testRemovalOnField() throws Exception {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:50:    public void testOnField() throws Exception {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:51:        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:85:    public void testTypeAnnotationOnField() throws Exception {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:86:        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true, BAR, TYPE_PATH);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java:144:            AnnotationAppender annotationAppender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java:184:            AnnotationAppender appender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java:150:            public OnField(FieldVisitor fieldVisitor) {
+
+codex
+The reference scan is small: I’m checking the dedicated test class once so I can distinguish real reuse from isolated verification. If there are only a couple of production call sites and no broader dependency footprint, this should not qualify as a dependency hub.
+exec
+/bin/bash -lc "nl -ba byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java | sed -n '1,180p'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+     1	package net.bytebuddy.implementation.attribute;
+     2	
+     3	import org.junit.Rule;
+     4	import org.junit.Test;
+     5	import org.junit.rules.MethodRule;
+     6	import org.mockito.Mock;
+     7	import org.mockito.junit.MockitoJUnit;
+     8	import org.objectweb.asm.ClassVisitor;
+     9	import org.objectweb.asm.FieldVisitor;
+    10	import org.objectweb.asm.MethodVisitor;
+    11	import org.objectweb.asm.RecordComponentVisitor;
+    12	import org.objectweb.asm.TypePath;
+    13	
+    14	import static org.mockito.Mockito.any;
+    15	import static org.mockito.Mockito.eq;
+    16	import static org.mockito.Mockito.verify;
+    17	import static org.mockito.Mockito.verifyNoMoreInteractions;
+    18	
+    19	public class AnnotationAppenderTargetTest {
+    20	
+    21	    private static final String FOO = "foo";
+    22	
+    23	    private static final int BAR = 42;
+    24	
+    25	    private static final String TYPE_PATH = "*";
+    26	
+    27	    @Rule
+    28	    public MethodRule mockitoRule = MockitoJUnit.rule().silent();
+    29	
+    30	    @Mock
+    31	    private ClassVisitor classVisitor;
+    32	
+    33	    @Mock
+    34	    private FieldVisitor fieldVisitor;
+    35	
+    36	    @Mock
+    37	    private MethodVisitor methodVisitor;
+    38	
+    39	    @Mock
+    40	    private RecordComponentVisitor recordComponentVisitor;
+    41	
+    42	    @Test
+    43	    public void testOnType() throws Exception {
+    44	        new AnnotationAppender.Target.OnType(classVisitor).visit(FOO, true);
+    45	        verify(classVisitor).visitAnnotation(FOO, true);
+    46	        verifyNoMoreInteractions(classVisitor);
+    47	    }
+    48	
+    49	    @Test
+    50	    public void testOnField() throws Exception {
+    51	        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true);
+    52	        verify(fieldVisitor).visitAnnotation(FOO, true);
+    53	        verifyNoMoreInteractions(fieldVisitor);
+    54	    }
+    55	
+    56	    @Test
+    57	    public void testOnMethod() throws Exception {
+    58	        new AnnotationAppender.Target.OnMethod(methodVisitor).visit(FOO, true);
+    59	        verify(methodVisitor).visitAnnotation(FOO, true);
+    60	        verifyNoMoreInteractions(methodVisitor);
+    61	    }
+    62	
+    63	    @Test
+    64	    public void testOnMethodParameter() throws Exception {
+    65	        new AnnotationAppender.Target.OnMethodParameter(methodVisitor, 0).visit(FOO, true);
+    66	        verify(methodVisitor).visitParameterAnnotation(0, FOO, true);
+    67	        verifyNoMoreInteractions(methodVisitor);
+    68	    }
+    69	
+    70	    @Test
+    71	    public void testOnRecordComponent() throws Exception {
+    72	        new AnnotationAppender.Target.OnRecordComponent(recordComponentVisitor).visit(FOO, true);
+    73	        verify(recordComponentVisitor).visitAnnotation(FOO, true);
+    74	        verifyNoMoreInteractions(recordComponentVisitor);
+    75	    }
+    76	
+    77	    @Test
+    78	    public void testTypeAnnotationOnType() throws Exception {
+    79	        new AnnotationAppender.Target.OnType(classVisitor).visit(FOO, true, BAR, TYPE_PATH);
+    80	        verify(classVisitor).visitTypeAnnotation(eq(BAR), any(TypePath.class), eq(FOO), eq(true));
+    81	        verifyNoMoreInteractions(classVisitor);
+    82	    }
+    83	
+    84	    @Test
+    85	    public void testTypeAnnotationOnField() throws Exception {
+    86	        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true, BAR, TYPE_PATH);
+    87	        verify(fieldVisitor).visitTypeAnnotation(eq(BAR), any(TypePath.class), eq(FOO), eq(true));
+    88	        verifyNoMoreInteractions(fieldVisitor);
+    89	    }
+    90	
+    91	    @Test
+    92	    public void testTypeAnnotationOnMethod() throws Exception {
+    93	        new AnnotationAppender.Target.OnMethod(methodVisitor).visit(FOO, true, BAR, TYPE_PATH);
+    94	        verify(methodVisitor).visitTypeAnnotation(eq(BAR), any(TypePath.class), eq(FOO), eq(true));
+    95	        verifyNoMoreInteractions(methodVisitor);
+    96	    }
+    97	
+    98	    @Test
+    99	    public void testTypeAnnotationOnMethodParameter() throws Exception {
+   100	        new AnnotationAppender.Target.OnMethodParameter(methodVisitor, 0).visit(FOO, true, BAR, TYPE_PATH);
+   101	        verify(methodVisitor).visitTypeAnnotation(eq(BAR), any(TypePath.class), eq(FOO), eq(true));
+   102	        verifyNoMoreInteractions(methodVisitor);
+   103	    }
+   104	
+   105	    @Test
+   106	    public void testTypeAnnotationOnRecordComponent() throws Exception {
+   107	        new AnnotationAppender.Target.OnRecordComponent(recordComponentVisitor).visit(FOO, true, BAR, TYPE_PATH);
+   108	        verify(recordComponentVisitor).visitTypeAnnotation(eq(BAR), any(TypePath.class), eq(FOO), eq(true));
+   109	        verifyNoMoreInteractions(recordComponentVisitor);
+   110	    }
+   111	}
+
+exec
+/bin/bash -lc "rg -n \"Target\\.OnField|new AnnotationAppender\\.Target\\.OnField|OnField\\b\" byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute byte-buddy-dep/src/test/java/net/bytebuddy/asm" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/test/java/net/bytebuddy/asm/AnnotationRemovalTest.java:53:    public void testRemovalOnField() throws Exception {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java:144:            AnnotationAppender annotationAppender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java:184:            AnnotationAppender appender = new AnnotationAppender.Default(new AnnotationAppender.Target.OnField(fieldVisitor));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java:138:        class OnField implements Target {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java:150:            public OnField(FieldVisitor fieldVisitor) {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:50:    public void testOnField() throws Exception {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:51:        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true);
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:85:    public void testTypeAnnotationOnField() throws Exception {
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java:86:        new AnnotationAppender.Target.OnField(fieldVisitor).visit(FOO, true, BAR, TYPE_PATH);
+
+codex
+{"target":"net.bytebuddy.implementation.attribute.AnnotationAppender.OnField","detection":false,"justification":"Inspected `byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationAppender.java`, `byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/FieldAttributeAppender.java`, and `byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AnnotationAppenderTargetTest.java`. `OnField` is a small nested adapter with one `FieldVisitor` field and only two delegating methods (`visitAnnotation` and `visitTypeAnnotation`), so its outgoing dependency count is minimal. Its incoming use is also narrow: only two production call sites in `FieldAttributeAppender` and one dedicated test class reference it. This is not the high fan-in/high fan-out dependency hub required for hub-like modularization."}
+tokens used
+12,201

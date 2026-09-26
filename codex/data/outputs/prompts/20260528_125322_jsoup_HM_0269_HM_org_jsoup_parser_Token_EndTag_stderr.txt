@@ -1,0 +1,1412 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6f4a-631c-75a3-b4e3-b34942e6bfb8
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.jsoup.parser.Token.EndTag` in the repository located at:
+
+`data/repositories/jhy/jsoup`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.jsoup.parser.Token.EndTag",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.jsoup.parser.Token.EndTag`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating `org.jsoup.parser.Token.EndTag`, then I’ll inspect its source and nearby usages to check whether it has unusually high fan-in and fan-out before deciding the verdict.
+exec
+/bin/bash -lc "rg --files src | rg 'Token\\.java|Token.java|Token/'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "rg -n \"class EndTag|EndTag\" src -g '*.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 268ms:
+src/main/java/org/jsoup/parser/Token.java
+
+ succeeded in 253ms:
+src/main/java/org/jsoup/parser/Tokeniser.java:44:    final Token.EndTag endPending;
+src/main/java/org/jsoup/parser/Tokeniser.java:58:        endPending = new Token.EndTag(treeBuilder);
+src/main/java/org/jsoup/parser/Tokeniser.java:92:        } else if (token.type == Token.TokenType.EndTag) {
+src/main/java/org/jsoup/parser/Tokeniser.java:93:            Token.EndTag endTag = (Token.EndTag) token;
+src/main/java/org/jsoup/parser/Tokeniser.java:263:    boolean isAppropriateEndTagToken() {
+src/main/java/org/jsoup/parser/Tokeniser.java:267:    @Nullable String appropriateEndTagName() {
+src/main/java/org/jsoup/parser/Tokeniser.java:272:    String appropriateEndTagSeq() {
+src/main/java/org/jsoup/parser/TokeniserState.java:107:                    t.advanceTransition(EndTagOpen);
+src/main/java/org/jsoup/parser/TokeniserState.java:130:    EndTagOpen {
+src/main/java/org/jsoup/parser/TokeniserState.java:190:                t.advanceTransition(RCDATAEndTagOpen);
+src/main/java/org/jsoup/parser/TokeniserState.java:191:            } else if (r.readFully() && r.matchesAsciiAlpha() && t.appropriateEndTagName() != null &&  !r.containsIgnoreCase(t.appropriateEndTagSeq())) {
+src/main/java/org/jsoup/parser/TokeniserState.java:194:                t.tagPending = t.createTagPending(false).name(t.appropriateEndTagName());
+src/main/java/org/jsoup/parser/TokeniserState.java:203:    RCDATAEndTagOpen {
+src/main/java/org/jsoup/parser/TokeniserState.java:209:                t.advanceTransition(RCDATAEndTagName);
+src/main/java/org/jsoup/parser/TokeniserState.java:216:    RCDATAEndTagName {
+src/main/java/org/jsoup/parser/TokeniserState.java:232:                    if (t.isAppropriateEndTagToken())
+src/main/java/org/jsoup/parser/TokeniserState.java:238:                    if (t.isAppropriateEndTagToken())
+src/main/java/org/jsoup/parser/TokeniserState.java:244:                    if (t.isAppropriateEndTagToken()) {
+src/main/java/org/jsoup/parser/TokeniserState.java:267:                t.advanceTransition(RawtextEndTagOpen);
+src/main/java/org/jsoup/parser/TokeniserState.java:274:    RawtextEndTagOpen {
+src/main/java/org/jsoup/parser/TokeniserState.java:276:            readEndTag(t, r, RawtextEndTagName, Rawtext);
+src/main/java/org/jsoup/parser/TokeniserState.java:279:    RawtextEndTagName {
+src/main/java/org/jsoup/parser/TokeniserState.java:281:            handleDataEndTag(t, r, Rawtext);
+src/main/java/org/jsoup/parser/TokeniserState.java:289:                    t.transition(ScriptDataEndTagOpen);
+src/main/java/org/jsoup/parser/TokeniserState.java:307:    ScriptDataEndTagOpen {
+src/main/java/org/jsoup/parser/TokeniserState.java:309:            readEndTag(t, r, ScriptDataEndTagName, ScriptData);
+src/main/java/org/jsoup/parser/TokeniserState.java:312:    ScriptDataEndTagName {
+src/main/java/org/jsoup/parser/TokeniserState.java:314:            handleDataEndTag(t, r, ScriptData);
+src/main/java/org/jsoup/parser/TokeniserState.java:433:                t.advanceTransition(ScriptDataEscapedEndTagOpen);
+src/main/java/org/jsoup/parser/TokeniserState.java:440:    ScriptDataEscapedEndTagOpen {
+src/main/java/org/jsoup/parser/TokeniserState.java:446:                t.advanceTransition(ScriptDataEscapedEndTagName);
+src/main/java/org/jsoup/parser/TokeniserState.java:453:    ScriptDataEscapedEndTagName {
+src/main/java/org/jsoup/parser/TokeniserState.java:455:            handleDataEndTag(t, r, ScriptDataEscaped);
+src/main/java/org/jsoup/parser/TokeniserState.java:1671:     * Handles RawtextEndTagName, ScriptDataEndTagName, and ScriptDataEscapedEndTagName. Same body impl, just
+src/main/java/org/jsoup/parser/TokeniserState.java:1674:    private static void handleDataEndTag(Tokeniser t, CharacterReader r, TokeniserState elseTransition) {
+src/main/java/org/jsoup/parser/TokeniserState.java:1683:        if (t.isAppropriateEndTagToken() && !r.isEmpty()) {
+src/main/java/org/jsoup/parser/TokeniserState.java:1744:    private static void readEndTag(Tokeniser t, CharacterReader r, TokeniserState a, TokeniserState b) {
+src/main/java/org/jsoup/parser/Token.java:330:    final static class EndTag extends Tag{
+src/main/java/org/jsoup/parser/Token.java:331:        EndTag(TreeBuilder treeBuilder) {
+src/main/java/org/jsoup/parser/Token.java:332:            super(TokenType.EndTag, treeBuilder);
+src/main/java/org/jsoup/parser/Token.java:508:    final boolean isEndTag() {
+src/main/java/org/jsoup/parser/Token.java:509:        return type == TokenType.EndTag;
+src/main/java/org/jsoup/parser/Token.java:512:    final EndTag asEndTag() {
+src/main/java/org/jsoup/parser/Token.java:513:        return (EndTag) this;
+src/main/java/org/jsoup/parser/Token.java:547:        EndTag,
+src/main/java/org/jsoup/parser/TreeBuilder.java:35:    private final Token.EndTag end  = new Token.EndTag(this);
+src/main/java/org/jsoup/parser/TreeBuilder.java:147:    boolean processEndTag(String name) {
+src/main/java/org/jsoup/parser/TreeBuilder.java:149:            return process(new Token.EndTag(this).name(name));
+src/main/java/org/jsoup/parser/TreeBuilder.java:319:                    if (!token.isEndTag() || !el.normalName().equals(token.asEndTag().normalName)) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:46:    static final String[] TagSearchEndTags = new String[]{"dd", "dt", "li", "optgroup", "option", "p", "rb", "rp", "rt", "rtc"};
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:47:    static final String[] TagThoroughSearchEndTags = new String[]{"caption", "colgroup", "dd", "dt", "li", "optgroup", "option", "p", "rb", "rp", "rt", "rtc", "tbody", "td", "tfoot", "th", "thead", "tr"};
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:77:    private Token.EndTag emptyEnd; // reused empty end tag
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:106:        emptyEnd = new Token.EndTag(this);
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:839:    void generateImpliedEndTags(String excludeTag) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:840:        while (inSorted(currentElement().normalName(), TagSearchEndTags)) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:847:    void generateImpliedEndTags() {
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:848:        generateImpliedEndTags(false);
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:855:    void generateImpliedEndTags(boolean thorough) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:856:        final String[] search = thorough ? TagThoroughSearchEndTags : TagSearchEndTags;
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:864:        generateImpliedEndTags(name);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:63:            } else if (t.isEndTag() && (inSorted(t.asEndTag().normalName(), BeforeHtmlToHead))) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:65:            } else if (t.isEndTag()) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:95:            } else if (t.isEndTag() && (inSorted(t.asEndTag().normalName(), BeforeHtmlToHead))) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:98:            } else if (t.isEndTag()) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:161:                case EndTag:
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:162:                    Token.EndTag end = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:173:                            tb.generateImpliedEndTags(true);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:193:            tb.processEndTag("head");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:203:            } else if (t.isEndTag() && t.asEndTag().normalName().equals("noscript")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:209:            } else if (t.isEndTag() && t.asEndTag().normalName().equals("br")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:211:            } else if ((t.isStartTag() && inSorted(t.asStartTag().normalName(), InHeadNoscriptIgnore)) || t.isEndTag()) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:261:            } else if (t.isEndTag()) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:262:                String name = t.asEndTag().normalName();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:309:                case EndTag:
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:310:                    return inBodyEndTag(t, tb);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:334:                        tb.processEndTag("a");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:358:                            tb.processEndTag("li");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:365:                        tb.processEndTag("p");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:423:                        tb.processEndTag("p");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:432:                        tb.processEndTag("button");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:444:                        tb.processEndTag("nobr");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:452:                        tb.processEndTag("p");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:466:                        tb.processEndTag("p");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:483:                        tb.processEndTag("p");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:525:                        tb.processEndTag("p");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:537:                        tb.processEndTag("p");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:553:                            tb.processEndTag(el.normalName());
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:560:                        tb.processEndTag("p");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:568:                        tb.processEndTag("option");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:576:                        tb.generateImpliedEndTags();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:586:                        tb.generateImpliedEndTags("rtc");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:629:                        if (tb.inButtonScope("p")) tb.processEndTag("p");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:652:        private boolean inBodyEndTag(Token t, HtmlTreeBuilder tb) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:653:            final Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:663:                    return anyOtherEndTag(t, tb);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:669:                        tb.generateImpliedEndTags(name);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:705:                        tb.generateImpliedEndTags();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:715:                        tb.generateImpliedEndTags();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:726:                        tb.generateImpliedEndTags(name);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:738:                        tb.generateImpliedEndTags(name);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:754:                        tb.generateImpliedEndTags(name);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:767:                        return inBodyEndTagAdoption(t, tb);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:774:                            tb.generateImpliedEndTags();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:785:                            tb.generateImpliedEndTags();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:792:                        return anyOtherEndTag(t, tb);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:798:        boolean anyOtherEndTag(Token t, HtmlTreeBuilder tb) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:799:            final String name = t.asEndTag().normalName; // case insensitive search - goal is to preserve output case, not for the parse to be case sensitive
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:812:                    tb.generateImpliedEndTags(name);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:827:        private boolean inBodyEndTagAdoption(Token t, HtmlTreeBuilder tb) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:832:            final Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:862:                    return anyOtherEndTag(t, tb);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:998:            } else if (t.isEndTag()) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1075:            } else if (t.isEndTag()) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1076:                Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1146:            if (t.isEndTag() && t.asEndTag().normalName().equals("caption")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1151:                    tb.generateImpliedEndTags();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1159:                            t.isEndTag() && t.asEndTag().normalName().equals("table"))
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1166:                tb.generateImpliedEndTags(false);
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1172:            } else if (t.isEndTag() && inSorted(t.asEndTag().normalName(), InCaptionIgnore)) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1209:                case EndTag:
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1210:                    Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1272:                case EndTag:
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1273:                    Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1305:            tb.processEndTag(tb.currentElement().normalName()); // tbody, tfoot, thead
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1336:            } else if (t.isEndTag()) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1337:                Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1388:            if (t.isEndTag()) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1389:                Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1398:                    tb.generateImpliedEndTags();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1437:                tb.processEndTag("td");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1439:                tb.processEndTag("th"); // only here if th or td in scope
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1463:                            tb.processEndTag("option");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1467:                            tb.processEndTag("option"); // pop option and flow to pop optgroup
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1469:                            tb.processEndTag("optgroup");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1473:                        return tb.processEndTag("select");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1490:                case EndTag:
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1491:                    Token.EndTag end = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1496:                                tb.processEndTag("option");
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1545:            } else if (t.isEndTag() && inSorted(t.asEndTag().normalName(), InSelectTableEnd)) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1547:                if (tb.inTableScope(t.asEndTag().normalName())) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1600:                case EndTag:
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1601:                    name = t.asEndTag().normalName();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1645:            } else if (t.isEndTag() && t.asEndTag().normalName().equals("html")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1689:            } else if (t.isEndTag() && t.asEndTag().normalName().equals("frameset")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1722:            } else if (t.isEndTag() && t.asEndTag().normalName().equals("html")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1819:                case EndTag:
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1820:                    Token.EndTag end = t.asEndTag();
+src/main/java/org/jsoup/parser/XmlTreeBuilder.java:123:            case EndTag:
+src/main/java/org/jsoup/parser/XmlTreeBuilder.java:124:                popStackToClose(token.asEndTag());
+src/main/java/org/jsoup/parser/XmlTreeBuilder.java:262:    protected void popStackToClose(Token.EndTag endTag) {
+src/test/java/org/jsoup/parser/TokeniserStateTest.java:55:    public void testEndTagOpen() {
+src/test/java/org/jsoup/parser/TokeniserStateTest.java:104:    public void testRCDATAEndTagName() {
+src/test/java/org/jsoup/parser/HtmlParserTest.java:895:        assertEquals("<3:48>: Unexpected EndTag token [</div>] when in state [InBody]", errors.get(7).toString());
+src/test/java/org/jsoup/parser/HtmlParserTest.java:1731:        assertEquals("<1:42>: Unexpected EndTag token [</div>] when in state [BeforeHtml]", errors.get(1).toString());
+
+codex
+I found the target as the nested class `Token.EndTag` inside [`src/main/java/org/jsoup/parser/Token.java`](...); next I’m checking its actual dependencies and how many places instantiate or consume it so I can judge fan-in/fan-out rather than just name frequency.
+exec
+/bin/bash -lc "sed -n '300,360p' src/main/java/org/jsoup/parser/Token.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/jsoup/parser/Tokeniser.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/jsoup/parser/TreeBuilder.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 137ms:
+
+        // TreeBuilder is provided so if tracking, can get line / column positions for Range; and can dedupe as we go
+        StartTag(TreeBuilder treeBuilder) {
+            super(TokenType.StartTag, treeBuilder);
+        }
+
+        @Override
+        Tag reset() {
+            super.reset();
+            attributes = null;
+            return this;
+        }
+
+        StartTag nameAttr(String name, Attributes attributes) {
+            this.tagName.set(name);
+            this.attributes = attributes;
+            normalName = ParseSettings.normalName(name);
+            return this;
+        }
+
+        @Override
+        public String toString() {
+            String closer = isSelfClosing() ? "/>" : ">";
+            if (hasAttributes() && attributes.size() > 0)
+                return "<" + toStringName() + " " + attributes.toString() + closer;
+            else
+                return "<" + toStringName() + closer;
+        }
+    }
+
+    final static class EndTag extends Tag{
+        EndTag(TreeBuilder treeBuilder) {
+            super(TokenType.EndTag, treeBuilder);
+        }
+
+        @Override
+        public String toString() {
+            return "</" + toStringName() + ">";
+        }
+    }
+
+    final static class Comment extends Token {
+        private final TokenData data = new TokenData();
+        boolean bogus = false;
+
+        @Override
+        Token reset() {
+            super.reset();
+            data.reset();
+            bogus = false;
+            return this;
+        }
+
+        Comment() {
+            super(TokenType.Comment);
+        }
+
+        String getData() {
+            return data.value();
+        }
+
+
+ succeeded in 168ms:
+package org.jsoup.parser;
+
+import org.jsoup.helper.Validate;
+import org.jsoup.internal.SharedConstants;
+import org.jsoup.nodes.Attributes;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.Range;
+import org.jsoup.select.NodeVisitor;
+import org.jspecify.annotations.Nullable;
+
+import java.io.Reader;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.jsoup.parser.Parser.NamespaceHtml;
+
+/**
+ * @author Jonathan Hedley
+ */
+abstract class TreeBuilder {
+    protected Parser parser;
+    CharacterReader reader;
+    Tokeniser tokeniser;
+    Document doc; // current doc we are building into
+    ArrayList<Element> stack; // the stack of open elements
+    String baseUri; // current base uri, for creating new elements
+    Token currentToken; // currentToken is used for error and source position tracking. Null at start of fragment parse
+    ParseSettings settings;
+    TagSet tagSet; // the tags we're using in this parse
+    @Nullable NodeVisitor nodeListener; // optional listener for node add / removes
+
+    private Token.StartTag start; // start tag to process
+    private final Token.EndTag end  = new Token.EndTag(this);
+    abstract ParseSettings defaultSettings();
+
+    boolean trackSourceRange;  // optionally tracks the source range of nodes and attributes
+
+    void initialiseParse(Reader input, String baseUri, Parser parser) {
+        Validate.notNullParam(input, "input");
+        Validate.notNullParam(baseUri, "baseUri");
+        Validate.notNull(parser);
+
+        doc = new Document(parser.defaultNamespace(), baseUri);
+        doc.parser(parser);
+        this.parser = parser;
+        settings = parser.settings();
+        reader = new CharacterReader(input);
+        trackSourceRange = parser.isTrackPosition();
+        reader.trackNewlines(parser.isTrackErrors() || trackSourceRange); // when tracking errors or source ranges, enable newline tracking for better legibility
+        if (parser.isTrackErrors()) parser.getErrors().clear();
+        tokeniser = new Tokeniser(this);
+        stack = new ArrayList<>(32);
+        tagSet = parser.tagSet();
+        start = new Token.StartTag(this);
+        currentToken = start; // init current token to the virtual start token.
+        this.baseUri = baseUri;
+        onNodeInserted(doc);
+    }
+
+    void completeParse() {
+        // tidy up - as the Parser and Treebuilder are retained in document for settings / fragments
+        if (reader == null) return;
+        reader.close();
+        reader = null;
+        tokeniser = null;
+        stack = null;
+    }
+
+    Document parse(Reader input, String baseUri, Parser parser) {
+        initialiseParse(input, baseUri, parser);
+        runParser();
+        return doc;
+    }
+
+    List<Node> parseFragment(Reader inputFragment, @Nullable Element context, String baseUri, Parser parser) {
+        initialiseParse(inputFragment, baseUri, parser);
+        initialiseParseFragment(context);
+        runParser();
+        return completeParseFragment();
+    }
+
+    void initialiseParseFragment(@Nullable Element context) {
+        // in Html, sets up context; no-op in XML
+    }
+
+    abstract List<Node> completeParseFragment();
+
+    /** Set the node listener, which will then get callbacks for node insert and removals. */
+    void nodeListener(NodeVisitor nodeListener) {
+        this.nodeListener = nodeListener;
+    }
+
+    /**
+     Create a new copy of this TreeBuilder
+     @return copy, ready for a new parse
+     */
+    abstract TreeBuilder newInstance();
+
+    void runParser() {
+        do {} while (stepParser()); // run until stepParser sees EOF
+        completeParse();
+    }
+
+    boolean stepParser() {
+        // if we have reached the end already, step by popping off the stack, to hit nodeRemoved callbacks:
+        if (currentToken.type == Token.TokenType.EOF) {
+            if (stack == null) {
+                return false;
+            } if (stack.isEmpty()) {
+                onNodeClosed(doc); // the root doc is not on the stack, so let this final step close it
+                stack = null;
+                return true;
+            }
+            pop();
+            return true;
+        }
+        final Token token = tokeniser.read();
+        currentToken = token;
+        process(token);
+        token.reset();
+        return true;
+    }
+
+    abstract boolean process(Token token);
+
+    boolean processStartTag(String name) {
+        // these are "virtual" start tags (auto-created by the treebuilder), so not tracking the start position
+        final Token.StartTag start = this.start;
+        if (currentToken == start) { // don't recycle an in-use token
+            return process(new Token.StartTag(this).name(name));
+        }
+        return process(start.reset().name(name));
+    }
+
+    boolean processStartTag(String name, Attributes attrs) {
+        final Token.StartTag start = this.start;
+        if (currentToken == start) { // don't recycle an in-use token
+            return process(new Token.StartTag(this).nameAttr(name, attrs));
+        }
+        start.reset();
+        start.nameAttr(name, attrs);
+        return process(start);
+    }
+
+    boolean processEndTag(String name) {
+        if (currentToken == end) { // don't recycle an in-use token
+            return process(new Token.EndTag(this).name(name));
+        }
+        return process(end.reset().name(name));
+    }
+
+    /**
+     Removes the last Element from the stack, hits onNodeClosed, and then returns it.
+     * @return
+     */
+    Element pop() {
+        int size = stack.size();
+        Element removed = stack.remove(size - 1);
+        onNodeClosed(removed);
+        return removed;
+    }
+
+    /**
+     Adds the specified Element to the end of the stack, and hits onNodeInserted.
+     * @param element
+     */
+    final void push(Element element) {
+        stack.add(element);
+        onNodeInserted(element);
+    }
+
+    /**
+     Ensures the stack respects {@link Parser#getMaxDepth()} by closing the deepest open elements until there is room for
+     a new insertion.
+     */
+    final void enforceStackDepthLimit() {
+        final int maxDepth = parser.getMaxDepth();
+        if (maxDepth == Integer.MAX_VALUE) return;
+        while (stack.size() >= maxDepth) {
+            Element trimmed = pop();
+            onStackPrunedForDepth(trimmed);
+        }
+    }
+
+    /**
+     Hook for the HTML Tree Builder that needs to clean up when an element is removed due to the depth limit
+     */
+    void onStackPrunedForDepth(Element element) {
+        // default no-op
+    }
+
+    /**
+     Default maximum depth for parsers using this tree builder.
+     */
+    int defaultMaxDepth() {
+        return 512;
+    }
+
+    /**
+     Get the current element (last on the stack). If all items have been removed, returns the document instead
+     (which might not actually be on the stack; use stack.size() == 0 to test if required.
+     @return the last element on the stack, if any; or the root document
+     */
+    Element currentElement() {
+        int size = stack.size();
+        return size > 0 ? stack.get(size-1) : doc;
+    }
+
+    /**
+     Checks if the Current Element's normal name equals the supplied name, in the HTML namespace.
+     @param normalName name to check
+     @return true if there is a current element on the stack, and its name equals the supplied
+     */
+    boolean currentElementIs(String normalName) {
+        if (stack.size() == 0)
+            return false;
+        Element current = currentElement();
+        return current != null && current.normalName().equals(normalName)
+
+ succeeded in 220ms:
+package org.jsoup.parser;
+
+import org.jsoup.helper.Validate;
+import org.jsoup.internal.StringUtil;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Entities;
+import org.jspecify.annotations.Nullable;
+
+import java.util.Arrays;
+
+/**
+ * Readers the input stream into tokens.
+ */
+final class Tokeniser {
+    static final char replacementChar = '\uFFFD'; // replaces null character
+    private static final char[] notCharRefCharsSorted = new char[]{'\t', '\n', '\r', '\f', ' ', '<', '&'};
+
+    // Some illegal character escapes are parsed by browsers as windows-1252 instead. See issue #1034
+    // https://html.spec.whatwg.org/multipage/parsing.html#numeric-character-reference-end-state
+    static final int win1252ExtensionsStart = 0x80;
+    static final int[] win1252Extensions = new int[] {
+            // we could build this manually, but Windows-1252 is not a standard java charset so that could break on
+            // some platforms - this table is verified with a test
+            0x20AC, 0x0081, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+            0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x008D, 0x017D, 0x008F,
+            0x0090, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+            0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x009D, 0x017E, 0x0178,
+    };
+
+    static {
+        Arrays.sort(notCharRefCharsSorted);
+    }
+
+    private final CharacterReader reader; // html input
+    private final ParseErrorList errors; // errors found while tokenising
+
+    private TokeniserState state = TokeniserState.Data; // current tokenisation state
+    @Nullable private Token emitPending = null; // the token we are about to emit on next read
+    private boolean isEmitPending = false;
+    final TokenData dataBuffer = new TokenData(); // buffers data looking for </script>
+
+    final Document.OutputSettings.Syntax syntax; // html or xml syntax; affects processing of xml declarations vs as bogus comments
+    final Token.StartTag startPending;
+    final Token.EndTag endPending;
+    Token.Tag tagPending; // tag we are building up: start or end pending
+    final Token.Character charPending = new Token.Character();
+    final Token.Doctype doctypePending = new Token.Doctype(); // doctype building up
+    final Token.Comment commentPending = new Token.Comment(); // comment building up
+    final Token.XmlDecl xmlDeclPending; // xml decl building up
+    @Nullable private String lastStartTag; // the last start tag emitted, to test appropriate end tag
+    @Nullable private String lastStartCloseSeq; // "</" + lastStartTag, so we can quickly check for that in RCData
+
+    private int markupStartPos, charStartPos = 0; // reader pos at the start of markup / characters. markup updated on state transition, char on token emit.
+
+    Tokeniser(TreeBuilder treeBuilder) {
+        syntax = treeBuilder instanceof XmlTreeBuilder ? Document.OutputSettings.Syntax.xml : Document.OutputSettings.Syntax.html;
+        tagPending = startPending  = new Token.StartTag(treeBuilder);
+        endPending = new Token.EndTag(treeBuilder);
+        xmlDeclPending = new Token.XmlDecl(treeBuilder);
+        this.reader = treeBuilder.reader;
+        this.errors = treeBuilder.parser.getErrors();
+    }
+
+    Token read() {
+        while (!isEmitPending) {
+            state.read(this, reader);
+        }
+
+        // if emit is pending, a non-character token was found: return any chars in buffer, and leave token for next read:
+        if (charPending.data.hasData()) {
+            return charPending;
+        } else {
+            isEmitPending = false;
+            assert emitPending != null;
+            return emitPending;
+        }
+    }
+
+    void emit(Token token) {
+        Validate.isFalse(isEmitPending);
+
+        emitPending = token;
+        isEmitPending = true;
+        token.startPos(markupStartPos);
+        token.endPos(reader.pos());
+        charStartPos = reader.pos(); // update char start when we complete a token emit
+
+        if (token.type == Token.TokenType.StartTag) {
+            Token.StartTag startTag = (Token.StartTag) token;
+            lastStartTag = startTag.name();
+            lastStartCloseSeq = null; // only lazy inits
+        } else if (token.type == Token.TokenType.EndTag) {
+            Token.EndTag endTag = (Token.EndTag) token;
+            if (endTag.hasAttributes())
+                error("Attributes incorrectly present on end tag [/%s]", endTag.normalName());
+        }
+    }
+
+    void emit(final String str) {
+        // buffer strings up until last string token found, to emit only one token for a run of character refs etc.
+        // does not set isEmitPending; read checks that
+        // todo move "<" to '<'...
+        charPending.append(str);
+        charPending.startPos(charStartPos);
+        charPending.endPos(reader.pos());
+    }
+
+    void emit(char c) {
+        charPending.data.append(c);
+        charPending.startPos(charStartPos);
+        charPending.endPos(reader.pos());
+    }
+
+    void emit(int[] codepoints) {
+        emit(new String(codepoints, 0, codepoints.length));
+    }
+
+    void transition(TokeniserState newState) {
+        // track markup position on state transitions
+        if (newState == TokeniserState.TagOpen)
+            markupStartPos = reader.pos();
+
+        this.state = newState;
+    }
+
+    void advanceTransition(TokeniserState newState) {
+        transition(newState);
+        reader.advance();
+    }
+
+    final private int[] codepointHolder = new int[1]; // holder to not have to keep creating arrays
+    final private int[] multipointHolder = new int[2];
+
+    /** Tries to consume a character reference, and returns: null if nothing, int[1], or int[2]. */
+    int @Nullable [] consumeCharacterReference(@Nullable Character additionalAllowedCharacter, boolean inAttribute) {
+        if (reader.isEmpty())
+            return null;
+        if (additionalAllowedCharacter != null && additionalAllowedCharacter == reader.current())
+            return null;
+        if (reader.matchesAnySorted(notCharRefCharsSorted))
+            return null;
+
+        final int[] codeRef = codepointHolder;
+        reader.mark();
+        if (reader.matchConsume("#")) { // numbered
+            boolean isHexMode = reader.matchConsumeIgnoreCase("X");
+            String numRef = isHexMode ? reader.consumeHexSequence() : reader.consumeDigitSequence();
+            if (numRef.isEmpty()) { // didn't match anything
+                characterReferenceError("numeric reference with no numerals");
+                reader.rewindToMark();
+                return null;
+            }
+
+            reader.unmark();
+            if (!reader.matchConsume(";"))
+                characterReferenceError("missing semicolon on [&#%s]", numRef); // missing semi
+            int charval = -1;
+            try {
+                int base = isHexMode ? 16 : 10;
+                charval = Integer.valueOf(numRef, base);
+            } catch (NumberFormatException ignored) {
+                // skip
+            }
+            // todo: check for extra illegal unicode points as parse errors - described https://html.spec.whatwg.org/multipage/syntax.html#character-references and in Infra
+            // The numeric character reference forms described above are allowed to reference any code point excluding U+000D CR, noncharacters, and controls other than ASCII whitespace.
+            if (charval == -1 || charval > 0x10FFFF) {
+                characterReferenceError("character [%s] outside of valid range", charval);
+                codeRef[0] = replacementChar;
+            } else {
+                // fix illegal unicode characters to match browser behavior
+                if (charval >= win1252ExtensionsStart && charval < win1252ExtensionsStart + win1252Extensions.length) {
+                    characterReferenceError("character [%s] is not a valid unicode code point", charval);
+                    charval = win1252Extensions[charval - win1252ExtensionsStart];
+                }
+
+                // todo: implement number replacement table
+                // todo: check for extra illegal unicode points as parse errors
+                codeRef[0] = charval;
+            }
+            return codeRef;
+        } else { // named
+            // get as many letters as possible, and look for matching entities.
+            String nameRef = reader.consumeLetterThenDigitSequence();
+            boolean looksLegit = reader.matches(';');
+            // found if a base named entity without a ;, or an extended entity with the ;.
+            boolean found = (Entities.isBaseNamedEntity(nameRef) || (Entities.isNamedEntity(nameRef) && looksLegit));
+
+            if (!found) {
+                reader.rewindToMark();
+                if (looksLegit) // named with semicolon
+                    characterReferenceError("invalid named reference [%s]", nameRef);
+                if (inAttribute) return null;
+                // check if there's a base prefix match; consume and use that if so
+                String prefix = Entities.findPrefix(nameRef);
+                if (prefix.isEmpty()) return null;
+                reader.matchConsume(prefix);
+                nameRef = prefix;
+            }
+            if (inAttribute && (reader.matchesAsciiAlpha() || reader.matchesDigit() || reader.matchesAny('=', '-', '_'))) {
+                // don't want that to match
+                reader.rewindToMark();
+                return null;
+            }
+
+            reader.unmark();
+            if (!reader.matchConsume(";"))
+                characterReferenceError("missing semicolon on [&%s]", nameRef); // missing semi
+            int numChars = Entities.codepointsForName(nameRef, multipointHolder);
+            if (numChars == 1) {
+                codeRef[0] = multipointHolder[0];
+                return codeRef;
+            } else if (numChars ==2) {
+                return multipointHolder;
+            } else {
+                Validate.fail("Unexpected characters returned for " + nameRef);
+                return multipointHolder;
+            }
+        }
+    }
+
+
+codex
+I have the target implementation now. I’m counting concrete references to `Token.EndTag` across the source tree and checking whether the class itself pulls in many collaborators, because hub-like modularization needs both high fan-in and high fan-out, not just “used in parsing.”
+exec
+/bin/bash -lc "rg -l \"Token\\.EndTag|new EndTag|asEndTag\\(\" src/main/java src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '1,220p' src/main/java/org/jsoup/parser/Token.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "sed -n '1,260p' src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 190ms:
+package org.jsoup.parser;
+
+import org.jsoup.helper.Validate;
+import org.jsoup.internal.Normalizer;
+import org.jsoup.nodes.Attributes;
+import org.jsoup.nodes.Range;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Parse tokens for the Tokeniser.
+ */
+abstract class Token {
+    static final int UnsetPos = -1;
+    final TokenType type; // used in switches in TreeBuilder vs .getClass()
+    int startPos, endPos = UnsetPos; // position in CharacterReader this token was read from
+
+    private Token(TokenType type) {
+        this.type = type;
+    }
+    
+    String tokenType() {
+        return this.getClass().getSimpleName();
+    }
+
+    /**
+     * Reset the data represent by this token, for reuse. Prevents the need to create transfer objects for every
+     * piece of data, which immediately get GCed.
+     */
+    Token reset() {
+        startPos = UnsetPos;
+        endPos = UnsetPos;
+        return this;
+    }
+
+    int startPos() {
+        return startPos;
+    }
+
+    void startPos(int pos) {
+        startPos = pos;
+    }
+
+    int endPos() {
+        return endPos;
+    }
+
+    void endPos(int pos) {
+        endPos = pos;
+    }
+
+    static final class Doctype extends Token {
+        final TokenData name = new TokenData();
+        @Nullable String pubSysKey = null;
+        final TokenData publicIdentifier = new TokenData();
+        final TokenData systemIdentifier = new TokenData();
+        boolean forceQuirks = false;
+
+        Doctype() {
+            super(TokenType.Doctype);
+        }
+
+        @Override
+        Token reset() {
+            super.reset();
+            name.reset();
+            pubSysKey = null;
+            publicIdentifier.reset();
+            systemIdentifier.reset();
+            forceQuirks = false;
+            return this;
+        }
+
+        String getName() {
+            return name.value();
+        }
+
+        @Nullable String getPubSysKey() {
+            return pubSysKey;
+        }
+
+        String getPublicIdentifier() {
+            return publicIdentifier.value();
+        }
+
+        public String getSystemIdentifier() {
+            return systemIdentifier.value();
+        }
+
+        public boolean isForceQuirks() {
+            return forceQuirks;
+        }
+
+        @Override
+        public String toString() {
+            return "<!doctype " + getName() + ">";
+        }
+    }
+
+    static abstract class Tag extends Token {
+        protected TokenData tagName = new TokenData();
+        @Nullable protected String normalName; // lc version of tag name, for case-insensitive tree build
+        boolean selfClosing = false;
+        @Nullable Attributes attributes; // start tags get attributes on construction. End tags get attributes on first new attribute (but only for parser convenience, not used).
+
+        final private TokenData attrName = new TokenData();
+        final private TokenData attrValue = new TokenData();
+        private boolean hasEmptyAttrValue = false; // distinguish boolean attribute from empty string value
+
+        // attribute source range tracking
+        final TreeBuilder treeBuilder;
+        final boolean trackSource;
+        int attrNameStart, attrNameEnd, attrValStart, attrValEnd;
+
+        Tag(TokenType type, TreeBuilder treeBuilder) {
+            super(type);
+            this.treeBuilder = treeBuilder;
+            this.trackSource = treeBuilder.trackSourceRange;
+        }
+
+        @Override
+        Tag reset() {
+            super.reset();
+            tagName.reset();
+            normalName = null;
+            selfClosing = false;
+            attributes = null;
+            resetPendingAttr();
+            return this;
+        }
+
+        private void resetPendingAttr() {
+            attrName.reset();
+            attrValue.reset();
+            hasEmptyAttrValue = false;
+
+            if (trackSource)
+                attrNameStart = attrNameEnd = attrValStart = attrValEnd = UnsetPos;
+        }
+
+        /* Limits runaway crafted HTML from spewing attributes and getting a little sluggish in ensureCapacity.
+        Real-world HTML will P99 around 8 attributes, so plenty of headroom. Implemented here and not in the Attributes
+        object so that API users can add more if ever required. */
+        private static final int MaxAttributes = 512;
+
+        final void newAttribute() {
+            if (attributes == null)
+                attributes = new Attributes();
+
+            if (attrName.hasData() && attributes.size() < MaxAttributes) {
+                // the tokeniser has skipped whitespace control chars, but trimming could collapse to empty for other control codes, so verify here
+                String name = attrName.value();
+                name = name.trim();
+                if (!name.isEmpty()) {
+                    String value;
+                    if (attrValue.hasData())
+                        value = attrValue.value();
+                    else if (hasEmptyAttrValue)
+                        value = "";
+                    else
+                        value = null;
+                    // note that we add, not put. So that the first is kept, and rest are deduped, once in a context where case sensitivity is known, and we can warn for duplicates.
+                    attributes.add(name, value);
+
+                    trackAttributeRange(name);
+                }
+            }
+            resetPendingAttr();
+        }
+
+        private void trackAttributeRange(String name) {
+            if (trackSource && isStartTag()) {
+                final StartTag start = asStartTag();
+                final CharacterReader r = start.treeBuilder.reader;
+                final boolean preserve = start.treeBuilder.settings.preserveAttributeCase();
+
+                assert attributes != null;
+                if (!preserve) name = Normalizer.lowerCase(name);
+                if (attributes.sourceRange(name).nameRange().isTracked()) return; // dedupe ranges as we go; actual attributes get deduped later for error count
+
+                // if there's no value (e.g. boolean), make it an implicit range at current
+                if (!attrValue.hasData()) attrValStart = attrValEnd = attrNameEnd;
+
+                Range.AttributeRange range = new Range.AttributeRange(
+                    new Range(
+                        new Range.Position(attrNameStart, r.lineNumber(attrNameStart), r.columnNumber(attrNameStart)),
+                        new Range.Position(attrNameEnd, r.lineNumber(attrNameEnd), r.columnNumber(attrNameEnd))),
+                    new Range(
+                        new Range.Position(attrValStart, r.lineNumber(attrValStart), r.columnNumber(attrValStart)),
+                        new Range.Position(attrValEnd, r.lineNumber(attrValEnd), r.columnNumber(attrValEnd)))
+                );
+                attributes.sourceRange(name, range);
+            }
+        }
+
+        final boolean hasAttributes() {
+            return attributes != null;
+        }
+
+        final boolean hasAttributeIgnoreCase(String key) {
+            return attributes != null && attributes.hasKeyIgnoreCase(key);
+        }
+
+        final void finaliseTag() {
+            // finalises for emit
+            if (attrName.hasData()) {
+                newAttribute();
+            }
+        }
+
+        /** Preserves case */
+        final String name() { // preserves case, for input into Tag.valueOf (which may drop case)
+            return tagName.value();
+        }
+
+        /** Lower case */
+        final String normalName() { // lower case, used in tree building for working out where in tree it should go
+            Validate.isFalse(normalName == null || normalName.isEmpty());
+            return normalName;
+        }
+
+
+ succeeded in 219ms:
+package org.jsoup.parser;
+
+import org.jsoup.helper.Validate;
+import org.jsoup.internal.StringUtil;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Attributes;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.DocumentType;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.Range;
+import org.jspecify.annotations.Nullable;
+
+import java.util.ArrayList;
+
+import static org.jsoup.internal.StringUtil.inSorted;
+import static org.jsoup.parser.HtmlTreeBuilder.isSpecial;
+import static org.jsoup.parser.HtmlTreeBuilderState.Constants.*;
+
+/**
+ * The Tree Builder's current state. Each state embodies the processing for the state, and transitions to other states.
+ */
+enum HtmlTreeBuilderState {
+    Initial {
+        @Override boolean process(Token t, HtmlTreeBuilder tb) {
+            if (isWhitespace(t)) {
+                return true; // ignore whitespace until we get the first content
+            } else if (t.isComment()) {
+                tb.insertCommentNode(t.asComment());
+            } else if (t.isDoctype()) {
+                // todo: parse error check on expected doctypes
+                Token.Doctype d = t.asDoctype();
+                DocumentType doctype = new DocumentType(
+                    tb.settings.normalizeTag(d.getName()), d.getPublicIdentifier(), d.getSystemIdentifier());
+                doctype.setPubSysKey(d.getPubSysKey());
+                tb.getDocument().appendChild(doctype);
+                tb.onNodeInserted(doctype);
+                // todo: quirk state check on more doctype ids, if deemed useful (most are ancient legacy and presumably irrelevant)
+                if (d.isForceQuirks() || !doctype.name().equals("html") || doctype.publicId().equalsIgnoreCase("HTML"))
+                    tb.getDocument().quirksMode(Document.QuirksMode.quirks);
+                tb.transition(BeforeHtml);
+            } else {
+                // todo: check not iframe srcdoc
+                tb.getDocument().quirksMode(Document.QuirksMode.quirks); // missing doctype
+                tb.transition(BeforeHtml);
+                return tb.process(t); // re-process token
+            }
+            return true;
+        }
+    },
+    BeforeHtml {
+        @Override boolean process(Token t, HtmlTreeBuilder tb) {
+            if (t.isDoctype()) {
+                tb.error(this);
+                return false;
+            } else if (t.isComment()) {
+                tb.insertCommentNode(t.asComment());
+            } else if (isWhitespace(t)) {
+                tb.insertCharacterNode(t.asCharacter()); // out of spec - include whitespace
+            } else if (t.isStartTag() && t.asStartTag().normalName().equals("html")) {
+                tb.insertElementFor(t.asStartTag());
+                tb.transition(BeforeHead);
+            } else if (t.isEndTag() && (inSorted(t.asEndTag().normalName(), BeforeHtmlToHead))) {
+                return anythingElse(t, tb);
+            } else if (t.isEndTag()) {
+                tb.error(this);
+                return false;
+            } else {
+                return anythingElse(t, tb);
+            }
+            return true;
+        }
+
+        private boolean anythingElse(Token t, HtmlTreeBuilder tb) {
+            tb.processStartTag("html");
+            tb.transition(BeforeHead);
+            return tb.process(t);
+        }
+    },
+    BeforeHead {
+        @Override boolean process(Token t, HtmlTreeBuilder tb) {
+            if (isWhitespace(t)) {
+                tb.insertCharacterNode(t.asCharacter()); // out of spec - include whitespace
+            } else if (t.isComment()) {
+                tb.insertCommentNode(t.asComment());
+            } else if (t.isDoctype()) {
+                tb.error(this);
+                return false;
+            } else if (t.isStartTag() && t.asStartTag().normalName().equals("html")) {
+                return InBody.process(t, tb); // does not transition
+            } else if (t.isStartTag() && t.asStartTag().normalName().equals("head")) {
+                Element head = tb.insertElementFor(t.asStartTag());
+                tb.setHeadElement(head);
+                tb.transition(InHead);
+            } else if (t.isEndTag() && (inSorted(t.asEndTag().normalName(), BeforeHtmlToHead))) {
+                tb.processStartTag("head");
+                return tb.process(t);
+            } else if (t.isEndTag()) {
+                tb.error(this);
+                return false;
+            } else {
+                tb.processStartTag("head");
+                return tb.process(t);
+            }
+            return true;
+        }
+    },
+    InHead {
+        @Override boolean process(Token t, HtmlTreeBuilder tb) {
+            if (isWhitespace(t)) {
+                tb.insertCharacterNode(t.asCharacter()); // out of spec - include whitespace
+                return true;
+            }
+            final String name;
+            switch (t.type) {
+                case Comment:
+                    tb.insertCommentNode(t.asComment());
+                    break;
+                case Doctype:
+                    tb.error(this);
+                    return false;
+                case StartTag:
+                    Token.StartTag start = t.asStartTag();
+                    name = start.normalName();
+                    if (name.equals("html")) {
+                        return InBody.process(t, tb);
+                    } else if (inSorted(name, InHeadEmpty)) {
+                        Element el = tb.insertEmptyElementFor(start);
+                        // jsoup special: update base the first time it is seen
+                        if (name.equals("base") && el.hasAttr("href"))
+                            tb.maybeSetBaseUri(el);
+                    } else if (name.equals("meta")) {
+                        tb.insertEmptyElementFor(start);
+                    } else if (name.equals("title")) {
+                        HandleTextState(start, tb, tb.tagFor(start).textState());
+                    } else if (inSorted(name, InHeadRaw)) {
+                        HandleTextState(start, tb, tb.tagFor(start).textState());
+                    } else if (name.equals("noscript")) {
+                        // else if noscript && scripting flag = true: rawtext (jsoup doesn't run script, to handle as noscript)
+                        tb.insertElementFor(start);
+                        tb.transition(InHeadNoscript);
+                    } else if (name.equals("script")) {
+                        // skips some script rules as won't execute them
+                        tb.tokeniser.transition(TokeniserState.ScriptData);
+                        tb.markInsertionMode();
+                        tb.transition(Text);
+                        tb.insertElementFor(start);
+                    } else if (name.equals("head")) {
+                        tb.error(this);
+                        return false;
+                    } else if (name.equals("template")) {
+                        tb.insertElementFor(start);
+                        tb.insertMarkerToFormattingElements();
+                        tb.framesetOk(false);
+                        tb.transition(InTemplate);
+                        tb.pushTemplateMode(InTemplate);
+                    } else {
+                        return anythingElse(t, tb);
+                    }
+                    break;
+                case EndTag:
+                    Token.EndTag end = t.asEndTag();
+                    name = end.normalName();
+                    if (name.equals("head")) {
+                        tb.pop();
+                        tb.transition(AfterHead);
+                    } else if (inSorted(name, Constants.InHeadEnd)) {
+                        return anythingElse(t, tb);
+                    } else if (name.equals("template")) {
+                        if (!tb.onStack(name)) {
+                            tb.error(this);
+                        } else {
+                            tb.generateImpliedEndTags(true);
+                            if (!tb.currentElementIs(name)) tb.error(this);
+                            tb.popStackToClose(name);
+                            tb.clearFormattingElementsToLastMarker();
+                            tb.popTemplateMode();
+                            tb.resetInsertionMode();
+                        }
+                    }
+                    else {
+                        tb.error(this);
+                        return false;
+                    }
+                    break;
+                default:
+                    return anythingElse(t, tb);
+            }
+            return true;
+        }
+
+        private boolean anythingElse(Token t, TreeBuilder tb) {
+            tb.processEndTag("head");
+            return tb.process(t);
+        }
+    },
+    InHeadNoscript {
+        @Override boolean process(Token t, HtmlTreeBuilder tb) {
+            if (t.isDoctype()) {
+                tb.error(this);
+            } else if (t.isStartTag() && t.asStartTag().normalName().equals("html")) {
+                return tb.process(t, InBody);
+            } else if (t.isEndTag() && t.asEndTag().normalName().equals("noscript")) {
+                tb.pop();
+                tb.transition(InHead);
+            } else if (isWhitespace(t) || t.isComment() || (t.isStartTag() && inSorted(t.asStartTag().normalName(),
+                    InHeadNoScriptHead))) {
+                return tb.process(t, InHead);
+            } else if (t.isEndTag() && t.asEndTag().normalName().equals("br")) {
+                return anythingElse(t, tb);
+            } else if ((t.isStartTag() && inSorted(t.asStartTag().normalName(), InHeadNoscriptIgnore)) || t.isEndTag()) {
+                tb.error(this);
+                return false;
+            } else {
+                return anythingElse(t, tb);
+            }
+            return true;
+        }
+
+        private boolean anythingElse(Token t, HtmlTreeBuilder tb) {
+            // note that this deviates from spec, which is to pop out of noscript and reprocess in head:
+            // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inheadnoscript
+            // allows content to be inserted as data
+            tb.error(this);
+            tb.insertCharacterNode(new Token.Character().data(t.toString()));
+            return true;
+        }
+    },
+    AfterHead {
+        @Override boolean process(Token t, HtmlTreeBuilder tb) {
+            if (isWhitespace(t)) {
+                tb.insertCharacterNode(t.asCharacter());
+            } else if (t.isComment()) {
+                tb.insertCommentNode(t.asComment());
+            } else if (t.isDoctype()) {
+                tb.error(this);
+            } else if (t.isStartTag()) {
+                Token.StartTag startTag = t.asStartTag();
+                String name = startTag.normalName();
+                if (name.equals("html")) {
+                    return tb.process(t, InBody);
+                } else if (name.equals("body")) {
+                    tb.insertElementFor(startTag);
+                    tb.framesetOk(false);
+                    tb.transition(InBody);
+                } else if (name.equals("frameset")) {
+                    tb.insertElementFor(startTag);
+                    tb.transition(InFrameset);
+                } else if (inSorted(name, InBodyStartToHead)) {
+                    tb.error(this);
+                    Element head = tb.getHeadElement();
+                    tb.push(head);
+                    tb.process(t, InHead);
+                    tb.removeFromStack(head);
+                } else if (name.equals("head")) {
+                    tb.error(this);
+                    return false;
+                } else {
+                    anythingElse(t, tb);
+                }
+
+ succeeded in 256ms:
+src/main/java/org/jsoup/parser/XmlTreeBuilder.java
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java
+src/main/java/org/jsoup/parser/TreeBuilder.java
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java
+src/main/java/org/jsoup/parser/Token.java
+src/main/java/org/jsoup/parser/Tokeniser.java
+
+codex
+I’ve confirmed the target is a tiny nested token type, so I’m now verifying the exact reference sites to make sure I’m not missing broad reuse that would push it into hub territory.
+exec
+/bin/bash -lc "sed -n '140,180p' src/main/java/org/jsoup/parser/TreeBuilder.java && sed -n '110,140p' src/main/java/org/jsoup/parser/XmlTreeBuilder.java && sed -n '150,190p' src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+exec
+/bin/bash -lc "rg -n \"new Token\\.EndTag|Token\\.EndTag|asEndTag\\(\" src/main/java/org/jsoup/parser/Tokeniser.java src/main/java/org/jsoup/parser/TreeBuilder.java src/main/java/org/jsoup/parser/HtmlTreeBuilder.java src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java src/main/java/org/jsoup/parser/XmlTreeBuilder.java src/main/java/org/jsoup/parser/Token.java" in /data/henrique/detecting_smells_study/codex/data/repositories/jhy/jsoup
+ succeeded in 300ms:
+            return process(new Token.StartTag(this).nameAttr(name, attrs));
+        }
+        start.reset();
+        start.nameAttr(name, attrs);
+        return process(start);
+    }
+
+    boolean processEndTag(String name) {
+        if (currentToken == end) { // don't recycle an in-use token
+            return process(new Token.EndTag(this).name(name));
+        }
+        return process(end.reset().name(name));
+    }
+
+    /**
+     Removes the last Element from the stack, hits onNodeClosed, and then returns it.
+     * @return
+     */
+    Element pop() {
+        int size = stack.size();
+        Element removed = stack.remove(size - 1);
+        onNodeClosed(removed);
+        return removed;
+    }
+
+    /**
+     Adds the specified Element to the end of the stack, and hits onNodeInserted.
+     * @param element
+     */
+    final void push(Element element) {
+        stack.add(element);
+        onNodeInserted(element);
+    }
+
+    /**
+     Ensures the stack respects {@link Parser#getMaxDepth()} by closing the deepest open elements until there is room for
+     a new insertion.
+     */
+    final void enforceStackDepthLimit() {
+        final int maxDepth = parser.getMaxDepth();
+        if (maxDepth == Integer.MAX_VALUE) return;
+    int defaultMaxDepth() {
+        return Integer.MAX_VALUE;
+    }
+
+    @Override
+    protected boolean process(Token token) {
+        currentToken = token;
+
+        // start tag, end tag, doctype, xmldecl, comment, character, eof
+        switch (token.type) {
+            case StartTag:
+                insertElementFor(token.asStartTag());
+                break;
+            case EndTag:
+                popStackToClose(token.asEndTag());
+                break;
+            case Comment:
+                insertCommentFor(token.asComment());
+                break;
+            case Character:
+                insertCharacterFor(token.asCharacter());
+                break;
+            case Doctype:
+                insertDoctypeFor(token.asDoctype());
+                break;
+            case XmlDecl:
+                insertXmlDeclarationFor(token.asXmlDecl());
+                break;
+            case EOF: // could put some normalisation here if desired
+                break;
+            default:
+                        return false;
+                    } else if (name.equals("template")) {
+                        tb.insertElementFor(start);
+                        tb.insertMarkerToFormattingElements();
+                        tb.framesetOk(false);
+                        tb.transition(InTemplate);
+                        tb.pushTemplateMode(InTemplate);
+                    } else {
+                        return anythingElse(t, tb);
+                    }
+                    break;
+                case EndTag:
+                    Token.EndTag end = t.asEndTag();
+                    name = end.normalName();
+                    if (name.equals("head")) {
+                        tb.pop();
+                        tb.transition(AfterHead);
+                    } else if (inSorted(name, Constants.InHeadEnd)) {
+                        return anythingElse(t, tb);
+                    } else if (name.equals("template")) {
+                        if (!tb.onStack(name)) {
+                            tb.error(this);
+                        } else {
+                            tb.generateImpliedEndTags(true);
+                            if (!tb.currentElementIs(name)) tb.error(this);
+                            tb.popStackToClose(name);
+                            tb.clearFormattingElementsToLastMarker();
+                            tb.popTemplateMode();
+                            tb.resetInsertionMode();
+                        }
+                    }
+                    else {
+                        tb.error(this);
+                        return false;
+                    }
+                    break;
+                default:
+                    return anythingElse(t, tb);
+            }
+            return true;
+        }
+
+ succeeded in 309ms:
+src/main/java/org/jsoup/parser/Token.java:512:    final EndTag asEndTag() {
+src/main/java/org/jsoup/parser/XmlTreeBuilder.java:124:                popStackToClose(token.asEndTag());
+src/main/java/org/jsoup/parser/XmlTreeBuilder.java:262:    protected void popStackToClose(Token.EndTag endTag) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:63:            } else if (t.isEndTag() && (inSorted(t.asEndTag().normalName(), BeforeHtmlToHead))) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:95:            } else if (t.isEndTag() && (inSorted(t.asEndTag().normalName(), BeforeHtmlToHead))) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:162:                    Token.EndTag end = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:203:            } else if (t.isEndTag() && t.asEndTag().normalName().equals("noscript")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:209:            } else if (t.isEndTag() && t.asEndTag().normalName().equals("br")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:262:                String name = t.asEndTag().normalName();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:653:            final Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:799:            final String name = t.asEndTag().normalName; // case insensitive search - goal is to preserve output case, not for the parse to be case sensitive
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:832:            final Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1076:                Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1146:            if (t.isEndTag() && t.asEndTag().normalName().equals("caption")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1159:                            t.isEndTag() && t.asEndTag().normalName().equals("table"))
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1172:            } else if (t.isEndTag() && inSorted(t.asEndTag().normalName(), InCaptionIgnore)) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1210:                    Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1273:                    Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1337:                Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1389:                Token.EndTag endTag = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1491:                    Token.EndTag end = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1545:            } else if (t.isEndTag() && inSorted(t.asEndTag().normalName(), InSelectTableEnd)) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1547:                if (tb.inTableScope(t.asEndTag().normalName())) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1601:                    name = t.asEndTag().normalName();
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1645:            } else if (t.isEndTag() && t.asEndTag().normalName().equals("html")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1689:            } else if (t.isEndTag() && t.asEndTag().normalName().equals("frameset")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1722:            } else if (t.isEndTag() && t.asEndTag().normalName().equals("html")) {
+src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java:1820:                    Token.EndTag end = t.asEndTag();
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:77:    private Token.EndTag emptyEnd; // reused empty end tag
+src/main/java/org/jsoup/parser/HtmlTreeBuilder.java:106:        emptyEnd = new Token.EndTag(this);
+src/main/java/org/jsoup/parser/TreeBuilder.java:35:    private final Token.EndTag end  = new Token.EndTag(this);
+src/main/java/org/jsoup/parser/TreeBuilder.java:149:            return process(new Token.EndTag(this).name(name));
+src/main/java/org/jsoup/parser/TreeBuilder.java:319:                    if (!token.isEndTag() || !el.normalName().equals(token.asEndTag().normalName)) {
+src/main/java/org/jsoup/parser/Tokeniser.java:44:    final Token.EndTag endPending;
+src/main/java/org/jsoup/parser/Tokeniser.java:58:        endPending = new Token.EndTag(treeBuilder);
+src/main/java/org/jsoup/parser/Tokeniser.java:93:            Token.EndTag endTag = (Token.EndTag) token;
+
+codex
+{"target":"org.jsoup.parser.Token.EndTag","detection":false,"justification":"`src/main/java/org/jsoup/parser/Token.java` shows `EndTag` is a very small nested class: one constructor that just calls `super(TokenType.EndTag, treeBuilder)` and one `toString()` override, with no own business logic. Its fan-out is therefore minimal (only `TreeBuilder` via the constructor plus inherited `Tag` behavior). The fan-in is also limited to parser-internal code: references appear in `src/main/java/org/jsoup/parser/Tokeniser.java`, `TreeBuilder.java`, `HtmlTreeBuilder.java`, `HtmlTreeBuilderState.java`, `XmlTreeBuilder.java`, and `Token.java` itself, with only a few instantiations (`new Token.EndTag(this)` / `new Token.EndTag(treeBuilder)`) and the rest being type checks/casts. That is reuse inside the parser, not a high fan-in/high fan-out dependency hub."}
+tokens used
+18,830

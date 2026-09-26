@@ -1,0 +1,1094 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6efe-0f5c-7f02-a147-86bec1cf00cd
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`org.adoptopenjdk.jitwatch.process.compiler.CompilerJRuby` in the repository located at:
+
+`data/repositories/adoptopenjdk/jitwatch`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "org.adoptopenjdk.jitwatch.process.compiler.CompilerJRuby",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `org.adoptopenjdk.jitwatch.process.compiler.CompilerJRuby`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and tracing who depends on it and what it depends on, then I’ll decide whether the dependency hub pattern is strong enough to count as hub-like modularization.
+exec
+/bin/bash -lc "rg --files | rg 'CompilerJRuby\\.java|Compiler.*java|process/compiler|CompilerJRuby'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerScala.java
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJRuby.java
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJavaScript.java
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJava.java
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerGroovy.java
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerKotlin.java
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/ICompiler.java
+core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerName.java
+core/src/main/java/org/adoptopenjdk/jitwatch/model/CompilerThread.java
+ui/src/main/java/org/adoptopenjdk/jitwatch/ui/nmethod/compilerthread/CompilerThreadStage.java
+
+codex
+I found the class file and now I’m checking both its direct dependencies and every place that instantiates or references it to estimate fan-in and fan-out from the repository itself.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJRuby.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2022 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.process.compiler;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+
+import org.adoptopenjdk.jitwatch.logger.ILogListener;
+import org.adoptopenjdk.jitwatch.process.AbstractProcess;
+
+public class CompilerJRuby extends AbstractProcess implements ICompiler
+{
+	// TODO this is broken. Not sure if possible with ProcessBuilder
+	// http://blog.headius.com/2013/06/the-pain-of-broken-subprocess.html
+
+	private Path compilerPath;
+
+	private final String COMPILER_NAME = "jrubyc" + (isWindows() ? ".bat" : S_EMPTY);
+
+	public CompilerJRuby(String languageHomeDir) throws FileNotFoundException
+	{
+		super();
+
+		compilerPath = Paths.get(languageHomeDir, "bin", COMPILER_NAME);
+
+		if (!compilerPath.toFile().exists())
+		{
+			throw new FileNotFoundException("Could not find " + COMPILER_NAME);
+		}
+
+		compilerPath = compilerPath.normalize();
+	}
+
+	@Override
+	public boolean compile(List<File> sourceFiles, List<String> classpathEntries, List<String> vmOptions, File outputDir, Map<String, String> environment, ILogListener logListener)
+			throws IOException
+	{
+		List<String> commands = new ArrayList<>();
+
+		String outputDirPath = outputDir.getAbsolutePath().toString();
+
+		Set<String> uniqueCPSet = new HashSet<>(classpathEntries);
+		uniqueCPSet.add(outputDirPath);
+
+		commands.add(compilerPath.toString());
+
+		// List<String> compileOptions = Arrays.asList(new String[] { "-g",
+		// "-d", outputDirPath });
+		//
+		// commands.addAll(compileOptions);
+		//
+		commands.addAll(vmOptions);
+
+		if (classpathEntries.size() > 0)
+		{
+			commands.add("-cp");
+
+			commands.add(makeClassPath(classpathEntries));
+		}
+
+		for (File sourceFile : sourceFiles)
+		{
+			commands.add(sourceFile.getAbsolutePath());
+		}
+
+		return runCommands(commands, environment, logListener);
+	}
+}
+exec
+/bin/bash -lc "sed -n '1,260p' core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/ICompiler.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2022 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.process.compiler;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+import org.adoptopenjdk.jitwatch.logger.ILogListener;
+import org.adoptopenjdk.jitwatch.process.IExternalProcess;
+
+public interface ICompiler extends IExternalProcess
+{
+	public boolean compile(List<File> sourceFiles, List<String> classpathEntries, List<String> vmOptions, File outputDir, Map<String, String> environment, ILogListener logListener) throws IOException;
+}
+exec
+/bin/bash -lc 'rg -n "CompilerJRuby" -S' in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java:25:import org.adoptopenjdk.jitwatch.process.compiler.CompilerJRuby;
+core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java:72:					result = new CompilerJRuby(languageHomeDir);
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJRuby.java:20:public class CompilerJRuby extends AbstractProcess implements ICompiler
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJRuby.java:29:	public CompilerJRuby(String languageHomeDir) throws FileNotFoundException
+
+exec
+/bin/bash -lc "sed -n '1,240p' core/src/main/java/org/adoptopenjdk/jitwatch/process/AbstractProcess.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2022 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.process;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_SPACE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+
+import org.adoptopenjdk.jitwatch.logger.ILogListener;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJava;
+import com.chrisnewland.freelogj.Logger;
+import com.chrisnewland.freelogj.LoggerFactory;
+
+public abstract class AbstractProcess implements IExternalProcess
+{
+	protected static final Logger logger = LoggerFactory.getLogger(RuntimeJava.class);
+
+	private Path stdErr;
+	private Path stdOut;
+
+	public AbstractProcess()
+	{
+		try
+		{
+			stdErr = Files.createTempFile("stream", ".err");
+			stdOut = Files.createTempFile("stream", ".out");
+		}
+		catch (IOException ioe)
+		{
+			ioe.printStackTrace();
+		}
+	}
+
+	public String getExecutableSuffix()
+	{
+		return isWindows() ? ".exe" : "";
+	}
+
+	public String getLaunchScriptSuffix()
+	{
+		return isWindows() ? ".bat" : ".sh";
+	}
+
+	public boolean isWindows()
+	{
+		return System.getProperty("os.name", S_EMPTY).contains("Windows");
+	}
+
+	@Override public String getOutputStream()
+	{
+		String result = null;
+
+		if (stdOut.toFile().exists())
+		{
+			try
+			{
+				result = new String(Files.readAllBytes(stdOut), StandardCharsets.UTF_8);
+			}
+			catch (IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+		}
+
+		return result;
+	}
+
+	@Override public String getErrorStream()
+	{
+		String result = null;
+
+		if (stdErr.toFile().exists())
+		{
+			try
+			{
+				result = new String(Files.readAllBytes(stdErr), StandardCharsets.UTF_8);
+			}
+			catch (IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+		}
+
+		return result;
+	}
+
+	protected String makeClassPath(List<String> classpathEntries)
+	{
+		StringBuilder cpBuilder = new StringBuilder();
+
+		for (String cp : classpathEntries)
+		{
+			cpBuilder.append(cp).append(File.pathSeparatorChar);
+		}
+
+		if (cpBuilder.length() > 0)
+		{
+			cpBuilder.deleteCharAt(cpBuilder.length() - 1);
+		}
+
+		return cpBuilder.toString();
+	}
+
+	protected boolean runCommands(List<String> commands, Map<String, String> environment, ILogListener logListener)
+	{
+		return runCommands(commands, null, environment, logListener);
+	}
+
+	protected boolean runCommands(List<String> commands, Path workingDirectory, Map<String, String> environment,
+			ILogListener logListener)
+	{
+		StringBuilder cmdBuilder = new StringBuilder();
+
+		for (String part : commands)
+		{
+			cmdBuilder.append(part).append(C_SPACE);
+		}
+
+		logger.info("Process: {}", cmdBuilder.toString());
+
+		if (logListener != null)
+		{
+			logListener.handleLogEntry("Running: " + cmdBuilder.toString());
+		}
+
+		int result = -1;
+
+		try
+		{
+			ProcessBuilder pb = new ProcessBuilder(commands);
+
+			if (environment != null)
+			{
+				Map<String, String> processEnvironment = pb.environment();
+
+				for (Map.Entry<String, String> entry : environment.entrySet())
+				{
+					processEnvironment.put(entry.getKey(), entry.getValue());
+
+					logListener.handleLogEntry("Environment: " + entry.getKey() + "=" + entry.getValue());
+				}
+			}
+
+			if (workingDirectory != null)
+			{
+				pb.directory(workingDirectory.toFile());
+			}
+
+			pb.redirectError(stdErr.toFile());
+			pb.redirectOutput(stdOut.toFile());
+
+			Process proc = pb.start();
+
+			result = proc.waitFor();
+		}
+		catch (Exception e)
+		{
+			if (logListener != null)
+			{
+				logListener.handleErrorEntry("Could not run external process:" + e);
+			}
+
+			logger.error("Could not run external process:", e);
+		}
+
+		return result == 0; // normal completion
+	}
+}
+
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJava.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2022 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.process.compiler;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import org.adoptopenjdk.jitwatch.logger.ILogListener;
+import org.adoptopenjdk.jitwatch.process.AbstractProcess;
+
+public class CompilerJava extends AbstractProcess implements ICompiler
+{
+	private Path compilerPath;
+
+	private final String COMPILER_NAME = "javac" + getExecutableSuffix();
+
+	public CompilerJava(String languageHomeDir) throws FileNotFoundException
+	{
+		super();
+
+		compilerPath = Paths.get(languageHomeDir, "..", "bin", COMPILER_NAME);
+
+		if (!compilerPath.toFile().exists())
+		{
+			compilerPath = Paths.get(languageHomeDir, "bin", COMPILER_NAME);
+
+			if (!compilerPath.toFile().exists())
+			{
+				throw new FileNotFoundException("Could not find " + COMPILER_NAME);
+			}
+		}
+
+		compilerPath = compilerPath.normalize();
+	}
+
+	@Override
+	public boolean compile(List<File> sourceFiles, List<String> classpathEntries, List<String> vmOptions, File outputDir, Map<String, String> environment, ILogListener logListener)
+			throws IOException
+	{
+		List<String> commands = new ArrayList<>();
+
+		String outputDirPath = outputDir.getAbsolutePath().toString();
+
+		commands.add(compilerPath.toString());
+
+		List<String> compileOptions = Arrays.asList(new String[] { "-g", "-d", outputDirPath });
+		commands.addAll(vmOptions);
+
+		commands.addAll(compileOptions);
+
+		if (classpathEntries.size() > 0)
+		{
+			commands.add("-cp");
+
+			commands.add(makeClassPath(classpathEntries));
+		}
+
+		for (File sourceFile : sourceFiles)
+		{
+			commands.add(sourceFile.getAbsolutePath());
+		}
+
+		return runCommands(commands, environment, logListener);
+	}
+}
+exec
+/bin/bash -lc "sed -n '1,180p' core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2015 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.jvmlang;
+
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_CLOJURE;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_GROOVY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVA;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVASCRIPT;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JRUBY;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_KOTLIN;
+import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_SCALA;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+import org.adoptopenjdk.jitwatch.logger.ILogListener;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerGroovy;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerJRuby;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerJava;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerJavaScript;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerKotlin;
+import org.adoptopenjdk.jitwatch.process.compiler.CompilerScala;
+import org.adoptopenjdk.jitwatch.process.compiler.ICompiler;
+import org.adoptopenjdk.jitwatch.process.runtime.IRuntime;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeGroovy;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJRuby;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJava;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJavaScript;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeKotlin;
+import org.adoptopenjdk.jitwatch.process.runtime.RuntimeScala;
+
+public class LanguageManager
+{
+	private JITWatchConfig config;
+	private ILogListener logListener;
+
+	public LanguageManager(JITWatchConfig config, ILogListener logListener)
+	{
+		this.config = config;
+		this.logListener = logListener;
+	}
+
+	public ICompiler getCompiler(String vmLanguage, String languageHomeDir)
+	{
+		ICompiler result = null;
+
+		if (languageHomeDir != null)
+		{
+			try
+			{
+				switch (vmLanguage)
+				{
+				case VM_LANGUAGE_CLOJURE:
+					break;
+				case VM_LANGUAGE_GROOVY:
+					result = new CompilerGroovy(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JAVA:
+					result = new CompilerJava(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JAVASCRIPT:
+					result = new CompilerJavaScript(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JRUBY:
+					result = new CompilerJRuby(languageHomeDir);
+					break;
+				case VM_LANGUAGE_KOTLIN:
+					result = new CompilerKotlin(languageHomeDir);
+					break;
+				case VM_LANGUAGE_SCALA:
+					result = new CompilerScala(languageHomeDir);
+					break;
+				}
+			}
+			catch (FileNotFoundException fnfe)
+			{
+				logListener.handleErrorEntry("Could not find " + vmLanguage + " compiler in '" + languageHomeDir + "'");
+			}
+		}
+
+		return result;
+	}
+
+	public IRuntime getRuntime(String vmLanguage, String languageHomeDir)
+	{
+		IRuntime result = null;
+
+		if (languageHomeDir != null)
+		{
+			try
+			{
+				switch (vmLanguage)
+				{
+				case VM_LANGUAGE_CLOJURE:
+					break;
+				case VM_LANGUAGE_GROOVY:
+					result = new RuntimeGroovy(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JAVA:
+					result = new RuntimeJava(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JAVASCRIPT:
+					result = new RuntimeJavaScript(languageHomeDir);
+					break;
+				case VM_LANGUAGE_JRUBY:
+					result = new RuntimeJRuby(languageHomeDir);
+					break;
+				case VM_LANGUAGE_KOTLIN:
+					result = new RuntimeKotlin(languageHomeDir);
+					break;
+				case VM_LANGUAGE_SCALA:
+					result = new RuntimeScala(languageHomeDir);
+					break;
+				}
+			}
+			catch (FileNotFoundException fnfe)
+			{
+				logListener.handleErrorEntry("Could not find " + vmLanguage + " runtime in '" + languageHomeDir + "'");
+			}
+		}
+
+		return result;
+	}
+
+	public static boolean isCompilable(String language, File sourceFile)
+	{
+		return language.equals(getLanguageFromFile(sourceFile));
+	}
+
+	public static String getFileExtension(File file)
+	{
+		String result = null;
+
+		if (file != null)
+		{
+			String filename = file.getName();
+
+			int lastDotPos = filename.lastIndexOf(C_DOT);
+
+			if (lastDotPos != -1)
+			{
+				result = filename.substring(lastDotPos + 1);
+			}
+		}
+
+		return result;
+	}
+
+	public static String getLanguageFromFile(File sourceFile)
+	{
+		String result = null;
+
+		String fileExtension = getFileExtension(sourceFile);
+
+		if (fileExtension != null)
+		{
+			fileExtension = fileExtension.toLowerCase();
+
+			switch (fileExtension)
+			{
+			case "java":
+				result = VM_LANGUAGE_JAVA;
+				break;
+			case "scala":
+				result = VM_LANGUAGE_SCALA;
+				break;
+			case "rb":
+				result = VM_LANGUAGE_JRUBY;
+				break;
+			case "js":
+				result = VM_LANGUAGE_JAVASCRIPT;
+				break;
+			case "kt":
+
+codex
+The class looks like a thin wrapper around a single external command, so I’m checking whether there is any broader fan-in beyond the factory and whether its outbound coupling is actually broad or just standard plumbing.
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerGroovy.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2022 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.process.compiler;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import org.adoptopenjdk.jitwatch.logger.ILogListener;
+import org.adoptopenjdk.jitwatch.process.AbstractProcess;
+
+public class CompilerGroovy extends AbstractProcess implements ICompiler
+{
+	private Path compilerPath;
+
+	private final String COMPILER_NAME = "groovyc";
+
+	public CompilerGroovy(String languageHomeDir) throws FileNotFoundException
+	{
+		super();
+		
+		compilerPath = Paths.get(languageHomeDir, "bin", COMPILER_NAME);
+
+		if (!compilerPath.toFile().exists())
+		{
+			throw new FileNotFoundException("Could not find " + COMPILER_NAME);
+		}
+
+		compilerPath = compilerPath.normalize();
+	}
+
+	@Override
+	public boolean compile(List<File> sourceFiles, List<String> classpathEntries, List<String> vmOptions, File outputDir, Map<String, String> environment, ILogListener logListener)
+			throws IOException
+	{
+		List<String> commands = new ArrayList<>();
+
+		commands.add(compilerPath.toString());
+
+		String outputDirPath = outputDir.getAbsolutePath().toString();
+
+		List<String> compileOptions = Arrays.asList(new String[] { "-d", outputDirPath });
+		commands.addAll(vmOptions);
+
+		commands.addAll(compileOptions);
+
+		if (classpathEntries.size() > 0)
+		{
+			commands.add("-classpath");
+
+			commands.add(makeClassPath(classpathEntries));
+		}
+
+		for (File sourceFile : sourceFiles)
+		{
+			commands.add(sourceFile.getAbsolutePath());
+		}
+
+		return runCommands(commands, environment, logListener);
+	}
+}
+exec
+/bin/bash -lc "sed -n '1,220p' core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerScala.java" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+/*
+ * Copyright (c) 2013-2022 Chris Newland.
+ * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+ * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+ */
+package org.adoptopenjdk.jitwatch.process.compiler;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import org.adoptopenjdk.jitwatch.logger.ILogListener;
+import org.adoptopenjdk.jitwatch.process.AbstractProcess;
+
+public class CompilerScala extends AbstractProcess implements ICompiler
+{
+	private Path compilerPath;
+	
+	private String languageHomeDir;
+
+	private final String COMPILER_NAME = "scalac";
+
+	public CompilerScala(String languageHomeDir) throws FileNotFoundException
+	{
+		super();
+
+		this.languageHomeDir = languageHomeDir;
+		
+		compilerPath = Paths.get(languageHomeDir, "bin", COMPILER_NAME);
+
+		if (!compilerPath.toFile().exists())
+		{
+			throw new FileNotFoundException("Could not find " + COMPILER_NAME);
+		}
+
+		compilerPath = compilerPath.normalize();
+	}
+
+	@Override
+	public boolean compile(List<File> sourceFiles, List<String> classpathEntries, List<String> vmOptions, File outputDir, Map<String, String> environment,ILogListener logListener)
+			throws IOException
+	{
+		List<String> commands = new ArrayList<>();
+
+		commands.add(compilerPath.toString());
+
+		String outputDirPath = outputDir.getAbsolutePath().toString();
+
+		List<String> compileOptions = Arrays.asList(new String[] { "-print", "-g:vars", "-d", outputDirPath });
+		commands.addAll(vmOptions);
+
+		commands.addAll(compileOptions);
+		
+		addScalaCoreLibs(classpathEntries);
+
+		if (classpathEntries.size() > 0)
+		{
+			commands.add("-classpath");
+
+			commands.add(makeClassPath(classpathEntries));
+		}
+
+		for (File sourceFile : sourceFiles)
+		{
+			commands.add(sourceFile.getAbsolutePath());
+		}
+
+		boolean success = runCommands(commands, environment, logListener);
+		
+		if (success)
+		{
+			String realSource = getOutputStream();
+					
+			/*
+			FileWriter writer = null;
+
+			try
+			{
+				writer = new FileWriter(saveFile);
+				writer.write(getSource());
+				sandboxStage.log("Saved " + saveFile.getCanonicalPath());
+				
+				sourceFile = saveFile;
+			}
+			catch (IOException ioe)
+			{
+				sandboxStage.log("Could not save file");
+			}
+			finally
+			{
+				if (writer != null)
+				{
+					try
+					{
+						writer.close();
+					}
+					catch (IOException ioe)
+					{
+					}
+				}
+			}
+			*/
+			
+		}
+		
+		return success;
+	}
+	
+	private void addScalaCoreLibs(List<String> classpathEntries)
+	{
+		String[] coreLibs = Paths.get(languageHomeDir, "lib").toFile().list(new FilenameFilter()
+		{
+			
+			@Override
+			public boolean accept(File dir, String name)
+			{
+				return name.endsWith(".jar");
+			}
+		});
+		
+		for (String filename : coreLibs)
+		{
+			if (!classpathEntries.contains(filename))
+			{
+				classpathEntries.add(filename);
+			}
+		}		
+	}
+}
+codex
+I have enough to judge fan-in is very small, but I want exact line references for the factory call and the target’s own dependencies so the verdict is grounded in the source, not just in search results.
+exec
+/bin/bash -lc "rg -n \"new CompilerJRuby|CompilerJRuby\\b\" core ui -S" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJRuby.java:20:public class CompilerJRuby extends AbstractProcess implements ICompiler
+core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJRuby.java:29:	public CompilerJRuby(String languageHomeDir) throws FileNotFoundException
+core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java:25:import org.adoptopenjdk.jitwatch.process.compiler.CompilerJRuby;
+core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java:72:					result = new CompilerJRuby(languageHomeDir);
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJRuby.java | sed -n '1,220p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2022 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.process.compiler;
+     7	
+     8	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.S_EMPTY;
+     9	
+    10	import java.io.File;
+    11	import java.io.FileNotFoundException;
+    12	import java.io.IOException;
+    13	import java.nio.file.Path;
+    14	import java.nio.file.Paths;
+    15	import java.util.*;
+    16	
+    17	import org.adoptopenjdk.jitwatch.logger.ILogListener;
+    18	import org.adoptopenjdk.jitwatch.process.AbstractProcess;
+    19	
+    20	public class CompilerJRuby extends AbstractProcess implements ICompiler
+    21	{
+    22		// TODO this is broken. Not sure if possible with ProcessBuilder
+    23		// http://blog.headius.com/2013/06/the-pain-of-broken-subprocess.html
+    24	
+    25		private Path compilerPath;
+    26	
+    27		private final String COMPILER_NAME = "jrubyc" + (isWindows() ? ".bat" : S_EMPTY);
+    28	
+    29		public CompilerJRuby(String languageHomeDir) throws FileNotFoundException
+    30		{
+    31			super();
+    32	
+    33			compilerPath = Paths.get(languageHomeDir, "bin", COMPILER_NAME);
+    34	
+    35			if (!compilerPath.toFile().exists())
+    36			{
+    37				throw new FileNotFoundException("Could not find " + COMPILER_NAME);
+    38			}
+    39	
+    40			compilerPath = compilerPath.normalize();
+    41		}
+    42	
+    43		@Override
+    44		public boolean compile(List<File> sourceFiles, List<String> classpathEntries, List<String> vmOptions, File outputDir, Map<String, String> environment, ILogListener logListener)
+    45				throws IOException
+    46		{
+    47			List<String> commands = new ArrayList<>();
+    48	
+    49			String outputDirPath = outputDir.getAbsolutePath().toString();
+    50	
+    51			Set<String> uniqueCPSet = new HashSet<>(classpathEntries);
+    52			uniqueCPSet.add(outputDirPath);
+    53	
+    54			commands.add(compilerPath.toString());
+    55	
+    56			// List<String> compileOptions = Arrays.asList(new String[] { "-g",
+    57			// "-d", outputDirPath });
+    58			//
+    59			// commands.addAll(compileOptions);
+    60			//
+    61			commands.addAll(vmOptions);
+    62	
+    63			if (classpathEntries.size() > 0)
+    64			{
+    65				commands.add("-cp");
+    66	
+    67				commands.add(makeClassPath(classpathEntries));
+    68			}
+    69	
+    70			for (File sourceFile : sourceFiles)
+    71			{
+    72				commands.add(sourceFile.getAbsolutePath());
+    73			}
+    74	
+    75			return runCommands(commands, environment, logListener);
+    76		}
+    77	}
+
+exec
+/bin/bash -lc "nl -ba core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java | sed -n '1,140p'" in /data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch
+ succeeded in 0ms:
+     1	/*
+     2	 * Copyright (c) 2013-2015 Chris Newland.
+     3	 * Licensed under https://github.com/AdoptOpenJDK/jitwatch/blob/master/LICENSE-BSD
+     4	 * Instructions: https://github.com/AdoptOpenJDK/jitwatch/wiki
+     5	 */
+     6	package org.adoptopenjdk.jitwatch.jvmlang;
+     7	
+     8	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.C_DOT;
+     9	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_CLOJURE;
+    10	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_GROOVY;
+    11	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVA;
+    12	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JAVASCRIPT;
+    13	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_JRUBY;
+    14	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_KOTLIN;
+    15	import static org.adoptopenjdk.jitwatch.core.JITWatchConstants.VM_LANGUAGE_SCALA;
+    16	
+    17	import java.io.File;
+    18	import java.io.FileNotFoundException;
+    19	import java.util.ArrayList;
+    20	import java.util.List;
+    21	
+    22	import org.adoptopenjdk.jitwatch.core.JITWatchConfig;
+    23	import org.adoptopenjdk.jitwatch.logger.ILogListener;
+    24	import org.adoptopenjdk.jitwatch.process.compiler.CompilerGroovy;
+    25	import org.adoptopenjdk.jitwatch.process.compiler.CompilerJRuby;
+    26	import org.adoptopenjdk.jitwatch.process.compiler.CompilerJava;
+    27	import org.adoptopenjdk.jitwatch.process.compiler.CompilerJavaScript;
+    28	import org.adoptopenjdk.jitwatch.process.compiler.CompilerKotlin;
+    29	import org.adoptopenjdk.jitwatch.process.compiler.CompilerScala;
+    30	import org.adoptopenjdk.jitwatch.process.compiler.ICompiler;
+    31	import org.adoptopenjdk.jitwatch.process.runtime.IRuntime;
+    32	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeGroovy;
+    33	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJRuby;
+    34	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJava;
+    35	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeJavaScript;
+    36	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeKotlin;
+    37	import org.adoptopenjdk.jitwatch.process.runtime.RuntimeScala;
+    38	
+    39	public class LanguageManager
+    40	{
+    41		private JITWatchConfig config;
+    42		private ILogListener logListener;
+    43	
+    44		public LanguageManager(JITWatchConfig config, ILogListener logListener)
+    45		{
+    46			this.config = config;
+    47			this.logListener = logListener;
+    48		}
+    49	
+    50		public ICompiler getCompiler(String vmLanguage, String languageHomeDir)
+    51		{
+    52			ICompiler result = null;
+    53	
+    54			if (languageHomeDir != null)
+    55			{
+    56				try
+    57				{
+    58					switch (vmLanguage)
+    59					{
+    60					case VM_LANGUAGE_CLOJURE:
+    61						break;
+    62					case VM_LANGUAGE_GROOVY:
+    63						result = new CompilerGroovy(languageHomeDir);
+    64						break;
+    65					case VM_LANGUAGE_JAVA:
+    66						result = new CompilerJava(languageHomeDir);
+    67						break;
+    68					case VM_LANGUAGE_JAVASCRIPT:
+    69						result = new CompilerJavaScript(languageHomeDir);
+    70						break;
+    71					case VM_LANGUAGE_JRUBY:
+    72						result = new CompilerJRuby(languageHomeDir);
+    73						break;
+    74					case VM_LANGUAGE_KOTLIN:
+    75						result = new CompilerKotlin(languageHomeDir);
+    76						break;
+    77					case VM_LANGUAGE_SCALA:
+    78						result = new CompilerScala(languageHomeDir);
+    79						break;
+    80					}
+    81				}
+    82				catch (FileNotFoundException fnfe)
+    83				{
+    84					logListener.handleErrorEntry("Could not find " + vmLanguage + " compiler in '" + languageHomeDir + "'");
+    85				}
+    86			}
+    87	
+    88			return result;
+    89		}
+    90	
+    91		public IRuntime getRuntime(String vmLanguage, String languageHomeDir)
+    92		{
+    93			IRuntime result = null;
+    94	
+    95			if (languageHomeDir != null)
+    96			{
+    97				try
+    98				{
+    99					switch (vmLanguage)
+   100					{
+   101					case VM_LANGUAGE_CLOJURE:
+   102						break;
+   103					case VM_LANGUAGE_GROOVY:
+   104						result = new RuntimeGroovy(languageHomeDir);
+   105						break;
+   106					case VM_LANGUAGE_JAVA:
+   107						result = new RuntimeJava(languageHomeDir);
+   108						break;
+   109					case VM_LANGUAGE_JAVASCRIPT:
+   110						result = new RuntimeJavaScript(languageHomeDir);
+   111						break;
+   112					case VM_LANGUAGE_JRUBY:
+   113						result = new RuntimeJRuby(languageHomeDir);
+   114						break;
+   115					case VM_LANGUAGE_KOTLIN:
+   116						result = new RuntimeKotlin(languageHomeDir);
+   117						break;
+   118					case VM_LANGUAGE_SCALA:
+   119						result = new RuntimeScala(languageHomeDir);
+   120						break;
+   121					}
+   122				}
+   123				catch (FileNotFoundException fnfe)
+   124				{
+   125					logListener.handleErrorEntry("Could not find " + vmLanguage + " runtime in '" + languageHomeDir + "'");
+   126				}
+   127			}
+   128	
+   129			return result;
+   130		}
+   131	
+   132		public static boolean isCompilable(String language, File sourceFile)
+   133		{
+   134			return language.equals(getLanguageFromFile(sourceFile));
+   135		}
+   136	
+   137		public static String getFileExtension(File file)
+   138		{
+   139			String result = null;
+   140	
+
+codex
+{"target":"org.adoptopenjdk.jitwatch.process.compiler.CompilerJRuby","detection":false,"justification":"Inspected [core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJRuby.java](/data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch/core/src/main/java/org/adoptopenjdk/jitwatch/process/compiler/CompilerJRuby.java) and [core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java](/data/henrique/detecting_smells_study/codex/data/repositories/adoptopenjdk/jitwatch/core/src/main/java/org/adoptopenjdk/jitwatch/jvmlang/LanguageManager.java). `CompilerJRuby` is a thin wrapper around one external command: it extends `AbstractProcess`, implements `ICompiler`, and its dependencies are mostly standard library types plus `ILogListener`; it does not reference many project classes. Repo-wide search for `CompilerJRuby` found only one incoming use site, the `LanguageManager.getCompiler()` factory branch at lines 71-72, so fan-in is very low rather than hub-like."}
+tokens used
+14,456

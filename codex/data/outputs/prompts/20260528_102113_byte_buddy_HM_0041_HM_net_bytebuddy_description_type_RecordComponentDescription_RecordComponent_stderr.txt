@@ -1,0 +1,1229 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ebf-0b77-77f0-8a3f-9226252329bc
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`net.bytebuddy.description.type.RecordComponentDescription.RecordComponent` in the repository located at:
+
+`data/repositories/raphw/byte-buddy`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "net.bytebuddy.description.type.RecordComponentDescription.RecordComponent",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `net.bytebuddy.description.type.RecordComponentDescription.RecordComponent`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target class and the surrounding type hierarchy first, then I’ll check how widely it is referenced to judge fan-in/fan-out from the repository evidence.
+exec
+/bin/bash -lc "rg -n \"interface RecordComponentDescription|class RecordComponent|RecordComponentDescription\\.RecordComponent\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:3568:            protected class RecordComponentTokenList extends RecordComponentList.AbstractBase<RecordComponentDescription.InDefinedShape> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:6745:            protected static class RecordComponentToken {
+./byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:9896:            protected class RecordComponentExtractor extends RecordComponentVisitor {
+./byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:46:public interface RecordComponentDescription extends DeclaredByType.WithMandatoryDeclaration,
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/type/RecordComponentDescriptionTokenTest.java:17:public class RecordComponentDescriptionTokenTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/description/type/RecordComponentListEmptyTest.java:9:public class RecordComponentListEmptyTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppenderForInstrumentedFieldTest.java:15:public class RecordComponentAttributeAppenderForInstrumentedFieldTest extends AbstractRecordComponentAttributeAppenderTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppenderForAnnotationsTest.java:12:public class RecordComponentAttributeAppenderForAnnotationsTest extends AbstractRecordComponentAttributeAppenderTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppenderFactoryCompoundTest.java:11:public class RecordComponentAttributeAppenderFactoryCompoundTest extends AbstractRecordComponentAttributeAppenderTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppenderNoOpTest.java:9:public class RecordComponentAttributeAppenderNoOpTest extends AbstractRecordComponentAttributeAppenderTest {
+./byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppenderCompoundTest.java:9:public class RecordComponentAttributeAppenderCompoundTest extends AbstractRecordComponentAttributeAppenderTest {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7070:                protected class RecordComponentDefinitionAdapter extends RecordComponentDefinition.Optional.AbstractBase<U> {
+./byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7168:                protected class RecordComponentMatchAdapter extends RecordComponentDefinition.Optional.AbstractBase<U> {
+
+exec
+/bin/bash -lc "rg --files | rg 'RecordComponentDescription|RecordComponent\\.java|RecordComponentDescription\\.java'" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/RecordComponentDescriptionTokenTest.java
+
+codex
+I found the target in `byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java`. Next I’m reading that file and checking who depends on this nested type, because hub-like modularization needs both high outgoing and incoming coupling.
+exec
+/bin/bash -lc "sed -n '1,260p' byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.description.type;
+
+import net.bytebuddy.build.AccessControllerPlugin;
+import net.bytebuddy.build.CachedReturnPlugin;
+import net.bytebuddy.description.ByteCodeElement;
+import net.bytebuddy.description.DeclaredByType;
+import net.bytebuddy.description.NamedElement;
+import net.bytebuddy.description.annotation.AnnotationDescription;
+import net.bytebuddy.description.annotation.AnnotationList;
+import net.bytebuddy.description.annotation.AnnotationSource;
+import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.utility.dispatcher.JavaDispatcher;
+import net.bytebuddy.utility.nullability.MaybeNull;
+import org.objectweb.asm.signature.SignatureWriter;
+
+import javax.annotation.Nonnull;
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.GenericSignatureFormatError;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.security.PrivilegedAction;
+import java.util.Collections;
+import java.util.List;
+
+import static net.bytebuddy.matcher.ElementMatchers.named;
+
+/**
+ * Represents a component of a Java record.
+ */
+public interface RecordComponentDescription extends DeclaredByType.WithMandatoryDeclaration,
+        NamedElement.WithDescriptor,
+        AnnotationSource,
+        ByteCodeElement.TypeDependant<RecordComponentDescription.InDefinedShape, RecordComponentDescription.Token> {
+
+    /**
+     * Returns the type of the record.
+     *
+     * @return The type of the record.
+     */
+    TypeDescription.Generic getType();
+
+    /**
+     * Returns the accessor for this record component.
+     *
+     * @return The accessor for this record component.
+     */
+    MethodDescription getAccessor();
+
+    /**
+     * Resolves this record component to a token where all types are detached.
+     *
+     * @param matcher The matcher to apply for detachment.
+     * @return An appropriate token.
+     */
+    Token asToken(ElementMatcher<? super TypeDescription> matcher);
+
+    /**
+     * A description of a record component in generic shape.
+     */
+    interface InGenericShape extends RecordComponentDescription {
+
+        /**
+         * {@inheritDoc}
+         */
+        MethodDescription.InGenericShape getAccessor();
+    }
+
+    /**
+     * A description of a record component in its defined shape.
+     */
+    interface InDefinedShape extends RecordComponentDescription {
+
+        /**
+         * {@inheritDoc}
+         */
+        MethodDescription.InDefinedShape getAccessor();
+
+        /**
+         * {@inheritDoc}
+         */
+        @Nonnull
+        TypeDescription getDeclaringType();
+
+        /**
+         * An abstract base implementation of a record component description in its defined shape.
+         */
+        abstract class AbstractBase extends RecordComponentDescription.AbstractBase implements InDefinedShape {
+
+            /**
+             * {@inheritDoc}
+             */
+            public MethodDescription.InDefinedShape getAccessor() {
+                return getDeclaringType().getDeclaredMethods().filter(named(getActualName())).getOnly();
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            public InDefinedShape asDefined() {
+                return this;
+            }
+        }
+    }
+
+    /**
+     * An abstract base implementation for a record component description.
+     */
+    abstract class AbstractBase implements RecordComponentDescription {
+
+        /**
+         * {@inheritDoc}
+         */
+        public Token asToken(ElementMatcher<? super TypeDescription> matcher) {
+            return new Token(getActualName(),
+                    getType().accept(new TypeDescription.Generic.Visitor.Substitutor.ForDetachment(matcher)),
+                    getDeclaredAnnotations());
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public String getDescriptor() {
+            return getType().asErasure().getDescriptor();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @MaybeNull
+        public String getGenericSignature() {
+            TypeDescription.Generic recordComponentType = getType();
+            try {
+                return recordComponentType.getSort().isNonGeneric()
+                        ? NON_GENERIC_SIGNATURE
+                        : recordComponentType.accept(new TypeDescription.Generic.Visitor.ForSignatureVisitor(new SignatureWriter())).toString();
+            } catch (GenericSignatureFormatError ignored) {
+                return NON_GENERIC_SIGNATURE;
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            return getActualName().hashCode();
+        }
+
+        @Override
+        public boolean equals(@MaybeNull Object other) {
+            if (this == other) {
+                return true;
+            } else if (!(other instanceof RecordComponentDescription)) {
+                return false;
+            }
+            RecordComponentDescription recordComponentDescription = (RecordComponentDescription) other;
+            return getActualName().equals(recordComponentDescription.getActualName());
+        }
+
+        @Override
+        public String toString() {
+            return getType().getTypeName() + " " + getActualName();
+        }
+    }
+
+    /**
+     * Represents a loaded record component.
+     */
+    class ForLoadedRecordComponent extends InDefinedShape.AbstractBase {
+
+        /**
+         * A dispatcher for accessing {@code java.lang.RecordComponent} types.
+         */
+        protected static final RecordComponent RECORD_COMPONENT = doPrivileged(JavaDispatcher.of(RecordComponent.class));
+
+        /**
+         * The represented record component.
+         */
+        private final AnnotatedElement recordComponent;
+
+        /**
+         * Creates a new representation of a loaded record component.
+         *
+         * @param recordComponent The represented record component.
+         */
+        protected ForLoadedRecordComponent(AnnotatedElement recordComponent) {
+            this.recordComponent = recordComponent;
+        }
+
+        /**
+         * A proxy for {@code java.security.AccessController#doPrivileged} that is activated if available.
+         *
+         * @param action The action to execute from a privileged context.
+         * @param <T>    The type of the action's resolved value.
+         * @return The action's resolved value.
+         */
+        @AccessControllerPlugin.Enhance
+        private static <T> T doPrivileged(PrivilegedAction<T> action) {
+            return action.run();
+        }
+
+        /**
+         * Resolves an instance into a record component description.
+         *
+         * @param recordComponent The record component to represent.
+         * @return A suitable description of the record component.
+         */
+        public static RecordComponentDescription of(Object recordComponent) {
+            if (!RECORD_COMPONENT.isInstance(recordComponent)) {
+                throw new IllegalArgumentException("Not a record component: " + recordComponent);
+            }
+            return new ForLoadedRecordComponent((AnnotatedElement) recordComponent);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeDescription.Generic getType() {
+            return new TypeDescription.Generic.LazyProjection.OfRecordComponent(recordComponent);
+        }
+
+        @Override
+        public MethodDescription.InDefinedShape getAccessor() {
+            return new MethodDescription.ForLoadedMethod(RECORD_COMPONENT.getAccessor(recordComponent));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Nonnull
+        public TypeDescription getDeclaringType() {
+            return TypeDescription.ForLoadedType.of(RECORD_COMPONENT.getDeclaringRecord(recordComponent));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public String getActualName() {
+            return RECORD_COMPONENT.getName(recordComponent);
+        }
+
+        @Override
+        @MaybeNull
+        public String getGenericSignature() {
+            return RECORD_COMPONENT.getGenericSignature(recordComponent);
+        }
+
+
+exec
+/bin/bash -lc "rg -n \"RecordComponentDescription\\.RecordComponent\\b|RecordComponentDescription\\.InDefinedShape\\b|RecordComponentDescription\\b\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:32:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1792:            for (RecordComponentDescription.InDefinedShape recordComponent : instrumentedType.getRecordComponents()) {
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1830:            for (RecordComponentDescription.InDefinedShape recordComponent : instrumentedType.getRecordComponents()) {
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1884:                    for (RecordComponentDescription.InDefinedShape recordComponent : instrumentedType.getRecordComponents()) {
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java:1961:            for (RecordComponentDescription.InDefinedShape recordComponent : implementationTarget.getInstrumentedType().getRecordComponents()) {
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/AbstractTypeDescriptionTest.java:844:        RecordComponentList<RecordComponentDescription.InDefinedShape> recordComponents = describe(sampleRecord).getRecordComponents();
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:32:public interface RecordComponentList<T extends RecordComponentDescription> extends FilterableList<T, RecordComponentList<T>> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:41:    ByteCodeElement.Token.TokenList<RecordComponentDescription.Token> asTokenList(ElementMatcher<? super TypeDescription> matcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:55:    RecordComponentList<RecordComponentDescription.InDefinedShape> asDefined();
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:62:    abstract class AbstractBase<S extends RecordComponentDescription> extends FilterableList.AbstractBase<S, RecordComponentList<S>> implements RecordComponentList<S> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:67:        public ByteCodeElement.Token.TokenList<RecordComponentDescription.Token> asTokenList(ElementMatcher<? super TypeDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:68:            List<RecordComponentDescription.Token> tokens = new ArrayList<RecordComponentDescription.Token>(size());
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:69:            for (RecordComponentDescription recordComponentDescription : this) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:72:            return new ByteCodeElement.Token.TokenList<RecordComponentDescription.Token>(tokens);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:80:            for (RecordComponentDescription recordComponentDescription : this) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:89:        public RecordComponentList<RecordComponentDescription.InDefinedShape> asDefined() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:90:            List<RecordComponentDescription.InDefinedShape> recordComponents = new ArrayList<RecordComponentDescription.InDefinedShape>(size());
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:91:            for (RecordComponentDescription recordComponentDescription : this) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:94:            return new Explicit<RecordComponentDescription.InDefinedShape>(recordComponents);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:106:    class ForLoadedRecordComponents extends AbstractBase<RecordComponentDescription.InDefinedShape> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:134:        public RecordComponentDescription.InDefinedShape get(int index) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:135:            return new RecordComponentDescription.ForLoadedRecordComponent((AnnotatedElement) recordComponents.get(index));
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:151:    class Explicit<S extends RecordComponentDescription> extends AbstractBase<S> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:195:    class ForTokens extends AbstractBase<RecordComponentDescription.InDefinedShape> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:205:        private final List<? extends RecordComponentDescription.Token> tokens;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:213:        public ForTokens(TypeDescription typeDescription, RecordComponentDescription.Token... token) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:223:        public ForTokens(TypeDescription typeDescription, List<? extends RecordComponentDescription.Token> tokens) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:229:        public RecordComponentDescription.InDefinedShape get(int index) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:230:            return new RecordComponentDescription.Latent(typeDescription, tokens.get(index));
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:242:    class TypeSubstituting extends AbstractBase<RecordComponentDescription.InGenericShape> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:252:        private final List<? extends RecordComponentDescription> recordComponentDescriptions;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:267:                                List<? extends RecordComponentDescription> recordComponentDescriptions,
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:277:        public RecordComponentDescription.InGenericShape get(int index) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:278:            return new RecordComponentDescription.TypeSubstituting(declaringType, recordComponentDescriptions.get(index), visitor);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:294:    class Empty<S extends RecordComponentDescription> extends FilterableList.Empty<S, RecordComponentList<S>> implements RecordComponentList<S> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:299:        public RecordComponentList<RecordComponentDescription.InDefinedShape> asDefined() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:300:            return new RecordComponentList.Empty<RecordComponentDescription.InDefinedShape>();
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:306:        public ByteCodeElement.Token.TokenList<RecordComponentDescription.Token> asTokenList(ElementMatcher<? super TypeDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java:307:            return new ByteCodeElement.Token.TokenList<RecordComponentDescription.Token>();
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterRecordComponentPoolDisabledTest.java:3:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterRecordComponentPoolDisabledTest.java:12:        TypeWriter.RecordComponentPool.Disabled.INSTANCE.target(mock(RecordComponentDescription.class));
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/RecordComponentDescriptionTokenTest.java:43:        RecordComponentDescription.Token token = new RecordComponentDescription.Token(FOO, type, Collections.singletonList(annotation));
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/RecordComponentDescriptionTokenTest.java:51:        assertThat(new RecordComponentDescription.Token(FOO, type, Collections.singletonList(annotation)).accept(visitor),
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/RecordComponentDescriptionTokenTest.java:52:                is(new RecordComponentDescription.Token(FOO, visitedType, Collections.singletonList(annotation))));
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:153:    RecordComponentList<RecordComponentDescription.InDefinedShape> getRecordComponents();
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:685:        RecordComponentList<RecordComponentDescription.InGenericShape> getRecordComponents();
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:2161:                    public static ForAttachment of(RecordComponentDescription recordComponentDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:3244:                        return RecordComponentDescription.ForLoadedRecordComponent.RECORD_COMPONENT.getAnnotatedType(recordComponent);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:3826:            public RecordComponentList<RecordComponentDescription.InGenericShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:4393:            public RecordComponentList<RecordComponentDescription.InGenericShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:4394:                return new RecordComponentList.Empty<RecordComponentDescription.InGenericShape>();
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:4699:            public RecordComponentList<RecordComponentDescription.InGenericShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5131:            public RecordComponentList<RecordComponentDescription.InGenericShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5754:            public RecordComponentList<RecordComponentDescription.InGenericShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:5980:                public RecordComponentList<RecordComponentDescription.InGenericShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:6322:            public RecordComponentList<RecordComponentDescription.InGenericShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:6979:                    return Sort.describeOrNull(RecordComponentDescription.ForLoadedRecordComponent.RECORD_COMPONENT.getGenericType(recordComponent), getAnnotationReader());
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:6986:                    return ForLoadedType.of(RecordComponentDescription.ForLoadedRecordComponent.RECORD_COMPONENT.getType(recordComponent));
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:8713:                public RecordComponentList<RecordComponentDescription.InDefinedShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:9236:        public RecordComponentList<RecordComponentDescription.InDefinedShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:9239:                    ? new RecordComponentList.Empty<RecordComponentDescription.InDefinedShape>()
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:9656:        public RecordComponentList<RecordComponentDescription.InDefinedShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:9657:            return new RecordComponentList.Empty<RecordComponentDescription.InDefinedShape>();
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:9870:        public RecordComponentList<RecordComponentDescription.InDefinedShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:10042:        public RecordComponentList<RecordComponentDescription.InDefinedShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:10043:            return new RecordComponentList.Empty<RecordComponentDescription.InDefinedShape>();
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:10294:        public RecordComponentList<RecordComponentDescription.InDefinedShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:46:public interface RecordComponentDescription extends DeclaredByType.WithMandatoryDeclaration,
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:49:        ByteCodeElement.TypeDependant<RecordComponentDescription.InDefinedShape, RecordComponentDescription.Token> {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:76:    interface InGenericShape extends RecordComponentDescription {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:87:    interface InDefinedShape extends RecordComponentDescription {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:103:        abstract class AbstractBase extends RecordComponentDescription.AbstractBase implements InDefinedShape {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:124:    abstract class AbstractBase implements RecordComponentDescription {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:166:            } else if (!(other instanceof RecordComponentDescription)) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:169:            RecordComponentDescription recordComponentDescription = (RecordComponentDescription) other;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:221:        public static RecordComponentDescription of(Object recordComponent) {
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:438:        private final RecordComponentDescription recordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:453:                                RecordComponentDescription recordComponentDescription,
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:597:            RecordComponentDescription.Token token = (RecordComponentDescription.Token) other;
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/RecordComponentListEmptyTest.java:13:        assertThat(new RecordComponentList.Empty<RecordComponentDescription>().asTokenList(none()).size(), is(0));
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/RecordComponentListEmptyTest.java:18:        assertThat(new RecordComponentList.Empty<RecordComponentDescription>().asDefined().size(), is(0));
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/LatentMatcher.java:22:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/LatentMatcher.java:235:    class ForRecordComponentToken implements LatentMatcher<RecordComponentDescription> {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/LatentMatcher.java:240:        private final RecordComponentDescription.Token token;
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/LatentMatcher.java:247:        public ForRecordComponentToken(RecordComponentDescription.Token token) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/LatentMatcher.java:254:        public ElementMatcher<? super RecordComponentDescription> resolve(TypeDescription typeDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/LatentMatcher.java:255:            return ElementMatchers.<RecordComponentDescription>named(token.getName());
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterRecordComponentPoolRecordTest.java:7:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/TypeWriterRecordComponentPoolRecordTest.java:57:    private RecordComponentDescription recordComponentDescription;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:8:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:1109:                Collections.<RecordComponentDescription.Token>emptyList(),
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java:1153:                Collections.<RecordComponentDescription.Token>emptyList(),
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java:15:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java:87:                Collections.<RecordComponentDescription.Token>emptyList(),
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java:335:        instrumentedType = instrumentedType.withRecordComponent(new RecordComponentDescription.Token(BAR,
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java:338:        RecordComponentDescription.InDefinedShape recordComponentDescription = instrumentedType.getRecordComponents().get(0);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java:348:        instrumentedType = instrumentedType.withRecordComponent(new RecordComponentDescription.Token(BAR,
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java:351:        RecordComponentDescription.InDefinedShape recordComponentDescription = instrumentedType.getRecordComponents().get(0);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java:361:        instrumentedType = instrumentedType.withRecordComponent(new RecordComponentDescription.Token(BAR,
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java:364:        RecordComponentDescription.InDefinedShape recordComponentDescription = instrumentedType.getRecordComponents().get(0);
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java:1599:                Collections.<RecordComponentDescription.Token>emptyList(),
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeFrozenTest.java:8:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeFrozenTest.java:58:        new InstrumentedType.Frozen(TypeDescription.ForLoadedType.of(String.class), LoadedTypeInitializer.NoOp.INSTANCE).withRecordComponent(mock(RecordComponentDescription.Token.class));
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppender.java:20:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppender.java:40:    void apply(RecordComponentVisitor recordComponentVisitor, RecordComponentDescription recordComponentDescription, AnnotationValueFilter annotationValueFilter);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppender.java:62:        public void apply(RecordComponentVisitor recordComponentVisitor, RecordComponentDescription recordComponentDescription, AnnotationValueFilter annotationValueFilter) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppender.java:143:        public void apply(RecordComponentVisitor recordComponentVisitor, RecordComponentDescription recordComponentDescription, AnnotationValueFilter annotationValueFilter) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppender.java:183:        public void apply(RecordComponentVisitor recordComponentVisitor, RecordComponentDescription recordComponentDescription, AnnotationValueFilter annotationValueFilter) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/RecordComponentAttributeAppender.java:240:        public void apply(RecordComponentVisitor recordComponentVisitor, RecordComponentDescription recordComponentDescription, AnnotationValueFilter annotationValueFilter) {
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationValueFilter.java:21:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationValueFilter.java:74:        AnnotationValueFilter on(RecordComponentDescription recordComponentDescription);
+byte-buddy-dep/src/main/java/net/bytebuddy/implementation/attribute/AnnotationValueFilter.java:127:        public AnnotationValueFilter on(RecordComponentDescription recordComponentDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:35:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:3497:            public RecordComponentList<RecordComponentDescription.InDefinedShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:3568:            protected class RecordComponentTokenList extends RecordComponentList.AbstractBase<RecordComponentDescription.InDefinedShape> {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:3573:                public RecordComponentDescription.InDefinedShape get(int index) {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:3574:                    return recordComponentTokens.get(index).toRecordComponentDescription(LazyTypeDescription.this);
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4273:                                                         RecordComponentDescription.InDefinedShape definingRecordComponent) {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4562:                                                         RecordComponentDescription.InDefinedShape definingRecordComponent) {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4868:                     * A resolution of the generic type of a {@link RecordComponentDescription}.
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4884:                                                  RecordComponentDescription.InDefinedShape definingRecordComponent);
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4887:                         * An implementation of a tokenized resolution of the generic type of a {@link RecordComponentDescription}.
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4898:                             * Creates a new tokenized resolution of a {@link RecordComponentDescription}'s type.
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:4912:                                                             RecordComponentDescription.InDefinedShape definingRecordComponent) {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:6808:                private RecordComponentDescription.InDefinedShape toRecordComponentDescription(LazyTypeDescription lazyTypeDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:6809:                    return lazyTypeDescription.new LazyRecordComponentDescription(name,
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:8816:            private class LazyRecordComponentDescription extends RecordComponentDescription.InDefinedShape.AbstractBase {
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java:8859:                private LazyRecordComponentDescription(String name,
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AbstractRecordComponentAttributeAppenderTest.java:3:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/test/java/net/bytebuddy/implementation/attribute/AbstractRecordComponentAttributeAppenderTest.java:14:    protected RecordComponentDescription recordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/DecoratingDynamicTypeBuilder.java:25:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/inline/DecoratingDynamicTypeBuilder.java:487:    public RecordComponentDefinition<T> recordComponent(LatentMatcher<? super RecordComponentDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:31:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:105:    InstrumentedType withRecordComponent(RecordComponentDescription.Token token);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:292:        WithFlexibleName withRecordComponent(RecordComponentDescription.Token token);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:514:                        Collections.<RecordComponentDescription.Token>emptyList(),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:598:        private final List<? extends RecordComponentDescription.Token> recordComponentTokens;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:705:                          List<? extends RecordComponentDescription.Token> recordComponentTokens,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:899:        public WithFlexibleName withRecordComponent(RecordComponentDescription.Token token) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:1384:                            : Collections.<RecordComponentDescription.Token>emptyList(),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:1616:        public RecordComponentList<RecordComponentDescription.InDefinedShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:2192:        public RecordComponentList<RecordComponentDescription.InDefinedShape> getRecordComponents() {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java:2246:        public WithFlexibleName withRecordComponent(RecordComponentDescription.Token token) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:19:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:53:    RecordComponentRegistry prepend(LatentMatcher<? super RecordComponentDescription> matcher,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:55:                                    Transformer<RecordComponentDescription> transformer);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:83:            public Record target(RecordComponentDescription recordComponentDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:119:        public RecordComponentRegistry prepend(LatentMatcher<? super RecordComponentDescription> matcher,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:121:                                               Transformer<RecordComponentDescription> transformer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:149:        protected static class Entry implements LatentMatcher<RecordComponentDescription> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:154:            private final LatentMatcher<? super RecordComponentDescription> matcher;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:164:            private final Transformer<RecordComponentDescription> transformer;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:173:            protected Entry(LatentMatcher<? super RecordComponentDescription> matcher,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:175:                            Transformer<RecordComponentDescription> transformer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:195:            protected Transformer<RecordComponentDescription> getTransformer() {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:202:            public ElementMatcher<? super RecordComponentDescription> resolve(TypeDescription typeDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:237:            public Record target(RecordComponentDescription recordComponentDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:250:            protected static class Entry implements ElementMatcher<RecordComponentDescription> {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:255:                private final ElementMatcher<? super RecordComponentDescription> matcher;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:265:                private final Transformer<RecordComponentDescription> transformer;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:274:                protected Entry(ElementMatcher<? super RecordComponentDescription> matcher,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:276:                                Transformer<RecordComponentDescription> transformer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:289:                protected Record bind(TypeDescription instrumentedType, RecordComponentDescription recordComponentDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/RecordComponentRegistry.java:296:                public boolean matches(@MaybeNull RecordComponentDescription target) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:35:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:1494:        RecordComponentDefinition.Optional<T> define(RecordComponentDescription recordComponentDescription);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:1516:        RecordComponentDefinition<T> recordComponent(ElementMatcher<? super RecordComponentDescription> matcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:1538:        RecordComponentDefinition<T> recordComponent(LatentMatcher<? super RecordComponentDescription> matcher);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:3976:            Optional<S> transform(Transformer<RecordComponentDescription> transformer);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:4243:            public RecordComponentDefinition.Optional<S> define(RecordComponentDescription recordComponentDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:4250:            public RecordComponentDefinition<S> recordComponent(ElementMatcher<? super RecordComponentDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:4251:                return recordComponent(new LatentMatcher.Resolved<RecordComponentDescription>(matcher));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:4782:                public RecordComponentDefinition.Optional<U> define(RecordComponentDescription recordComponentDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:4789:                public RecordComponentDefinition<U> recordComponent(ElementMatcher<? super RecordComponentDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:4796:                public RecordComponentDefinition<U> recordComponent(LatentMatcher<? super RecordComponentDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:5164:                    return new RecordComponentDefinitionAdapter(new RecordComponentDescription.Token(name, type.asGenericType()));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:5170:                public RecordComponentDefinition<U> recordComponent(LatentMatcher<? super RecordComponentDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7080:                    private final RecordComponentDescription.Token token;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7085:                    private final Transformer<RecordComponentDescription> transformer;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7092:                    protected RecordComponentDefinitionAdapter(RecordComponentDescription.Token token) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7094:                                Transformer.NoOp.<RecordComponentDescription>make(),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7106:                                                               Transformer<RecordComponentDescription> transformer,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7107:                                                               RecordComponentDescription.Token token) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7117:                        return new RecordComponentDefinitionAdapter(recordComponentAttributeAppenderFactory, transformer, new RecordComponentDescription.Token(token.getName(),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7134:                    public Optional<U> transform(Transformer<RecordComponentDescription> transformer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7136:                                new Transformer.Compound<RecordComponentDescription>(this.transformer, transformer),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7173:                    private final LatentMatcher<? super RecordComponentDescription> matcher;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7183:                    private final Transformer<RecordComponentDescription> transformer;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7190:                    protected RecordComponentMatchAdapter(LatentMatcher<? super RecordComponentDescription> matcher) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7191:                        this(matcher, RecordComponentAttributeAppender.NoOp.INSTANCE, Transformer.NoOp.<RecordComponentDescription>make());
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7201:                    protected RecordComponentMatchAdapter(LatentMatcher<? super RecordComponentDescription> matcher,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7203:                                                          Transformer<RecordComponentDescription> transformer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7228:                    public Optional<U> transform(Transformer<RecordComponentDescription> transformer) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java:7231:                                new Transformer.Compound<RecordComponentDescription>(this.transformer, transformer));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:35:import net.bytebuddy.description.type.RecordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1590:        Record target(RecordComponentDescription recordComponentDescription);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1611:            RecordComponentDescription getRecordComponent();
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1645:                private final RecordComponentDescription recordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1652:                public ForImplicitRecordComponent(RecordComponentDescription recordComponentDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1666:                public RecordComponentDescription getRecordComponent() {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1714:                private final RecordComponentDescription recordComponentDescription;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1722:                public ForExplicitRecordComponent(RecordComponentAttributeAppender attributeAppender, RecordComponentDescription recordComponentDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1737:                public RecordComponentDescription getRecordComponent() {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1783:            public Record target(RecordComponentDescription recordComponentDescription) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1865:        protected final RecordComponentList<RecordComponentDescription.InDefinedShape> recordComponents;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:1960:                          RecordComponentList<RecordComponentDescription.InDefinedShape> recordComponents,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4136:                                  RecordComponentList<RecordComponentDescription.InDefinedShape> recordComponents,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:4354:                                             RecordComponentList<RecordComponentDescription.InDefinedShape> recordComponents,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:5076:                    private final LinkedHashMap<String, RecordComponentDescription> declarableRecordComponents;
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:5154:                        declarableRecordComponents = new LinkedHashMap<String, RecordComponentDescription>((int) Math.ceil(recordComponents.size() / 0.75));
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:5155:                        for (RecordComponentDescription recordComponentDescription : recordComponents) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:5305:                        RecordComponentDescription recordComponentDescription = declarableRecordComponents.remove(name);
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:5324:                        RecordComponentDescription recordComponentDescription = record.getRecordComponent();
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:5527:                        for (RecordComponentDescription recordComponent : declarableRecordComponents.values()) {
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:5952:                            new RecordComponentList.Empty<RecordComponentDescription.InDefinedShape>(),
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:6172:                                  RecordComponentList<RecordComponentDescription.InDefinedShape> recordComponents,
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java:6311:                for (RecordComponentDescription recordComponentDescription : recordComponents) {
+
+codex
+The target name is a nested type inside `RecordComponentDescription`, so I’m verifying whether that exact nested class exists in the source or whether the smell target maps to a different nested implementation name in this version.
+exec
+/bin/bash -lc 'rg -n "class RecordComponent|interface RecordComponent|enum RecordComponent" byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+46:public interface RecordComponentDescription extends DeclaredByType.WithMandatoryDeclaration,
+272:        protected interface RecordComponent {
+
+exec
+/bin/bash -lc "sed -n '260,760p' byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+
+        /**
+         * {@inheritDoc}
+         */
+        public AnnotationList getDeclaredAnnotations() {
+            return new AnnotationList.ForLoadedAnnotations(recordComponent.getDeclaredAnnotations());
+        }
+
+        /**
+         * A dispatcher for accessing methods of {@code java.lang.reflect.RecordComponent}.
+         */
+        @JavaDispatcher.Proxied("java.lang.reflect.RecordComponent")
+        protected interface RecordComponent {
+
+            /**
+             * Checks if the supplied instance is a record component.
+             *
+             * @param instance The instance to evaluate.
+             * @return {@code true} if the supplied instance is a record component.
+             */
+            @JavaDispatcher.Instance
+            boolean isInstance(Object instance);
+
+            /**
+             * Resolves a record component's name.
+             *
+             * @param value The record component to resolve the name for.
+             * @return The record component's name.
+             */
+            String getName(Object value);
+
+            /**
+             * Resolves a record component's declaring type.
+             *
+             * @param value The record component to resolve the declared type for.
+             * @return The record component's declaring type.
+             */
+            Class<?> getDeclaringRecord(Object value);
+
+            /**
+             * Resolves a record component's accessor method.
+             *
+             * @param value The record component to resolve the accessor method for.
+             * @return The record component's accessor method.
+             */
+            Method getAccessor(Object value);
+
+            /**
+             * Resolves a record component's type.
+             *
+             * @param value The record component to resolve the type for.
+             * @return The record component's type.
+             */
+            Class<?> getType(Object value);
+
+            /**
+             * Resolves a record component's generic type.
+             *
+             * @param value The record component to resolve the generic type for.
+             * @return The record component's generic type.
+             */
+            Type getGenericType(Object value);
+
+            /**
+             * Returns the record component type's generic signature.
+             *
+             * @param value The record component to resolve the generic signature for.
+             * @return The record component type's generic signature or {@code null} if no signature is defined.
+             */
+            @MaybeNull
+            String getGenericSignature(Object value);
+
+            /**
+             * Resolves a record component's annotated type.
+             *
+             * @param value The record component to resolve the annotated type for.
+             * @return The record component's annotated type.
+             */
+            AnnotatedElement getAnnotatedType(Object value);
+        }
+    }
+
+    /**
+     * A latent record component description.
+     */
+    class Latent extends InDefinedShape.AbstractBase {
+
+        /**
+         * The record component's declaring type.
+         */
+        private final TypeDescription declaringType;
+
+        /**
+         * The record component's name.
+         */
+        private final String name;
+
+        /**
+         * The record component's type.
+         */
+        private final TypeDescription.Generic type;
+
+        /**
+         * The record component's annotations.
+         */
+        private final List<? extends AnnotationDescription> annotations;
+
+        /**
+         * Creates a new latent record component.
+         *
+         * @param declaringType The record component's declaring type.
+         * @param token         The token representing the record component's detached properties.
+         */
+        public Latent(TypeDescription declaringType, Token token) {
+            this(declaringType,
+                    token.getName(),
+                    token.getType(),
+                    token.getAnnotations());
+        }
+
+        /**
+         * Creates a new latent record component.
+         *
+         * @param declaringType The record component's declaring type-
+         * @param name          The record component's name.
+         * @param type          The record component's type.
+         * @param annotations   The record component's annotations.
+         */
+        public Latent(TypeDescription declaringType, String name, TypeDescription.Generic type, List<? extends AnnotationDescription> annotations) {
+            this.declaringType = declaringType;
+            this.name = name;
+            this.type = type;
+            this.annotations = annotations;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeDescription.Generic getType() {
+            return type.accept(TypeDescription.Generic.Visitor.Substitutor.ForAttachment.of(this));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Nonnull
+        public TypeDescription getDeclaringType() {
+            return declaringType;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public String getActualName() {
+            return name;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public AnnotationList getDeclaredAnnotations() {
+            return new AnnotationList.Explicit(annotations);
+        }
+    }
+
+    /**
+     * A type substituting representation of a record component description.
+     */
+    class TypeSubstituting extends AbstractBase implements InGenericShape {
+
+        /**
+         * The type that declares this type-substituted record component.
+         */
+        private final TypeDescription.Generic declaringType;
+
+        /**
+         * The represented record component.
+         */
+        private final RecordComponentDescription recordComponentDescription;
+
+        /**
+         * A visitor that is applied to the parameter type.
+         */
+        private final TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor;
+
+        /**
+         * Creates a new type substituting representation of a record component description.
+         *
+         * @param declaringType              The type that declares this type-substituted record component.
+         * @param recordComponentDescription The represented record component.
+         * @param visitor                    A visitor that is applied to the parameter type.
+         */
+        public TypeSubstituting(TypeDescription.Generic declaringType,
+                                RecordComponentDescription recordComponentDescription,
+                                TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor) {
+            this.declaringType = declaringType;
+            this.recordComponentDescription = recordComponentDescription;
+            this.visitor = visitor;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public MethodDescription.InGenericShape getAccessor() {
+            return declaringType.getDeclaredMethods().filter(named(getActualName())).getOnly();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeDescription.Generic getType() {
+            return recordComponentDescription.getType().accept(visitor);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public InDefinedShape asDefined() {
+            return recordComponentDescription.asDefined();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Nonnull
+        public TypeDefinition getDeclaringType() {
+            return declaringType;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public String getActualName() {
+            return recordComponentDescription.getActualName();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public AnnotationList getDeclaredAnnotations() {
+            return recordComponentDescription.getDeclaredAnnotations();
+        }
+    }
+
+    /**
+     * A token representing a record component's properties detached from a type.
+     */
+    class Token implements ByteCodeElement.Token<Token> {
+
+        /**
+         * The token's name.
+         */
+        private final String name;
+
+        /**
+         * The token's type.
+         */
+        private final TypeDescription.Generic type;
+
+        /**
+         * The token's annotations.
+         */
+        private final List<? extends AnnotationDescription> annotations;
+
+        /**
+         * Creates a new record component token without annotations.
+         *
+         * @param name The token's name.
+         * @param type The token's type.
+         */
+        public Token(String name, TypeDescription.Generic type) {
+            this(name, type, Collections.<AnnotationDescription>emptyList());
+        }
+
+        /**
+         * Creates a new record component token.
+         *
+         * @param name        The token's name.
+         * @param type        The token's type.
+         * @param annotations The token's annotations.
+         */
+        public Token(String name, TypeDescription.Generic type, List<? extends AnnotationDescription> annotations) {
+            this.name = name;
+            this.type = type;
+            this.annotations = annotations;
+        }
+
+        /**
+         * Returns the token's name.
+         *
+         * @return The token's name.
+         */
+        public String getName() {
+            return name;
+        }
+
+        /**
+         * Returns the token's type.
+         *
+         * @return The token's type.
+         */
+        public TypeDescription.Generic getType() {
+            return type;
+        }
+
+        /**
+         * Returns the token's annotations.
+         *
+         * @return The token's annotations.
+         */
+        public AnnotationList getAnnotations() {
+            return new AnnotationList.Explicit(annotations);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public Token accept(TypeDescription.Generic.Visitor<? extends TypeDescription.Generic> visitor) {
+            return new Token(name, type.accept(visitor), annotations);
+        }
+
+        @Override
+        @CachedReturnPlugin.Enhance("hashCode")
+        public int hashCode() {
+            int result = name.hashCode();
+            result = 31 * result + type.hashCode();
+            result = 31 * result + annotations.hashCode();
+            return result;
+        }
+
+        @Override
+        public boolean equals(@MaybeNull Object other) {
+            if (this == other) {
+                return true;
+            } else if (other == null || getClass() != other.getClass()) {
+                return false;
+            }
+            RecordComponentDescription.Token token = (RecordComponentDescription.Token) other;
+            return name.equals(token.name)
+                    && type.equals(token.type)
+                    && annotations.equals(token.annotations);
+        }
+    }
+}
+
+codex
+I’ve confirmed the source file is a central record-component abstraction with several nested implementations and a local JavaDispatcher proxy. I’m now counting repository references so the verdict can rest on actual fan-in/fan-out evidence instead of impressionistic complexity.
+exec
+/bin/bash -lc 'rg -l "RecordComponentDescription" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java | wc -l' in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+22
+
+exec
+/bin/bash -lc "sed -n '1,240p' byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+/*
+ * Copyright 2014 - Present Rafael Winterhalter
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package net.bytebuddy.description.type;
+
+import net.bytebuddy.description.ByteCodeElement;
+import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.matcher.FilterableList;
+
+import java.lang.reflect.AnnotatedElement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Implementations represent a list of record component descriptions.
+ *
+ * @param <T> The type of record component descriptions represented by this list.
+ */
+public interface RecordComponentList<T extends RecordComponentDescription> extends FilterableList<T, RecordComponentList<T>> {
+
+    /**
+     * Transforms the list of record component descriptions into a list of detached tokens. All types that are matched by the provided
+     * target type matcher are substituted by {@link net.bytebuddy.dynamic.TargetType}.
+     *
+     * @param matcher A matcher that indicates type substitution.
+     * @return The transformed token list.
+     */
+    ByteCodeElement.Token.TokenList<RecordComponentDescription.Token> asTokenList(ElementMatcher<? super TypeDescription> matcher);
+
+    /**
+     * Returns a list of all types of the records of this list.
+     *
+     * @return A list of all types of the records of this list.
+     */
+    TypeList.Generic asTypeList();
+
+    /**
+     * Returns this list of these record component descriptions resolved to their defined shape.
+     *
+     * @return A list of record components in their defined shape.
+     */
+    RecordComponentList<RecordComponentDescription.InDefinedShape> asDefined();
+
+    /**
+     * An abstract base implementation of a list of record components.
+     *
+     * @param <S> The type of record component descriptions represented by this list.
+     */
+    abstract class AbstractBase<S extends RecordComponentDescription> extends FilterableList.AbstractBase<S, RecordComponentList<S>> implements RecordComponentList<S> {
+
+        /**
+         * {@inheritDoc}
+         */
+        public ByteCodeElement.Token.TokenList<RecordComponentDescription.Token> asTokenList(ElementMatcher<? super TypeDescription> matcher) {
+            List<RecordComponentDescription.Token> tokens = new ArrayList<RecordComponentDescription.Token>(size());
+            for (RecordComponentDescription recordComponentDescription : this) {
+                tokens.add(recordComponentDescription.asToken(matcher));
+            }
+            return new ByteCodeElement.Token.TokenList<RecordComponentDescription.Token>(tokens);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public TypeList.Generic asTypeList() {
+            List<TypeDescription.Generic> typeDescriptions = new ArrayList<TypeDescription.Generic>(size());
+            for (RecordComponentDescription recordComponentDescription : this) {
+                typeDescriptions.add(recordComponentDescription.getType());
+            }
+            return new TypeList.Generic.Explicit(typeDescriptions);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public RecordComponentList<RecordComponentDescription.InDefinedShape> asDefined() {
+            List<RecordComponentDescription.InDefinedShape> recordComponents = new ArrayList<RecordComponentDescription.InDefinedShape>(size());
+            for (RecordComponentDescription recordComponentDescription : this) {
+                recordComponents.add(recordComponentDescription.asDefined());
+            }
+            return new Explicit<RecordComponentDescription.InDefinedShape>(recordComponents);
+        }
+
+        @Override
+        protected RecordComponentList<S> wrap(List<S> values) {
+            return new Explicit<S>(values);
+        }
+    }
+
+    /**
+     * A list of loaded record components.
+     */
+    class ForLoadedRecordComponents extends AbstractBase<RecordComponentDescription.InDefinedShape> {
+
+        /**
+         * The represented record components.
+         */
+        private final List<?> recordComponents;
+
+        /**
+         * Creates a list of loaded record components.
+         *
+         * @param recordComponent The represented record components.
+         */
+        protected ForLoadedRecordComponents(Object... recordComponent) {
+            this(Arrays.asList(recordComponent));
+        }
+
+        /**
+         * Creates a list of loaded record components.
+         *
+         * @param recordComponents The represented record components.
+         */
+        protected ForLoadedRecordComponents(List<?> recordComponents) {
+            this.recordComponents = recordComponents;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public RecordComponentDescription.InDefinedShape get(int index) {
+            return new RecordComponentDescription.ForLoadedRecordComponent((AnnotatedElement) recordComponents.get(index));
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int size() {
+            return recordComponents.size();
+        }
+    }
+
+    /**
+     * A wrapper implementation of an explicit list of record components.
+     *
+     * @param <S> The type of record component descriptions represented by this list.
+     */
+    class Explicit<S extends RecordComponentDescription> extends AbstractBase<S> {
+
+        /**
+         * The record components represented by this list.
+         */
+        private final List<? extends S> recordComponents;
+
+        /**
+         * Creates a new list of record component descriptions.
+         *
+         * @param recordComponent The represented record components.
+         */
+        @SuppressWarnings("unchecked")
+        public Explicit(S... recordComponent) {
+            this(Arrays.asList(recordComponent));
+        }
+
+        /**
+         * Creates a new list of record component descriptions.
+         *
+         * @param recordComponents The represented record components.
+         */
+        public Explicit(List<? extends S> recordComponents) {
+            this.recordComponents = recordComponents;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public S get(int index) {
+            return recordComponents.get(index);
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public int size() {
+            return recordComponents.size();
+        }
+    }
+
+    /**
+     * A list of record components described as tokens.
+     */
+    class ForTokens extends AbstractBase<RecordComponentDescription.InDefinedShape> {
+
+        /**
+         * The record component's declaring type.
+         */
+        private final TypeDescription typeDescription;
+
+        /**
+         * The list of represented tokens.
+         */
+        private final List<? extends RecordComponentDescription.Token> tokens;
+
+        /**
+         * Creates a new list of record components that are described as tokens.
+         *
+         * @param typeDescription The record component's declaring type.
+         * @param token           The list of represented tokens.
+         */
+        public ForTokens(TypeDescription typeDescription, RecordComponentDescription.Token... token) {
+            this(typeDescription, Arrays.asList(token));
+        }
+
+        /**
+         * Creates a new list of record components that are described as tokens.
+         *
+         * @param typeDescription The record component's declaring type.
+         * @param tokens          The list of represented tokens.
+         */
+        public ForTokens(TypeDescription typeDescription, List<? extends RecordComponentDescription.Token> tokens) {
+            this.typeDescription = typeDescription;
+            this.tokens = tokens;
+        }
+
+        @Override
+        public RecordComponentDescription.InDefinedShape get(int index) {
+            return new RecordComponentDescription.Latent(typeDescription, tokens.get(index));
+        }
+
+        @Override
+        public int size() {
+            return tokens.size();
+        }
+    }
+
+    /**
+     * A type-substituting list of record component descriptions.
+
+exec
+/bin/bash -lc "rg -l \"RecordComponentDescription\\.Token|RecordComponentDescription\\.InDefinedShape|RecordComponentDescription\\.InGenericShape|RecordComponentDescription\\.ForLoadedRecordComponent\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java | sort" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/ByteBuddy.java
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentList.java
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/DynamicType.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/InstrumentedType.java
+byte-buddy-dep/src/main/java/net/bytebuddy/dynamic/scaffold/TypeWriter.java
+byte-buddy-dep/src/main/java/net/bytebuddy/matcher/LatentMatcher.java
+byte-buddy-dep/src/main/java/net/bytebuddy/pool/TypePool.java
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/AbstractTypeDescriptionTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/description/type/RecordComponentDescriptionTokenTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeDefaultTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/InstrumentedTypeFrozenTest.java
+byte-buddy-dep/src/test/java/net/bytebuddy/dynamic/scaffold/MethodGraphCompilerDefaultTest.java
+
+codex
+The repository does not contain a source-level type named exactly `RecordComponentDescription.RecordComponent`; the only `RecordComponent` I found is the private dispatcher nested inside `ForLoadedRecordComponent`. I’m checking whether that internal type has any meaningful external fan-in before I decide.
+exec
+/bin/bash -lc "rg -n \"ForLoadedRecordComponent\\.RecordComponent|\\bRecordComponent\\b\" byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+185:         * A dispatcher for accessing {@code java.lang.RecordComponent} types.
+187:        protected static final RecordComponent RECORD_COMPONENT = doPrivileged(JavaDispatcher.of(RecordComponent.class));
+269:         * A dispatcher for accessing methods of {@code java.lang.reflect.RecordComponent}.
+271:        @JavaDispatcher.Proxied("java.lang.reflect.RecordComponent")
+272:        protected interface RecordComponent {
+
+exec
+/bin/bash -lc "rg -n \"RecordComponentDescription\\.ForLoadedRecordComponent\\.RecordComponent|ForLoadedRecordComponent\\.RECORD_COMPONENT|JavaDispatcher\\.of\\(RecordComponent\\.class\\)\" byte-buddy-dep/src/main/java byte-buddy-dep/src/test/java" in /data/henrique/detecting_smells_study/codex/data/repositories/raphw/byte-buddy
+ succeeded in 0ms:
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:3244:                        return RecordComponentDescription.ForLoadedRecordComponent.RECORD_COMPONENT.getAnnotatedType(recordComponent);
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:6979:                    return Sort.describeOrNull(RecordComponentDescription.ForLoadedRecordComponent.RECORD_COMPONENT.getGenericType(recordComponent), getAnnotationReader());
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/TypeDescription.java:6986:                    return ForLoadedType.of(RecordComponentDescription.ForLoadedRecordComponent.RECORD_COMPONENT.getType(recordComponent));
+byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java:187:        protected static final RecordComponent RECORD_COMPONENT = doPrivileged(JavaDispatcher.of(RecordComponent.class));
+
+codex
+{"target":"net.bytebuddy.description.type.RecordComponentDescription.RecordComponent","detection":false,"justification":"In byte-buddy-dep/src/main/java/net/bytebuddy/description/type/RecordComponentDescription.java, the only `RecordComponent` type is the protected nested JavaDispatcher interface inside `ForLoadedRecordComponent`; it is referenced only by the local static field `RECORD_COMPONENT = doPrivileged(JavaDispatcher.of(RecordComponent.class))` in the same file. A repo-wide search found no other source references to this nested dispatcher, so it does not show the high fan-in/fan-out expected of a hub-like modularization smell."}
+tokens used
+20,112

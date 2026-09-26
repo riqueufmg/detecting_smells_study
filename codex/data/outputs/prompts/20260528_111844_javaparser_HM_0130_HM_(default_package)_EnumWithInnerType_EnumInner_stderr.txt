@@ -1,0 +1,155 @@
+OpenAI Codex v0.130.0
+--------
+workdir: /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+model: gpt-5.4-mini
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 019e6ef3-b4e6-7c93-9115-45c6df290cef
+--------
+user
+# System instructions
+
+You are a software-architecture analyst. You inspect a Java repository
+to decide whether ONE specific architectural smell affects ONE specific
+software unit: either a Java class or a Java package.
+
+Operating constraints:
+- Do not modify files.
+- Do not create commits.
+- Do not create patches.
+- Do not install dependencies.
+- Do not use external network access.
+- Do not invoke static-analysis, metrics, or smell-detection tools.
+- Base your verdict only on evidence observed in the repository.
+
+Work step by step:
+1. Locate the target unit.
+2. Inspect relevant source files.
+3. Gather concrete structural evidence.
+4. Decide whether the smell is present.
+5. Write a valid verdict.json file.
+
+# Instance instructions
+
+## Architectural smell definition
+
+Hub-like Modularization occurs when a class behaves as a dependency hub, having a high number of incoming and outgoing dependencies. Look for strong fan-in and fan-out evidence, many classes depending on the target, and the target depending on many other classes.
+
+## Task
+
+Decide whether the smell HM affects the Java class
+`(default package).EnumWithInnerType.EnumInner` in the repository located at:
+
+`data/repositories/javaparser/javaparser`
+
+The unit is a fully-qualified Java class name. Locate the corresponding
+Java source file and analyze that class. Use other files only as
+supporting evidence.
+
+## Required output
+
+Return only a valid JSON object using EXACTLY this JSON schema:
+
+{
+  "target": "(default package).EnumWithInnerType.EnumInner",
+  "detection": true,
+  "justification": "Concise evidence: the files you read and the concrete metrics/observations that justify the decision"
+}
+
+Rules:
+- `target` must be exactly `(default package).EnumWithInnerType.EnumInner`.
+- `detection` must be a JSON boolean: true or false.
+- `justification` must be concise and evidence-based.
+- The justification must mention the files inspected and the concrete observations used in the decision.
+- Do not add extra keys.
+- Print only the JSON object. Do not write files.
+
+codex
+I’m locating the target inner enum and then I’ll inspect its references to assess fan-in and fan-out evidence directly from the repository.
+exec
+/bin/bash -lc "rg -n \"enum\\s+EnumInner|EnumWithInnerType\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+exec
+/bin/bash -lc 'rg --files . | rg "EnumWithInnerType|EnumInner"' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+./javaparser-symbol-solver-testing/src/test/resources/enums/EnumWithInnerType.java:1:public static enum EnumWithInnerType {
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserEnumDeclarationTest.java:1176:        JavaParserEnumDeclaration enum2 = (JavaParserEnumDeclaration) combinedtypeSolver.solveType("EnumWithInnerType");
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserEnumDeclarationTest.java:1180:                "EnumWithInnerType.EnumInner", internalTypes2.iterator().next().getQualifiedName());
+
+ succeeded in 0ms:
+./javaparser-symbol-solver-testing/src/test/resources/enums/EnumWithInnerType.java
+
+codex
+I found the source resource that defines the nested enum. Next I’m checking how often that inner type is referenced and whether it has meaningful outgoing dependencies inside its own definition.
+exec
+/bin/bash -lc "sed -n '1,200p' javaparser-symbol-solver-testing/src/test/resources/enums/EnumWithInnerType.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+public static enum EnumWithInnerType {
+
+    PUBLIC, PRIVATE;
+
+    public static class EnumInner {}
+
+}
+
+exec
+/bin/bash -lc "rg -n \"EnumWithInnerType\\.EnumInner|EnumInner\" ." in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+./javaparser-symbol-solver-testing/src/test/resources/enums/EnumWithInnerType.java:5:    public static class EnumInner {}
+./javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserEnumDeclarationTest.java:1180:                "EnumWithInnerType.EnumInner", internalTypes2.iterator().next().getQualifiedName());
+
+codex
+The type is a simple static inner class inside an enum resource, not a standalone class file. I’m opening the related test to confirm its only observed use and to rule out hidden dependency concentration.
+exec
+/bin/bash -lc "sed -n '1160,1195p' javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserEnumDeclarationTest.java" in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+    ///
+    /// Containment
+    ///
+
+    // Set<TypeDeclaration> internalTypes()
+    @Test
+    void testGetInternalTypes() {
+        Path src = adaptPath("src/test/resources/enums");
+        CombinedTypeSolver combinedtypeSolver = new CombinedTypeSolver();
+        combinedtypeSolver.add(new ReflectionTypeSolver());
+        combinedtypeSolver.add(new JavaParserTypeSolver(src, new LeanParserConfiguration()));
+
+        JavaParserEnumDeclaration enum1 = (JavaParserEnumDeclaration) combinedtypeSolver.solveType("EnumWithAncestor");
+        Set<ResolvedReferenceTypeDeclaration> internalTypes1 = enum1.internalTypes();
+        assertEquals(0, internalTypes1.size());
+
+        JavaParserEnumDeclaration enum2 = (JavaParserEnumDeclaration) combinedtypeSolver.solveType("EnumWithInnerType");
+        Set<ResolvedReferenceTypeDeclaration> internalTypes2 = enum2.internalTypes();
+        assertEquals(1, internalTypes2.size());
+        assertEquals(
+                "EnumWithInnerType.EnumInner", internalTypes2.iterator().next().getQualifiedName());
+    }
+
+    // Optional<TypeDeclaration> containerType()
+
+    ///
+    /// Annotations
+    ///
+
+    // Issue 1749
+    @Test
+    void testHasDirectlyAnnotationNegative() {
+        ParserConfiguration parserConfiguration =
+                new ParserConfiguration().setSymbolResolver(new JavaSymbolSolver(new ReflectionTypeSolver()));
+        CompilationUnit cu = new JavaParser(parserConfiguration)
+                .parse(
+
+exec
+/bin/bash -lc 'rg -n "EnumWithInnerType" javaparser-symbol-solver-testing/src/test/java javaparser-symbol-solver-testing/src/test/resources' in /data/henrique/detecting_smells_study/codex/data/repositories/javaparser/javaparser
+ succeeded in 0ms:
+javaparser-symbol-solver-testing/src/test/resources/enums/EnumWithInnerType.java:1:public static enum EnumWithInnerType {
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserEnumDeclarationTest.java:1176:        JavaParserEnumDeclaration enum2 = (JavaParserEnumDeclaration) combinedtypeSolver.solveType("EnumWithInnerType");
+javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserEnumDeclarationTest.java:1180:                "EnumWithInnerType.EnumInner", internalTypes2.iterator().next().getQualifiedName());
+
+codex
+{"target":"(default package).EnumWithInnerType.EnumInner","detection":false,"justification":"Inspected `javaparser-symbol-solver-testing/src/test/resources/enums/EnumWithInnerType.java` and `javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserEnumDeclarationTest.java`. `EnumInner` is an empty static inner class with no outgoing dependencies, and a repo-wide search found only one incoming reference: the test that checks `EnumWithInnerType` exposes `EnumWithInnerType.EnumInner` as an internal type. That is too little fan-in/fan-out evidence for hub-like modularization."}
+tokens used
+3,505
